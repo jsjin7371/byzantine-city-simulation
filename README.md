@@ -7,8 +7,8 @@
 ## 폴더
 | 폴더 | 내용 |
 |---|---|
-| `frontend/` | 화면 (React) |
-| `backend/` | api (FastAPI), DB 스키마 |
+| `frontend/` | 화면 |
+| `backend/` | api , DB 스키마 |
 | `engine/` | 시뮬레이션 (god, city) |
 | `docs/` | 명세 |
 
