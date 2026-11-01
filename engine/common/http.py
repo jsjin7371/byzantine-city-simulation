@@ -16,10 +16,11 @@ def serve(routes, port=8000):
             try:
                 length = int(self.headers.get("Content-Length") or 0)
                 body = json.loads(self.rfile.read(length)) if length else None
-                self._send(200, handler(body))
+                result = handler(body)
             except Exception as e:
                 traceback.print_exc()
-                self._send(500, {"error": str(e)})
+                return self._send(500, {"error": str(e)})
+            self._send(200, result)  # 응답 전송 실패(상대가 끊음)는 핸들러 에러로 취급하지 않음
 
         def _send(self, status, data):
             raw = json.dumps(data).encode()
