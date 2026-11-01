@@ -1,0 +1,23 @@
+# 엔진: god 1개 + city 5개. frontend, api, mysql은 각 담당이 추가
+
+x-city: &city # 아래에서 사용되는 *city (yml의 앵커라는 개념)
+  build:
+    context: ./engine
+    dockerfile: Dockerfile.city
+  image: byzantine-city   # city 5곳이 같은 이미지 사용
+
+services:
+  god:
+    build:
+      context: ./engine
+      dockerfile: Dockerfile.god
+    environment:
+      N_CITIES: 5
+    depends_on: [city-1, city-2, city-3, city-4, city-5]
+
+  # *city는 city라는 이름의 앵커를 참조하여, 각 city 서비스에 공통 설정을 적용
+  city-1: { <<: *city, environment: { CITY_ID: 1 } } 
+  city-2: { <<: *city, environment: { CITY_ID: 2 } }
+  city-3: { <<: *city, environment: { CITY_ID: 3 } }
+  city-4: { <<: *city, environment: { CITY_ID: 4 } }
+  city-5: { <<: *city, environment: { CITY_ID: 5 } }
