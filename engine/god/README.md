@@ -1,71 +1,172 @@
-# God 실행 및 연동 기록
+# God 컨테이너
 
-## 담당 범위와 확인한 기준
+God은 도시 5개가 위험 상황에서 내린 판단을 모아 시뮬레이션을 진행하는 서버입니다.
+센서가 틀리거나 이웃이 거짓 메시지를 보낼 때 도시들의 판단이 얼마나 정확한지 비교하기 위해 사용합니다.
+실험 설정을 받아 도시를 초기화하고, 메시지를 중계하며, 매 턴 결과를 백엔드에 보냅니다.
 
-God은 실험 설정, 정답·센서 생성, 도시 5개의 초기화·메시지 중계, 결과 수집·정확도 계산,
-백엔드 전송을 담당한다. 다수결 판단, 비잔틴 발신값 생성, 누락·조작은 모두 City 담당이다.
-기존 God에는 도시별 상태를 확인하는 `GET /health`만 있었고, 기존 City에도 `/health`만 있다.
-기존 `common/http.py`와 City·백엔드·compose 파일은 수정하지 않았다.
+## 시뮬레이션의 기본 개념
 
-최우선 기준은 2026-11-02 사용자가 디스코드에서 찾아 제공한 **엔진팀 원본 슈도코드**다.
-아래 백엔드 코드는 HTTP·JSON 규격의 참고 자료로 사용하며 원본과 충돌하면 원본을 따른다.
+실제 상황인 `truth`는 `danger`(위험) 또는 `safe`(안전)입니다.
+각 도시는 센서 힌트와 이웃의 메시지를 바탕으로 `evacuate`(대피) 또는 `stay`(잔류)를 결정합니다.
+센서 힌트는 틀릴 수 있고, 비잔틴 도시는 이웃에게 실제 상황과 반대되는 메시지를 보냅니다.
 
-- `develop`: `d0a98ab1812cfed2af5c19267103477f795c990d`
-- 앞선 분석에서 확인한 [PR #6](https://github.com/jsjin7371/byzantine-city-simulation/pull/6)의
-  `feature/backend-setup`: `717681354698adeea1d5ef98db357ce3104c401d`
-- 해당 브랜치의 [전체 명세](https://github.com/jsjin7371/byzantine-city-simulation/blob/717681354698adeea1d5ef98db357ce3104c401d/docs/spec.md),
-  [Mock God](https://github.com/jsjin7371/byzantine-city-simulation/blob/717681354698adeea1d5ef98db357ce3104c401d/backend/app/god/mock.py),
-  `schemas.py`, `runner.py`, 내부 턴 수신 API, God HTTP 클라이언트 및 테스트
+| 구분 | 담당 역할 |
+|---|---|
+| God | 정답·비잔틴 도시 선정, 센서 힌트 생성, 도시 초기화·호출, 메시지 중계, 정확도 계산, 결과 전송 |
+| City | 힌트와 수신 메시지로 판단, 좌우 발신값 생성, 메시지 누락·조작 처리 |
+| 백엔드 | 실험 실행 요청, 턴 결과 수신·저장 |
 
-현재 작업 기준 develop의 `docs/spec.md`는 빈 파일이다. 원본은 사용자가 이 대화에 제공했다.
-기존 구현은 백엔드 Mock을 기준으로 God이 발신·누락·조작을 수행했으나,
-원본 확인 후 그 기능을 제거하고 City 응답을 사용하는 구조로 수정했다.
-PR #6 전체를 병합하거나 그 파일들을 작업 브랜치로 복사하지 않았다.
+God은 City의 판단을 대신하거나 발신값에 누락·조작을 추가로 적용하지 않습니다.
 
-## 실행 흐름
+## 도시 연결과 메시지 중계
 
-1. `POST /run` 설정을 검증하고 실험 전용 `random.Random(seed)`를 만든다.
-2. 정답을 한 번 뽑고 비잔틴 도시를 한 번 선정한다. 모든 턴에서 그대로 유지한다.
-   5개 City에 `/init`으로 누락·조작 확률, 비잔틴 여부 및 도시별 seed를 전달한다.
-   정답은 비잔틴 City의 초기화에만 포함하며 정상 City에는 해당 필드 자체를 보내지 않는다.
-   5개 초기화 성공을 모두 확인한 후 첫 턴을 시작한다.
-3. 각 턴에서 도시 1~5 순서로 센서 힌트를 생성하고 City 판단을 요청한다.
-   첫 턴의 수신 메시지는 양쪽 모두 `null`이다.
-4. City로부터 `decision`, `sent_left`, `sent_right`, `to_left`, `to_right`를 받는다.
-   God은 응답 형식과 null/상태의 일관성만 검증한다. 투표나 발신값을 다시 계산하지 않는다.
-5. City가 반환한 좌우 발신값을 다음 턴 중계용으로 보관하고, 반환한 상태를 JSON에 기록한다.
-   비잔틴 발신·누락·조작은 City에서 수행하며 God은 적용하지 않는다.
-6. 전체 5개 도시 중 정답인 도시 수를 5로 나눠 정확도를 계산한다. 비잔틴 도시도 포함한다.
-7. 완성된 턴을 백엔드에 전송하고 일치하는 성공 확인 응답을 받는다.
-8. 모든 발신 값을 동시에 다음 턴의 입력으로 옮긴다.
-   도시 i의 `from_left`는 왼쪽 이웃의 `to_right` 방향 발신 값이며,
-   `from_right`는 오른쪽 이웃의 `to_left` 방향 발신 값이다. 1과 5도 서로 이웃이다.
-9. 지정된 모든 턴의 저장 확인을 받은 뒤에만 `{"ok": true}`를 반환한다.
-
-순차 호출을 사용하지만 5개 City 모두 이전 턴 입력만 받는다.
-한 도시를 호출한 직후 다른 도시의 이번 턴 입력을 갱신하지 않는다.
-
-## seed 재현성: City 팀과 합의할 제안
-
-원본에는 seed 분배 방식이 없다. 현재 God용 `random.Random(seed)`와 각 City의 난수를 분리했다.
-God 난수는 정답·비잔틴 선정 및 도시별·턴별 센서 오류에만 사용한다.
-`city_seed()`는 다음 **제안 v1 규칙**으로 도시별 31비트 seed를 생성한다.
+도시 번호는 1~5이며 양쪽 이웃과 연결됩니다.
 
 ```text
-SHA256(ASCII("god-city-v1:{seed}:{city_id}"))의 앞 4바이트를 big-endian 정수로 변환
-→ 0x7fffffff와 AND
+1 ↔ 2 ↔ 3 ↔ 4 ↔ 5 ↔ 1
 ```
 
-seed가 null이면 City에도 null을 전달하며 이때 재현성을 보장하지 않는다.
-도시별 seed는 실험 ID 및 호출 순서와 무관하다. God의 센서는 City의 난수 소비 횟수와 무관하다.
-동일 조건의 전체 결과 재현에는 실제 City가 전달받은 seed로 도시별 전용 난수기를 새로 만들고,
-매 `/init`에서 이전 실험의 비잔틴 여부·정답·난수 상태를 모두 교체해야 한다.
-Mock City로 이 동작을 검증했으며 실제 City에서의 보장은 연동 후 확인해야 한다.
-난수를 나눈 만큼 단일 난수기를 쓰는 기존 백엔드 Mock과 동일 seed 결과는 달라질 수 있다.
+도시 1의 왼쪽은 5, 오른쪽은 2입니다. 도시 5의 왼쪽은 4, 오른쪽은 1입니다.
+각 도시는 이번 턴에 받은 메시지로 판단하고, 이번 턴에 보낸 메시지는 이웃의 **다음 턴** 입력이 됩니다.
 
-## 백엔드 연동
+| 도시 i의 다음 턴 입력 | 가져오는 값 |
+|---|---|
+| `from_left` | 왼쪽 이웃이 오른쪽으로 보낸 `sent_right` |
+| `from_right` | 오른쪽 이웃이 왼쪽으로 보낸 `sent_left` |
+
+예를 들어 도시 1은 다음 턴에 도시 5의 `sent_right`와 도시 2의 `sent_left`를 받습니다.
+누락된 메시지는 `null`로 전달합니다.
+도시를 1~5 순서로 호출하지만 모든 도시의 응답을 모을 때까지 입력을 갱신하지 않아 같은 턴의 메시지가 섞이지 않습니다.
+
+## 알고리즘 동작 순서
+
+실험 초기화:
+
+1. `POST /run`의 설정값을 검사하고 실험용 난수기를 만듭니다.
+2. 정답을 한 번 정하고, 5개 도시 중 설정한 수만큼 비잔틴 도시를 선정합니다. 두 값은 실험 내내 유지합니다.
+3. 모든 City에 누락·조작 확률, 비잔틴 여부, 도시별 seed를 보냅니다. 정답은 비잔틴 City에만 보냅니다.
+4. 5개 City의 초기화 성공을 확인하고, 모든 도시의 좌우 수신값을 `null`로 시작합니다.
+
+매 턴 다음 순서를 반복합니다.
+
+1. 도시마다 센서 오류를 별도로 판정해 힌트를 만듭니다.
+2. 힌트와 이전 턴의 좌우 수신값을 City에 보내고, 결정·좌우 발신값·전송 상태를 받습니다.
+3. 5개 도시의 결정으로 정확도를 계산합니다.
+4. 이번 턴 입력과 City 응답을 턴 JSON으로 묶어 백엔드에 보냅니다.
+5. 백엔드의 저장 확인 응답을 받은 후, 좌우 발신값을 이웃의 다음 턴 입력으로 옮깁니다.
+
+지정한 모든 턴의 전송이 확인되면 `/run`에 `{"ok": true}`를 반환합니다.
+
+## 센서 오류와 비잔틴 도시
+
+`sensor_error`는 정답과 반대인 힌트를 줄 확률입니다.
+God은 도시별·턴별로 난수를 따로 뽑아 오류를 판정합니다.
+예를 들어 정답이 `danger`이면 정상 힌트는 `danger`, 오류 힌트는 `safe`입니다.
+
+비잔틴 도시도 자신의 판단인 `decision`을 반환합니다.
+이웃에게 보내는 메시지는 그 판단과 별개로 실제 정답의 반대 결정을 기본값으로 사용합니다.
+정답이 `danger`이면 비잔틴 발신 기본값은 `stay`입니다.
+
+발신 기본값 생성과 다음 처리는 City의 역할입니다.
+
+- 정상 도시는 자신의 결정, 비잔틴 도시는 정답의 반대 결정을 발신 기본값으로 사용합니다.
+- 좌우 방향별로 누락을 먼저 판정합니다. 누락되면 발신값은 `null`입니다.
+- 누락되지 않았을 때 조작을 판정합니다. 조작되면 발신 기본값을 반대로 바꿉니다.
+
+God은 반환된 발신값을 그대로 중계하고 `normal`, `dropped`, `flipped` 상태를 결과에 기록합니다.
+
+## 정확도
+
+정답이 `danger`일 때 `evacuate`, `safe`일 때 `stay`를 선택하면 맞는 판단입니다.
+
+```text
+정확도 = 정답에 맞는 결정을 한 도시 수 / 5
+```
+
+비잔틴 도시도 계산에 포함합니다. 5개 중 4개가 맞았다면 정확도는 `0.8`입니다.
+메시지 내용이 아닌 각 City의 `decision`을 정답과 비교합니다.
+
+## seed와 재현성
+
+God은 `random.Random(seed)`를 사용해 정답, 비잔틴 도시, 센서 힌트를 생성합니다.
+각 City에는 seed와 도시 번호로 만든 도시별 seed를 전달합니다.
+God의 난수와 City의 난수를 분리하므로 City의 누락·조작 판정 횟수가 God의 센서에 영향을 주지 않습니다.
+
+동일한 설정과 seed로 전체 결과를 재현하려면 City도 전달받은 seed로 난수 상태를 초기화해야 합니다.
+도시별 seed는 `experiment_id`와 무관합니다. seed가 `null`이면 재현성을 보장하지 않습니다.
+도시별 seed의 계산은 [simulation.py](simulation.py)의 `city_seed()`에서 확인할 수 있습니다.
+
+## 실행 방법
+
+Python 3.12 이상을 사용하며 God 자체에는 추가 패키지가 필요하지 않습니다.
+저장소 루트에서 로컬 서버를 시작합니다.
+
+```powershell
+Push-Location engine
+python -m god.main
+Pop-Location
+```
+
+서버는 `0.0.0.0:8000`에서 요청을 받습니다. 종료하려면 `Ctrl+C`를 누릅니다.
+`N_CITIES`는 생략하거나 `5`로 설정해야 하며, 다른 값이면 시작하지 않습니다.
+
+Docker에서는 저장소 루트에서 실행합니다.
+
+```powershell
+docker compose up --build -d god
+```
+
+God은 `city-1`~`city-5`와 `api`라는 호스트 이름으로 통신하므로 해당 주소에 접근할 수 있어야 합니다.
+Compose 설정은 God과 City 5개를 실행하며, God의 포트를 PC에 공개하지 않습니다.
+컨테이너 내부에서 상태를 확인할 수 있습니다.
+
+```powershell
+docker compose exec -T god python -c "from common.http import request; print(request('GET', 'http://localhost:8000/health'))"
+```
+
+**실험을 끝까지 실행하려면 City의 `/init`·`/turn`과 백엔드 결과 수신 API가 필요합니다.**
+저장소의 실제 City 서버에는 `/health`만 구현되어 있어 이 상태로 `/run`을 호출하면 초기화 단계에서 실패합니다.
+로컬 실행에서도 같은 City·백엔드 주소를 사용할 수 있어야 합니다.
+
+## HTTP API
+
+### GET /health
+
+God의 동작 여부와 각 City의 `/health` 응답을 확인합니다.
+도시에 연결할 수 없거나 응답이 잘못되면 해당 도시 값은 `false`입니다.
+최상위 `ok`는 God의 응답이며 전체 도시가 정상이라는 뜻은 아닙니다.
+
+응답 예시:
+
+```json
+{
+  "ok": true,
+  "cities": {"1": true, "2": true, "3": false, "4": true, "5": true}
+}
+```
+
+### POST /run
+
+요청은 JSON 객체이며 `experiment_id`가 필수입니다.
+
+| 필드 | 범위 | 기본값 |
+|---|---|---|
+| `experiment_id` | 1 이상의 정수 | 필수 |
+| `turns` | 1~20 정수 | `10` |
+| `sensor_error` | 0~1 숫자 | `0.1` |
+| `drop_rate` | 0~1 숫자 | `0.0` |
+| `flip_rate` | 0~1 숫자 | `0.0` |
+| `byzantine_count` | 0~5 정수 | `1` |
+| `seed` | `null` 또는 0~2147483647 정수 | `null` |
+
+숫자를 문자열이나 불리언으로 보내면 거부합니다. 확률은 유한한 값이어야 하며, 표에 없는 필드도 거부합니다.
 
 요청 예시:
+
+```http
+POST /run
+Content-Type: application/json
+```
 
 ```json
 {
@@ -79,169 +180,86 @@ Mock City로 이 동작을 검증했으며 실제 City에서의 보장은 연동
 }
 ```
 
-`experiment_id`는 필수 양의 정수다. 나머지 기본값은 위 예시와 같지만 `seed`는 `null`이다.
-`turns`는 1~20, 확률은 0~1의 유한한 수, `byzantine_count`는 0~5,
-`seed`는 `null` 또는 0~2147483647의 정수다.
-seed 상한은 명세의 표에는 없지만 실제 백엔드 `ExperimentConfig`에 있어 동일하게 적용했다.
-God은 문자열을 숫자로 바꾸거나 bool을 정수로 받지 않으며 알 수 없는 필드도 거부한다.
-`name`은 백엔드가 보관하며 God에 보내지 않는다.
+모든 턴을 마친 뒤의 응답은 HTTP 200입니다. 실행 중에는 응답을 기다려야 합니다.
 
-각 턴은 기존 `request()`로
-`POST http://api:8000/internal/experiments/{experiment_id}/turns`에 전송한다.
-본문은 `turn`, `truth`, `accuracy`, `cities`이며 도시 행은 아래 9개 필드를 포함한다.
+```json
+{"ok": true}
+```
+
+입력 오류나 City·백엔드 호출 실패는 HTTP 500과 `error` 필드로 반환합니다.
+예를 들어 `turns`가 21이면 다음과 같이 응답합니다.
+
+```json
+{"error": "invalid turns: expected integer in 1..20"}
+```
+
+### God이 사용하는 City 호출
+
+현재 God의 HTTP 어댑터는 `http://city-{1..5}:8000`으로 다음 데이터를 주고받습니다.
+**아래 필드명은 현재 God 코드의 입출력이며, 실제 City에서 제공하는 확정 규격을 뜻하지 않습니다.**
+
+| 경로 | God이 보내는 값 | God이 받는 값 |
+|---|---|---|
+| `POST /init` | `experiment_id`, `drop_rate`, `flip_rate`, `is_byzantine`, `seed`; 비잔틴일 때만 `truth` | `{"ok": true}` |
+| `POST /turn` | `hint`, `from_left`, `from_right` | `decision`, `sent_left`, `sent_right`, `to_left`, `to_right` |
+
+`sent_left/right`는 `evacuate`, `stay`, `null` 중 하나입니다.
+상태가 `dropped`이면 발신값은 `null`, `normal/flipped`이면 `evacuate` 또는 `stay`여야 합니다.
+
+### God → 백엔드: 턴 결과 전송
+
+매 턴 `POST http://api:8000/internal/experiments/{experiment_id}/turns`로 전송합니다.
+`cities`에는 도시 1~5가 각각 한 번씩 포함됩니다.
+다음은 위 설정에서 City가 각 힌트에 따라 결정한 첫 턴의 결과 예시입니다.
 
 ```json
 {
-  "city": 1,
-  "is_byzantine": false,
-  "hint": "safe",
-  "from_left": null,
-  "from_right": null,
-  "decision": "stay",
-  "to_left": "normal",
-  "to_right": "normal"
+  "turn": 1,
+  "truth": "danger",
+  "accuracy": 1.0,
+  "cities": [
+    {"city": 1, "is_byzantine": true, "hint": "danger", "from_left": null, "from_right": null,
+     "decision": "evacuate", "to_left": "normal", "to_right": "normal"},
+    {"city": 2, "is_byzantine": false, "hint": "danger", "from_left": null, "from_right": null,
+     "decision": "evacuate", "to_left": "normal", "to_right": "normal"},
+    {"city": 3, "is_byzantine": false, "hint": "danger", "from_left": null, "from_right": null,
+     "decision": "evacuate", "to_left": "normal", "to_right": "normal"},
+    {"city": 4, "is_byzantine": false, "hint": "danger", "from_left": null, "from_right": null,
+     "decision": "evacuate", "to_left": "normal", "to_right": "normal"},
+    {"city": 5, "is_byzantine": false, "hint": "danger", "from_left": null, "from_right": null,
+     "decision": "evacuate", "to_left": "normal", "to_right": "normal"}
+  ]
 }
 ```
 
-성공 확인 응답은 `{"ok": true, "experiment_id": 3, "turn": 1}` 형식이며
-ID와 턴 번호가 실제 전송값과 일치해야 한다.
-실패와 잘못된 설정은 예외를 발생시켜 기존 공통 서버가 HTTP 500 + `{"error": "이유"}`로 응답한다.
-백엔드 외부 실험 생성 API의 입력 오류 응답은 422지만, God의 500은 명세 4장의 기존 규칙이다.
+`from_left/right`는 이번 턴에 City로 보낸 수신값, `to_left/right`는 이번 턴 발신 상태입니다.
+실제 발신값인 `sent_left/right`는 다음 턴 중계에 사용하며 백엔드 JSON에는 넣지 않습니다.
 
-## City 연동: 원본에 따른 요구사항과 필드 이름 제안
+God은 백엔드에서 다음 응답을 받아 실험 ID와 턴 번호가 요청과 같은지 확인합니다.
 
-현재 실제 City에는 `POST /init`, `POST /turn`이 없어 실제 컨테이너 실험을 완료할 수 없다.
-초기화와 5개 반환값은 원본에 명시된 요구사항이다. 아래 JSON의 구체적인 키 이름,
-초기화 성공 응답 및 seed 분배는 **아직 City 팀과 확정하지 않은 제안**이다.
-`_city_init()`, `_city_turn()`에서 실제 규격에 맞게 변환할 수 있다. City 구현은 수정하지 않았다.
-
-```text
-POST http://city-{1..5}:8000/init
-입력: {"experiment_id": 3, "drop_rate": 0.1, "flip_rate": 0.2,
-       "is_byzantine": false, "seed": 도시별_정수_또는_null}
-비잔틴 도시에만 추가: {"truth": "danger"}
-출력: {"ok": true}
-
-POST http://city-{1..5}:8000/turn
-입력: {"hint": "danger", "from_left": null, "from_right": "stay"}
-출력: {"decision": "evacuate", "sent_left": null, "sent_right": "stay",
-       "to_left": "dropped", "to_right": "flipped"}
+```json
+{"ok": true, "experiment_id": 3, "turn": 1}
 ```
 
-`hint`는 `danger/safe`, 수신 메시지는 `evacuate/stay/null`, 판단은 `evacuate/stay`다.
-City가 각 방향별로 비잔틴 여부에 따른 기본값 생성 → 누락 판정 → 누락되지 않으면 조작 판정을 한다.
-`sent_left/right`는 실제 전달할 `evacuate/stay/null`, `to_left/right`는 전달 상태다.
-`dropped`는 null이어야 하며 `normal/flipped`는 유효한 결정 문자열이어야 한다.
-God은 normal/flipped 발신값을 결정이나 정답으로부터 복원하지 않는다.
-턴 입력에는 정답·비잔틴 여부·발신 확률을 추가하지 않고 `/init` 상태를 사용한다.
-테스트 Mock City만 원본의 다수결·동률 처리, 비잔틴 발신, 누락·조작을 구현한다.
-God에는 임시 판단으로 대체하는 기능이 없으므로 City 실패를 정상 실험처럼 저장하지 않는다.
+## 오류와 실행 제한
 
-## 오류·중복·시간 제한
+- 초기화에 실패하면 턴을 시작하지 않습니다. 턴 도중 City 호출이 실패하면 미완성 턴을 전송하지 않습니다.
+- 백엔드 호출이나 성공 확인에 실패하면 다음 턴으로 넘어가지 않습니다.
+- 백엔드에 저장된 뒤 응답만 유실될 수 있어 자동 재전송·이어하기·롤백을 하지 않습니다.
+  오류에는 저장 확인된 턴 수가 포함됩니다. 실패 상태를 확인한 뒤 새 `experiment_id`로 실행하세요.
+- 같은 프로세스에서는 한 번 실행을 시도한 실험 ID를 다시 받지 않습니다. 입력 검증에 실패한 ID는 다시 사용할 수 있습니다.
+  실행 이력은 메모리에만 있어 프로세스 재시작 후에는 유지되지 않습니다.
+- 서버는 요청을 하나씩 처리하므로 `/run` 실행 중 `/health`와 다른 실행 요청이 대기할 수 있습니다.
+- City·백엔드 호출 제한은 각각 1초입니다. 최대 설정에서는 초기화 5회와 City 턴 호출 100회, 백엔드 전송 20회가 발생합니다.
+  `/run` 호출자는 이 요청들을 마칠 수 있는 전체 대기 시간을 설정해야 합니다.
 
-- City 초기화 실패나 잘못된 확인 응답이면 턴을 시작하지 않는다.
-  이미 일부 City가 초기화됐어도 다음 실험에서 5개 모두 다시 초기화한다. 원격 롤백은 하지 않는다.
-- City 턴 호출 실패나 잘못된 판단·발신값·상태는 즉시 중단한다. 미완성 턴은 전송하지 않는다.
-- 백엔드 HTTP 실패, 연결·시간 초과, 잘못된 JSON/확인 응답도 즉시 중단한다.
-- 로그와 `/run` 오류에 실험 ID, 저장 확인된 턴 수, City 실패 위치를 기록한다.
-- 백엔드 요청 후 응답이 유실되면 이미 저장됐을 수 있다. 자동 재시도·롤백·이어하기는 하지 않는다.
-  실패 실험은 백엔드에서 확인하고 새 실험 ID로 실행한다.
-- 같은 God 프로세스에서는 한 번 시도한 ID를 다시 실행하지 않는다. 잘못된 설정은 ID를 소비하지 않는다.
-  ID 집합은 메모리에만 있으며 프로세스가 재시작되면 사라진다. 장기 실행 시 메모리도 늘어난다.
-  영구 중복 방지는 백엔드의 실험 상태 및 동일 턴 중복 거부에 의존한다.
-- 기존 공통 서버는 요청을 하나씩 처리한다. `/run` 중 `/health`와 다른 `/run`은 대기할 수 있다.
-  서비스 자체에도 동시 실행 방지 잠금이 있다. 공통 서버를 임의로 다중 스레드 서버로 바꾸지 않았다.
-- 기존 HTTP 호출 제한은 건당 1초다. 초기화 5회 + 최대 20턴의 City 100회 + 백엔드 20회다.
-  느린 응답이 반복되면 백엔드의 전체 `/run` 대기 120초와 충돌할 수 있다.
-  실제 City 완료 후 성능을 측정하고 전체 실행 시간·취소·대기 정책을 팀과 정해야 한다.
+## 테스트 실행
 
-## 로컬 실행 및 테스트
-
-Python 3.12 이상, 추가 패키지는 필요 없다. 저장소 루트에서:
+저장소 루트에서 실행합니다.
 
 ```powershell
 python -m unittest discover -s engine/tests -p "test_god*.py" -v
 ```
 
-God을 직접 실행하려면 (도시·API 컨테이너 이름은 compose 네트워크에서 해석됨):
-
-```powershell
-Push-Location engine
-python -m god.main
-Pop-Location
-```
-
-God은 `N_CITIES`가 생략되면 5로 동작하며, 다른 값으로 설정하면 서버 시작을 거부한다.
-현재 compose에는 이미 God 1개와 City 5개가 선언돼 있다.
-백엔드 PR 통합 및 City 구현 후, 백엔드의 `GOD_MODE=http` 설정으로 실제 연동해야 한다.
-
-2026-11-02 검증 환경: Windows, Python 3.13.3.
-
-- 원본 기준 단위·회귀 36개와 실제 로컬 HTTP 통합 6개, 총 **42개 통과**.
-- Python 구문 검사(`compileall`), compose 설정 검사(`docker compose config --quiet`),
-  변경 코드의 공백 검사(`git diff --check` 및 신규 파일 검사)도 통과했다.
-- 도시 수, 비잔틴 0~5개, 센서 오류, 누락 우선순위, 조작, 원형 연결 및 다음 턴 전달을 검증했다.
-- Mock City 응답 사용, 비잔틴 포함 정확도, 동일 seed·다른 seed, 20턴 연속 실행을 검증했다.
-- `/init` 선행, 정상 City에 정답 미전달, 초기화 실패 시 턴 미시작,
-  City 발신값 그대로 중계, 같은 턴 입력 격리, 도시별 seed·상태 초기화를 검증했다.
-- God 센서 난수 소비가 도시당·턴당 한 번이고 City 누락·조작 난수와 독립적인지 검증했다.
-- 설정 형식·범위, 도시/백엔드 실패·시간 초과·잘못된 응답, 부분 완료와 중복 차단을 검증했다.
-- 임시 로컬 서버에서 기존 `common.http.serve/request`를 사용해 `/health`, `/run`,
-  초기화, 턴 전송·응답, City init/turn 404, 백엔드 500, 잘못된 판단/설정의 God 500을 검증했다.
-- 기존 31개 검사를 모두 재검토했다. 공통 기능 검사는 유지하고 City mock/호출을 새 규격에 맞췄다.
-  백엔드 결과 해시 일치 검사와 `god_reference.json`은 제거했다.
-  그 자리는 God 센서와 City 난수 독립 검사로 대체하고 원본 책임 분리를 확인하는 11개 검사를 추가했다.
-  31 - 1 + 1 + 11 = 42개이며, 이전 320턴 해시 비교는 현재 구현의 통과 근거로 사용하지 않는다.
-- 이전에 확인된 샌드박스 로컬 연결 차단 때문에 HTTP 전체 검사는 권한 허용 후 실행했다.
-- 실제 FastAPI·DB 및 Docker 통합은 실행하지 않았다. 현재 작업 브랜치에 백엔드 구현이 없고,
-  City `/init`·`/turn`이 없고 앞선 점검에서 Docker Desktop 엔진이 실행 중이지 않았다.
-  백엔드 JSON 구조는 유지했고,
-  실제 FastAPI 모델 및 DB 저장 통과까지 검증한 것은 아니다.
-
-## 팀 확인 사항
-
-1. City 팀: `/init`, `/turn`의 실제 JSON 키, 초기화 확인 응답 및 도시별 seed 규칙을 합의한다.
-   일반 City의 이전 실험 정답 제거와 난수 상태 재설정도 필요하다.
-2. 백엔드 팀: 결과 JSON 및 엔드포인트 변경은 없다. `from_left/right`는 이번 턴 입력이며,
-   `to_left/right`는 City 응답을 기록한다. 내부용 `sent_left/right`는 백엔드 본문에 추가하지 않는다.
-3. 백엔드 팀: 기존 Mock은 같은 난수기를 공유하므로 수정 God+City와 동일 seed 결과가 다를 수 있다.
-   수치 동일성을 검사하려면 도시별 난수 분리 규칙을 합의해 Mock에도 적용해야 한다.
-4. 정답 고정·비잔틴 발신은 원본으로 확정됐다. 이제 이 두 사항을 미확정 질문으로 취급하지 않는다.
-5. 도시 수·seed·턴 전송 방식의 문서 표시는 백엔드 팀에서 갱신해야 한다. 타 팀 파일은 수정하지 않았다.
-6. 순차 호출은 사용자 허용 범위에 맞으며 턴 동시성(동일한 이전 상태)은 보장한다.
-   물리적 병렬 호출은 구현하지 않았다. 실제 20턴 성능, 전체 120초 제한, `/health` 대기,
-   God 재시작·중복·취소 정책은 통합 후 협의한다.
-
-## 원본과의 일치 여부 및 PR 준비 상태
-
-| 검토 항목 | 결과 |
-|---|---|
-| 누락·조작 담당 | City. God에는 해당 판정 코드 없음 |
-| 발신값 중계 | City가 반환한 값을 수정 없이 다음 턴에 전달 |
-| City 초기화 | 5개 모두 `/init`, 정상 City에는 truth 필드 미전달 |
-| 첫 턴 입력 | 좌우 모두 null |
-| 정답 | 실험당 한 번 선정 후 고정 |
-| 같은 턴 입력 격리 | 5개 수집 및 백엔드 확인 후에만 다음 턴 입력 갱신 |
-| 좌우 방향 | 1의 왼쪽은 5, 왼쪽 이웃의 오른쪽 발신을 수신 |
-| 정확도 | 비잔틴 포함 정답 도시 수 / 5 |
-| from_left/right | 이번 턴 City에 실제 전달한 입력 기록 |
-| 센서 오류 | 도시별·턴별 별도 난수 판정 |
-
-God의 확인된 원본 요구사항은 구현했다. 실제 City 서버가 미구현이라 운영 통합은 미완료이며,
-City JSON 키와 seed 확정 전에는 실제 City 호환성이 검증됐다고 주장할 수 없다.
-제한 사항을 명시한 develop 대상 리뷰용 PR은 사용자 승인 후 만들 수 있다.
-
-## 변경 파일과 업로드 상태
-
-- `engine/god/main.py`: 기존 health 유지, `/run` 등록, import 시 서버 자동 시작 방지.
-- `engine/god/simulation.py`: 이번에 `simulate()` 역할 수정, `city_seed()`,
-  `validate_city_reply()`, `GodService._city_init()` 추가, `run()` 초기화 연결.
-- `engine/god/README.md`: 실행법, 확인 근거, 검증 결과, 미확정 사항.
-- `engine/tests/test_god.py`: 상태를 저장하는 Mock City의 init/turn 및 원본 기준 회귀 검사.
-- `engine/tests/test_god_http.py`: 실제 로컬 HTTP fixture에 init 추가, 초기화 실패 검사 추가.
-- `engine/tests/god_reference.json`: 앞선 작업에서 만든 백엔드 동일 결과 기준 파일은 이번에 제거.
-
-이번 검토에서 `main.py`는 추가 수정하지 않았다. 최초 작업의 기존 수정분은 그대로 남아 있다.
-
-`feature/engine-god`에서 작업했으며 사용자 승인 전에는 커밋·Push·PR 생성을 진행하지 않는다.
-PR 대상은 `develop`이고 자동 병합하지 않는다.
+테스트는 Mock City와 임시 로컬 HTTP 서버를 사용하므로 Docker·실제 City·백엔드 없이 실행할 수 있습니다.
+테스트 실행 환경에서 로컬 서버의 포트 바인딩과 접속을 허용해야 합니다.
