@@ -1,7 +1,7 @@
-"""Five-city orchestration following the original engine pseudocode.
+"""원본 슈도코드에 따라 도시 5개의 실험을 진행한다.
 
-Truth is sampled once per experiment, messages arrive on the next turn,
-and City owns voting, Byzantine sending, dropping and flipping.
+정답은 실험 시작 시 한 번 정하고, 메시지는 다음 턴에 전달한다.
+투표, 비잔틴 발신값 생성, 메시지 누락과 조작은 City가 담당한다.
 """
 import hashlib
 import logging
@@ -57,7 +57,7 @@ class ExperimentConfig:
 
 
 def city_seed(seed, city):
-    """Proposed v1 per-city seed: stable, independent of scheduling/experiment ID."""
+    """호출 순서와 실험 ID에 영향받지 않는 도시별 seed를 만든다. 분배 규칙은 제안 단계다."""
     if seed is None:
         return None
     digest = hashlib.sha256(f"god-city-v1:{seed}:{city}".encode("ascii")).digest()
@@ -65,7 +65,7 @@ def city_seed(seed, city):
 
 
 def validate_city_reply(reply):
-    """Validate wire types/consistency without recalculating City behavior."""
+    """City의 판단을 다시 계산하지 않고 응답 형식과 발신값·상태의 일관성을 검사한다."""
     if not isinstance(reply, dict):
         raise ValueError("City must return an object")
     decision = reply.get("decision")
@@ -85,9 +85,9 @@ def validate_city_reply(reply):
 
 
 def simulate(config, city_turn, city_init):
-    """Initialize all Cities, then yield backend turn JSON from their replies.
+    """모든 City를 초기화한 뒤 응답을 모아 백엔드에 보낼 턴 JSON을 하나씩 만든다.
 
-    Callback adapters isolate the proposed /init and /turn field names.
+    초기화·턴 호출 함수로 통신을 분리해 제안 중인 /init·/turn 필드명을 조정할 수 있다.
     """
     rng = random.Random(config.seed)
     truth = rng.choice(["danger", "safe"])
@@ -119,7 +119,7 @@ def simulate(config, city_turn, city_init):
             except Exception as exc:
                 raise RuntimeError(f"turn {turn}, city {city}: {exc}") from exc
 
-            # Relay the exact City-provided messages, never infer them from status.
+            # 상태로 발신값을 추측하지 않고 City가 반환한 값을 그대로 중계한다.
             sent_by[city] = {"left": reply["sent_left"], "right": reply["sent_right"]}
             rows.append({"city": city, "is_byzantine": city in byzantine, **inputs,
                          "decision": reply["decision"], "to_left": reply["to_left"],
@@ -128,7 +128,7 @@ def simulate(config, city_turn, city_init):
         correct = sum(row["decision"] == DECISION_OF[truth] for row in rows)
         yield {"turn": turn, "truth": truth, "accuracy": correct / N_CITIES, "cities": rows}
 
-        # Simultaneous relay: never feed a same-turn decision to a later City.
+        # 모든 응답을 모은 뒤 갱신해 같은 턴의 발신값이 다른 도시의 입력에 섞이지 않게 한다.
         received = {
             city: {"left": sent_by[CITY_IDS[index - 1]]["right"],
                    "right": sent_by[CITY_IDS[(index + 1) % N_CITIES]]["left"]}
@@ -137,10 +137,10 @@ def simulate(config, city_turn, city_init):
 
 
 class GodService:
-    """Run one experiment at a time, without retrying ambiguous writes.
+    """실험을 하나씩 실행하고 저장 여부가 불확실한 요청은 재전송하지 않는다.
 
-    Attempted IDs stay in memory, even after failure. Persistent duplicate
-    detection remains the backend's responsibility after a God restart.
+    실행을 시도한 ID는 실패해도 메모리에 보관한다.
+    God 재시작 후의 중복 실행 방지는 백엔드가 담당한다.
     """
 
     def __init__(self, transport=None):

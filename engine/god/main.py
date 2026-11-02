@@ -1,4 +1,4 @@
-"""God HTTP entry point; City voting stays in the City service."""
+"""God의 HTTP 서버를 시작한다. 도시의 판단은 City 서비스가 담당한다."""
 import logging
 import os
 
