@@ -12,11 +12,12 @@ backend/
 │  ├─ db.py               DB 연결
 │  ├─ models.py           테이블 4개 (experiments, turn_results, city_states, messages)
 │  ├─ schemas.py          요청·응답 형식 + God 응답 검증
-│  ├─ runner.py           실험 실행: God 호출 → 정확도 계산 → 저장 (백그라운드)
-│  ├─ routers/experiments.py   /experiments API
+│  ├─ runner.py           실험 실행: God 호출 → 턴 저장 → 완료 확인 (백그라운드)
+│  ├─ routers/experiments.py   /experiments API (프론트용)
+│  ├─ routers/internal.py      /internal/... 턴 결과 수신 (엔진 전용)
 │  └─ god/
 │     ├─ client.py        실제 God 호출 (GOD_MODE=http)
-│     └─ mock.py          가짜 God (GOD_MODE=mock, 기본값)
+│     └─ mock.py          가짜 God, 엔진 슈도코드와 같은 동작 (GOD_MODE=mock, 기본값)
 ├─ alembic/               DB 마이그레이션
 └─ tests/                 pytest
 ```
@@ -34,6 +35,8 @@ docker compose logs -f api        # "Running upgrade -> 0001" 후 서버 시작 
 - MySQL: `127.0.0.1:3307` (계정 `byzantine` / `byzantine`, DB `byzantine`)
 - 종료: `docker compose stop api mysql`
 - DB까지 초기화: `docker compose down -v`
+
+> 11/2 저녁 엔진 형식으로 테이블이 바뀌었습니다. 그 전에 한 번 띄운 적이 있으면 `docker compose down -v`로 DB를 한 번 초기화한 뒤 다시 실행하세요.
 
 엔진 `/run`이 완성되면 루트 `.env`에 `GOD_MODE=http`를 넣고 `docker compose up -d --build`로 전체를 띄웁니다.
 
@@ -87,7 +90,7 @@ cd backend
 
 ## 남은 일
 
-- [ ] 11/6 규격 확정 후 `docs/spec.md`와 스키마 반영 (도시 수, `algorithm` 값 목록)
+- [ ] 11/6 규격 확정 후 `docs/spec.md`와 스키마 반영 (도시 수, 턴 전송 방식, seed)
 - [ ] 엔진 `/run` 완성되면 `GOD_MODE=http`로 실제 연동 테스트
 - [ ] 실험 삭제 API (`DELETE /experiments/{id}`) 필요 여부 프론트와 협의
 - [ ] 동시에 여러 실험 실행 시 God이 한 번에 하나만 처리하는지 엔진과 확인

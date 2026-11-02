@@ -2,23 +2,26 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+Truth = Literal["danger", "safe"]
 Decision = Literal["evacuate", "stay"]
-Sensor = Literal["danger", "safe"]
+SendStatus = Literal["normal", "dropped", "flipped"]
 StatusValue = Literal["pending", "running", "completed", "failed"]
 
+# 정답(danger/safe)과 결정(evacuate/stay)의 대응: 위험하면 대피가 정답
+CORRECT_DECISION = {"danger": "evacuate", "safe": "stay"}
 
-# ---------- 실험 설정 ----------
+
+# ---------- 실험 설정 (엔진 요청값과 같은 이름) ----------
 
 class ExperimentConfig(BaseModel):
-    turns: int = Field(20, ge=1, le=100, description="턴 수")
-    sensor_error_rate: float = Field(0.1, ge=0.0, le=1.0, description="센서 오류율")
-    drop_rate: float = Field(0.0, ge=0.0, le=1.0, description="메시지 누락률")
-    tamper_rate: float = Field(0.0, ge=0.0, le=1.0, description="메시지 조작률")
-    byzantine_count: int = Field(1, ge=0, description="비잔틴 도시 수 (도시 수 - 1 이하)")
-    algorithm: str = Field("majority", min_length=1, max_length=32, description="합의 알고리즘")
-    seed: int | None = Field(None, ge=0, le=2**31 - 1, description="랜덤 시드 (같으면 같은 결과)")
+    turns: int = Field(10, ge=1, le=20, description="턴 수")
+    sensor_error: float = Field(0.1, ge=0.0, le=1.0, description="신이 틀린 힌트를 줄 확률")
+    drop_rate: float = Field(0.0, ge=0.0, le=1.0, description="메시지 누락 확률")
+    flip_rate: float = Field(0.0, ge=0.0, le=1.0, description="메시지 조작 확률")
+    byzantine_count: int = Field(1, ge=0, description="비잔틴(거짓말) 도시 수 (0 ~ 도시 수)")
+    seed: int | None = Field(None, ge=0, le=2**31 - 1, description="랜덤 시드 (엔진 지원 여부 확인 중)")
 
 
 class ExperimentCreate(ExperimentConfig):
@@ -28,12 +31,11 @@ class ExperimentCreate(ExperimentConfig):
         json_schema_extra={
             "example": {
                 "name": "비잔틴 1개, 누락 10%",
-                "turns": 20,
-                "sensor_error_rate": 0.1,
+                "turns": 10,
+                "sensor_error": 0.1,
                 "drop_rate": 0.1,
-                "tamper_rate": 0.0,
+                "flip_rate": 0.0,
                 "byzantine_count": 1,
-                "algorithm": "majority",
                 "seed": 42,
             }
         }
@@ -57,6 +59,7 @@ class ExperimentOut(UTCModel):
     status: StatusValue
     config: ExperimentConfig
     n_cities: int
+    completed_turns: int = Field(description="지금까지 저장된 턴 수 (진행률 표시용)")
     byzantine_ids: list[int]
     mean_accuracy: float | None
     error: str | None
@@ -69,7 +72,7 @@ class ExperimentOut(UTCModel):
 
 class TurnSummary(BaseModel):
     turn: int
-    truth: Decision
+    truth: Truth
     accuracy: float
 
 
@@ -78,29 +81,29 @@ class TurnListOut(BaseModel):
     turns: list[TurnSummary]
 
 
-class ReceivedMessage(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+class CityTurn(BaseModel):
+    """엔진이 보내는 도시 한 곳의 한 턴 결과. 프론트 응답에도 같은 이름을 쓴다."""
 
-    from_city: int = Field(serialization_alias="from", validation_alias="from")
-    value: Decision | None
-    dropped: bool
-    tampered: bool
+    model_config = ConfigDict(extra="ignore")
 
-
-class CityTurnOut(BaseModel):
-    city_id: int
+    city: int = Field(ge=1)
     is_byzantine: bool
-    sensor: Sensor
+    hint: Truth
+    from_left: Decision | None
+    from_right: Decision | None
     decision: Decision
-    broadcast: Decision
-    correct: bool
-    received: list[ReceivedMessage]
+    to_left: SendStatus
+    to_right: SendStatus
+
+
+class CityTurnOut(CityTurn):
+    correct: bool = Field(description="결정이 정답과 맞는지 (danger→evacuate, safe→stay)")
 
 
 class TurnDetailOut(BaseModel):
     experiment_id: int
     turn: int
-    truth: Decision
+    truth: Truth
     accuracy: float
     cities: list[CityTurnOut]
 
@@ -117,36 +120,27 @@ class CompareOut(BaseModel):
     experiments: list[CompareItem]
 
 
-# ---------- God 규격 (API ↔ God) ----------
+# ---------- 엔진 → API ----------
 
-class GodCity(BaseModel):
-    city_id: int = Field(ge=1)
-    is_byzantine: bool
-    sensor: Sensor
-    decision: Decision
-    broadcast: Decision
+class EngineTurn(BaseModel):
+    """엔진이 턴마다 보내는 JSON (docs/spec.md 4장)."""
 
+    model_config = ConfigDict(extra="ignore")
 
-class GodMessage(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
-    from_city: int = Field(alias="from", ge=1)
-    to_city: int = Field(alias="to", ge=1)
-    sent: Decision
-    received: Decision | None
-    dropped: bool = False
-    tampered: bool = False
-
-
-class GodTurn(BaseModel):
     turn: int = Field(ge=1)
-    truth: Decision
-    cities: list[GodCity] = Field(min_length=1)
-    messages: list[GodMessage] = []
-    accuracy: float | None = Field(None, ge=0.0, le=1.0, description="엔진이 직접 계산한 경우에만")
+    truth: Truth
+    accuracy: float | None = Field(None, ge=0.0, le=1.0, description="없으면 API가 계산")
+    cities: list[CityTurn] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _unique_cities(self):
+        ids = [c.city for c in self.cities]
+        if len(ids) != len(set(ids)):
+            raise ValueError("cities에 같은 도시 번호가 두 번 이상 있습니다")
+        return self
 
 
-class GodResult(BaseModel):
-    n_cities: int = Field(ge=1)
-    byzantine_ids: list[int] = []
-    turns: list[GodTurn] = Field(min_length=1)
+class TurnAck(BaseModel):
+    ok: bool = True
+    experiment_id: int
+    turn: int

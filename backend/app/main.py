@@ -10,7 +10,7 @@ from app.config import Settings, get_settings
 from app.db import make_engine, make_session_factory
 from app.god import get_runner
 from app.models import Experiment, Status, utcnow
-from app.routers import experiments
+from app.routers import experiments, internal
 
 log = logging.getLogger(__name__)
 
@@ -56,6 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(experiments.router)
+    app.include_router(internal.router)
 
     @app.get("/health", tags=["health"])
     def health() -> dict[str, str]:

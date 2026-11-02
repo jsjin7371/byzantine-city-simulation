@@ -21,11 +21,10 @@ def upgrade() -> None:
     sa.Column('name', sa.String(length=50), nullable=True),
     sa.Column('status', sa.String(length=16), nullable=False),
     sa.Column('turns', sa.Integer(), nullable=False),
-    sa.Column('sensor_error_rate', sa.Double(), nullable=False),
+    sa.Column('sensor_error', sa.Double(), nullable=False),
     sa.Column('drop_rate', sa.Double(), nullable=False),
-    sa.Column('tamper_rate', sa.Double(), nullable=False),
+    sa.Column('flip_rate', sa.Double(), nullable=False),
     sa.Column('byzantine_count', sa.Integer(), nullable=False),
-    sa.Column('algorithm', sa.String(length=32), nullable=False),
     sa.Column('seed', sa.Integer(), nullable=True),
     sa.Column('n_cities', sa.Integer(), nullable=False),
     sa.Column('byzantine_ids', sa.JSON(), nullable=True),
@@ -51,33 +50,21 @@ def upgrade() -> None:
     op.create_table('city_states',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('turn_result_id', sa.Integer(), nullable=False),
-    sa.Column('city_id', sa.Integer(), nullable=False),
+    sa.Column('city', sa.Integer(), nullable=False),
     sa.Column('is_byzantine', sa.Boolean(), nullable=False),
-    sa.Column('sensor', sa.String(length=16), nullable=False),
+    sa.Column('hint', sa.String(length=16), nullable=False),
+    sa.Column('from_left', sa.String(length=16), nullable=True),
+    sa.Column('from_right', sa.String(length=16), nullable=True),
     sa.Column('decision', sa.String(length=16), nullable=False),
-    sa.Column('broadcast', sa.String(length=16), nullable=False),
+    sa.Column('to_left', sa.String(length=16), nullable=False),
+    sa.Column('to_right', sa.String(length=16), nullable=False),
     sa.ForeignKeyConstraint(['turn_result_id'], ['turn_results.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('turn_result_id', 'city_id', name='uq_city_states_turn_city')
+    sa.UniqueConstraint('turn_result_id', 'city', name='uq_city_states_turn_city')
     )
-    op.create_table('messages',
-    sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('turn_result_id', sa.Integer(), nullable=False),
-    sa.Column('from_city', sa.Integer(), nullable=False),
-    sa.Column('to_city', sa.Integer(), nullable=False),
-    sa.Column('sent', sa.String(length=16), nullable=False),
-    sa.Column('received', sa.String(length=16), nullable=True),
-    sa.Column('dropped', sa.Boolean(), nullable=False),
-    sa.Column('tampered', sa.Boolean(), nullable=False),
-    sa.ForeignKeyConstraint(['turn_result_id'], ['turn_results.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index('ix_messages_turn_to', 'messages', ['turn_result_id', 'to_city'], unique=False)
 
 
 def downgrade() -> None:
-    op.drop_index('ix_messages_turn_to', table_name='messages')
-    op.drop_table('messages')
     op.drop_table('city_states')
     op.drop_table('turn_results')
     op.drop_index(op.f('ix_experiments_status'), table_name='experiments')

@@ -1,21 +1,19 @@
 """실험 API (docs/spec.md 3장)."""
-from collections import defaultdict
-
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db import get_db
 from app.models import Experiment, Status, TurnResult
-from app.runner import run_experiment
+from app.runner import completed_turns, run_experiment
 from app.schemas import (
+    CORRECT_DECISION,
     CityTurnOut,
     CompareItem,
     CompareOut,
     ExperimentConfig,
     ExperimentCreate,
     ExperimentOut,
-    ReceivedMessage,
     TurnDetailOut,
     TurnListOut,
     TurnSummary,
@@ -26,17 +24,17 @@ router = APIRouter(prefix="/experiments", tags=["experiments"])
 
 # ---------- 변환 헬퍼 ----------
 
-def to_out(exp: Experiment) -> ExperimentOut:
+def to_out(exp: Experiment, done_turns: int) -> ExperimentOut:
     return ExperimentOut(
         id=exp.id,
         name=exp.name,
         status=exp.status,
         config=ExperimentConfig(
-            turns=exp.turns, sensor_error_rate=exp.sensor_error_rate, drop_rate=exp.drop_rate,
-            tamper_rate=exp.tamper_rate, byzantine_count=exp.byzantine_count,
-            algorithm=exp.algorithm, seed=exp.seed,
+            turns=exp.turns, sensor_error=exp.sensor_error, drop_rate=exp.drop_rate,
+            flip_rate=exp.flip_rate, byzantine_count=exp.byzantine_count, seed=exp.seed,
         ),
         n_cities=exp.n_cities,
+        completed_turns=done_turns,
         byzantine_ids=exp.byzantine_ids or [],
         mean_accuracy=exp.mean_accuracy,
         error=exp.error,
@@ -80,11 +78,8 @@ def create_experiment(
     db: Session = Depends(get_db),
 ):
     settings = request.app.state.settings
-    if body.byzantine_count > settings.n_cities - 1:
-        raise HTTPException(
-            422,
-            f"byzantine_count must be at most {settings.n_cities - 1} (n_cities={settings.n_cities})",
-        )
+    if body.byzantine_count > settings.n_cities:
+        raise HTTPException(422, f"byzantine_count must be at most {settings.n_cities} (n_cities={settings.n_cities})")
 
     exp = Experiment(**body.model_dump(), status=Status.PENDING, n_cities=settings.n_cities)
     db.add(exp)
@@ -93,7 +88,7 @@ def create_experiment(
 
     # 응답을 먼저 보내고 실행은 백그라운드에서. 프론트는 GET /experiments/{id}로 상태 확인.
     background.add_task(run_experiment, exp.id, request.app.state.session_factory, request.app.state.run_god)
-    return to_out(exp)
+    return to_out(exp, 0)
 
 
 @router.get("", response_model=list[ExperimentOut], summary="실험 목록 (최신순)")
@@ -105,7 +100,12 @@ def list_experiments(
     rows = db.scalars(
         select(Experiment).order_by(Experiment.created_at.desc(), Experiment.id.desc()).limit(limit).offset(offset)
     ).all()
-    return [to_out(e) for e in rows]
+    counts = dict(db.execute(
+        select(TurnResult.experiment_id, func.count())
+        .where(TurnResult.experiment_id.in_([e.id for e in rows]))
+        .group_by(TurnResult.experiment_id)
+    ).all())
+    return [to_out(e, counts.get(e.id, 0)) for e in rows]
 
 
 # /compare는 /{experiment_id}보다 먼저 선언해야 "compare"가 id로 해석되지 않는다.
@@ -122,7 +122,7 @@ def compare_experiments(
     for experiment_id in unique_ids:
         exp = get_experiment_or_404(db, experiment_id)
         require_completed(exp)
-        out = to_out(exp)
+        out = to_out(exp, exp.turns)
         items.append(CompareItem(
             id=exp.id, name=exp.name, config=out.config, mean_accuracy=exp.mean_accuracy,
             accuracy=turn_summaries(db, exp.id),
@@ -132,7 +132,8 @@ def compare_experiments(
 
 @router.get("/{experiment_id}", response_model=ExperimentOut, summary="실험 설정 + 상태")
 def get_experiment(experiment_id: int, db: Session = Depends(get_db)):
-    return to_out(get_experiment_or_404(db, experiment_id))
+    exp = get_experiment_or_404(db, experiment_id)
+    return to_out(exp, completed_turns(db, exp.id))
 
 
 @router.get("/{experiment_id}/turns", response_model=TurnListOut, summary="턴별 정답·정확도")
@@ -142,8 +143,7 @@ def list_turns(experiment_id: int, db: Session = Depends(get_db)):
     return TurnListOut(experiment_id=exp.id, turns=turn_summaries(db, exp.id))
 
 
-@router.get("/{experiment_id}/turns/{turn}", response_model=TurnDetailOut, response_model_by_alias=True,
-            summary="해당 턴의 도시별 상세")
+@router.get("/{experiment_id}/turns/{turn}", response_model=TurnDetailOut, summary="해당 턴의 도시별 상세")
 def get_turn(experiment_id: int, turn: int, db: Session = Depends(get_db)):
     exp = get_experiment_or_404(db, experiment_id)
     require_completed(exp)
@@ -151,21 +151,17 @@ def get_turn(experiment_id: int, turn: int, db: Session = Depends(get_db)):
     tr = db.scalars(
         select(TurnResult)
         .where(TurnResult.experiment_id == experiment_id, TurnResult.turn == turn)
-        .options(selectinload(TurnResult.city_states), selectinload(TurnResult.messages))
+        .options(selectinload(TurnResult.city_states))
     ).first()
     if tr is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"turn {turn} not found in experiment {experiment_id}")
 
-    inbox: dict[int, list[ReceivedMessage]] = defaultdict(list)
-    for m in sorted(tr.messages, key=lambda m: m.from_city):
-        inbox[m.to_city].append(
-            ReceivedMessage(from_city=m.from_city, value=m.received, dropped=m.dropped, tampered=m.tampered)
-        )
-
+    answer = CORRECT_DECISION[tr.truth]
     cities = [
         CityTurnOut(
-            city_id=c.city_id, is_byzantine=c.is_byzantine, sensor=c.sensor, decision=c.decision,
-            broadcast=c.broadcast, correct=c.decision == tr.truth, received=inbox[c.city_id],
+            city=c.city, is_byzantine=c.is_byzantine, hint=c.hint, from_left=c.from_left,
+            from_right=c.from_right, decision=c.decision, to_left=c.to_left, to_right=c.to_right,
+            correct=c.decision == answer,
         )
         for c in tr.city_states
     ]
