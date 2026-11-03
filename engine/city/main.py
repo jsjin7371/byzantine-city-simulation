@@ -23,6 +23,14 @@ def init(body):
     state["rng"] = random.Random(body["seed"])  # 시드로 난수 생성기 초기화
     return {"ok": True}  # 성공 여부를 dict로 돌려준다.
 
+def turn(body):
+    """
+    결정 = 다수결 (hint + 왼쪽 메시지 + 오른쪽 메시지)
+    보낼 메세지 (왼쪽, 오른쪽)
+    실제로 보낸 메세지 (왼쪽, 오른쪽) - 누락/조작 반영
+    return 결정
+    """
+
 
 # [기능 추가] 받을 요청을 늘리려면 표에 (메서드, 주소): 함수 를 한 줄 추가한다.
 #   예) serve({("GET", "/health"): health, ("POST", "/turn"): turn})
