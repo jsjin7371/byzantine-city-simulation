@@ -26,7 +26,40 @@ def decide(hint, from_left, from_right):
     else:
         return my_vote # 동점이면 힌트를 따름.
 
+def broadcast (decision : str, state : dict) -> tuple[str | None, str]:
+    """이웃 한 곳에 보낼 값과 상태를 판정한다.
 
+    Args:
+        decision: 이 도시의 결정 ("evacuate" | "stay")
+        state: init()에서 저장한 값 (drop_rate, flip_rate, is_byzantine, truth, rng)
+
+    Returns:
+        (보낸 값, 상태)
+        - 정상: (값, "normal")
+        - 조작: (반대 값, "flipped")
+        - 누락: (None, "dropped")
+    """
+
+    rng = state["rng"]
+    drop_rate = state["drop_rate"]
+    flip_rate = state["flip_rate"]
+
+    # 비잔틴
+    if state["is_byzantine"]:
+        truth = state["truth"]
+        to_send = OPPOSITE[DECISION_OF[truth]] # 정답의 반대 메시지를 보낸다.
+    else:
+        to_send = decision
+
+    # 누락
+    if rng.random() < drop_rate: 
+        return None, "dropped"  # 누락된 메시지는 None으로 표시
+
+    # 조작
+    if rng.random() < flip_rate: 
+        return OPPOSITE[to_send], "flipped"  # 조작된 메시지는 반대 메시지로 표시
+
+    return to_send, "normal"  # 정상적으로 보낸 메시지는 그대로 표시
     
 
 
