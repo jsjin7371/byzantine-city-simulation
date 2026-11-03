@@ -1,7 +1,7 @@
-# 연동 규격 (초안 v2)
+# 연동 규격 (v3)
 
-> 엔진팀 슈도코드·턴 JSON 형식에 맞춰 수정한 버전입니다. 11/6 회의에서 확정합니다.
-> ⚠️ 표시는 팀 확인이 필요한 항목. 변경은 PR로 하고, 바뀐 내용은 디스코드에 공유합니다.
+> 엔진팀 슈도코드·턴 JSON 형식 기준. 엔진 ↔ API 부분은 11/3 엔진팀 확인 완료.
+> ⚠️ 표시는 아직 확인이 필요한 항목. 변경은 PR로 하고, 바뀐 내용은 디스코드에 공유합니다.
 
 ## 0. 전체 흐름
 
@@ -24,7 +24,7 @@ MVP는 "실행 완료 후 저장된 결과를 턴별로 탐색"하는 방식이�
 
 | 항목 | 값 |
 |---|---|
-| 도시 수 | ⚠️ 5 (엔진 슈도코드 기준) |
+| 도시 수 | 5 (확정. 늘릴 때는 엔진팀이 먼저 공유) |
 | 도시 연결 | 원형. 도시 i의 좌측은 i-1, 우측은 i+1 (도시 1의 좌측은 도시 5) |
 | 정답 `truth`, 힌트 `hint` | `"danger"` / `"safe"` |
 | 결정 `decision`, 받은 값 `from_left`·`from_right` | `"evacuate"`(대피) / `"stay"`(잔류). 받은 값은 누락이면 `null` |
@@ -46,7 +46,7 @@ MVP는 "실행 완료 후 저장된 결과를 턴별로 탐색"하는 방식이�
 | `drop_rate` | float | 0.0 ~ 1.0 | 0.0 | 메시지 누락 확률 |
 | `flip_rate` | float | 0.0 ~ 1.0 | 0.0 | 메시지 조작 확률 |
 | `byzantine_count` | int | 0 ~ 5 | 1 | 비잔틴(거짓말) 도시 수 |
-| `seed` | int \| null | 0 이상 | `null` | ⚠️ 랜덤 시드. 같으면 같은 결과 (엔진 지원 여부 확인 중) |
+| `seed` | int \| null | 0 ~ 2³¹-1 | `null` | 랜덤 시드. 같으면 같은 결과, `null`이면 매번 다른 결과 |
 
 범위를 벗어나면 API가 `422`를 돌려준다.
 
@@ -183,7 +183,10 @@ FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
 - God은 시뮬레이션을 끝까지 돌린 뒤 응답한다. API는 최대 120초 기다린다.
 - 성공: `200` + `{"ok": true}`
 - 실패: `500` + `{"error": "이유"}` (`common/http.py` 기본 동작). API가 이 이유를 실험의 `error`에 저장한다.
-- `seed`: ⚠️ 엔진이 지원하면 `random.seed(seed)`처럼 쓰고, 아니면 무시해도 된다.
+- 엔진은 모르는 필드가 오면 거부하므로 API는 위 7개 필드만 보낸다.
+- `seed`: 엔진이 `random.Random(seed)`로 정답·비잔틴 도시·힌트를 만들고, City에는 도시별 seed를 나눠 준다. City의 seed 적용은 엔진팀이 추가 예정이며, 그 전까지는 같은 seed여도 누락·조작 결과가 달라질 수 있다.
+- God은 실험을 **한 번에 하나만** 실행한다. 이미 실행 중이면 다음 `/run`은 기다리지 않고 바로 `500`("God is already running an experiment")으로 거절되고, API는 그 실험을 `failed`로 처리한다.
+- 한 번 시도한 `experiment_id`는 다시 실행하지 않는다 (API는 항상 새 id로 요청).
 
 ### ② God → API: POST /internal/experiments/{experiment_id}/turns
 
@@ -202,21 +205,21 @@ FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
 ```
 - `cities`: 모든 도시를 한 번씩. `from_left`·`from_right`는 이번 턴에 도시에게 넘겨준 받은값.
 - `accuracy`: 엔진이 계산해서 보낸다. 빠지면 API가 같은 기준(전체 도시 중 정답 비율)으로 계산한다.
-- 응답: `200` + `{"ok": true, "experiment_id": 3, "turn": 2}`
+- 응답: `200` + `{"ok": true, "experiment_id": 3, "turn": 2}`. God은 이 세 값을 확인한 뒤 다음 턴으로 넘어간다.
 - 같은 턴을 두 번 보내면 `409`, 형식이 틀리면 `422`(어느 필드가 틀렸는지 `detail`에 나온다).
+- God은 실패해도 같은 턴을 다시 보내지 않고 `/run`을 `500`으로 끝낸다. API는 그 실험을 `failed`로 처리한다.
+- God의 `request()` 기본 timeout은 1초이므로 API는 턴 저장을 1초 안에 응답해야 한다 (현재 수 ms).
 - `common/http.py`의 `request()` 그대로 쓰면 된다:
   ```python
   request("POST", f"http://api:8000/internal/experiments/{experiment_id}/turns", turn_json)
   ```
 
-### 다른 방식도 지원
-
-턴마다 보내기 어려우면 ②를 안 쓰고 ①의 응답에 모든 턴을 담아도 된다: `{"ok": true, "turns": [턴 JSON, ...]}`.
-API는 어느 쪽이든 받은 턴이 `turns` 개수와 맞으면 `completed`, 모자라면 `failed`로 처리한다.
+- `/run`이 `{"ok": true}`로 끝나면 API는 받은 턴 수가 `turns`와 같은지 확인하고 `completed`, 모자라면 `failed`로 처리한다.
 
 ### Mock God
 
 엔진 연동 전까지 API는 엔진 슈도코드를 그대로 옮긴 가짜 God을 쓴다 (`GOD_MODE=mock`, `backend/app/god/mock.py`). 원형 연결, 다수결, 누락·조작, 비잔틴 동작이 같다.
+Mock은 네트워크 없이 백엔드 안에서 돌기 때문에 턴을 `/run` 응답에 모아서 돌려준다 (`{"ok": true, "turns": [...]}`). 실제 엔진은 이 방식을 쓰지 않는다.
 
 ## 5. DB (MySQL 8)
 
@@ -236,7 +239,8 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 
 ## 6. 확정이 필요한 것 (11/6)
 
-- [ ] 도시 수 5개 확정 (엔진 형식 설명에 "7곳", 예시 정확도 0.83이 남아 있음)
-- [ ] 턴 결과 전송 방식: 턴마다 ② 호출 vs ① 응답에 한 번에 (엔진)
-- [ ] `seed` 지원 여부 (엔진)
+- [x] 도시 수 5개 (엔진, 11/3)
+- [x] 턴 결과 전송: 턴마다 ② 호출, 끝나면 `/run`이 `{"ok": true}` (엔진, 11/3)
+- [x] `seed` 지원, `null`이면 매번 랜덤. City 쪽 적용은 엔진팀이 나중에 추가 (엔진, 11/3)
+- [x] 빠진 응답 값 / seed 입력 칸: 답변 없어 현재 2·3장 그대로 진행. seed 입력 칸은 넣는 것으로 (비워 두면 `null`) (프론트, 11/3)
 - [ ] 상태 polling 간격 (프론트)

@@ -4,7 +4,7 @@
 1. API → God  POST /run  {experiment_id, 설정값}
 2. God → API  POST /internal/experiments/{id}/turns  턴마다 결과 전송 → save_turn()
 3. God의 /run 응답이 오면 끝. 200이면 모든 턴이 왔는지 확인 후 완료, 500이면 실패.
-   /run 응답에 "turns" 목록이 있으면(턴을 모아서 한 번에 보내는 방식) 그것도 저장한다.
+   /run 응답의 "turns" 목록은 Mock God 전용 (실제 엔진은 턴마다 2번으로 보낸다).
 """
 import logging
 
@@ -104,7 +104,7 @@ def run_experiment(experiment_id: int, session_factory: sessionmaker[Session], r
         response = run_god(payload) or {}
         with session_factory() as session:
             exp = session.get(Experiment, experiment_id)
-            for raw in response.get("turns") or []:  # 모아서 한 번에 보내는 방식
+            for raw in response.get("turns") or []:  # Mock God 전용: 턴을 모아서 돌려줌
                 save_turn(session, exp, EngineTurn.model_validate(raw))
             finalize(session, exp)
             session.commit()

@@ -21,7 +21,7 @@ class ExperimentConfig(BaseModel):
     drop_rate: float = Field(0.0, ge=0.0, le=1.0, description="메시지 누락 확률")
     flip_rate: float = Field(0.0, ge=0.0, le=1.0, description="메시지 조작 확률")
     byzantine_count: int = Field(1, ge=0, description="비잔틴(거짓말) 도시 수 (0 ~ 도시 수)")
-    seed: int | None = Field(None, ge=0, le=2**31 - 1, description="랜덤 시드 (엔진 지원 여부 확인 중)")
+    seed: int | None = Field(None, ge=0, le=2**31 - 1, description="랜덤 시드. 같으면 같은 결과, null이면 매번 랜덤")
 
 
 class ExperimentCreate(ExperimentConfig):
