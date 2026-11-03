@@ -47,13 +47,7 @@ def turn(body: dict) -> dict:
 
 # [기능 추가] 받을 요청을 늘리려면 표에 (메서드, 주소): 함수 를 한 줄 추가한다.
 #   예) serve({("GET", "/health"): health, ("POST", "/turn"): turn})
-serve({("GET", "/health"): health, 
-       ("POST", "/init"): init,
-       ("POST", "/turn"): turn})
-
 if __name__ == "__main__":
-    # 로컬에서 테스트용
-    print("Running city server locally...")
     serve({("GET", "/health"): health, 
            ("POST", "/init"): init,
            ("POST", "/turn"): turn})
