@@ -50,3 +50,10 @@ def turn(body: dict) -> dict:
 serve({("GET", "/health"): health, 
        ("POST", "/init"): init,
        ("POST", "/turn"): turn})
+
+if __name__ == "__main__":
+    # 로컬에서 테스트용
+    print("Running city server locally...")
+    serve({("GET", "/health"): health, 
+           ("POST", "/init"): init,
+           ("POST", "/turn"): turn})
