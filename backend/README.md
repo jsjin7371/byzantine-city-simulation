@@ -90,7 +90,6 @@ cd backend
 
 ## 남은 일
 
-- [ ] 프론트와 polling 간격 협의 (빠진 응답 값·seed 입력 칸은 11/3 현재 안으로 진행)
 - [ ] 엔진 City `/init`·`/turn` 완성되면 `GOD_MODE=http`로 실제 연동 테스트 (God `/run`은 develop에 있음)
 - [ ] 실험 삭제 API (`DELETE /experiments/{id}`) 필요 여부 프론트와 협의
 - [ ] 실험을 연달아 여러 개 실행할 때: God이 한 번에 하나만 처리하고 실행 중에 온 `/run`은 바로 500으로 거절해서 뒤 실험은 failed가 됨. 필요하면 API에서 실행 대기열(한 번에 하나씩 보내기) 추가

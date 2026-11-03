@@ -244,4 +244,4 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 - [x] `seed` 지원, `null`이면 매번 랜덤. City 쪽 적용은 엔진팀이 나중에 추가 (엔진, 11/3)
 - [x] 빠진 응답 값: 현재안 유지, 회신 없음 (프론트, 11/3)
 - [x] seed 입력 칸: 넣는 것으로 진행, 비우면 매번 랜덤 (프론트, 11/3)
-- [ ] 상태 polling 간격 (프론트, 기본 1~2초로 진행)
+- [x] 상태 polling 간격: 1초, `completed`/`failed`가 되면 중단 (백엔드 제안, 변경 시 프론트가 공유)
