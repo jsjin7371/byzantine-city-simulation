@@ -36,8 +36,8 @@ def turn(body: dict) -> dict:
         - to_left, to_right는 "normal" | "flipped" | "dropped" 중 하나 (상태정보)
     """
     decision = decide(body["hint"], body["from_left"], body["from_right"]) # 다수결로 결정
-    sent_left, to_left = broadcast(decision, state) # 왼쪽 도시로 보낼 메세지와 상태(조작 | 누락 | 정상)
-    sent_right, to_right = broadcast(decision, state) # 오른쪽 도시로 보낼 메세지와 상태(조작 | 누락 | 정상)
+    sent_left, to_left = broadcast(decision, state) # 왼쪽 도시로 보낼 메시지와 상태(조작 | 누락 | 정상)
+    sent_right, to_right = broadcast(decision, state) # 오른쪽 도시로 보낼 메시지와 상태(조작 | 누락 | 정상)
 
     return {"decision": decision,
             "sent_left": sent_left, "to_left": to_left,
