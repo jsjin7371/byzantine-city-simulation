@@ -2,6 +2,7 @@ import os
 import random
 
 from common.http import serve
+from engine.city.logic import decide
 
 CITY_ID = int(os.environ["CITY_ID"])  # 도시 번호, 도커 컴포즈에서 city마다 환경변수로 전달됨.
 state = {}  # 도시 상태를 담는 dict. turn()에서 읽고 쓰고, init()에서 초기화
@@ -30,7 +31,8 @@ def turn(body):
     실제로 보낸 메세지 (왼쪽, 오른쪽) - 누락/조작 반영
     return 결정
     """
-
+    decision = decide(body["hint"], body.get("from_left"), body.get("from_right"))
+    
 
 # [기능 추가] 받을 요청을 늘리려면 표에 (메서드, 주소): 함수 를 한 줄 추가한다.
 #   예) serve({("GET", "/health"): health, ("POST", "/turn"): turn})
