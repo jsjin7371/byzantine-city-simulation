@@ -62,8 +62,8 @@ def main():
     parser.add_argument("--expect-city-down", type=int, choices=range(1, 6))
     args = parser.parse_args()
     wait_ready("http://api:8000/health")
-    wait_ready("http://god:8000/health")
     if args.expect_city_down:
+        # God의 health도 중단된 City를 조회하므로 장애 검사에서는 바로 실행 실패를 확인한다.
         try:
             request("POST", "http://god:8000/run", {"experiment_id": 8, "turns": 2}, timeout=120)
         except HTTPError as exc:
@@ -75,6 +75,7 @@ def main():
         print("City failure check passed")
         return
 
+    wait_ready("http://god:8000/health")
     for city in range(1, 6):
         wait_ready(f"http://city-{city}:8000/health")
     check(all(request("GET", "http://god:8000/health")["cities"].values()), "unhealthy City")
