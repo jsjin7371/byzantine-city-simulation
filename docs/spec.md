@@ -16,7 +16,7 @@
 2. API가 백그라운드에서 God의 `POST /run`을 호출한다 (`experiment_id` + 설정값).
 3. God은 매 턴이 끝날 때마다 `POST /internal/experiments/{id}/turns`로 턴 결과를 보낸다. API는 바로 DB에 저장한다.
 4. 마지막 턴까지 끝나면 God이 `/run`에 `{"ok": true}`로 응답한다. API는 모든 턴이 왔는지 확인하고 `completed`로 바꾼다. 실패하면 `failed`와 이유를 저장한다.
-5. 프론트는 `GET /experiments/{id}`로 상태와 진행률(`completed_turns`)을 1~2초 간격으로 확인하고, 완료되면 결과를 조회한다.
+5. 프론트는 `GET /experiments/{id}`로 상태와 진행률(`completed_turns`)을 1초 간격으로 확인하고, 완료되면 결과를 조회한다.
 
 MVP는 "실행 완료 후 저장된 결과를 턴별로 탐색"하는 방식이다. 턴마다 저장은 되므로 실시간 표시는 나중에 추가할 수 있다.
 
@@ -157,6 +157,10 @@ MVP는 "실행 완료 후 저장된 결과를 턴별로 탐색"하는 방식이�
 
 FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
 
+`422`의 `detail`은 두 가지 형식이다. 프론트는 둘 다 처리해야 한다.
+- 입력값 범위·형식 오류: 배열 (`[{"loc": ["body", "turns"], "msg": "..."}]`)
+- `byzantine_count`가 도시 수 초과, `/compare`의 `ids` 개수 오류: 문자열 (`"ids must contain 2 to 5 distinct experiments"`)
+
 | 코드 | 상황 |
 |---|---|
 | 404 | 실험 또는 턴이 없음 |
@@ -185,7 +189,7 @@ FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
 - 실패: `500` + `{"error": "이유"}` (`common/http.py` 기본 동작). API가 이 이유를 실험의 `error`에 저장한다.
 - 엔진은 모르는 필드가 오면 거부하므로 API는 위 7개 필드만 보낸다.
 - `seed`: 엔진이 `random.Random(seed)`로 정답·비잔틴 도시·힌트를 만들고, City에는 도시별 seed를 나눠 준다. City의 seed 적용은 엔진팀이 추가 예정이며, 그 전까지는 같은 seed여도 누락·조작 결과가 달라질 수 있다.
-- God은 실험을 **한 번에 하나만** 실행한다. 이미 실행 중이면 다음 `/run`은 기다리지 않고 바로 `500`("God is already running an experiment")으로 거절되고, API는 그 실험을 `failed`로 처리한다.
+- God은 실험을 **한 번에 하나만** 실행한다. God 서버(`common/http.py`)가 요청을 하나씩 처리하므로, 이미 실행 중이면 다음 `/run`은 앞 실험이 끝날 때까지 기다렸다가 실행된다. 대기 시간도 120초 제한에 포함되며, 넘으면 그 실험은 `failed`가 된다. 기다리는 동안 프론트에는 `running`, `completed_turns: 0`으로 보인다.
 - 한 번 시도한 `experiment_id`는 다시 실행하지 않는다 (API는 항상 새 id로 요청).
 
 ### ② God → API: POST /internal/experiments/{experiment_id}/turns
@@ -219,7 +223,7 @@ FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
 ### Mock God
 
 엔진 연동 전까지 API는 엔진 슈도코드를 그대로 옮긴 가짜 God을 쓴다 (`GOD_MODE=mock`, `backend/app/god/mock.py`). 원형 연결, 다수결, 누락·조작, 비잔틴 동작이 같다.
-Mock은 네트워크 없이 백엔드 안에서 돌기 때문에 턴을 `/run` 응답에 모아서 돌려준다 (`{"ok": true, "turns": [...]}`). 실제 엔진은 이 방식을 쓰지 않는다.
+Mock은 네트워크 없이 백엔드 안에서 돌기 때문에 턴을 `/run` 응답에 모아서 돌려준다 (`{"ok": true, "turns": [...]}`). 실제 엔진은 이 방식을 쓰지 않는다. 그래서 Mock에서는 `completed_turns`가 0에서 전체 턴 수로 한 번에 바뀌고, 실제 엔진에서는 턴마다 1씩 올라간다.
 Mock과 실제 엔진은 난수를 뽑는 순서가 달라서, 같은 seed라도 결과가 다르다. seed 재현은 같은 God 안에서만 보장된다 (턴 JSON 형식은 같음, 엔진팀 11/3 공유).
 
 ## 5. DB (MySQL 8)
