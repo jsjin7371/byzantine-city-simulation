@@ -21,3 +21,43 @@ services:
   city-3: { <<: *city, environment: { CITY_ID: 3 } }
   city-4: { <<: *city, environment: { CITY_ID: 4 } }
   city-5: { <<: *city, environment: { CITY_ID: 5 } }
+
+  # ---------- 백엔드 (API + DB) ----------
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: byzantine
+      MYSQL_USER: ${MYSQL_USER:-byzantine}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-byzantine}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+    ports:
+      - "127.0.0.1:3307:3306"   # PC에 MySQL이 이미 있어도 겹치지 않게 3307
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: mysql+pymysql://${MYSQL_USER:-byzantine}:${MYSQL_PASSWORD:-byzantine}@mysql:3306/byzantine?charset=utf8mb4
+      GOD_MODE: ${GOD_MODE:-mock}   # 엔진 /run 완성되면 http로
+      GOD_URL: http://god:8000
+      N_CITIES: 5
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  mysql-data:
