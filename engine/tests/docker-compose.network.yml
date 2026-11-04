@@ -1,0 +1,11 @@
+# 저장소 루트의 compose와 함께 쓰는 독립 통신 검사 환경이다.
+services:
+  god:
+    volumes:
+      - ./engine/tests/network_smoke.py:/tests/network_smoke.py:ro
+    depends_on: [city-1, city-2, city-3, city-4, city-5, api]
+  api:
+    image: python:3.12-alpine
+    command: [python, /tests/network_receiver.py]
+    volumes:
+      - ./engine/tests/network_receiver.py:/tests/network_receiver.py:ro
