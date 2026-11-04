@@ -92,7 +92,8 @@ God은 `random.Random(seed)`를 사용해 정답, 비잔틴 도시, 센서 힌�
 각 City에는 seed와 도시 번호로 만든 도시별 seed를 전달합니다.
 God의 난수와 City의 난수를 분리하므로 City의 누락·조작 판정 횟수가 God의 센서에 영향을 주지 않습니다.
 
-동일한 설정과 seed로 전체 결과를 재현하려면 City도 전달받은 seed로 난수 상태를 초기화해야 합니다.
+City는 `/init`에서 전달받은 seed로 난수 상태를 초기화합니다.
+동일한 설정과 seed로 실행하면 God과 City의 결과를 재현할 수 있습니다.
 도시별 seed는 `experiment_id`와 무관합니다. seed가 `null`이면 재현성을 보장하지 않습니다.
 도시별 seed의 계산은 [simulation.py](simulation.py)의 `city_seed()`에서 확인할 수 있습니다.
 
@@ -124,8 +125,9 @@ Compose 설정은 God과 City 5개를 실행하며, God의 포트를 PC에 공�
 docker compose exec -T god python -c "from common.http import request; print(request('GET', 'http://localhost:8000/health'))"
 ```
 
-**실험을 끝까지 실행하려면 City의 `/init`·`/turn`과 백엔드 결과 수신 API가 필요합니다.**
-저장소의 실제 City 서버에는 `/health`만 구현되어 있어 이 상태로 `/run`을 호출하면 초기화 단계에서 실패합니다.
+City 서버는 `/health`, `/init`, `/turn`을 제공합니다.
+**실험을 끝까지 실행하려면 `api:8000`에 백엔드 결과 수신 API가 있어야 합니다.**
+기본 Compose에는 결과 수신기가 없으므로 아래 통신 검사 환경을 사용하거나 실제 백엔드를 함께 연결하세요.
 로컬 실행에서도 같은 City·백엔드 주소를 사용할 수 있어야 합니다.
 
 ## HTTP API
@@ -195,8 +197,8 @@ Content-Type: application/json
 
 ### God이 사용하는 City 호출
 
-현재 God의 HTTP 어댑터는 `http://city-{1..5}:8000`으로 다음 데이터를 주고받습니다.
-**아래 필드명은 현재 God 코드의 입출력이며, 실제 City에서 제공하는 확정 규격을 뜻하지 않습니다.**
+God은 `http://city-{1..5}:8000`으로 다음 데이터를 주고받습니다.
+아래 입출력은 저장소의 `city/main.py`에 구현된 엔드포인트와 일치합니다.
 
 | 경로 | God이 보내는 값 | God이 받는 값 |
 |---|---|---|
@@ -245,6 +247,8 @@ God은 백엔드에서 다음 응답을 받아 실험 ID와 턴 번호가 요청
 
 - 초기화에 실패하면 턴을 시작하지 않습니다. 턴 도중 City 호출이 실패하면 미완성 턴을 전송하지 않습니다.
 - 백엔드 호출이나 성공 확인에 실패하면 다음 턴으로 넘어가지 않습니다.
+- HTTP 오류에는 실패한 주소·상태 코드·서버의 `error` 또는 `detail`을 기록합니다.
+  연결·시간 초과와 JSON 해석 실패도 요청 주소와 함께 기록합니다.
 - 백엔드에 저장된 뒤 응답만 유실될 수 있어 자동 재전송·이어하기·롤백을 하지 않습니다.
   오류에는 저장 확인된 턴 수가 포함됩니다. 실패 상태를 확인한 뒤 새 `experiment_id`로 실행하세요.
 - 같은 프로세스에서는 한 번 실행을 시도한 실험 ID를 다시 받지 않습니다. 입력 검증에 실패한 ID는 다시 사용할 수 있습니다.
@@ -261,5 +265,51 @@ God은 백엔드에서 다음 응답을 받아 실험 ID와 턴 번호가 요청
 python -m unittest discover -s engine/tests -p "test_god*.py" -v
 ```
 
-테스트는 Mock City와 임시 로컬 HTTP 서버를 사용하므로 Docker·실제 City·백엔드 없이 실행할 수 있습니다.
-테스트 실행 환경에서 로컬 서버의 포트 바인딩과 접속을 허용해야 합니다.
+이 명령은 기존 Mock City 기반 God 검사입니다. 실제 City의 규칙과 HTTP 통신까지 확인하려면 다음 명령을 사용합니다.
+
+```powershell
+python -m unittest discover -s engine/tests -p "test_*.py" -v
+```
+
+`test_city.py`는 실제 City의 판단·발신 함수를 검사합니다.
+`test_engine_network.py`는 실제 City 코드를 도시별 독립 Python 프로세스 5개로 실행하고 God과 HTTP로 연결합니다.
+도시별 상태와 난수기는 실제 City가 관리하며, 결과 수신 API만 테스트 서버로 대체합니다.
+누락·조작·비잔틴·20턴 실행·seed 재현·원형 중계와 장애 시 중단을 검사합니다.
+장애 검사는 응답 오류·잘못된 JSON·필수 필드 누락·시간 초과를 넣는 테스트 서버를 사용합니다.
+
+로컬 검사는 Docker나 실제 백엔드·DB 없이 실행할 수 있으며, 임시 포트의 서버 실행과 접속을 허용해야 합니다.
+도시 주소는 테스트에서만 로컬 임시 포트로 연결하고 운영 주소와 알고리즘은 바꾸지 않습니다.
+
+## Docker 통신 검사
+
+Docker Desktop의 Linux 엔진을 실행한 뒤 저장소 루트에서 다음을 실행합니다.
+기본 Compose에 테스트용 수신기 `api`를 추가하고, 컨테이너 내부 DNS와 8000번 포트를 사용합니다.
+
+```powershell
+$networkComposeArgs = @(
+  "-p", "byzantine-network-check",
+  "-f", "docker-compose.yml",
+  "-f", "engine/tests/docker-compose.network.yml"
+)
+docker compose @networkComposeArgs up --build -d
+docker compose @networkComposeArgs exec -T god python /tests/network_smoke.py
+```
+
+이 검사는 실제 God·City 컨테이너를 호출하고 정상 도시, 비잔틴, 누락·조작, 원형 중계와 seed 재현을 확인합니다.
+수신기는 결과를 메모리에 보관하고 도시 수·정확도·턴 순서를 검사합니다. 실제 백엔드·DB 통합 검사는 포함하지 않습니다.
+
+검사 환경의 City 3을 멈춰 초기화 실패와 미완성 턴 미전송을 확인할 수 있습니다.
+
+```powershell
+docker compose @networkComposeArgs stop city-3
+docker compose @networkComposeArgs exec -T god python /tests/network_smoke.py --expect-city-down 3
+```
+
+검사가 끝나면 같은 검사 프로젝트만 종료합니다.
+
+```powershell
+docker compose @networkComposeArgs down
+```
+
+검사 스크립트는 정해진 실험 ID를 사용하므로 다시 검사하려면 `down` 후 `up`으로 검사 환경을 새로 시작하세요.
+이 환경은 호스트 포트를 공개하지 않습니다. 실제 백엔드는 자체 수신 API를 같은 네트워크의 `api:8000`에 제공해야 합니다.
