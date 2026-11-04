@@ -4,11 +4,13 @@
 투표, 비잔틴 발신값 생성, 메시지 누락과 조작은 City가 담당한다.
 """
 import hashlib
+import json
 import logging
 import math
 import random
 from dataclasses import dataclass
 from threading import Lock
+from urllib.error import HTTPError
 
 from common.http import request
 
@@ -149,10 +151,26 @@ class GodService:
         self._attempted = set()
 
     def _city_turn(self, city, inputs):
-        return self.transport("POST", f"http://city-{city}:8000/turn", inputs)
+        return self._post(f"http://city-{city}:8000/turn", inputs)
 
     def _city_init(self, city, settings):
-        return self.transport("POST", f"http://city-{city}:8000/init", settings)
+        return self._post(f"http://city-{city}:8000/init", settings)
+
+    def _post(self, url, body):
+        """재시도 없이 요청하고 실패한 주소와 HTTP 오류 응답을 함께 남긴다."""
+        try:
+            return self.transport("POST", url, body)
+        except HTTPError as exc:
+            reason = str(exc)
+            try:
+                reply = json.loads(exc.read(4096))
+                if isinstance(reply, dict):
+                    reason = str(reply.get("error", reply.get("detail", reason)))[:1000]
+            except (OSError, ValueError):
+                pass
+            raise RuntimeError(f"HTTP {exc.code} from {url}: {reason}") from exc
+        except (OSError, ValueError) as exc:
+            raise RuntimeError(f"{type(exc).__name__} from {url}: {exc}") from exc
 
     def run(self, body):
         config = ExperimentConfig.parse(body)
@@ -166,9 +184,7 @@ class GodService:
             log.info("experiment %s started", config.experiment_id)
             for result in simulate(config, self._city_turn, self._city_init):
                 current = result["turn"]
-                ack = self.transport(
-                    "POST", f"http://api:8000/internal/experiments/{config.experiment_id}/turns", result,
-                )
+                ack = self._post(f"http://api:8000/internal/experiments/{config.experiment_id}/turns", result)
                 if (not isinstance(ack, dict) or ack.get("ok") is not True
                         or type(ack.get("experiment_id")) is not int
                         or ack["experiment_id"] != config.experiment_id
