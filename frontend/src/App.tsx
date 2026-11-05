@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AppHeader } from './components/AppHeader'
 import { navigation, readPageFromHash } from './navigation'
+import { SetupPage } from './pages/SetupPage'
 import { PageHeading } from './components/PageHeading'
 import { Panel } from './components/Panel'
 import { EmptyState } from './components/EmptyState'
@@ -28,7 +29,8 @@ function App() {
       </button>
       <AppHeader currentPage={page} />
       <main id="main-content" className="main-content" tabIndex={-1}>
-        {(
+        {page === 'setup' && <SetupPage />}
+        {page !== 'setup' && (
           <>
             <PageHeading eyebrow="CITY CONSENSUS LAB" title={navigation.find((item) => item.id === page)?.label ?? "실험 설정"} description="메뉴에서 실험 설정, 결과 탐색, 비교 화면으로 이동할 수 있습니다." />
             <Panel title="화면 준비 중">
