@@ -89,6 +89,18 @@
 .city-placeholder h3 { font-weight: 500; font-size: 12px; }
 .city-placeholder > span:last-child { display: block; color: var(--muted); font-size: 11px; margin-top: 5px; }
 .panel-note { border-top: 1px solid var(--border); padding-top: 14px; }
+.comparison-intro { margin-bottom: 22px; display: flex; gap: 12px; align-items: center; }
+.comparison-intro p { font-size: 12px; color: var(--muted); }
+.comparison-layout { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+.comparison-accuracy { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 26px 0 18px; }
+.comparison-accuracy > span { font-size: 12px; color: var(--muted); }
+.comparison-accuracy strong { font-size: 23px; font-weight: 400; }
+.comparison-config-heading { font-size: 13px; font-weight: 500; margin-top: 24px; margin-bottom: 8px; }
+.config-values div { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.config-values div:last-child { border-bottom: 0; }
+.config-values dt { color: var(--muted); }
+.config-values dd { margin: 0; }
+.comparison-note { margin-top: 20px; }
 .app-footer { display: flex; gap: 12px; justify-content: space-between; width: calc(100% - 80px); max-width: 1240px; border-top: 1px solid var(--border); margin: auto auto 0; padding: 18px 0 24px; font-size: 11px; color: var(--muted); }
 
 @media (max-width: 1100px) {
@@ -118,10 +130,11 @@
   .page-heading p { font-size: 13px; }
   .panel { padding: 20px; }
   .panel-heading { gap: 8px; flex-wrap: wrap; }
-  .settings-fields, .side-stack { grid-template-columns: 1fr; }
+  .settings-fields, .side-stack, .comparison-layout { grid-template-columns: 1fr; }
   .settings-fields { gap: 20px; }
   .field input, .field select { font-size: 16px; }
   .form-footer { align-items: stretch; flex-direction: column; }
+  .comparison-intro { align-items: start; }
   .city-placeholders { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
   .city-placeholder { padding: 12px 3px; }
   .city-placeholder-number { font-size: 17px; }

@@ -3,9 +3,7 @@ import { AppHeader } from './components/AppHeader'
 import { navigation, readPageFromHash } from './navigation'
 import { SetupPage } from './pages/SetupPage'
 import { ResultsPage } from './pages/ResultsPage'
-import { PageHeading } from './components/PageHeading'
-import { Panel } from './components/Panel'
-import { EmptyState } from './components/EmptyState'
+import { ComparePage } from './pages/ComparePage'
 import './App.css'
 
 function App() {
@@ -32,14 +30,7 @@ function App() {
       <main id="main-content" className="main-content" tabIndex={-1}>
         {page === 'setup' && <SetupPage />}
         {page === 'results' && <ResultsPage />}
-        {page === 'compare' && (
-          <>
-            <PageHeading eyebrow="CITY CONSENSUS LAB" title={navigation.find((item) => item.id === page)?.label ?? "실험 설정"} description="메뉴에서 실험 설정, 결과 탐색, 비교 화면으로 이동할 수 있습니다." />
-            <Panel title="화면 준비 중">
-              <EmptyState title="화면을 준비하고 있습니다" description="실험 설정과 저장된 결과를 확인할 영역입니다." />
-            </Panel>
-          </>
-        )}
+        {page === 'compare' && <ComparePage />}
       </main>
       <footer className="app-footer">
         <span>Byzantine City Simulation</span><span>설정하고, 관찰하고, 비교하기</span>
