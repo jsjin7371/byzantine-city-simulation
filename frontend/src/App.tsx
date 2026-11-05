@@ -33,7 +33,7 @@ function App() {
         {page === 'compare' && <ComparePage />}
       </main>
       <footer className="app-footer">
-        <span>Byzantine City Simulation</span><span>설정하고, 관찰하고, 비교하기</span>
+        <span>Byzantine City Simulation</span><span>5팀 (사공우혁, 장민서, 장성진, 최서연, 우재원)</span>
       </footer>
     </div>
   )
