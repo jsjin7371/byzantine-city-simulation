@@ -22,7 +22,7 @@ jobs:
       pull-requests: write    # 리뷰 댓글 쓰기
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0      # base 브랜치와 비교하려면 전체 기록 필요
           # 기본값(develop과 미리 합쳐 본 커밋)이 아니라 PR 브랜치 최신 커밋을 받는다.
