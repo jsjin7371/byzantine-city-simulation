@@ -1,0 +1,87 @@
+name: AI Code Review
+
+# PR이 올라오거나 새 커밋이 push될 때 BAZE AI로 줄 단위 리뷰를 남긴다.
+# 리뷰는 댓글(COMMENT)로만 남기고 병합을 막지 않는다. 필수 검사로 등록하지 않는다.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [develop, "release/**", main]
+
+# 같은 PR에서 새 커밋이 오면 돌고 있던 이전 리뷰는 취소하고 최신 커밋만 리뷰
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false   # 초안 PR은 건너뜀
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read          # 코드 읽기
+      pull-requests: write    # 리뷰 댓글 쓰기
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0      # base 브랜치와 비교하려면 전체 기록 필요
+
+      - name: AI review
+        env:
+          BAZE_API_KEY: ${{ secrets.BAZE_API_KEY }}   # Settings → Secrets에 등록
+          BAZE_URL: https://api.baze.co/v1/gateway
+          # develop은 저렴한 모델, release/main은 비싼 모델
+          # 모델 이름은 Settings → Variables에 등록 (코드 수정 없이 바꿀 수 있게)
+          MODEL: ${{ github.base_ref == 'develop' && vars.AI_MODEL_CHEAP || vars.AI_MODEL_STRONG }}
+          CHUNK_LINES: "1000"  # AI 한 번에 보낼 diff 최대 줄 수
+          MAX_CALLS: "5"       # PR 하나당 AI 호출 상한 (비용 안전장치)
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # TODO: 아래 슈도 코드를 .github/scripts/ai_review.py로 구현한 뒤 이 줄로 교체
+        #   run: python3 .github/scripts/ai_review.py
+        run: echo "AI review not implemented yet (model=$MODEL, base=$BASE_REF)"
+
+# ---------------------------------------------------------------------------
+# ai_review.py 슈도 코드
+#
+# 1. 변경 내용 가져오기
+#    diff = git diff origin/BASE_REF...HEAD          # 이 PR에서 바뀐 부분만
+#    pnpm-lock.yaml 같은 자동 생성 파일은 제외
+#
+# 2. 줄 번호 붙이기 (AI가 줄 번호를 세다 틀리지 않게)
+#    diff를 파일별로 자르고, 각 줄 앞에 "실제 파일 줄 번호"를 붙인 텍스트 만들기
+#    댓글을 달 수 있는 줄 목록 저장: {파일: {줄 번호, ...}}   # diff 범위 안의 줄만
+#
+# 3. 나눠서 묶기 (모든 변경을 리뷰하되, 한 번에 너무 많이 보내지 않게)
+#    파일을 경로 순으로 정렬 → 같은 폴더(engine/city, engine/god 등)가 같은 묶음에 들어가게
+#    파일들을 CHUNK_LINES 줄을 넘지 않게 묶음으로 나눔
+#    파일 하나가 CHUNK_LINES보다 크면 그 파일만 단독 묶음 (필요하면 더 잘게 자름)
+#    묶음이 MAX_CALLS개를 넘으면 → 넘는 묶음의 파일은 "리뷰하지 못한 파일" 목록에 기록
+#
+# 4. 묶음마다 AI 호출
+#    지시문 = .github/ai-review-instructions.md (팀 규칙) + 출력 형식
+#    PR 개요 = PR 제목·설명 + 커밋 메시지 목록 + 바뀐 전체 파일 목록과 파일별 변경 줄 수
+#              (모든 묶음에 같이 보냄 → 이 코드가 전체 변경 중 어디에 속하는지 알고 리뷰)
+#    POST BAZE_URL/chat/completions {model: MODEL, messages: [지시문, PR 개요 + 이 묶음의 diff]}
+#    답 형식: {"summary": "...",
+#              "comments": [{"path", "line", "severity": "High|Medium|Low", "title", "body"}]}
+#
+# 5. 답 검사하고 모으기
+#    JSON이 아니면 → 받은 글을 그 묶음의 요약으로 사용, 줄 댓글 없음
+#    comment마다:
+#        (path, line)이 댓글 가능한 줄이면 → 줄 댓글 목록에 추가
+#        아니면 → "기타 지적"으로 옮김
+#    묶음별 요약은 이어 붙여 전체 요약으로 만듦
+#
+# 6. PR 리뷰 하나로 올리기
+#    POST /repos/REPO/pulls/PR_NUMBER/reviews
+#        {event: "COMMENT", commit_id: HEAD_SHA,
+#         body: 요약 + 기타 지적 + 리뷰하지 못한 파일 + 모델 이름, comments: 모든 줄 댓글}
+#    GitHub가 거부하면 → 줄 댓글을 빼고 요약만 다시 올림
+#
+# 7. 실패 처리
+#    BAZE 호출 실패, 키 오류 → 에러 출력 후 실패(✗). 병합은 막지 않음
+# ---------------------------------------------------------------------------
