@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createExperimentDraft } from '../src/experimentForm.ts'
-import { experimentPayload, apiErrorMessage, createExperiment, getExperiment, listExperiments, listTurns, getTurn } from '../src/experimentsApi.ts'
+import { experimentPayload, apiErrorMessage, createExperiment, getExperiment, listExperiments, listTurns, getTurn, compareExperiments } from '../src/experimentsApi.ts'
 
 test('request converts percentages and optional values without losing seed zero', () => {
   assert.deepEqual(experimentPayload(createExperimentDraft()), { name: null, turns: 10, byzantine_count: 1, sensor_error: .1, drop_rate: 0, flip_rate: 0, seed: null })
@@ -39,4 +39,18 @@ test('result requests use pagination and reject data for a different experiment 
   await assert.rejects(getTurn(1, 2, signal), /응답 형식/)
   fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify({ detail: 'results are not ready' }), { status: 409 }))
   await assert.rejects(listTurns(1, signal), /results are not ready/)
+})
+
+test('comparison repeats ids, preserves A/B order and rejects duplicate selection before requesting', async (context) => {
+  const row = (id) => ({ id, name: null, config: { turns: 1 }, mean_accuracy: 1, accuracy: [{ turn: 1, truth: 'safe', accuracy: 1 }] })
+  const fetchMock = context.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ experiments: [row(2), row(1)] })))
+  const signal = new AbortController().signal
+  await assert.rejects(compareExperiments(1, 1, signal), /서로 다른/)
+  assert.equal(fetchMock.mock.callCount(), 0)
+  assert.deepEqual((await compareExperiments(1, 2, signal)).map((item) => item.id), [1, 2])
+  assert.equal(fetchMock.mock.calls[0].arguments[0], '/api/experiments/compare?ids=1&ids=2')
+  fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify({ experiments: [row(1), row(3)] })))
+  await assert.rejects(compareExperiments(1, 2, signal), /응답 형식/)
+  fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify({ detail: 'not completed' }), { status: 409 }))
+  await assert.rejects(compareExperiments(1, 2, signal), /not completed/)
 })

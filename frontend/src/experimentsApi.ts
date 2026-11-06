@@ -1,10 +1,14 @@
 import type { ExperimentDraft } from './experimentForm'
 
+export type ExperimentConfig = {
+  turns: number; byzantine_count: number; sensor_error: number; drop_rate: number; flip_rate: number; seed: number | null
+}
+
 export type Experiment = {
   id: number
   name: string | null
   status: 'pending' | 'running' | 'completed' | 'failed'
-  config: { turns: number }
+  config: ExperimentConfig
   completed_turns: number
   mean_accuracy: number | null
   error: string | null
@@ -96,4 +100,24 @@ export async function getTurn(id: number, turn: number, signal: AbortSignal): Pr
   const data = await request(`/api/experiments/${id}/turns/${turn}`, { signal })
   if (data?.experiment_id !== id || data?.turn !== turn || !Array.isArray(data.cities)) throw new Error('도시 결과 응답 형식이 올바르지 않습니다.')
   return data
+}
+
+export type ComparisonExperiment = {
+  id: number; name: string | null; config: ExperimentConfig; mean_accuracy: number | null; accuracy: TurnSummary[]
+}
+
+export async function compareExperiments(first: number, second: number, signal: AbortSignal): Promise<ComparisonExperiment[]> {
+  // 화면에서 막더라도 호출부에서 한 번 더 검사한다. 백엔드는 서로 다른 ID 2~5개를 요구한다.
+  if (!Number.isSafeInteger(first) || !Number.isSafeInteger(second) || first <= 0 || second <= 0 || first === second) {
+    throw new Error('서로 다른 두 실험을 선택해 주세요.')
+  }
+  // ids=1,2가 아니라 같은 쿼리 키를 반복하는 백엔드 규격을 사용한다.
+  const query = new URLSearchParams([['ids', String(first)], ['ids', String(second)]])
+  const data = await request(`/api/experiments/compare?${query}`, { signal })
+  const rows: ComparisonExperiment[] = data?.experiments
+  if (!Array.isArray(rows) || rows.length !== 2 || ![first, second].every((id) => rows.filter((row) => row?.id === id).length === 1) || rows.some((row) => !row.config || !Number.isInteger(row.config.turns) || !Array.isArray(row.accuracy))) {
+    throw new Error('실험 비교 응답 형식이 올바르지 않습니다.')
+  }
+  // 응답 배열의 순서가 달라도 화면 A/B는 사용자가 선택한 ID에 맞춰 표시한다.
+  return [rows.find((row) => row.id === first)!, rows.find((row) => row.id === second)!]
 }

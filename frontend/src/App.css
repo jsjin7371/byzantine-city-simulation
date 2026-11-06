@@ -117,6 +117,9 @@
 .city-result dt { color: var(--muted); }
 .city-result dd { margin: 0; }
 .comparison-intro { margin-bottom: 22px; display: flex; gap: 12px; align-items: center; }
+.comparison-intro { flex-wrap: wrap; }
+.compare-load-more { margin: 12px 0 20px; }
+.comparison-layout .field select { text-overflow: ellipsis; }
 .comparison-intro p { font-size: 12px; color: var(--muted); }
 .comparison-layout { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
 .comparison-accuracy { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 26px 0 18px; }
