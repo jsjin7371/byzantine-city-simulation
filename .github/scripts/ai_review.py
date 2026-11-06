@@ -370,8 +370,9 @@ def main():
         print(f"\n리뷰하지 못한 파일: {skipped or '없음'}")
         return
     if not model:
-        sys.exit("MODEL이 비어 있습니다. 레포 Settings → Variables에 AI_MODEL_CHEAP, AI_MODEL_STRONG을 등록하세요.")
+        sys.exit("MODEL이 비어 있습니다. ai_code_review.yml의 MODEL을 확인하세요.")
 
+    # AI한테 줄 프롬프트 (ai-review-instructions.md)
     with open(INSTRUCTIONS_PATH, encoding="utf-8") as f:
         instructions = f.read()
 
