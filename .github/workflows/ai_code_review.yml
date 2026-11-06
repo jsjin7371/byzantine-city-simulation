@@ -25,6 +25,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0      # base 브랜치와 비교하려면 전체 기록 필요
+          # 기본값(develop과 미리 합쳐 본 커밋)이 아니라 PR 브랜치 최신 커밋을 받는다.
+          # 그래야 줄 번호가 PR 파일의 실제 줄 번호와 맞아 줄 댓글이 제자리에 달린다.
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: AI review
         env:
@@ -40,12 +43,10 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_REF: ${{ github.base_ref }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        # TODO: 아래 슈도 코드를 .github/scripts/ai_review.py로 구현한 뒤 이 줄로 교체
-        #   run: python3 .github/scripts/ai_review.py
-        run: echo "AI review not implemented yet (model=$MODEL, base=$BASE_REF)"
+        run: python3 .github/scripts/ai_review.py
 
 # ---------------------------------------------------------------------------
-# ai_review.py 슈도 코드
+# ai_review.py 동작 순서 (구현: .github/scripts/ai_review.py)
 #
 # 1. 변경 내용 가져오기
 #    diff = git diff origin/BASE_REF...HEAD          # 이 PR에서 바뀐 부분만
