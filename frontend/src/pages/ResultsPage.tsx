@@ -25,11 +25,13 @@ export function ResultsPage() {
   const [detail, setDetail] = useState<TurnDetail | null>(null)
   const [detailError, setDetailError] = useState('')
 
+  // 목록은 화면 진입·페이지 이동·수동 새로고침 때 조회한다. 실행 상태 폴링과는 별개다.
   useEffect(() => {
     const controller = new AbortController()
     listExperiments(offset, controller.signal).then((rows) => {
       if (controller.signal.aborted) return
       setExperiments(rows)
+      // 새 목록에 같은 실험이 있으면 선택을 유지하면서 최신 상태도 반영한다.
       setSelected((previous) => rows.find((row) => row.id === previous?.id) ?? null)
     }).catch((error: unknown) => { if (!controller.signal.aborted) setListError(errorMessage(error)) })
       .finally(() => { if (!controller.signal.aborted) setLoading(false) })
@@ -38,6 +40,7 @@ export function ResultsPage() {
 
   const id = selected?.id
   const completed = selected?.status === 'completed'
+  // 결과 API는 미완료 실험에 409를 반환하므로 completed일 때만 턴 요약을 요청한다.
   useEffect(() => {
     const controller = new AbortController()
     if (id !== undefined && completed) {
@@ -48,6 +51,8 @@ export function ResultsPage() {
     return () => controller.abort()
   }, [id, completed, refresh])
 
+  // 그래프용 요약과 도시 상세를 분리해 선택한 턴의 상세만 가져온다.
+  // 선택이 바뀌면 이전 요청을 취소하고, 늦게 도착한 응답도 상태에 반영하지 않는다.
   useEffect(() => {
     const controller = new AbortController()
     if (id !== undefined && completed && summary?.experiment_id === id && summary.turns.some((row) => row.turn === turn)) {
@@ -62,6 +67,7 @@ export function ResultsPage() {
   const turns = completed && summary && summary.experiment_id === id ? summary.turns : []
   const current = turns.find((row) => row.turn === turn)
   const cityData = completed && detail && detail.experiment_id === id && detail.turn === turn ? detail : null
+  // 재조회 중 이전 결과를 새 결과로 오해하지 않도록 표시값과 오류를 함께 비운다.
   function resetResults() {
     setSummary(null)
     setSummaryError('')
@@ -91,6 +97,8 @@ export function ResultsPage() {
     setSummaryError('')
     setDetailError('')
   }
+  // 한 턴짜리 실험은 0으로 나누지 않고 중앙에 점 하나를 표시한다.
+  // SVG의 y축은 아래로 증가하므로 아래 렌더링에서 accuracy 0~1을 위쪽 좌표로 변환한다.
   const pointX = (index: number) => turns.length === 1 ? 310 : 50 + index / (turns.length - 1) * 520
 
   return (

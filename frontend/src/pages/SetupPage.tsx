@@ -13,6 +13,7 @@ export function SetupPage({ draft, onDraftChange, run }: { draft: ExperimentDraf
   const visibleError = (field: ExperimentField) => showErrors ? errors[field] : undefined
   const statusLabels = { pending: '실행 준비', running: '실행 중', completed: '완료', failed: '실패' }
   const experiment = run.experiment
+  // '입력 확인'을 거치지 않고 실행을 눌러도 현재 값이 유효해야 요청한다.
   function execute() {
     setShowErrors(true)
     if (Object.keys(errors).length) return
@@ -23,6 +24,7 @@ export function SetupPage({ draft, onDraftChange, run }: { draft: ExperimentDraf
     onDraftChange({ ...draft, [field]: value })
     setChecked(false)
   }
+  // 폼 제출(Enter 포함)은 입력 검사만 수행한다. 서버 요청은 별도 '실험 실행' 버튼에서 한다.
   function check(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setShowErrors(true)

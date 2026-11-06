@@ -17,9 +17,11 @@ export function createExperimentDraft(): ExperimentDraft {
 
 export function validateExperimentDraft(draft: ExperimentDraft): FormErrors {
   const errors: FormErrors = {}
+  // 이모지도 백엔드(Python)와 같은 유니코드 코드 포인트 단위로 세어 50자를 검사한다.
   if (Array.from(draft.name).length > 50) errors.name = '실험 이름은 50자 이하로 입력해 주세요.'
   for (const field of settingFields) {
     const raw = draft[field.name].trim()
+    // 빈 값이 Number('')로 0이 되거나, 16진수 등 의도하지 않은 표기가 허용되지 않게 형식부터 검사한다.
     const pattern = field.integer ? /^\d+$/ : /^(?:\d+(?:\.\d*)?|\.\d+)$/
     if (!raw) {
       errors[field.name] = `${field.label}을(를) 입력해 주세요.`

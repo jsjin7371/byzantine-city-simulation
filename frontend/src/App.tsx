@@ -10,6 +10,8 @@ import { useExperiment } from './useExperiment'
 
 function App() {
   const [page, setPage] = useState(readPageFromHash)
+  // 페이지 밖에서 관리해 메뉴를 바꿔도 입력값과 실행 상태 조회를 유지한다.
+  // 브라우저 저장소에는 보관하지 않으므로 새로고침하면 초기화된다.
   const [draft, setDraft] = useState(createExperimentDraft)
   const run = useExperiment()
 
