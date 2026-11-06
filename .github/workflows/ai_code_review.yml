@@ -33,9 +33,10 @@ jobs:
         env:
           BAZE_API_KEY: ${{ secrets.BAZE_API_KEY }}   # Settings → Secrets에 등록
           BAZE_URL: https://api.baze.co/v1/gateway
-          # develop은 저렴한 모델, release/main은 비싼 모델
-          # 모델 이름은 Settings → Variables에 등록 (코드 수정 없이 바꿀 수 있게)
-          MODEL: ${{ github.base_ref == 'develop' && vars.AI_MODEL_CHEAP || vars.AI_MODEL_STRONG }}
+          MODEL: gpt-6-luna
+          # develop은 빠르게(low), release/main은 더 꼼꼼하게(medium)
+          REASONING_EFFORT: ${{ github.base_ref == 'develop' && 'low' || 'medium' }}
+          JSON_SCHEMA: "1"     # 답을 리뷰 JSON 형식으로 강제 (gpt-6-luna 지원 확인함)
           CHUNK_LINES: "1000"  # AI 한 번에 보낼 diff 최대 줄 수
           MAX_CALLS: "5"       # PR 하나당 AI 호출 상한 (비용 안전장치)
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

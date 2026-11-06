@@ -6,13 +6,19 @@
     python .github/scripts/ai_review.py --dry-run
     - BAZE_API_KEY가 없으면: AI를 부르지 않고 PR 개요와 묶음만 출력
     - BAZE_API_KEY, MODEL이 있으면: AI 리뷰 결과를 댓글 대신 화면에 출력
+
+선택 환경 변수:
+    MAX_TOKENS        AI 답의 최대 토큰 (기본 16000. 추론 모델은 생각에 쓴 토큰도 여기서 빠짐)
+    REASONING_EFFORT  low | medium | high. 비우면 보내지 않음 (지원하는 모델만)
+    JSON_SCHEMA       1이면 답을 JSON 스키마로 강제 (지원하는 모델만)
 """
 import json
 import os
 import re
 import subprocess
 import sys
-from urllib.error import HTTPError
+import time
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 INSTRUCTIONS_PATH = ".github/ai-review-instructions.md"
@@ -21,6 +27,39 @@ SEVERITIES = ("High", "Medium", "Low")
 DEFAULT_BAZE_URL = "https://api.baze.co/v1/gateway"
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 MAX_BODY = 60000  # GitHub 리뷰 본문 길이 제한(65536자)보다 여유 있게
+IDLE_TIMEOUT = 120  # 스트리밍 중 이 시간 동안 아무것도 안 오면 끊긴 것으로 봄
+PROGRESS_EVERY = 10  # 진행 상황 출력 간격(초)
+
+# JSON_SCHEMA=1일 때 AI 답을 이 형식으로 강제 (strict 모드는 모든 키 필수 + 추가 키 금지)
+RESPONSE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["summary", "comments"],
+    "properties": {
+        "summary": {"type": "string"},
+        "comments": {"type": "array", "items": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["path", "line", "severity", "title", "body"],
+            "properties": {
+                "path": {"type": "string"},
+                "line": {"type": "integer"},
+                "severity": {"type": "string", "enum": list(SEVERITIES)},
+                "title": {"type": "string"},
+                "body": {"type": "string"},
+            },
+        }},
+    },
+}
+
+
+class ApiError(Exception):
+    """재시도 후에도 실패한 API 호출. 메시지에 서버가 보낸 에러 내용이 들어 있다."""
+
+
+def log(message):
+    """진행 상황은 stderr로 바로 출력 (Actions 로그에 실시간으로 보이게)."""
+    print(message, file=sys.stderr, flush=True)
 
 
 def git(*args):
@@ -39,6 +78,70 @@ def http_json(method, url, headers, data=None, timeout=60):
     })
     with urlopen(request, timeout=timeout) as response:
         return json.loads(response.read())
+
+
+def with_retry(call, label):
+    """call()을 실행한다. 429·5xx·연결 실패면 한 번만 다시 시도하고, 그래도 실패하면 ApiError."""
+    for attempt in (1, 2):
+        try:
+            return call()
+        except HTTPError as e:
+            detail = e.read().decode(errors="replace")[:500]
+            if attempt == 2 or e.code not in (429, 502, 503, 504):
+                raise ApiError(f"{label}: HTTP {e.code} {detail}") from None
+            try:  # 429는 Retry-After만큼 기다림. 없으면(크레딧 예약 한도 6005) 1분
+                wait = int(e.headers.get("Retry-After") or (60 if e.code == 429 else 10))
+            except ValueError:
+                wait = 60
+            log(f"{label}: HTTP {e.code}, {wait}초 뒤 다시 시도")
+        except (URLError, OSError) as e:  # 연결 실패, 응답이 IDLE_TIMEOUT 동안 끊김
+            if attempt == 2:
+                raise ApiError(f"{label}: 연결 실패 {e}") from None
+            wait = 10
+            log(f"{label}: 연결 실패({e}), {wait}초 뒤 다시 시도")
+        time.sleep(wait)
+
+
+def stream_chat(url, payload, label):
+    """스트리밍(SSE)으로 답을 조각조각 받아 이어 붙인다.
+
+    답을 다 만들 때까지 기다리지 않고 만드는 대로 받으므로, 게이트웨이가 오래 기다리다 끊는(502) 일이 없다.
+    반환: (답 본문, 사용 토큰 수)
+    """
+    request = Request(url, data=json.dumps(payload).encode(), method="POST", headers={
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+        "User-Agent": "byzantine-ai-review",
+        "Authorization": f"Bearer {os.environ['BAZE_API_KEY']}",
+    })
+    content, thinking, tokens = [], 0, 0
+    started = last_log = time.monotonic()
+    with urlopen(request, timeout=IDLE_TIMEOUT) as response:
+        for raw in response:
+            line = raw.decode("utf-8", errors="replace").strip()
+            if not line.startswith("data:"):
+                continue  # 빈 줄, 연결 유지용 주석 등
+            data = line[5:].strip()
+            if data == "[DONE]":
+                break
+            try:
+                event = json.loads(data)
+            except ValueError:
+                continue
+            if event.get("error"):  # 스트림이 시작된 뒤의 오류는 이렇게 온다
+                raise ApiError(f"{label}: 스트림 중 오류 {event['error']}")
+
+            tokens = (event.get("usage") or {}).get("total_tokens") or tokens
+            for choice in event.get("choices") or []:
+                delta = choice.get("delta") or {}
+                content.append(delta.get("content") or "")
+                thinking += len(delta.get("reasoning_content") or delta.get("reasoning") or "")
+
+            now = time.monotonic()
+            if now - last_log >= PROGRESS_EVERY:
+                log(f"{label} 받는 중… {now - started:.0f}초, 답 {sum(map(len, content))}자, 생각 {thinking}자")
+                last_log = now
+    return "".join(content), tokens
 
 
 def get_diff(base_ref):
@@ -155,20 +258,32 @@ def parse_answer(content):
     return {"summary": content.strip(), "comments": []}
 
 
-def ask_ai(instructions, overview, chunk, model):
-    """4. 묶음 하나를 BAZE에 보내고 답을 dict로 받는다.
+def ask_ai(instructions, overview, chunk, model, label):
+    """4. 묶음 하나를 BAZE에 보내고 답을 받는다.
 
-    반환: {"summary": str, "comments": [{"path", "line", "severity", "title", "body"}]}
+    반환: ({"summary": str, "comments": [{"path", "line", "severity", "title", "body"}]}, 사용 토큰 수)
     """
-    url = os.environ.get("BAZE_URL", DEFAULT_BAZE_URL).rstrip("/") + "/chat/completions"
-    reply = http_json("POST", url, {"Authorization": f"Bearer {os.environ['BAZE_API_KEY']}"}, {
+    url = os.environ.get("BAZE_URL", DEFAULT_BAZE_URL).rstrip("/") + "/chat/completions/"
+    payload = {
         "model": model,
+        "stream": True,
+        "stream_options": {"include_usage": True},  # 마지막 조각에 사용량을 넣어 달라는 설정
+        "max_tokens": int(os.environ.get("MAX_TOKENS") or 16000),
         "messages": [
             {"role": "system", "content": instructions},
             {"role": "user", "content": f"{overview}\n\n## 리뷰할 변경 (줄 번호 붙은 diff)\n{chunk}"},
         ],
-    }, timeout=300)
-    return parse_answer(reply["choices"][0]["message"]["content"] or "")
+    }
+    if os.environ.get("REASONING_EFFORT"):
+        payload["reasoning_effort"] = os.environ["REASONING_EFFORT"]
+    if os.environ.get("JSON_SCHEMA") == "1":
+        payload["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {"name": "code_review", "strict": True, "schema": RESPONSE_SCHEMA},
+        }
+
+    content, tokens = with_retry(lambda: stream_chat(url, payload, label), label)
+    return parse_answer(content), tokens
 
 
 def collect(answers, files):
@@ -258,7 +373,19 @@ def main():
 
     with open(INSTRUCTIONS_PATH, encoding="utf-8") as f:
         instructions = f.read()
-    answers = [ask_ai(instructions, overview, chunk, model) for chunk in chunks]
+
+    answers, total_tokens, started = [], 0, time.monotonic()
+    try:
+        for i, chunk in enumerate(chunks, 1):
+            label = f"묶음 {i}/{len(chunks)}"
+            log(f"{label} 요청 ({model}, {chunk.count(chr(10)) + 1}줄)")
+            chunk_started = time.monotonic()
+            answer, tokens = ask_ai(instructions, overview, chunk, model, label)
+            answers.append(answer)
+            total_tokens += tokens
+            log(f"{label} 완료 {time.monotonic() - chunk_started:.0f}초, 지적 {len(answer['comments'])}개")
+    except ApiError as e:
+        sys.exit(f"BAZE 호출 실패 - {e}")
     summary, comments, extra = collect(answers, files)
 
     parts = ["## AI 코드 리뷰", summary or "요약 없음"]
@@ -267,7 +394,11 @@ def main():
     if skipped:
         parts += ["### 리뷰하지 못한 파일 (호출 상한 초과)", "\n".join(f"- `{p}`" for p in skipped)]
     sha = os.environ.get("HEAD_SHA", "")[:7]
-    parts.append(f"<sub>모델 `{model}` · 커밋 `{sha}` · 묶음 {len(chunks)}개 · 줄 댓글 {len(comments)}개</sub>")
+    footer = [f"모델 `{model}`", f"커밋 `{sha}`", f"묶음 {len(chunks)}개", f"줄 댓글 {len(comments)}개",
+              f"{time.monotonic() - started:.0f}초"]
+    if total_tokens:
+        footer.append(f"토큰 {total_tokens:,}")
+    parts.append("<sub>" + " · ".join(footer) + "</sub>")
     body = "\n\n".join(parts)[:MAX_BODY]
 
     if dry_run:
