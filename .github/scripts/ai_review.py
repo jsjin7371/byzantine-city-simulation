@@ -24,6 +24,7 @@ from urllib.request import Request, urlopen
 INSTRUCTIONS_PATH = ".github/ai-review-instructions.md"
 SKIP_FILES = {"pnpm-lock.yaml", "package-lock.json", "yarn.lock"}  # 자동 생성 파일은 리뷰하지 않음
 SEVERITIES = ("High", "Medium", "Low")
+SEVERITY_ICON = {"High": "🔴", "Medium": "🟠", "Low": "🟡"}  # 댓글에 표시할 때만 붙임 (AI 답에는 없음)
 DEFAULT_BAZE_URL = "https://api.baze.co/v1/gateway"
 HUNK_HEADER = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 MAX_BODY = 60000  # GitHub 리뷰 본문 길이 제한(65536자)보다 여유 있게
@@ -316,10 +317,10 @@ def collect(answers, files):
 
             if line in commentable.get(path, ()):
                 comments.append({"path": path, "line": line, "side": "RIGHT",
-                                 "body": f"**[{severity}] {title}**\n\n{text}"})
+                                 "body": f"**[{severity} {SEVERITY_ICON[severity]}] {title}**\n\n{text}"})
             else:
                 where = f"{path}:{line}" if line else path
-                extra.append(f"- `{where}` **[{severity}] {title}** {text}")
+                extra.append(f"- `{where}` **[{severity} {SEVERITY_ICON[severity]}] {title}** {text}")
 
     return "\n\n".join(summaries), comments, extra
 
