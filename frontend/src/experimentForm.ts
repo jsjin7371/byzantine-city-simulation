@@ -10,7 +10,7 @@ export type ExperimentField = 'name' | 'seed' | (typeof settingFields)[number]['
 export type ExperimentDraft = Record<ExperimentField, string>
 export type FormErrors = Partial<Record<ExperimentField, string>>
 
-// 입력 중 빈 문자열을 유지한다. API 전송용 숫자 변환은 연동 단계에서 처리한다.
+// 입력 중 빈 문자열을 유지한다. API에 보낼 때 숫자로 변환한다.
 export function createExperimentDraft(): ExperimentDraft {
   return { name: '', turns: '10', byzantine_count: '1', sensor_error: '10', drop_rate: '0', flip_rate: '0', seed: '' }
 }
