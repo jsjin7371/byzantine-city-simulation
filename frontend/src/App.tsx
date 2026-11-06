@@ -5,9 +5,11 @@ import { SetupPage } from './pages/SetupPage'
 import { ResultsPage } from './pages/ResultsPage'
 import { ComparePage } from './pages/ComparePage'
 import './App.css'
+import { createExperimentDraft } from './experimentForm'
 
 function App() {
   const [page, setPage] = useState(readPageFromHash)
+  const [draft, setDraft] = useState(createExperimentDraft)
 
   // 메뉴 주소를 해시로 유지해 새로고침과 브라우저 뒤로 가기도 지원한다.
   useEffect(() => {
@@ -28,7 +30,7 @@ function App() {
       </button>
       <AppHeader currentPage={page} />
       <main id="main-content" className="main-content" tabIndex={-1}>
-        {page === 'setup' && <SetupPage />}
+        {page === 'setup' && <SetupPage draft={draft} onDraftChange={setDraft} />}
         {page === 'results' && <ResultsPage />}
         {page === 'compare' && <ComparePage />}
       </main>
