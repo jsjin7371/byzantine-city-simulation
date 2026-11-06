@@ -1,0 +1,48 @@
+name: AI Code Review
+
+# PR이 올라오거나 새 커밋이 push될 때 BAZE AI로 줄 단위 리뷰를 남긴다.
+# 리뷰는 댓글(COMMENT)로만 남기고 병합을 막지 않는다. 필수 검사로 등록하지 않는다.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches: [develop, "release/**", main]
+
+# 같은 PR에서 새 커밋이 오면 돌고 있던 이전 리뷰는 취소하고 최신 커밋만 리뷰
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false   # 초안 PR은 건너뜀
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read          # 코드 읽기
+      pull-requests: write    # 리뷰 댓글 쓰기
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0      # base 브랜치와 비교하려면 전체 기록 필요
+          # 기본값(develop과 미리 합쳐 본 커밋)이 아니라 PR 브랜치 최신 커밋을 받는다.
+          # 그래야 줄 번호가 PR 파일의 실제 줄 번호와 맞아 줄 댓글이 제자리에 달린다.
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: AI review
+        env:
+          BAZE_API_KEY: ${{ secrets.BAZE_API_KEY }}   # Settings → Secrets에 등록
+          BAZE_URL: https://api.baze.co/v1/gateway
+          MODEL: gpt-6-luna
+          # develop은 빠르게(low), release/main은 더 꼼꼼하게(medium)
+          REASONING_EFFORT: ${{ github.base_ref == 'develop' && 'low' || 'medium' }}
+          JSON_SCHEMA: "1"     # 답을 리뷰 JSON 형식으로 강제 (gpt-6-luna 지원 확인함)
+          CHUNK_LINES: "1000"  # AI 한 번에 보낼 diff 최대 줄 수
+          MAX_CALLS: "5"       # PR 하나당 AI 호출 상한 (비용 안전장치)
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/scripts/ai_review.py
+
