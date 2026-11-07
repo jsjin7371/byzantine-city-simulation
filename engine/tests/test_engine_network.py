@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common import http
 from god import main as god
 from god.simulation import DECISION_OF, GodService
-from test_god_http import running_server
+from god_helpers import running_server
 
 
 @contextmanager
@@ -167,6 +167,7 @@ class EngineNetworkTests(unittest.TestCase):
                                  (reply["decision"], reply["to_left"], reply["to_right"]))
 
     def test_five_real_cities_initialize_and_run_twenty_turns(self):
+        """실제 도시 5곳이 초기화되고 20턴을 끝까지 실행한다."""
         with self.system() as (url, experiment_id, saved, events):
             self.assertEqual(http.request("GET", url + "/health")["cities"], {str(i): True for i in range(1, 6)})
             self.assertEqual(self.run_experiment(url, experiment_id, byzantine_count=0, turns=20), {"ok": True})
@@ -178,6 +179,7 @@ class EngineNetworkTests(unittest.TestCase):
             self.assert_relay(saved, events)
 
     def test_real_byzantine_outgoing_values_and_accuracy(self):
+        """모두 비잔틴이면 첫 턴은 힌트대로 정답(정확도 1), 다음 턴은 서로의 거짓말로 오답(정확도 0)이 된다."""
         with self.system() as (url, experiment_id, saved, events):
             self.run_experiment(url, experiment_id, byzantine_count=5)
             self.assertEqual(saved[0]["accuracy"], 1)
@@ -187,6 +189,7 @@ class EngineNetworkTests(unittest.TestCase):
             self.assert_relay(saved, events)
 
     def test_real_drop_flip_and_mixed_sensor_errors(self):
+        """실제 도시에서 누락·조작·센서 오류가 섞여도 메시지가 규칙대로 전달된다."""
         for settings in ({"drop_rate": 1, "flip_rate": 1}, {"drop_rate": 0, "flip_rate": 1},
                          {"drop_rate": .3, "flip_rate": .4, "sensor_error": .5}):
             with self.subTest(settings=settings), self.system() as (url, experiment_id, saved, events):
@@ -198,6 +201,7 @@ class EngineNetworkTests(unittest.TestCase):
                     self.assertTrue(all(c["to_left"] == c["to_right"] == "flipped" for t in saved for c in t["cities"]))
 
     def test_real_city_seed_reinitialization_and_truth_privacy(self):
+        """같은 seed는 같은 결과, 다른 seed는 다른 결과이고, 정답은 비잔틴 도시에만 전달된다."""
         results = []
         for seed in (7, 7, 8):
             with self.system() as (url, experiment_id, saved, events):
@@ -212,6 +216,7 @@ class EngineNetworkTests(unittest.TestCase):
         self.assertNotEqual(results[0], results[2])
 
     def test_real_city_unavailable_aborts_before_turns(self):
+        """도시 하나가 꺼져 있으면 초기화 단계에서 멈추고 턴을 시작하지 않는다."""
         with real_city(3) as (base, process):
             process.terminate()
             process.wait(timeout=5)
@@ -226,6 +231,7 @@ class EngineNetworkTests(unittest.TestCase):
                 self.assertFalse(any(e["path"] == "/turn" for e in events))
 
     def test_http_faults_stop_without_retry_or_partial_turn(self):
+        """도시가 오류·잘못된 JSON·필드 누락·시간 초과로 응답하면 재시도 없이 멈추고 결과를 저장하지 않는다."""
         for endpoint, mode, reason in (("/init", "status", "maintenance window"),
                 ("/turn", "status", "maintenance window"), ("/turn", "json", "JSONDecodeError"),
                 ("/turn", "missing", "sent_right"), ("/turn", "decision", "decision"),
