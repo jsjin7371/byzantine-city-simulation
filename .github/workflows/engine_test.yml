@@ -9,6 +9,7 @@ on:
     paths:
       - "engine/**"
       - ".github/workflows/engine_test.yml"
+  workflow_dispatch:
 
 jobs:
   # 단위 테스트: 신, 도시
