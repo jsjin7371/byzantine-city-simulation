@@ -215,6 +215,21 @@ class EngineNetworkTests(unittest.TestCase):
         self.assertEqual(results[0], results[1])
         self.assertNotEqual(results[0], results[2])
 
+    def test_real_city_null_seed_runs_and_varies(self):
+        """seed가 없으면 실제 도시도 seed 없이 초기화되어 끝까지 실행되고, 실행마다 결과가 달라진다."""
+        results = []
+        for _ in range(2):
+            with self.system() as (url, experiment_id, saved, events):
+                self.assertEqual(self.run_experiment(url, experiment_id, seed=None, sensor_error=.3, drop_rate=.4,
+                                                     flip_rate=.5, byzantine_count=2), {"ok": True})
+                inits = [e for e in events if e["path"] == "/init"]
+                self.assertEqual(len(inits), 5)
+                self.assertTrue(all(e["body"]["seed"] is None and e["reply"] == {"ok": True} for e in inits))
+                self.assertEqual(len(saved), 4)
+                self.assert_relay(saved, events)
+                results.append(saved)
+        self.assertNotEqual(results[0], results[1])
+
     def test_real_city_unavailable_aborts_before_turns(self):
         """도시 하나가 꺼져 있으면 초기화 단계에서 멈추고 턴을 시작하지 않는다."""
         with real_city(3) as (base, process):

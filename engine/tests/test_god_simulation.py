@@ -82,6 +82,13 @@ class SimulationTests(unittest.TestCase):
         self.assertEqual(results(), results())
         self.assertNotEqual(results(seed=42), results(seed=43))
 
+    def test_null_seed_varies_between_runs(self):
+        """seed가 없으면 신이 만드는 정답과 힌트가 실행할 때마다 달라진다."""
+        def god_draws():
+            return [(t["truth"], [c["hint"] for c in t["cities"]])
+                    for t in results(seed=None, turns=20, sensor_error=.3)]
+        self.assertNotEqual(god_draws(), god_draws())
+
     def test_experiment_id_does_not_affect_seed(self):
         """실험 번호가 달라도 seed가 같으면 결과가 같다."""
         mock = MockCity()
