@@ -271,7 +271,21 @@ python -m unittest discover -s engine/tests -p "test_god*.py" -v
 python -m unittest discover -s engine/tests -p "test_*.py" -v
 ```
 
-`test_city.py`는 실제 City의 판단·발신 함수를 검사합니다.
+테스트 파일은 성격별로 나뉘어 있습니다.
+
+| 파일 | 검사 내용 |
+|---|---|
+| `test_city_decide.py` | City 판단 규칙 |
+| `test_city_broadcast.py` | City 메시지 전송 (누락·조작·비잔틴) |
+| `test_god_simulation.py` | God 시뮬레이션 규칙 |
+| `test_god_validation.py` | God 실험 설정 검증 |
+| `test_god_service.py` | God 실행·장애 처리와 상태 조회 |
+| `test_god_http.py` | God HTTP 서버 |
+| `test_network_smoke.py` | Docker 통신 검사 스크립트 |
+| `test_engine_network.py` | 통합: God + 실제 City 5개 |
+
+여러 파일이 같이 쓰는 도구는 `city_helpers.py`, `god_helpers.py`에 있습니다.
+
 `test_engine_network.py`는 실제 City 코드를 도시별 독립 Python 프로세스 5개로 실행하고 God과 HTTP로 연결합니다.
 도시별 상태와 난수기는 실제 City가 관리하며, 결과 수신 API만 테스트 서버로 대체합니다.
 누락·조작·비잔틴·20턴 실행·seed 재현·원형 중계와 장애 시 중단을 검사합니다.

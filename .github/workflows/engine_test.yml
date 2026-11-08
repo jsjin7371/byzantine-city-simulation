@@ -1,0 +1,63 @@
+name: Engine Test
+
+# 엔진 코드가 바뀐 PR에서 테스트를 성격별로 나눠 실행
+# 단위 테스트(신, 도시)가 모두 통과해야 통합 테스트(신 + 도시)를 실행
+
+on:
+  pull_request:
+    branches: [develop, "release/**", main]
+    paths:
+      - "engine/**"
+      - ".github/workflows/engine_test.yml"
+  workflow_dispatch:
+
+jobs:
+  # 단위 테스트: 신, 도시
+  unit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine/tests
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"   # Dockerfile과 같은 버전
+
+      # 각 단계에 !cancelled()를 붙여 앞 단계가 실패해도 나머지 종류는 끝까지 검사
+      - name: City 판단 규칙
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_city_decide -v
+      - name: City 메시지 전송
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_city_broadcast -v
+      - name: God 시뮬레이션 규칙
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_god_simulation -v
+      - name: God 입력 검증
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_god_validation -v
+      - name: God 실행·장애 처리
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_god_service -v
+      - name: God HTTP 서버
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_god_http -v
+      - name: Docker 검사 스크립트
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_network_smoke -v
+
+  # 통합 테스트: 신 + 도시
+  integration:
+    needs: unit   # unit이 성공해야 시작
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine/tests
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: "통합: God + 실제 City 5개"
+        run: python -m unittest test_engine_network -v

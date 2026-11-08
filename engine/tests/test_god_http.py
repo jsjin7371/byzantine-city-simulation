@@ -1,10 +1,8 @@
 """Real loopback HTTP through common.http; City and API endpoints are fixtures."""
 from contextlib import contextmanager
-from http.server import HTTPServer
 import json
 from pathlib import Path
 import sys
-from threading import Event, Thread
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -15,44 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common import http
 from god import main
 from god.simulation import GodService
-from test_god import MockCity
-
-
-@contextmanager
-def running_server(routes):
-    ready = Event()
-    servers = []
-    errors = []
-
-    def factory(address, handler):
-        server = HTTPServer(("127.0.0.1", 0), handler)
-        servers.append(server)
-        ready.set()
-        return server
-
-    def start():
-        try:
-            http.serve(routes)
-        except Exception as exc:
-            errors.append(exc)
-            ready.set()
-
-    with patch.object(http, "HTTPServer", factory):
-        thread = Thread(target=start, daemon=True)
-        thread.start()
-        if not ready.wait(5):
-            raise RuntimeError("test HTTP server did not start")
-    if errors:
-        raise errors[0]
-    server = servers[0]
-    try:
-        yield f"http://127.0.0.1:{server.server_port}"
-    finally:
-        server.shutdown()
-        thread.join(5)
-        server.server_close()
-        if thread.is_alive():
-            raise RuntimeError("test HTTP server did not stop")
+from god_helpers import MockCity, running_server
 
 
 class HttpTests(unittest.TestCase):
@@ -106,6 +67,7 @@ class HttpTests(unittest.TestCase):
         self.assertIn(text, json.loads(caught.exception.read())["error"])
 
     def test_real_http_health_and_multi_turn_success(self):
+        """실제 HTTP로 /health와 3턴 실행이 성공하고, 같은 실험 번호 재실행은 거부된다."""
         with self.system() as (url, saved, calls):
             self.assertEqual(http.request("GET", url + "/health"),
                              {"ok": True, "cities": {str(c): True for c in range(1, 6)}})
@@ -117,30 +79,35 @@ class HttpTests(unittest.TestCase):
             self.assertEqual(len(saved), 3)
 
     def test_real_http_missing_city_returns_500(self):
+        """턴 도중 도시가 응답하지 않으면 500을 돌려준다."""
         with self.system(missing_city=True) as (url, saved, calls):
             self.assert_http_error(url, {"experiment_id": 81}, "turn 1, city 3")
             self.assertEqual(saved, [])
             self.assertEqual(calls, [1, 2])
 
     def test_real_http_backend_failure_returns_500(self):
+        """백엔드 저장이 실패하면 500을 돌려준다."""
         with self.system(backend_fail=True) as (url, saved, calls):
             self.assert_http_error(url, {"experiment_id": 81}, "acknowledged 0/10")
             self.assertEqual(saved, [])
             self.assertEqual(calls, [1, 2, 3, 4, 5])
 
     def test_real_http_invalid_city_response(self):
+        """도시가 잘못된 결정을 보내면 500을 돌려준다."""
         with self.system(invalid_city=True) as (url, saved, calls):
             self.assert_http_error(url, {"experiment_id": 81}, "City must return decision")
             self.assertEqual(saved, [])
             self.assertEqual(calls, [1])
 
     def test_real_http_invalid_config(self):
+        """설정이 잘못되면 도시를 부르지 않고 500을 돌려준다."""
         with self.system() as (url, saved, calls):
             self.assert_http_error(url, {"experiment_id": 81, "turns": 21}, "invalid turns")
             self.assertEqual(saved, [])
             self.assertEqual(calls, [])
 
     def test_real_http_missing_init_aborts_before_turns(self):
+        """도시 초기화가 실패하면 턴 전에 멈추고 500을 돌려준다."""
         with self.system(missing_init=True) as (url, saved, calls):
             self.assert_http_error(url, {"experiment_id": 81}, "city 3 initialization")
             self.assertEqual(saved, [])

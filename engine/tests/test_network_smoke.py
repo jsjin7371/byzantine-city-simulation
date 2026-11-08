@@ -15,6 +15,7 @@ import network_smoke
 
 class NetworkSmokeTests(unittest.TestCase):
     def test_stopped_city_check_skips_god_health_and_sends_run_once(self):
+        """도시 중단 검사는 신 상태 조회를 건너뛰고 실험 요청을 한 번만 보낸다."""
         calls = []
 
         def request(method, url, data=None, timeout=1):
@@ -35,6 +36,7 @@ class NetworkSmokeTests(unittest.TestCase):
                                  ("GET", "http://api:8000/experiments/8/turns")])
 
     def test_stopped_city_check_rejects_unexpected_success(self):
+        """도시가 멈췄는데 실험이 성공하면 검사를 실패로 처리한다."""
         with patch.object(sys, "argv", ["network_smoke.py", "--expect-city-down", "3"]), \
                 patch.object(network_smoke, "request", return_value={"ok": True}) as request:
             with self.assertRaisesRegex(RuntimeError, "expected initialization failure"):
