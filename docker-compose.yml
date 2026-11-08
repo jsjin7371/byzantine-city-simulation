@@ -1,4 +1,4 @@
-# 엔진: god 1개 + city 5개. frontend, api, mysql은 각 담당이 추가
+# 프론트 + API + MySQL + 엔진(god 1개, city 5개)
 
 x-city: &city # 아래에서 사용되는 *city (yml의 앵커라는 개념)
   build:
@@ -7,6 +7,16 @@ x-city: &city # 아래에서 사용되는 *city (yml의 앵커라는 개념)
   image: byzantine-city   # city 5곳이 같은 이미지 사용
 
 services:
+  # ---------- 프론트엔드 ----------
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
   god:
     build:
       context: ./engine

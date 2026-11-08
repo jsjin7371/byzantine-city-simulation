@@ -2,7 +2,8 @@
 
 비잔틴 도시 시뮬레이션의 실험 설정과 결과 조회 화면을 개발합니다.
 React + TypeScript + Vite를 사용합니다. 실험 설정 입력·검증, 실행 요청·상태 조회, 저장된 결과 탐색과 두 실험 비교를 백엔드 API에 연결했습니다.
-현재 검증 환경은 Mock God + 실제 백엔드 API·MySQL입니다. 실제 God·City 엔진과 프론트를 포함한 전체 Docker Compose 통합 검증은 아직 진행하지 않았습니다.
+프론트·백엔드 API·MySQL·God·City를 Docker Compose로 함께 실행할 수 있습니다.
+Mock God과 실제 God·City 모드 모두 화면에서 실험 실행·저장된 결과 조회·비교를 확인했습니다.
 
 ## 현재 화면
 
@@ -25,7 +26,40 @@ React + TypeScript + Vite를 사용합니다. 실험 설정 입력·검증, 실�
 두 그래프는 동일한 축을 사용하며 짧은 실험의 그래프는 해당 실험의 마지막 턴에서 끝납니다. 선택 변경 시 이전 비교 요청을 취소하고 결과를 비웁니다.
 비교 선택 목록은 50개씩 조회해 완료된 실험만 표시하며, `이전 실험 더 불러오기`로 오래된 실험도 선택할 수 있습니다. 조회 실패 시 다시 조회할 수 있습니다.
 
-## 실행 방법
+## Docker Compose로 실행
+
+Docker Desktop을 켜고 **저장소 루트**(`docker-compose.yml`이 있는 폴더)의 PowerShell에서 실행합니다.
+Node.js와 pnpm은 이미지 안에서 설치하므로 PC에 따로 설치할 필요가 없습니다.
+
+### 실제 God·City 엔진 사용
+
+```powershell
+$env:GOD_MODE = 'http'
+docker compose up --build -d
+docker compose ps
+```
+
+프론트·API·MySQL·God·City 5개를 함께 실행합니다. API와 MySQL이 `healthy`이고 나머지 컨테이너가 실행 중인지 확인합니다.
+프론트 접속 주소: http://localhost:8080
+
+### Mock God 사용
+
+```powershell
+$env:GOD_MODE = 'mock'
+docker compose up --build -d frontend
+```
+
+프론트가 의존하는 API·MySQL도 함께 실행합니다. 접속 주소는 동일하며, 실제 God·City는 사용하지 않습니다.
+`GOD_MODE`를 지정하지 않으면 공용 Compose의 기본값인 `mock`을 사용합니다.
+모드를 바꿀 때는 위 명령을 다시 실행해 API 컨테이너에 설정을 반영합니다.
+
+화면을 수정한 뒤에는 저장소 루트에서 `docker compose up --build -d frontend`로 다시 빌드합니다.
+자주 수정하며 개발할 때는 아래 Vite 개발 서버를 사용하면 저장 즉시 반영됩니다.
+
+종료는 `docker compose stop`입니다. 실험 기록은 기존 MySQL 볼륨에 보관됩니다.
+연결 오류가 나면 `docker compose ps`와 `docker compose logs --tail=50 frontend api god`로 상태를 확인합니다.
+
+## Vite 개발 서버로 실행
 
 Node.js 22.12 이상, pnpm 11.25.0이 필요합니다.
 
@@ -89,7 +123,9 @@ pnpm dev
 ```
 
 백엔드 주소를 변경하려면 `.env.example`을 `.env.local`로 복사하고 `API_PROXY_TARGET`을 수정한 뒤 개발 서버를 다시 실행합니다.
-이 프록시는 개발 서버에서만 동작합니다.
+`API_PROXY_TARGET`은 Vite 개발 서버에서만 사용합니다.
+Docker 실행 시에는 Nginx가 `/api` 접두사를 제거해 Compose 내부의 `http://api:8000`으로 전달합니다.
+두 방식 모두 화면의 API 호출 코드는 동일합니다.
 
 백엔드 실행 방법은 [백엔드 README](../backend/README.md), 요청·응답 형식은 [연동 규격](../docs/spec.md)을 참고합니다.
 실행에는 `POST /api/experiments`, 상태 확인에는 `GET /api/experiments/{id}`를 호출합니다. 화면의 백분율은 100으로 나눠 전송하고, 빈 이름·seed는 `null`로 전송합니다.
@@ -116,7 +152,11 @@ Mock God은 백엔드에 구현된 모의 엔진입니다. 실제 API·DB를 사
 - Mock 모드에서 브라우저 → 백엔드 API → MySQL 저장·조회 및 비교 확인
 - 중복 실행·중복 비교 선택 방지, 조회 오류·재조회, 빠른 선택 변경 시 이전 응답 제외 확인
 - 모바일부터 데스크톱까지 화면 배치 확인
-- 남은 작업: 프론트 Docker 실행 설정, 공용 Compose 통합, `GOD_MODE=http`에서 실제 God·City를 이용한 전체 흐름 검증
+- Compose 설정 검사, 프론트 이미지 빌드(TypeScript 검사 포함), Nginx 설정 검사 통과
+- Docker 프론트(`8080`)에서 화면 및 `/api/health` 정상 응답, Mock 실험 실행·턴 탐색·비교 확인
+- `GOD_MODE=http`에서 God·City 5개 상태 확인 후, 화면에서 3턴·5턴 실험 실행·완료 및 저장된 결과 조회·턴 탐색·비교 확인
+
+위 확인은 기본 연동 흐름을 대상으로 합니다. 동시 실행·장애 상황 등 팀 전체 통합 테스트는 예정된 일정에 맞춰 별도로 진행합니다.
 
 `pnpm test`는 자동 테스트이며 브라우저 통합 검사를 실행하는 명령은 아닙니다. 실험 데이터는 로컬 MySQL에 저장되며 Git 커밋·푸시에 포함되지 않습니다.
 
@@ -134,6 +174,10 @@ Mock God은 백엔드에 구현된 모의 엔진입니다. 실제 API·DB를 사
 | `src/components/` | 공통 헤더, 패널, 빈 상태, 그래프 자리 표시 |
 | `src/App.css`, `src/index.css` | 화면 스타일 |
 | `vite.config.ts` | 개발 서버 및 API 프록시 설정 |
+| `Dockerfile` | Node에서 빌드하고 Nginx에서 화면 제공 |
+| `nginx.conf` | 정적 파일 제공 및 API 프록시 설정 |
+| `.dockerignore` | 로컬 의존성·빌드 결과·환경 변수 파일을 이미지 빌드에서 제외 |
+| `../docker-compose.yml` | 프론트·API·DB·엔진 컨테이너 실행 |
 | `.env.example` | 환경 변수 예시 |
 | `pnpm-lock.yaml` | 의존성 버전 고정 |
 | `tests/` | 입력 검증과 API 처리 자동 테스트 |
