@@ -188,7 +188,7 @@ FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
 - 성공: `200` + `{"ok": true}`
 - 실패: `500` + `{"error": "이유"}` (`common/http.py` 기본 동작). API가 이 이유를 실험의 `error`에 저장한다.
 - 엔진은 모르는 필드가 오면 거부하므로 API는 위 7개 필드만 보낸다.
-- `seed`: 엔진이 `random.Random(seed)`로 정답·비잔틴 도시·힌트를 만들고, City에는 도시별 seed를 나눠 준다. City의 seed 적용은 엔진팀이 추가 예정이며, 그 전까지는 같은 seed여도 누락·조작 결과가 달라질 수 있다.
+- `seed`: 엔진이 `random.Random(seed)`로 정답·비잔틴 도시·힌트를 만들고, City에는 도시별 seed를 나눠 준다. City는 이 seed로 누락·조작 난수를 초기화하므로, 같은 seed면 누락·조작 결과까지 같다.
 - God은 실험을 **한 번에 하나만** 실행한다. God 서버(`common/http.py`)가 요청을 하나씩 처리하므로, 이미 실행 중이면 다음 `/run`은 앞 실험이 끝날 때까지 기다렸다가 실행된다. 대기 시간도 120초 제한에 포함되며, 넘으면 그 실험은 `failed`가 된다. 기다리는 동안 프론트에는 `running`, `completed_turns: 0`으로 보인다.
 - 한 번 시도한 `experiment_id`는 다시 실행하지 않는다 (API는 항상 새 id로 요청).
 
@@ -246,7 +246,7 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 
 - [x] 도시 수 5개 (엔진, 11/3)
 - [x] 턴 결과 전송: 턴마다 ② 호출, 끝나면 `/run`이 `{"ok": true}` (엔진, 11/3)
-- [x] `seed` 지원, `null`이면 매번 랜덤. City 쪽 적용은 엔진팀이 나중에 추가 (엔진, 11/3)
+- [x] `seed` 지원, `null`이면 매번 랜덤. City에도 적용 완료 (엔진, 11/3)
 - [x] 빠진 응답 값: 현재안 유지, 회신 없음 (프론트, 11/3)
 - [x] seed 입력 칸: 넣는 것으로 진행, 비우면 매번 랜덤 (프론트, 11/3)
 - [x] 상태 polling 간격: 1초, `completed`/`failed`가 되면 중단 (백엔드 제안, 변경 시 프론트가 공유)
