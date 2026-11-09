@@ -15,13 +15,15 @@
 ## 브랜치
 ```
 feature/* → develop → release/* → main
+main → hotfix/* → main, develop
 ```
 | 브랜치 | 용도 |
 |---|---|
-| `main` | 배포 버전. `release/*`에서만 병합 |
+| `main` | 배포 버전. `release/*`와 `hotfix/*`에서만 병합 |
 | `release/<버전>` | 배포 전 안정화. `develop`에서 만들고 버그 수정만 한 뒤 `main`과 `develop`에 병합 |
 | `develop` | 기능 통합 |
 | `feature/<파트>-<기능>` | 기능 개발. `develop`에서 만든다 (예: `feature/engine-vote`) |
+| `hotfix/<내용>` | 배포 버전의 긴급 수정. `main`에서 만들고 `main`과 `develop`에 병합. 진행 중인 `release/*`가 있으면 거기에도 병합 (예: `hotfix/api-crash`) |
 
 - `main`, `develop`, `release/*`에는 직접 push하지 않고 PR로만 병합한다.
 - `main`으로 가는 PR만 팀원 1명 승인이 필요하다. 나머지는 PR을 만든 사람이 병합한다.
