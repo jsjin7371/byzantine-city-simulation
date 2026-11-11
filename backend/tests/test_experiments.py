@@ -1,3 +1,5 @@
+import threading
+
 from app.god.client import GodError
 from app.god.mock import simulate
 from app.models import Experiment
@@ -64,6 +66,53 @@ def test_unknown_experiment_is_404(client):
     assert client.get("/experiments/999/turns").status_code == 404
 
 
+# ---------- 동시 실행 거절 ----------
+
+def test_rejects_new_experiment_while_one_is_running(client):
+    # 실행 중(running)이거나 대기 중(pending)인 실험이 있으면 409, 새 실험은 만들지 않는다
+    for state in ("running", "pending"):
+        active_id = running_experiment(client, status=state)
+        response = client.post("/experiments", json=CONFIG)
+        assert response.status_code == 409, state
+        assert str(active_id) in response.json()["detail"]
+        assert [e["id"] for e in client.get("/experiments").json()] == [active_id]
+        with client.app.state.session_factory() as s:
+            s.delete(s.get(Experiment, active_id))
+            s.commit()
+
+
+def test_finished_experiments_do_not_block(client):
+    # 완료·실패한 실험은 막지 않는다
+    create(client)
+    assert client.get("/experiments").json()[0]["status"] == "completed"
+    with client.app.state.session_factory() as s:
+        s.get(Experiment, 1).status = "failed"
+        s.commit()
+    assert client.post("/experiments", json=CONFIG).status_code == 202
+
+
+def test_second_request_during_real_run_is_rejected(make_client):
+    # 실제 엔진처럼 /run이 오래 걸리는 동안 두 번째 요청이 오면 거절되고, 끝난 뒤에는 다시 받는다
+    started, release = threading.Event(), threading.Event()
+
+    def slow_god(payload):
+        started.set()
+        assert release.wait(5)
+        return {"ok": True, "turns": list(simulate(payload, 5))}
+
+    with make_client(run_god=slow_god) as client:
+        first = threading.Thread(target=create, args=(client,))
+        first.start()
+        assert started.wait(5)
+        try:
+            assert client.post("/experiments", json=CONFIG).status_code == 409
+        finally:
+            release.set()
+            first.join(5)
+        assert client.get("/experiments/1").json()["status"] == "completed"
+        assert client.post("/experiments", json=CONFIG).status_code == 202
+
+
 # ---------- 결과 조회 ----------
 
 def test_turns_summary(client):
@@ -122,10 +171,10 @@ def test_engine_pushes_turns_then_run_returns(make_client):
         assert exp["completed_turns"] == 5
 
 
-def running_experiment(client, turns=3):
+def running_experiment(client, turns=3, status="running"):
     with client.app.state.session_factory() as s:
         exp = Experiment(turns=turns, sensor_error=0, drop_rate=0, flip_rate=0, byzantine_count=1,
-                         n_cities=5, status="running")
+                         n_cities=5, status=status)
         s.add(exp)
         s.commit()
         return exp.id
