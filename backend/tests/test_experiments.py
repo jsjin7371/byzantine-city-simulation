@@ -1,5 +1,5 @@
 from app.god.client import GodError
-from app.god.mock import run_mock, simulate
+from app.god.mock import simulate
 from app.models import Experiment
 
 CONFIG = {"name": "기본", "turns": 5, "sensor_error": 0.1, "drop_rate": 0.1, "flip_rate": 0.0,
@@ -215,7 +215,8 @@ def test_compare_validation(make_client):
 
 def test_same_seed_gives_same_results(client):
     a, b = create(client)["id"], create(client)["id"]
-    detail = lambda i: client.get(f"/experiments/{i}/turns/5").json()["cities"]
+    def detail(i):
+        return client.get(f"/experiments/{i}/turns/5").json()["cities"]
     assert detail(a) == detail(b)
 
 
