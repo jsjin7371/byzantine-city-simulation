@@ -55,7 +55,7 @@ services:
       context: ./backend
     environment:
       DATABASE_URL: mysql+pymysql://${MYSQL_USER:-byzantine}:${MYSQL_PASSWORD:-byzantine}@mysql:3306/byzantine?charset=utf8mb4
-      GOD_MODE: ${GOD_MODE:-mock}   # 엔진 /run 완성되면 http로
+      GOD_MODE: ${GOD_MODE:-http}   # http: 실제 God·City 사용 / mock: 엔진 없이 백엔드 안의 가짜 God
       GOD_URL: http://god:8000
       N_CITIES: 5
     ports:
