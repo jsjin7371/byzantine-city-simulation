@@ -1,3 +1,7 @@
+# Alembic 실행 설정. DB 주소는 alembic.ini에 적지 않고 DATABASE_URL 환경 변수(app/config.py)에서 읽는다.
+# alembic.ini에는 한글을 쓰지 않는다. Alembic이 그 파일을 OS 기본 인코딩으로 읽어서
+# 한국어 Windows(cp949)에서는 한글 한 글자만 있어도 UnicodeDecodeError가 난다.
+
 from logging.config import fileConfig
 
 from alembic import context
