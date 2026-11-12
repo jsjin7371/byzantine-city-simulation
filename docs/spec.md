@@ -97,7 +97,7 @@ MVP는 "실행 완료 후 저장된 결과를 턴별로 탐색"하는 방식이�
   "finished_at": null
 }
 ```
-- 이미 `pending`·`running`인 실험이 있으면 `409`로 거절하고 실험을 만들지 않는다 (대기열 없음, 11/6 결정). `detail` 예: `"experiment 3 is already running, try again after it finishes"`
+- 이미 `pending`·`running`인 실험이 있으면 `409`로 거절하고 실험을 만들지 않는다 (대기열 없음, 11/6 결정). `detail`은 화면에 그대로 보여 줄 수 있는 한국어 문장이다. 예: `"이미 실행 중인 실험(#3)이 있습니다. 끝난 뒤 다시 실행해 주세요."`
 - `completed_turns`: 지금까지 저장된 턴 수. 실행 중 진행률 표시에 쓸 수 있다 (예: 7/10).
 - `byzantine_ids`, `mean_accuracy`는 `completed`가 되면 채워진다. `mean_accuracy`는 전체 턴 정확도 평균.
 

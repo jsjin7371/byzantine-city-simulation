@@ -74,7 +74,7 @@ def test_rejects_new_experiment_while_one_is_running(client):
         active_id = running_experiment(client, status=state)
         response = client.post("/experiments", json=CONFIG)
         assert response.status_code == 409, state
-        assert str(active_id) in response.json()["detail"]
+        assert response.json()["detail"] == f"이미 실행 중인 실험(#{active_id})이 있습니다. 끝난 뒤 다시 실행해 주세요."
         assert [e["id"] for e in client.get("/experiments").json()] == [active_id]
         with client.app.state.session_factory() as s:
             s.delete(s.get(Experiment, active_id))

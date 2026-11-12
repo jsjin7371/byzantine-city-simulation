@@ -95,7 +95,8 @@ def create_experiment(
         )
         if active is not None:
             raise HTTPException(
-                status.HTTP_409_CONFLICT, f"experiment {active} is already running, try again after it finishes"
+                # 프론트가 detail을 그대로 보여 주므로 사용자에게 보일 한국어 문장으로 쓴다
+                status.HTTP_409_CONFLICT, f"이미 실행 중인 실험(#{active})이 있습니다. 끝난 뒤 다시 실행해 주세요."
             )
 
         exp = Experiment(**body.model_dump(), status=Status.PENDING, n_cities=settings.n_cities)
