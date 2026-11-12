@@ -1,4 +1,7 @@
 import threading
+import time
+
+from sqlalchemy import event
 
 from app.god.client import GodError
 from app.god.mock import simulate
@@ -111,6 +114,49 @@ def test_second_request_during_real_run_is_rejected(make_client):
             first.join(5)
         assert client.get("/experiments/1").json()["status"] == "completed"
         assert client.post("/experiments", json=CONFIG).status_code == 202
+
+
+def test_simultaneous_requests_create_only_one(make_client):
+    # 두 요청이 거의 동시에 "실행 중인 실험이 있는지" 확인하는 경쟁 상황.
+    # 확인 쿼리를 일부러 0.3초 늦춰 두 요청이 반드시 겹치게 만든다.
+    # 잠금이 없으면 둘 다 "없음"을 보고 실험이 2개 생기므로 이 테스트가 실패한다.
+    release = threading.Event()
+
+    def slow_god(payload):
+        assert release.wait(5)
+        return {"ok": True, "turns": list(simulate(payload, 5))}
+
+    with make_client(run_god=slow_god) as client:
+        engine = client.app.state.engine
+
+        @event.listens_for(engine, "before_cursor_execute")
+        def slow_active_check(conn, cursor, statement, params, context, executemany):
+            if statement.lstrip().startswith("SELECT experiments.id") and "status IN" in statement:
+                time.sleep(0.3)
+
+        barrier = threading.Barrier(2)
+        codes = []
+
+        def post():
+            barrier.wait()
+            codes.append(client.post("/experiments", json=CONFIG).status_code)
+
+        threads = [threading.Thread(target=post) for _ in range(2)]
+        for t in threads:
+            t.start()
+        try:
+            # 거절된 쪽은 바로 끝나고, 접수된 쪽은 slow_god가 풀릴 때까지 기다린다
+            deadline = time.time() + 5
+            while 409 not in codes and len(codes) < 2 and time.time() < deadline:
+                time.sleep(0.05)
+        finally:
+            release.set()
+            for t in threads:
+                t.join(5)
+        event.remove(engine, "before_cursor_execute", slow_active_check)
+
+        assert sorted(codes) == [202, 409]
+        assert len(client.get("/experiments").json()) == 1
 
 
 # ---------- 결과 조회 ----------
