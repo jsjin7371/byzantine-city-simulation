@@ -55,10 +55,13 @@ def run_http(base_url: str, payload: dict, timeout: float) -> dict:
         ) from e
 
     if response.status_code != 200:
-        # common/http.py는 실패 시 {"error": "..."}를 돌려준다
+        # common/http.py는 실패 시 {"error": "..."}를 돌려준다.
+        # 다른 형식(JSON 아님, 리스트, error가 문자열 아님 등)이면 응답 본문을 그대로 원문으로 쓴다.
         try:
-            reason = response.json().get("error", response.text)
+            body = response.json()
         except ValueError:
-            reason = response.text
+            body = None
+        error = body.get("error") if isinstance(body, dict) else None
+        reason = error if isinstance(error, str) else response.text
         raise GodError(f"{explain_god_error(reason)} (상세: God {response.status_code}: {reason})")
     return response.json()

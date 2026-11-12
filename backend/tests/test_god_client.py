@@ -62,6 +62,23 @@ def test_run_http_keeps_original_reason_as_detail(monkeypatch):
     assert message.endswith(f"(상세: God 500: {reason})")
 
 
+@pytest.mark.parametrize("response", [
+    httpx.Response(500, text="Internal Server Error"),   # JSON이 아님
+    httpx.Response(500, json=["unexpected"]),            # 리스트
+    httpx.Response(500, json=None),                      # null
+    httpx.Response(500, json={"error": 123}),            # error가 문자열이 아님
+    httpx.Response(502, json={"detail": "bad gateway"}),  # error 키 없음
+])
+def test_run_http_unexpected_error_body(monkeypatch, response):
+    # 예상과 다른 오류 응답이어도 예외 없이 일반 안내 + 응답 본문 원문을 남긴다
+    monkeypatch.setattr(httpx, "post", fake_post(response))
+    with pytest.raises(GodError) as e:
+        run_http("http://god:8000", {}, 120)
+    message = str(e.value)
+    assert message.startswith("엔진에서 오류가 발생해 실험이 중단되었습니다.")
+    assert message.endswith(f"(상세: God {response.status_code}: {response.text})")
+
+
 def test_run_http_connection_and_timeout(monkeypatch):
     monkeypatch.setattr(httpx, "post", fake_post(error=httpx.ConnectError("connection refused")))
     with pytest.raises(GodError, match=r"^엔진\(God\)에 연결하지 못했습니다.*connection refused"):
