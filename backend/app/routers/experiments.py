@@ -1,4 +1,6 @@
 """실험 API (docs/spec.md 3장)."""
+from threading import Lock
+
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -20,6 +22,11 @@ from app.schemas import (
 )
 
 router = APIRouter(prefix="/experiments", tags=["experiments"])
+
+# 실행 중 확인과 실험 생성을 한 번에 하나의 요청만 하도록 막는다.
+# 없으면 동시에 들어온 두 요청이 둘 다 "실행 중 없음"을 보고 함께 생성될 수 있다.
+# API는 프로세스 하나로 실행하므로 프로세스 안의 잠금으로 충분하다.
+_create_lock = Lock()
 
 
 # ---------- 변환 헬퍼 ----------
@@ -81,10 +88,21 @@ def create_experiment(
     if body.byzantine_count > settings.n_cities:
         raise HTTPException(422, f"byzantine_count must be at most {settings.n_cities} (n_cities={settings.n_cities})")
 
-    exp = Experiment(**body.model_dump(), status=Status.PENDING, n_cities=settings.n_cities)
-    db.add(exp)
-    db.commit()
-    db.refresh(exp)
+    with _create_lock:
+        # God은 실험을 한 번에 하나만 돌리므로, 실행 중이면 대기열 없이 거절한다 (11/6 회의 결정)
+        active = db.scalar(
+            select(Experiment.id).where(Experiment.status.in_([Status.PENDING, Status.RUNNING])).limit(1)
+        )
+        if active is not None:
+            raise HTTPException(
+                # 프론트가 detail을 그대로 보여 주므로 사용자에게 보일 한국어 문장으로 쓴다
+                status.HTTP_409_CONFLICT, f"이미 실행 중인 실험(#{active})이 있습니다. 끝난 뒤 다시 실행해 주세요."
+            )
+
+        exp = Experiment(**body.model_dump(), status=Status.PENDING, n_cities=settings.n_cities)
+        db.add(exp)
+        db.commit()
+        db.refresh(exp)
 
     # 응답을 먼저 보내고 실행은 백그라운드에서. 프론트는 GET /experiments/{id}로 상태 확인.
     background.add_task(run_experiment, exp.id, request.app.state.session_factory, request.app.state.run_god)

@@ -97,6 +97,7 @@ MVP는 "실행 완료 후 저장된 결과를 턴별로 탐색"하는 방식이�
   "finished_at": null
 }
 ```
+- 이미 `pending`·`running`인 실험이 있으면 `409`로 거절하고 실험을 만들지 않는다 (대기열 없음, 11/6 결정). `detail`은 화면에 그대로 보여 줄 수 있는 한국어 문장이다. 예: `"이미 실행 중인 실험(#3)이 있습니다. 끝난 뒤 다시 실행해 주세요."`
 - `completed_turns`: 지금까지 저장된 턴 수. 실행 중 진행률 표시에 쓸 수 있다 (예: 7/10).
 - `byzantine_ids`, `mean_accuracy`는 `completed`가 되면 채워진다. `mean_accuracy`는 전체 턴 정확도 평균.
 
@@ -164,7 +165,7 @@ FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
 | 코드 | 상황 |
 |---|---|
 | 404 | 실험 또는 턴이 없음 |
-| 409 | 실험이 아직 완료되지 않음 / 같은 턴을 두 번 보냄 |
+| 409 | 다른 실험이 실행 중인데 새 실험을 요청함 / 실험이 아직 완료되지 않음 / 같은 턴을 두 번 보냄 |
 | 422 | 입력값 범위·형식 오류 |
 
 ## 4. God 규격 (API ↔ God)
@@ -190,7 +191,7 @@ FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
   예: `"도시 3에 연결하지 못해 실험을 시작하지 못했습니다. City 컨테이너가 켜져 있는지 확인해 주세요. (상세: God 500: ...)"`
 - 엔진은 모르는 필드가 오면 거부하므로 API는 위 7개 필드만 보낸다.
 - `seed`: 엔진이 `random.Random(seed)`로 정답·비잔틴 도시·힌트를 만들고, City에는 도시별 seed를 나눠 준다. City는 이 seed로 누락·조작 난수를 초기화하므로, 같은 seed면 누락·조작 결과까지 같다.
-- God은 실험을 **한 번에 하나만** 실행한다. God 서버(`common/http.py`)가 요청을 하나씩 처리하므로, 이미 실행 중이면 다음 `/run`은 앞 실험이 끝날 때까지 기다렸다가 실행된다. 대기 시간도 120초 제한에 포함되며, 넘으면 그 실험은 `failed`가 된다. 기다리는 동안 프론트에는 `running`, `completed_turns: 0`으로 보인다.
+- God은 실험을 **한 번에 하나만** 실행한다. 그래서 API가 `POST /experiments` 단계에서 실행 중인 실험이 있으면 `409`로 거절하고, God에는 항상 한 번에 하나의 `/run`만 보낸다.
 - 한 번 시도한 `experiment_id`는 다시 실행하지 않는다 (API는 항상 새 id로 요청).
 
 ### ② God → API: POST /internal/experiments/{experiment_id}/turns
