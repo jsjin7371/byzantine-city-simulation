@@ -43,8 +43,8 @@ export function useExperiment() {
       const result = await createExperiment(draft, controller.signal)
       if (!controller.signal.aborted) setExperiment(result)
     } catch (cause) {
-      // POST 응답이 유실되어도 생성은 성공했을 수 있어 자동 재전송하지 않는다.
-      if (!controller.signal.aborted) setError((cause instanceof Error ? cause.message : '실행 요청에 실패했습니다.') + ' 응답이 끊겨도 실험이 생성되었을 수 있으므로 중복 실행에 주의해 주세요.')
+      // 생성 요청에서 오류 종류에 맞게 만든 안내를 그대로 표시한다.
+      if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : '실행 요청에 실패했습니다.')
     } finally {
       submission.current = null
       if (!controller.signal.aborted) setSubmitting(false)

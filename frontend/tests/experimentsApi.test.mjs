@@ -28,6 +28,49 @@ test('HTTP errors and malformed success responses are not treated as an experime
   await assert.rejects(getExperiment(1, new AbortController().signal), /응답 형식/)
 })
 
+test('creation rejection preserves backend messages without a duplicate warning', async (context) => {
+  const fetchMock = context.mock.method(globalThis, 'fetch')
+  const cases = [
+    { status: 409, detail: '이미 실행 중인 실험(#8)이 있습니다. 끝난 뒤 다시 실행해 주세요.' },
+    { status: 422, detail: '비잔틴 도시 수가 범위를 벗어났습니다.' },
+    { status: 422, detail: [{ loc: ['body', 'turns'], msg: 'invalid' }] },
+  ]
+  for (const { status, detail } of cases) {
+    fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify({ detail }), { status }))
+    await assert.rejects(createExperiment(createExperimentDraft(), new AbortController().signal), {
+      message: apiErrorMessage(detail),
+    })
+  }
+  assert.equal(fetchMock.mock.callCount(), cases.length)
+})
+
+test('uncertain creation warns to check the list and never retries automatically', async (context) => {
+  const fetchMock = context.mock.method(globalThis, 'fetch')
+  const failures = [
+    async () => { throw new TypeError('Failed to fetch') },
+    async () => { throw new DOMException('Timed out', 'TimeoutError') },
+    async () => new Response(JSON.stringify({ detail: '저장 처리 중 오류가 발생했습니다.' }), { status: 500 }),
+    async () => new Response('<html>proxy error</html>', { status: 502 }),
+    async () => new Response('{}', { status: 202 }),
+    async () => new Response('invalid JSON', { status: 202 }),
+  ]
+  for (const failure of failures) {
+    fetchMock.mock.mockImplementation(failure)
+    await assert.rejects(createExperiment(createExperimentDraft(), new AbortController().signal), /실험이 생성되었을 수 있으므로 실험 목록을 확인한 뒤/)
+  }
+  assert.equal(fetchMock.mock.callCount(), failures.length)
+})
+
+test('successful creation and stored Korean engine errors are returned intact', async (context) => {
+  const experiment = { id: 8, status: 'pending', config: { turns: 5 }, completed_turns: 0, error: null }
+  const fetchMock = context.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(experiment), { status: 202 }))
+  const signal = new AbortController().signal
+  assert.deepEqual(await createExperiment(createExperimentDraft(), signal), experiment)
+  const failed = { ...experiment, status: 'failed', error: '도시 3에 연결하지 못해 실험을 시작하지 못했습니다.' }
+  fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify(failed)))
+  assert.deepEqual(await getExperiment(8, signal), failed)
+})
+
 test('result requests use pagination and reject data for a different experiment or turn', async (context) => {
   const signal = new AbortController().signal
   const fetchMock = context.mock.method(globalThis, 'fetch', async () => new Response('[]'))

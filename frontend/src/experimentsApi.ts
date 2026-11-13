@@ -43,6 +43,15 @@ export function apiErrorMessage(detail: unknown): string {
   return '서버가 요청을 처리하지 못했습니다.'
 }
 
+class HttpError extends Error {
+  status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.status = status
+  }
+}
+
 async function request(url: string, options: RequestInit) {
   let response: Response
   try {
@@ -53,7 +62,7 @@ async function request(url: string, options: RequestInit) {
     throw new Error('서버 응답을 확인하지 못했습니다. 백엔드 실행 상태와 연결을 확인해 주세요.')
   }
   const data = await response.json().catch(() => null)
-  if (!response.ok) throw new Error(data ? apiErrorMessage(data.detail) : `서버 연결 오류 (${response.status})`)
+  if (!response.ok) throw new HttpError(response.status, data ? apiErrorMessage(data.detail) : `서버 연결 오류 (${response.status})`)
   return data
 }
 
@@ -68,8 +77,17 @@ async function requestExperiment(url: string, options: RequestInit): Promise<Exp
 
 // 프론트는 항상 백엔드 API만 호출한다. Mock/실제 엔진 선택은 백엔드 GOD_MODE가 담당한다.
 // 개발 중 /api 접두사는 Vite 프록시에서 제거되어 백엔드로 전달된다.
-export function createExperiment(draft: ExperimentDraft, signal: AbortSignal) {
-  return requestExperiment('/api/experiments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(experimentPayload(draft)), signal })
+export async function createExperiment(draft: ExperimentDraft, signal: AbortSignal) {
+  try {
+    return await requestExperiment('/api/experiments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(experimentPayload(draft)), signal })
+  } catch (cause) {
+    // 409(실행 중)·422(입력 오류)는 생성 전 거절이므로 서버 안내만 표시한다.
+    if (cause instanceof HttpError && [409, 422].includes(cause.status)) throw cause
+    // 연결 끊김·서버 오류·잘못된 성공 응답에서는 생성 여부를 확정할 수 없다.
+    // 중복 생성을 피하도록 안내하고 POST를 자동 재전송하지 않는다.
+    const message = cause instanceof Error ? cause.message : '실행 요청에 실패했습니다.'
+    throw new Error(`${message} 실험이 생성되었을 수 있으므로 실험 목록을 확인한 뒤 다시 실행해 주세요.`)
+  }
 }
 
 export function getExperiment(id: number, signal: AbortSignal) {
