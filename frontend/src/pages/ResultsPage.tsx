@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AccuracyPlaceholder } from '../components/AccuracyPlaceholder'
 import { EmptyState } from '../components/EmptyState'
+import { ExperimentConfigValues } from '../components/ExperimentConfigValues'
 import { PageHeading } from '../components/PageHeading'
 import { Panel } from '../components/Panel'
 import { getTurn, listExperiments, listTurns } from '../experimentsApi'
@@ -112,6 +113,13 @@ export function ResultsPage() {
           <div className="list-pagination"><button disabled={loading || offset === 0} onClick={() => changePage(offset - 50)}>이전</button><span>{offset / 50 + 1}페이지</span><button disabled={loading || Boolean(listError) || experiments.length < 50} onClick={() => changePage(offset + 50)}>다음</button></div>
         </Panel>
         <div className="result-panels">
+          {/* 목록 응답에 설정이 포함돼 있어 추가 조회 없이 표시한다.
+              실행 중이거나 실패한 실험도 설정을 볼 수 있도록 선택 여부만 확인한다. */}
+          {selected && (
+            <Panel title="실험 설정" description={selected.name || undefined} className="experiment-settings" aside={<span className="badge">실험 #{selected.id}</span>}>
+              <ExperimentConfigValues config={selected.config} />
+            </Panel>
+          )}
           {selected && !completed && <Panel title={`실험 #${selected.id} · ${statusLabels[selected.status]}`}><p role="status" className="quiet-note">{selected.status === 'failed' ? selected.error || '실험이 실패하여 결과를 조회할 수 없습니다.' : '실험 완료 후 결과를 조회할 수 있습니다. 잠시 후 목록을 새로고침해 주세요.'}</p></Panel>}
           <Panel title="턴별 정확도" description="비잔틴 도시를 포함한 전체 5개 도시의 정답 비율입니다." aside={<span className="badge">{selected ? `실험 #${selected.id}` : '실험 선택 전'}</span>}>
             {summaryError ? <div role="alert"><p className="execution-error">{summaryError}</p><button className="button" onClick={retry}>결과 다시 조회</button></div> : completed && !summary ? <p role="status">턴별 결과를 불러오는 중…</p> : turns.length ?

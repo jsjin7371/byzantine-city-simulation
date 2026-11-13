@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { AccuracyPlaceholder } from '../components/AccuracyPlaceholder'
+import { ExperimentConfigValues } from '../components/ExperimentConfigValues'
 import { PageHeading } from '../components/PageHeading'
 import { Panel } from '../components/Panel'
 import { compareExperiments, listExperiments } from '../experimentsApi'
 import type { ComparisonExperiment, Experiment, TurnSummary } from '../experimentsApi'
 
-const configLabels = ['턴 수', '센서 오류율', '메시지 누락률', '메시지 조작률', '비잔틴 도시 수 (5개 중)', 'Seed']
 const percent = (value: number) => `${Number((value * 100).toFixed(2))}%`
 const message = (cause: unknown) => cause instanceof Error ? cause.message : '비교 결과를 불러오지 못했습니다.'
 
@@ -25,8 +25,6 @@ function ComparisonSlot({ label, selected, other, experiments, result, maxTurn, 
   label: 'A' | 'B'; selected: string; other: string; experiments: Experiment[]; result?: ComparisonExperiment
   maxTurn: number; disabled: boolean; onSelect: (id: string) => void
 }) {
-  const config = result?.config
-  const values = config ? [String(config.turns), percent(config.sensor_error), percent(config.drop_rate), percent(config.flip_rate), String(config.byzantine_count), config.seed === null ? '랜덤' : String(config.seed)] : []
   return <Panel title={`실험 ${label}`} aside={<span className="badge">{result ? `#${result.id}` : selected ? '선택됨' : '선택 전'}</span>}>
     <label className="field" htmlFor={`compare-${label}`}>
       <span className="sr-only">실험 {label} 선택</span>
@@ -40,7 +38,7 @@ function ComparisonSlot({ label, selected, other, experiments, result, maxTurn, 
     {result?.accuracy.length ? <ComparisonChart turns={result.accuracy} maxTurn={maxTurn} /> : <AccuracyPlaceholder />}
     {result && result.accuracy.length === 0 && <p className="quiet-note">저장된 턴 결과가 없습니다.</p>}
     <h3 className="comparison-config-heading">실험 설정</h3>
-    <dl className="config-values">{configLabels.map((name, index) => <div key={name}><dt>{name}</dt><dd>{values[index] ?? '—'}</dd></div>)}</dl>
+    <ExperimentConfigValues config={result?.config} />
   </Panel>
 }
 

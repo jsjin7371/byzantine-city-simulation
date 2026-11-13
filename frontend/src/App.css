@@ -130,6 +130,10 @@
 .config-values div:last-child { border-bottom: 0; }
 .config-values dt { color: var(--muted); }
 .config-values dd { margin: 0; }
+.experiment-settings .panel-heading > div { min-width: 0; overflow-wrap: anywhere; }
+.experiment-settings .config-values { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px 24px; }
+.experiment-settings .config-values div { display: block; padding: 0; border: 0; }
+.experiment-settings .config-values dd { margin-top: 6px; font-size: 15px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .comparison-note { margin-top: 20px; }
 .app-footer { display: flex; gap: 12px; justify-content: space-between; width: calc(100% - 80px); max-width: 1240px; border-top: 1px solid var(--border); margin: auto auto 0; padding: 18px 0 24px; font-size: 11px; color: var(--muted); }
 
@@ -150,6 +154,7 @@
   .app-footer { width: calc(100% - 48px); }
 }
 @media (max-width: 600px) {
+  .experiment-settings .config-values { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .header-inner { padding: 18px 16px 12px; gap: 18px; }
   .brand strong { font-size: 15px; }
   .brand-mark { width: 30px; height: 30px; }
