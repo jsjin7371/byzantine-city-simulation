@@ -17,7 +17,7 @@ backend/
 │  ├─ routers/internal.py      /internal/... 턴 결과 수신 (엔진 전용)
 │  └─ god/
 │     ├─ client.py        실제 God 호출 (GOD_MODE=http)
-│     └─ mock.py          가짜 God, 엔진 슈도코드와 같은 동작 (GOD_MODE=mock, 기본값)
+│     └─ mock.py          가짜 God, 엔진 슈도코드와 같은 동작 (GOD_MODE=mock, 테스트·로컬 실행 기본값)
 ├─ alembic/               DB 마이그레이션
 └─ tests/                 pytest
 ```
@@ -38,7 +38,18 @@ docker compose logs -f api        # "Running upgrade -> 0001" 후 서버 시작 
 
 > 11/2 저녁 엔진 형식으로 테이블이 바뀌었습니다. 그 전에 한 번 띄운 적이 있으면 `docker compose down -v`로 DB를 한 번 초기화한 뒤 다시 실행하세요.
 
-엔진 `/run`이 완성되면 루트 `.env`에 `GOD_MODE=http`를 넣고 `docker compose up -d --build`로 전체를 띄웁니다.
+Compose는 기본으로 실제 엔진을 호출합니다 (`GOD_MODE=http`). 실험을 돌리려면 `docker compose up -d --build`로 God·City까지 전체를 띄웁니다.
+엔진 없이 백엔드만 확인하려면 Mock 모드로 `mysql api`만 띄웁니다. 엔진이 고장 났거나 빌드가 안 될 때 쓸 수 있습니다.
+
+```powershell
+# Windows PowerShell
+$env:GOD_MODE = 'mock'; docker compose up --build -d mysql api
+```
+
+```bash
+# macOS / Linux
+GOD_MODE=mock docker compose up --build -d mysql api
+```
 
 ## 2. 로컬 실행 (코드 수정하며 개발)
 
@@ -75,7 +86,7 @@ cd backend
 | 이름 | 기본값 | 설명 |
 |---|---|---|
 | `DATABASE_URL` | `mysql+pymysql://byzantine:byzantine@127.0.0.1:3307/byzantine?charset=utf8mb4` | DB 주소 |
-| `GOD_MODE` | `mock` | `mock`: 가짜 God / `http`: 실제 god 컨테이너 |
+| `GOD_MODE` | Compose: `http` / 로컬 실행: `mock` | `mock`: 가짜 God / `http`: 실제 god 컨테이너 |
 | `GOD_URL` | `http://god:8000` | God 주소 |
 | `GOD_TIMEOUT` | `120` | God 응답 대기 시간(초) |
 | `N_CITIES` | `5` | 도시 수 (god과 맞춰야 함) |
@@ -90,6 +101,6 @@ cd backend
 
 ## 남은 일
 
-- [ ] `GOD_MODE=http`로 실제 엔진 연동 테스트 (God·City 모두 develop에 있음)
+- [x] `GOD_MODE=http`로 실제 엔진 연동 테스트 (11/11: 실험 완료, 같은 seed 재현, City 중단 시 failed 확인)
 - [ ] 실험 삭제 API (`DELETE /experiments/{id}`) 필요 여부 프론트와 협의
 - [ ] 실험을 연달아 여러 개 실행할 때: God이 한 번에 하나만 처리해서 뒤 실험은 대기함. 대기가 120초(`GOD_TIMEOUT`)를 넘으면 failed가 되므로, 필요하면 API에서 실행 대기열(한 번에 하나씩 보내기) 추가

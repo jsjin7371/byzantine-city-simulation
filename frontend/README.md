@@ -41,6 +41,7 @@ docker compose ps
 
 프론트·API·MySQL·God·City 5개를 함께 실행합니다. API와 MySQL이 `healthy`이고 나머지 컨테이너가 실행 중인지 확인합니다.
 프론트 접속 주소: http://localhost:8080
+`GOD_MODE`를 지정하지 않아도 공용 Compose의 기본값이 `http`라서 이 모드로 실행됩니다.
 
 ### Mock God 사용
 
@@ -50,7 +51,6 @@ docker compose up --build -d frontend
 ```
 
 프론트가 의존하는 API·MySQL도 함께 실행합니다. 접속 주소는 동일하며, 실제 God·City는 사용하지 않습니다.
-`GOD_MODE`를 지정하지 않으면 공용 Compose의 기본값인 `mock`을 사용합니다.
 모드를 바꿀 때는 위 명령을 다시 실행해 API 컨테이너에 설정을 반영합니다.
 
 화면을 수정한 뒤에는 저장소 루트에서 `docker compose up --build -d frontend`로 다시 빌드합니다.

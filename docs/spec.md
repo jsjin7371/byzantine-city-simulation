@@ -222,7 +222,8 @@ FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
 
 ### Mock God
 
-엔진 연동 전까지 API는 엔진 슈도코드를 그대로 옮긴 가짜 God을 쓴다 (`GOD_MODE=mock`, `backend/app/god/mock.py`). 원형 연결, 다수결, 누락·조작, 비잔틴 동작이 같다.
+Compose의 기본값은 실제 God 호출이다 (`GOD_MODE=http`, 11/11 연동 확인).
+Mock God은 엔진 슈도코드를 그대로 옮긴 가짜 God으로, pytest와 엔진 없이 개발할 때 쓴다 (`GOD_MODE=mock`, `backend/app/god/mock.py`). 원형 연결, 다수결, 누락·조작, 비잔틴 동작이 같다.
 Mock은 네트워크 없이 백엔드 안에서 돌기 때문에 턴을 `/run` 응답에 모아서 돌려준다 (`{"ok": true, "turns": [...]}`). 실제 엔진은 이 방식을 쓰지 않는다. 그래서 Mock에서는 `completed_turns`가 0에서 전체 턴 수로 한 번에 바뀌고, 실제 엔진에서는 턴마다 1씩 올라간다.
 Mock과 실제 엔진은 난수를 뽑는 순서가 달라서, 같은 seed라도 결과가 다르다. seed 재현은 같은 God 안에서만 보장된다 (턴 JSON 형식은 같음, 엔진팀 11/3 공유).
 
