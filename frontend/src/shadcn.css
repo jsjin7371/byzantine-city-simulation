@@ -1,0 +1,28 @@
+/* No Tailwind Preflight: existing results/comparison pages keep their resets. */
+@import "tailwindcss/theme.css";
+@import "tailwindcss/utilities.css";
+@theme inline {
+  --color-background: var(--ui-background);
+  --color-foreground: var(--ui-foreground);
+  --color-primary: var(--ui-primary);
+  --color-primary-foreground: #fff;
+  --color-secondary: #f4f4f5;
+  --color-secondary-foreground: #27272a;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-accent: #f4f4f5;
+  --color-accent-foreground: #18181b;
+  --color-input: #e4e4e7;
+  --color-border: #e4e4e7;
+  --color-ring: #a1a1aa;
+  --color-destructive: #b23434;
+  --color-destructive-foreground: #fff;
+  --radius-lg: 0.5rem;
+  --radius-md: 0.375rem;
+  --radius-sm: 0.25rem;
+}
+.a3-workspace {
+  --ui-background: #fff;
+  --ui-foreground: #18181b;
+  --ui-primary: #27272a;
+}

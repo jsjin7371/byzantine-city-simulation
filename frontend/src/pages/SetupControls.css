@@ -1,0 +1,57 @@
+/* shadcn controls, customized for the network workspace only. */
+.a3-workspace {
+  --muted: #71717a;
+  --control: #dedee3;
+  --line: #e4e4e7;
+  --ink: #18181b;
+  color: var(--ink);
+}
+.a3-workspace .settings-pane {
+  background: #fff;
+  border-radius: 0;
+  border-left: 1px solid var(--line);
+  padding-top: 8px;
+  padding-left: 26px;
+}
+.a3-workspace .settings-heading { margin-bottom: 20px; }
+.a3-workspace .settings-heading h2 { font-size: 19px; }
+.a3-workspace .settings-pane button[data-ui-button],
+.a3-workspace .settings-pane a[data-ui-button] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  background: #27272a;
+  color: white;
+  box-shadow: none;
+}
+.a3-workspace .settings-pane [data-ui-button][data-variant=ghost] { background: transparent; color: #52525b; }
+.a3-workspace .settings-pane [data-ui-button][data-variant=outline] { background: white; border-color: var(--line); color: var(--ink); }
+.a3-workspace .settings-pane [data-ui-button]:hover:not(:disabled) { filter: brightness(.94); }
+.a3-workspace .settings-pane [data-ui-button]:disabled { opacity: .45; }
+.a3-workspace .settings-pane button.text-button { background: transparent; color: #71717a; height: 30px; padding: 4px 8px; font-size: 12px; }
+.a3-workspace .form-actions>button:first-child { flex: 1; }
+.a3-workspace .form-actions>button:last-child { flex: 1.65; }
+.a3-workspace .number-box { border-color: var(--line); height: 40px; border-radius: 6px; }
+.a3-workspace .number-box input { font-size: 20px; box-shadow: none; }
+.a3-workspace .rate-input { border-color: var(--line); border-radius: 5px; }
+.a3-workspace .rate-input input { box-shadow: none; font-size: 15px; width: 76px; }
+.a3-workspace .rate-slider { height: 22px; margin-top: 3px; }
+.a3-workspace .rate-slider [role=slider] { border: 1px solid #a1a1aa; background: white; box-shadow: 0 1px 2px #00000012; }
+.a3-workspace .rate-slider [role=slider]:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.a3-workspace .rate-help { font-size: 12px; line-height: 1.6; }
+.a3-workspace .byzantine-help { font-size: 12px; }
+.a3-workspace .extra-field>input { border-color: var(--line); }
+.a3-workspace .execution-panel [role=progressbar] { margin: 12px 0 10px; height: 6px; }
+.a3-workspace .execution-panel [role=alert] { border: 1px solid #f0cdcd; border-radius: 6px; padding: 14px; background: #fffafa; }
+.a3-workspace .page-title p { color: #71717a; }
+@media(max-height:800px) {
+  .a3-workspace .settings-heading { margin-bottom: 12px; }
+  .a3-workspace .settings-pane { padding-bottom: 8px; }
+}

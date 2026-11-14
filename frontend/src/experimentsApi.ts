@@ -43,12 +43,14 @@ export function apiErrorMessage(detail: unknown): string {
   return '서버가 요청을 처리하지 못했습니다.'
 }
 
-class HttpError extends Error {
+export class HttpError extends Error {
   status: number
+  detail: unknown
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, detail?: unknown) {
     super(message)
     this.status = status
+    this.detail = detail
   }
 }
 
@@ -62,7 +64,7 @@ async function request(url: string, options: RequestInit) {
     throw new Error('서버 응답을 확인하지 못했습니다. 백엔드 실행 상태와 연결을 확인해 주세요.')
   }
   const data = await response.json().catch(() => null)
-  if (!response.ok) throw new HttpError(response.status, data ? apiErrorMessage(data.detail) : `서버 연결 오류 (${response.status})`)
+  if (!response.ok) throw new HttpError(response.status, data ? apiErrorMessage(data.detail) : `서버 연결 오류 (${response.status})`, data?.detail)
   return data
 }
 
@@ -90,8 +92,11 @@ export async function createExperiment(draft: ExperimentDraft, signal: AbortSign
   }
 }
 
-export function getExperiment(id: number, signal: AbortSignal) {
-  return requestExperiment(`/api/experiments/${id}`, { signal })
+export async function getExperiment(id: number, signal: AbortSignal) {
+  const experiment = await requestExperiment(`/api/experiments/${id}`, { signal })
+  // 다른 실험의 응답으로 현재 진행률이나 상태가 덮어써지는 것을 방지한다.
+  if (experiment.id !== id) throw new Error('서버 응답의 실험 ID가 요청과 다릅니다.')
+  return experiment
 }
 
 export type TurnSummary = { turn: number; truth: 'danger' | 'safe'; accuracy: number }

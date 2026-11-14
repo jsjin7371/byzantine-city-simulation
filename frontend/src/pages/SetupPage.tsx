@@ -1,103 +1,88 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
-import { PageHeading } from '../components/PageHeading'
-import { Panel } from '../components/Panel'
+import { useEffect, useRef, useState } from 'react'
 import { createExperimentDraft, settingFields, validateExperimentDraft } from '../experimentForm'
 import type { ExperimentDraft, ExperimentField } from '../experimentForm'
 import type { useExperiment } from '../useExperiment'
+import { NetworkCanvas } from '../components/NetworkCanvas'
+import { AppHeader } from '../components/AppHeader'
+import '../shadcn.css'
+import './SetupPage.css'
+import './SetupControls.css'
+import './WorkspaceKit.css'
+import './ScienceTheme.css'
+import './WorkspaceLayout.css'
+import { Badge } from '../components/ui/badge'
+import { Separator } from '../components/ui/separator'
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '../components/ui/tooltip'
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '../components/ui/accordion'
+import { CircleHelp, RotateCcw, Play, ArrowUpRight } from 'lucide-react'
+import { Button } from '../components/ui/button'
+import { Input } from '../components/ui/input'
+import { Slider } from '../components/ui/slider'
+import { Progress } from '../components/ui/progress'
+import { Alert, AlertTitle, AlertDescription } from '../components/ui/alert'
 
-export function SetupPage({ draft, onDraftChange, run }: { draft: ExperimentDraft; onDraftChange: (draft: ExperimentDraft) => void; run: ReturnType<typeof useExperiment> }) {
+type Props = { draft: ExperimentDraft; onDraftChange: (draft: ExperimentDraft) => void; run: ReturnType<typeof useExperiment> }
+const titles = { submitting: '실험 생성 요청 중...', pending: '실험 준비 중', running: '실험 진행 중', completed: '실험 완료', failed: '실험 실패', uncertain: '실행 요청 확인 필요', idle: '실행 전' }
+const help = { sensor_error: 'God의 힌트가 실제 상태와 다를 확률', drop_rate: '이웃에게 보낸 메시지가 사라질 확률', flip_rate: '이웃에게 보낸 메시지의 판단이 뒤집힐 확률' }
+const labels = { name: '실험 이름', turns: '턴 수', byzantine_count: '비잔틴 도시 수', sensor_error: '센서 오류율', drop_rate: '메시지 누락률', flip_rate: '메시지 조작률', seed: 'Seed' }
+
+export function SetupPage({ draft, onDraftChange, run }: Props) {
   const [showErrors, setShowErrors] = useState(false)
-  const [checked, setChecked] = useState(false)
-  const errors = validateExperimentDraft(draft)
-  const visibleError = (field: ExperimentField) => showErrors ? errors[field] : undefined
-  const statusLabels = { pending: '실행 준비', running: '실행 중', completed: '완료', failed: '실패' }
-  const experiment = run.experiment
-  // '입력 확인'을 거치지 않고 실행을 눌러도 현재 값이 유효해야 요청한다.
-  function execute() {
+  const [feedback, setFeedback] = useState('')
+  const [acknowledged, setAcknowledged] = useState(false)
+  const [extra, setExtra] = useState('')
+  const form = useRef<HTMLFormElement>(null)
+  const title = useRef<HTMLHeadingElement>(null)
+  // 요청 상태를 먼저 표시하고, 이후에는 서버 상태를 그대로 사용한다. 조회 오류와 실험 실패는 구분한다.
+  const state = run.submitting ? 'submitting' : run.uncertain ? 'uncertain' : run.experiment?.status ?? 'idle'
+  const errors = { ...(showErrors ? validateExperimentDraft(draft) : {}), ...run.fieldErrors }
+  useEffect(() => { if (state !== 'idle') title.current?.focus({ preventScroll: true }) }, [state])
+  useEffect(() => { const key = Object.keys(run.fieldErrors)[0]; if (key) focusField(key) }, [run.fieldErrors])
+  function focusField(key: string) {
+    const input = form.current?.querySelector<HTMLInputElement>(`[name="${key}"]`)
+    const details = input?.closest('details'); if (details) details.open = true
+    if (key === 'name' || key === 'seed') { setExtra('reproduction'); requestAnimationFrame(() => form.current?.querySelector<HTMLInputElement>(`[name="${key}"]`)?.focus()) } else input?.focus()
+  }
+  function update(key: ExperimentField, value: string) { onDraftChange({ ...draft, [key]: value }); setFeedback(''); run.clearInputError() }
+  function check() {
     setShowErrors(true)
-    if (Object.keys(errors).length) return
-    setChecked(false)
-    void run.start(draft)
+    const invalid = Object.keys(validateExperimentDraft(draft))
+    setFeedback(invalid.length ? '표시된 항목을 확인해 주세요.' : '입력값이 올바릅니다. 아직 실행하지 않았습니다.')
+    if (invalid.length) focusField(invalid[0])
+    return !invalid.length
   }
-  function update(field: ExperimentField, value: string) {
-    onDraftChange({ ...draft, [field]: value })
-    setChecked(false)
-  }
-  // 폼 제출(Enter 포함)은 입력 검사만 수행한다. 서버 요청은 별도 '실험 실행' 버튼에서 한다.
-  function check(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setShowErrors(true)
-    setChecked(Object.keys(errors).length === 0)
-    const firstError = (Object.keys(draft) as ExperimentField[]).find((field) => errors[field])
-    if (firstError) event.currentTarget.querySelector<HTMLInputElement>(`[name="${firstError}"]`)?.focus()
-  }
-  function reset() {
-    onDraftChange(createExperimentDraft())
-    setShowErrors(false)
-    setChecked(false)
-  }
-  return (
-    <>
-      <PageHeading eyebrow="EXPERIMENT" title="새 실험 설정" description="도시의 판단과 메시지에 영향을 줄 조건을 설정하세요." />
-      <div className="setup-layout">
-        <Panel title="실험 조건" description="전체 도시 수는 5개로 고정됩니다." aside={<span className="badge">조건 입력</span>}>
-          <p className="availability-note" id="settings-note">실험 실행 시 입력한 조건을 서버로 전송합니다. 메뉴를 이동해도 실행 상태를 확인하며, 새로고침하면 화면의 입력값과 실행 상태가 초기화됩니다. 서버에서 시작한 실험은 계속 진행됩니다.</p>
-          <form noValidate onSubmit={check}>
-          <fieldset className="settings-fields" disabled={run.busy} aria-describedby="settings-note">
-            <legend className="sr-only">실험 조건 입력</legend>
-            <label className="field field--full" htmlFor="experiment-name">
-              <span>실험 이름 <span className="optional">선택</span></span>
-              <input id="experiment-name" name="name" type="text" value={draft.name} onChange={(event) => update('name', event.target.value)} placeholder="예: 비잔틴 1개 · 센서 오류 10%" aria-invalid={Boolean(visibleError('name'))} aria-describedby="name-hint name-error" />
-              <small id="name-hint">최대 50자</small>
-              <small className="field-error" id="name-error">{visibleError('name')}</small>
-            </label>
-            {settingFields.map((field) => (
-              <label key={field.name} className="field" htmlFor={`setting-${field.name}`}>
-                <span>{field.label}</span>
-                <span className="input-with-unit">
-                  <input id={`setting-${field.name}`} name={field.name} type="text" inputMode={field.integer ? 'numeric' : 'decimal'} required value={draft[field.name]} onChange={(event) => update(field.name, event.target.value)} aria-invalid={Boolean(visibleError(field.name))} aria-describedby={`hint-${field.name} error-${field.name}`} />
-                  <span aria-hidden="true">{field.unit}</span>
-                </span>
-                <small id={`hint-${field.name}`}>{field.hint}</small>
-                <small className="field-error" id={`error-${field.name}`}>{visibleError(field.name)}</small>
-              </label>
-            ))}
-            <label className="field" htmlFor="setting-seed">
-              <span>Seed <span className="optional">선택</span></span>
-              <input id="setting-seed" name="seed" type="text" inputMode="numeric" value={draft.seed} onChange={(event) => update('seed', event.target.value)} placeholder="비우면 매번 랜덤" aria-invalid={Boolean(visibleError('seed'))} aria-describedby="seed-hint seed-error" />
-              <small id="seed-hint">0–2,147,483,647 · 0도 사용할 수 있습니다.</small>
-              <small className="field-error" id="seed-error">{visibleError('seed')}</small>
-            </label>
-          </fieldset>
-          <div className="form-footer">
-            <button className="button" type="button" onClick={reset} disabled={run.busy}>기본값으로 초기화</button>
-            <div className="form-actions"><button className="button" type="submit" disabled={run.busy}>입력 확인</button><button className="button button--primary" type="button" disabled={run.busy} onClick={execute} aria-describedby="settings-note">{run.submitting ? '요청 중…' : '실험 실행'}</button></div>
-          </div>
-          <p className="form-feedback" role="status">{checked ? '입력값이 올바릅니다. 아직 실험을 실행하거나 서버에 저장하지 않았습니다.' : ''}</p>
-          </form>
-        </Panel>
-        <aside className="side-stack" aria-label="실행 안내">
-          <Panel title="실행 상태" aside={<span className="badge">{run.submitting ? '요청 중' : experiment ? statusLabels[experiment.status] : '실행 전'}</span>}>
-            <div className="execution-idle" role="status">
-              <h3>{run.submitting ? '실험을 생성하고 있어요.' : experiment ? `실험 #${experiment.id} · ${statusLabels[experiment.status]}` : '시작할 실험을 기다리고 있어요.'}</h3>
-              <p>{experiment?.status === 'completed' ? '실험 결과가 서버에 저장되었습니다. 결과 탐색 메뉴에서 실험을 선택해 주세요.' : run.busy ? '준비 또는 실행 대기 중에는 저장된 턴이 0일 수 있습니다.' : '실행하면 진행 상태와 저장된 턴 수가 표시됩니다.'}</p>
-              {experiment && <dl className="status-values"><div><dt>저장된 턴</dt><dd>{experiment.completed_turns} / {experiment.config.turns}</dd></div>{experiment.status === 'completed' && experiment.mean_accuracy !== null && <div><dt>평균 정확도</dt><dd>{(experiment.mean_accuracy * 100).toFixed(1)}%</dd></div>}</dl>}
-            </div>
-            {(run.error || experiment?.status === 'failed') && <p className="execution-error" role="alert">{run.error || experiment?.error || '실험 실행에 실패했습니다.'}</p>}
-            {run.error && experiment && run.busy && <button type="button" className="button" onClick={run.refreshStatus}>상태 다시 조회</button>}
-          </Panel>
-          <section className="guide-block" aria-labelledby="flow-heading">
-            <h2 id="flow-heading">실험은 이렇게 진행돼요</h2>
-            <ol className="flow-list">
-              <li><span>01</span><div><strong>조건 설정</strong><p>오류율과 비잔틴 도시 수를 정합니다.</p></div></li>
-              <li><span>02</span><div><strong>실험 실행</strong><p>실행 상태와 완료된 턴을 확인합니다.</p></div></li>
-              <li><span>03</span><div><strong>결과 탐색</strong><p>완료된 결과를 턴별로 살펴봅니다.</p></div></li>
-            </ol>
-          </section>
-          <p className="quiet-note">같은 엔진·설정·seed로 결과를 재현할 수 있습니다. Mock과 실제 엔진의 결과는 서로 다를 수 있습니다.</p>
-        </aside>
-      </div>
-    </>
-  )
+  function edit() { run.edit(acknowledged); setAcknowledged(false); setFeedback('') }
+  const input = (key: ExperimentField) => <Input id={key} name={key} value={draft[key]} inputMode={key === 'name' ? 'text' : key in help ? 'decimal' : 'numeric'} onChange={e => update(key, e.target.value)} aria-invalid={Boolean(errors[key])} aria-describedby={`${key}-hint ${key}-error`} />
+  const error = (key: ExperimentField) => <p className="error" id={`${key}-error`}>{errors[key]}</p>
+  const exp = run.experiment
+  // 입력 중인 draft 대신 서버 설정 또는 제출 당시 스냅샷을 실행 조건으로 보여준다.
+  const config = exp ? { name: exp.name, ...exp.config } : run.submitted
+  return <TooltipProvider delayDuration={150}><div className="a3-workspace">
+    <AppHeader currentPage="setup" />
+    <div className="studio-main"><div className="page-title"><div><span className="workspace-context">시뮬레이션 워크스페이스</span><h1>실험 설정<span className="title-period">.</span></h1><p>불확실한 정보 속, 다섯 도시의 합의를 실험하세요.</p></div><Badge variant="outline" className="ready-state" data-state={state} data-error={Boolean(run.error)} role="status"><span className="state-dot" aria-hidden="true"/>{titles[state]}</Badge></div>
+    <div className="workbench"><NetworkCanvas/><aside className="settings-pane" aria-labelledby="settings-title">
+      <div className="settings-heading"><div><span className="panel-kicker">Configuration</span><h2 id="settings-title">실험 조건</h2></div><Button className="text-button" type="button" disabled={state !== 'idle'} onClick={() => { onDraftChange(createExperimentDraft()); run.clearInputError(); setShowErrors(false); setFeedback('기본값으로 초기화했습니다.') }}><RotateCcw size={14}/>초기화</Button></div>
+      {state === 'idle' ? <form id="experiment-form" ref={form} noValidate onSubmit={e => { e.preventDefault(); check() }}>
+        <fieldset className="base-settings"><legend className="group-title">실험 구성</legend><div className="basic-fields">{settingFields.slice(0, 2).map(f => <div className="field" key={f.name}><label htmlFor={f.name}>{f.label}</label><div className="number-box">{input(f.name)}<span>{f.name === 'turns' ? '턴' : '/ 5개'}</span></div><p className="field-hint" id={`${f.name}-hint`}>{f.hint}</p>{error(f.name)}</div>)}</div><p className="byzantine-help">비잔틴 도시의 정체는 실행 전에 공개하지 않습니다.</p></fieldset>
+        <Separator className="config-divider"/><fieldset className="uncertainty-settings"><legend>정보의 불확실성 <Badge variant="secondary">0–100%</Badge></legend>{settingFields.slice(2).map(f => <div className="rate-field" key={f.name}><div className="rate-top"><div className="rate-label"><label htmlFor={f.name}>{f.label}</label><Tooltip><TooltipTrigger asChild><Button type="button" variant="ghost" size="icon" className="help-trigger" aria-label={`${f.label} 도움말`}><CircleHelp size={14}/></Button></TooltipTrigger><TooltipContent className="workspace-tooltip">{help[f.name as keyof typeof help]}</TooltipContent></Tooltip></div><span className="rate-input">{input(f.name)}<span>%</span></span></div><p className="rate-help" id={`${f.name}-hint`}>{help[f.name as keyof typeof help]}</p><Slider min={0} max={100} step={0.1} value={[Math.max(0, Math.min(100, Number(draft[f.name]) || 0))]} onValueChange={([value]) => update(f.name, String(value))} aria-label={`${f.label} 슬라이더`} aria-valuetext={`${draft[f.name]}%`} aria-invalid={Boolean(errors[f.name])} className="rate-slider"/>{error(f.name)}</div>)}</fieldset>
+        <Accordion type="single" value={extra} onValueChange={setExtra} collapsible className="extra-settings"><AccordionItem value="reproduction"><AccordionTrigger>이름과 재현 설정 <Badge variant="secondary">선택</Badge></AccordionTrigger><AccordionContent >{(['name', 'seed'] as const).map(key => <div className="field extra-field" key={key}><label htmlFor={key}>{labels[key]}</label>{input(key)}<p className="field-hint" id={`${key}-hint`}>{key === 'name' ? '최대 50자' : '0–2,147,483,647 · 비우면 무작위'}</p>{error(key)}</div>)}<p className="field-hint">같은 엔진·조건·Seed에서 재현합니다. Mock과 실제 엔진의 결과는 다를 수 있습니다.</p></AccordionContent></AccordionItem></Accordion>
+        <div className="action-area"><p role="status" id="form-feedback" className={`form-feedback ${run.error || Object.keys(errors).length ? 'invalid' : ''}`}>{run.error || feedback}</p><div className="form-actions"><Button variant="ghost" type="submit">입력 확인</Button><Button  id="run-button" type="button" onClick={() => { if (check()) void run.start(draft) }}><Play size={14}/>실험 실행</Button></div></div>
+      </form> : <section className={`execution-panel ${state}`} aria-labelledby="run-title" aria-busy={run.submitting}>
+        <h3 id="run-title" ref={title} tabIndex={-1}>{titles[state]}</h3>
+        {exp && <><p className="run-id">실험 #{exp.id}</p><div className="progress-label"><span>저장된 턴</span><strong>{exp.completed_turns} / {exp.config.turns}</strong></div><Progress value={exp.completed_turns / exp.config.turns * 100} aria-label="서버에 저장된 턴" aria-valuetext={`${exp.completed_turns} / ${exp.config.turns} 저장된 턴`}/><p className="run-note">현재 처리 중인 턴 번호가 아닙니다.</p></>}
+        {state === 'submitting' && <p className="run-description">서버에 실험 생성을 요청하고 있습니다.</p>}
+        {state === 'pending' && <p className="run-description">서버가 실험을 준비하고 있습니다.</p>}
+        {state === 'running' && <p className="run-description">서버에 저장된 진행 상태를 자동으로 확인합니다.</p>}
+        {state === 'completed' && exp?.mean_accuracy != null && <p className="accuracy-value">평균 정확도 {(exp.mean_accuracy * 100).toFixed(1)}%</p>}
+        {(run.error || state === 'failed') && <Alert variant="destructive" className="run-error"><AlertTitle>{state === 'failed' ? '실험이 중단되었습니다.' : run.uncertain ? '실험이 이미 생성되었을 수 있습니다.' : '상태를 확인할 수 없습니다.'}</AlertTitle><AlertDescription>{state === 'failed' ? (exp?.error || '서버가 실패 원인을 제공하지 않았습니다.').split('(상세:')[0] : run.error}</AlertDescription>{!run.uncertain && state !== 'failed' && <p>마지막 실행 상태를 유지합니다. 실험 실패를 의미하지 않습니다.</p>}<details><summary>상세 오류 정보</summary><pre>{state === 'failed' ? exp?.error : run.error}</pre></details></Alert>}
+        <div className="run-actions">
+          {(state === 'pending' || state === 'running') && <Button variant="outline" disabled={run.querying} onClick={run.refreshStatus}>{run.querying ? '조회 중...' : run.error ? '상태 다시 조회' : '상태 조회'}</Button>}
+          {state === 'completed' && <><Button asChild><a href="#/results">결과 보기<ArrowUpRight size={14}/></a></Button><p className="run-note">결과 탐색에서 실험 #{exp?.id}를 선택하세요.</p><Button variant="outline" onClick={edit}>새로운 실험 설정</Button></>}
+          {state === 'failed' && <Button  onClick={edit}>조건 수정 후 새 실험</Button>}
+          {state === 'uncertain' && <><Button asChild><a href="#/results">기존 실험 목록 확인</a></Button><label className="confirm-new"><input type="checkbox" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)}/>목록을 확인했으며 새 요청이 필요합니다.</label><Button variant="outline" disabled={!acknowledged} onClick={edit}>조건으로 돌아가기</Button></>}
+        </div>
+        {config && <div className="run-config"><h4>실행에 사용한 조건</h4><dl>{Object.entries(labels).map(([key, label]) => { const val = config[key as keyof typeof config]; return <div key={key}><dt>{label}</dt><dd>{key in help ? `${Number((Number(val) * 100).toFixed(10))}%` : val ?? (key === 'seed' ? '무작위' : '이름 없음')}</dd></div> })}</dl></div>}
+      </section>}
+    </aside></div></div>
+  </div></TooltipProvider>
 }

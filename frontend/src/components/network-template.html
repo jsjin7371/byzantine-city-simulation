@@ -1,0 +1,22 @@
+<div class="network-stage" id="network-stage" data-layer="all" aria-describedby="network-instruction">
+          <p class="canvas-caption" id="network-instruction">도시 또는 God을 선택해 정보가 전달되는 경로를 확인하세요.</p>
+          <svg id="edges" aria-hidden="true"></svg>
+          <div id="city-nodes"></div>
+          <button class="god-node" id="god-node" type="button" aria-label="God 역할과 연결 보기" aria-pressed="false">
+            <svg viewBox="0 0 36 36" aria-hidden="true"><path d="M18 3 32.266 13.365 26.817 30.135 9.183 30.135 3.734 13.365Z"/><circle cx="18" cy="18" r="4"/></svg>
+            <strong>God</strong><span>실제 상태의 출처</span>
+          </button>
+        </div>
+
+        <div class="network-legend" aria-label="경로의 의미">
+          <span><i class="key-hint" aria-hidden="true"></i><strong>힌트</strong> God → 도시 <span class="timing">현재 턴</span></span>
+          <span><i class="key-message" aria-hidden="true"></i><strong>메시지</strong> 이웃 도시끼리 <span class="timing">다음 턴 수신</span></span>
+        </div>
+
+        <section class="connection-inspector" aria-labelledby="selection-title">
+          <div class="selection-heading"><div><span class="selection-caption">선택한 도시</span><h3 id="selection-title">도시 01</h3></div><span class="selection-status"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m3 8 3 3 7-7"/></svg>선택됨</span></div>
+          <div class="connection-content" id="connection-content" aria-live="polite"></div>
+          <button type="button" class="button preview-button" id="preview-button"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m7 4 8 6-8 6Z"/></svg><span>전달 과정 보기</span></button>
+        </section>
+        <p class="playback-status" id="playback-status" role="status">연결 구조 미리보기입니다. 이 화면은 연결 구조만 보여줍니다.</p>
+      
