@@ -1,149 +1,79 @@
+/* eslint-disable react/set-state-in-effect -- Loading belongs to the abortable list request, including page changes and refresh. */
 import { useEffect, useState } from 'react'
-import { AccuracyPlaceholder } from '../components/AccuracyPlaceholder'
-import { EmptyState } from '../components/EmptyState'
+import { RefreshCw, Table2, ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
+import { listExperiments } from '../experimentsApi'
+import type { Experiment } from '../experimentsApi'
+import { useResultData } from '../useResultData'
 import { ExperimentConfigValues } from '../components/ExperimentConfigValues'
-import { PageHeading } from '../components/PageHeading'
-import { Panel } from '../components/Panel'
-import { getTurn, listExperiments, listTurns } from '../experimentsApi'
-import type { Experiment, TurnDetail, TurnList } from '../experimentsApi'
-
-const statusLabels = { pending: '실행 준비', running: '실행 중', completed: '완료', failed: '실패' }
-const decisions = { evacuate: '대피', stay: '잔류' }
-const truths = { danger: '위험', safe: '안전' }
-const sends = { normal: '정상', dropped: '누락', flipped: '조작' }
-const errorMessage = (error: unknown) => error instanceof Error ? error.message : '결과를 불러오지 못했습니다.'
+import { AccuracyTimeline } from '../components/results/AccuracyTimeline'
+import { ResultNetwork } from '../components/results/ResultNetwork'
+import { CityOverview, CityDetail, AllResultsTable } from '../components/results/CityResults'
+import { percent, statuses } from '../components/results/resultLabels'
+import './ResultsPage.css'
 
 export function ResultsPage() {
   const [experiments, setExperiments] = useState<Experiment[]>([])
+  const [selected, setSelected] = useState<Experiment | null>(null)
   const [offset, setOffset] = useState(0)
-  const [refresh, setRefresh] = useState(0)
+  const [revision, setRevision] = useState(0)
   const [loading, setLoading] = useState(true)
   const [listError, setListError] = useState('')
-  const [selected, setSelected] = useState<Experiment | null>(null)
-  const [summary, setSummary] = useState<TurnList | null>(null)
-  const [summaryError, setSummaryError] = useState('')
-  const [turn, setTurn] = useState(1)
-  const [detail, setDetail] = useState<TurnDetail | null>(null)
-  const [detailError, setDetailError] = useState('')
-
-  // 목록은 화면 진입·페이지 이동·수동 새로고침 때 조회한다. 실행 상태 폴링과는 별개다.
+  const [city, setCity] = useState<number | null>(null)
+  const [tab, setTab] = useState<'all' | 'detail'>('all')
+  const [all, setAll] = useState(false)
+  // 그래프·슬라이더·네트워크·도시 표가 같은 turn을 참조한다. 각 영역에서 턴 상태를 따로 만들지 않는다.
+  const result = useResultData(selected, all)
   useEffect(() => {
     const controller = new AbortController()
-    listExperiments(offset, controller.signal).then((rows) => {
-      if (controller.signal.aborted) return
-      setExperiments(rows)
-      // 새 목록에 같은 실험이 있으면 선택을 유지하면서 최신 상태도 반영한다.
-      setSelected((previous) => rows.find((row) => row.id === previous?.id) ?? null)
-    }).catch((error: unknown) => { if (!controller.signal.aborted) setListError(errorMessage(error)) })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    setLoading(true); setListError('')
+    listExperiments(offset, controller.signal).then(rows => {
+      if (!controller.signal.aborted) {
+        setExperiments(rows)
+        setSelected(previous => rows.find(row => row.id === previous?.id) ?? null)
+      }
+    }).catch(error => { if (!controller.signal.aborted) setListError(error instanceof Error ? error.message : '실험 목록을 불러오지 못했습니다.') }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [offset, refresh])
-
-  const id = selected?.id
+  }, [offset, revision])
+  // 실험 변경 시 도시 선택과 전체 표 모드를 초기화한다. 이전 실험의 상세 화면을 재사용하지 않는다.
+  function choose(experiment: Experiment) { if (experiment.id !== selected?.id) { setSelected(experiment); setCity(null); setTab('all'); setAll(false) } }
+  function chooseCity(n: number | null) { setCity(n); setTab('detail') }
+  function page(next: number) { setSelected(null); setExperiments([]); setAll(false); setOffset(next) }
   const completed = selected?.status === 'completed'
-  // 결과 API는 미완료 실험에 409를 반환하므로 completed일 때만 턴 요약을 요청한다.
-  useEffect(() => {
-    const controller = new AbortController()
-    if (id !== undefined && completed) {
-      listTurns(id, controller.signal).then((result) => {
-        if (!controller.signal.aborted) { setSummary(result); setTurn(result.turns[0]?.turn ?? 1) }
-      }).catch((error: unknown) => { if (!controller.signal.aborted) setSummaryError(errorMessage(error)) })
-    }
-    return () => controller.abort()
-  }, [id, completed, refresh])
-
-  // 그래프용 요약과 도시 상세를 분리해 선택한 턴의 상세만 가져온다.
-  // 선택이 바뀌면 이전 요청을 취소하고, 늦게 도착한 응답도 상태에 반영하지 않는다.
-  useEffect(() => {
-    const controller = new AbortController()
-    if (id !== undefined && completed && summary?.experiment_id === id && summary.turns.some((row) => row.turn === turn)) {
-      getTurn(id, turn, controller.signal).then((result) => {
-        if (!controller.signal.aborted) setDetail(result)
-      }).catch((error: unknown) => { if (!controller.signal.aborted) setDetailError(errorMessage(error)) })
-    }
-    return () => controller.abort()
-  }, [id, completed, summary, turn])
-
-  // 선택한 실험·턴과 일치하는 결과만 보여준다.
-  const turns = completed && summary && summary.experiment_id === id ? summary.turns : []
-  const current = turns.find((row) => row.turn === turn)
-  const cityData = completed && detail && detail.experiment_id === id && detail.turn === turn ? detail : null
-  // 재조회 중 이전 결과를 새 결과로 오해하지 않도록 표시값과 오류를 함께 비운다.
-  function resetResults() {
-    setSummary(null)
-    setSummaryError('')
-    setDetail(null)
-    setDetailError('')
-    setTurn(1)
-  }
-  function retry() {
-    resetResults()
-    setLoading(true)
-    setListError('')
-    setRefresh((value) => value + 1)
-  }
-  function changePage(nextOffset: number) {
-    resetResults()
-    setLoading(true)
-    setListError('')
-    setSelected(null)
-    setOffset(nextOffset)
-  }
-  function choose(experiment: Experiment) {
-    if (selected?.id === experiment.id) return
-    setSelected(experiment)
-    setTurn(1)
-    setDetail(null)
-    setSummary(null)
-    setSummaryError('')
-    setDetailError('')
-  }
-  // 한 턴짜리 실험은 0으로 나누지 않고 중앙에 점 하나를 표시한다.
-  // SVG의 y축은 아래로 증가하므로 아래 렌더링에서 accuracy 0~1을 위쪽 좌표로 변환한다.
-  const pointX = (index: number) => turns.length === 1 ? 310 : 50 + index / (turns.length - 1) * 520
-
-  return (
-    <>
-      <PageHeading eyebrow="RESULTS" title="저장된 결과 탐색" description="실험을 선택하고, 각 턴에서 도시가 내린 판단을 살펴보세요." />
-      <div className="results-layout">
-        <Panel title="실험 목록" description="최신순 · 한 페이지에 50개" className="experiment-list-panel" aside={<button className="result-refresh" onClick={retry} disabled={loading}>새로고침</button>}>
-          {loading ? <p role="status">목록을 불러오는 중…</p> : listError ? <p role="alert" className="execution-error">{listError}</p> : experiments.length === 0 ? <EmptyState compact title="표시할 실험이 없습니다" description="실험을 실행한 뒤 목록을 새로고침해 주세요."><a className="text-link" href="#/setup">실험 설정으로 이동 →</a></EmptyState> :
-            <ul className="experiment-list">{experiments.map((experiment) => <li key={experiment.id}><button className="experiment-choice" aria-pressed={selected?.id === experiment.id} onClick={() => choose(experiment)}><strong>{experiment.name || `실험 #${experiment.id}`}</strong><span>#{experiment.id} · {statusLabels[experiment.status]} · {experiment.completed_turns}/{experiment.config.turns}턴</span></button></li>)}</ul>}
-          {listError && <button className="button" onClick={retry}>목록 다시 조회</button>}
-          <div className="list-pagination"><button disabled={loading || offset === 0} onClick={() => changePage(offset - 50)}>이전</button><span>{offset / 50 + 1}페이지</span><button disabled={loading || Boolean(listError) || experiments.length < 50} onClick={() => changePage(offset + 50)}>다음</button></div>
-        </Panel>
-        <div className="result-panels">
-          {/* 목록 응답에 설정이 포함돼 있어 추가 조회 없이 표시한다.
-              실행 중이거나 실패한 실험도 설정을 볼 수 있도록 선택 여부만 확인한다. */}
-          {selected && (
-            <Panel title="실험 설정" description={selected.name || undefined} className="experiment-settings" aside={<span className="badge">실험 #{selected.id}</span>}>
-              <ExperimentConfigValues config={selected.config} />
-            </Panel>
-          )}
-          {selected && !completed && <Panel title={`실험 #${selected.id} · ${statusLabels[selected.status]}`}><p role="status" className="quiet-note">{selected.status === 'failed' ? selected.error || '실험이 실패하여 결과를 조회할 수 없습니다.' : '실험 완료 후 결과를 조회할 수 있습니다. 잠시 후 목록을 새로고침해 주세요.'}</p></Panel>}
-          <Panel title="턴별 정확도" description="비잔틴 도시를 포함한 전체 5개 도시의 정답 비율입니다." aside={<span className="badge">{selected ? `실험 #${selected.id}` : '실험 선택 전'}</span>}>
-            {summaryError ? <div role="alert"><p className="execution-error">{summaryError}</p><button className="button" onClick={retry}>결과 다시 조회</button></div> : completed && !summary ? <p role="status">턴별 결과를 불러오는 중…</p> : turns.length ?
-              <svg className="accuracy-chart" viewBox="0 0 600 210" role="img" aria-label={`턴별 정확도: ${turns.map((row) => `${row.turn}턴 ${(row.accuracy * 100).toFixed(1)}%`).join(', ')}`}>
-                {[0, 50, 100].map((value) => <g key={value}><text x="0" y={174 - value * 1.5}>{value}%</text><line x1="45" x2="580" y1={170 - value * 1.5} y2={170 - value * 1.5} /></g>)}
-                <polyline points={turns.map((row, index) => `${pointX(index)},${170 - row.accuracy * 150}`).join(' ')} />
-                {turns.map((row, index) => <circle key={row.turn} cx={pointX(index)} cy={170 - row.accuracy * 150} r={row.turn === turn ? 6 : 3} />)}
-                <text x="45" y="202">{turns[0].turn}턴</text>{turns.length > 1 && <text x="540" y="202">{turns[turns.length - 1].turn}턴</text>}
-              </svg> : <AccuracyPlaceholder />}
-            {completed && summary && !turns.length && <p>저장된 턴 결과가 없습니다.</p>}
-            <div className="turn-controls">
-              <div className="turn-labels"><label htmlFor="selected-turn">선택 턴 <span>{current ? `${turn} / ${turns.length}` : '— / —'}</span></label><span>정답 <strong>{current ? truths[current.truth] : '—'}</strong></span><span>정확도 {current ? `${(current.accuracy * 100).toFixed(1)}%` : '—'}</span></div>
-              <input id="selected-turn" type="range" min={turns[0]?.turn ?? 1} max={turns[turns.length - 1]?.turn ?? 1} value={turn} onChange={(event) => { setDetail(null); setDetailError(''); setTurn(Number(event.target.value)) }} disabled={!turns.length} aria-describedby="turn-help" />
-              <p id="turn-help">슬라이더 또는 방향키로 턴을 이동하면 도시별 결과가 바뀝니다.</p>
-            </div>
-          </Panel>
-          <Panel title="도시별 상태" description="센서값·수신 메시지·결정·발신 상태를 확인합니다.">
-            {detailError ? <div role="alert"><p className="execution-error">{detailError}</p><button className="button" onClick={retry}>결과 다시 조회</button></div> : current && !cityData ? <p role="status">도시별 결과를 불러오는 중…</p> : cityData ?
-              <div className="city-results">{cityData.cities.map((city) => <article className="city-result" key={city.city}><h3>도시 {city.city} · {city.is_byzantine ? '비잔틴' : '정상 도시'}</h3><dl><div><dt>센서값</dt><dd>{truths[city.hint]}</dd></div><div><dt>왼쪽 수신</dt><dd>{city.from_left === null ? '없음' : decisions[city.from_left]}</dd></div><div><dt>오른쪽 수신</dt><dd>{city.from_right === null ? '없음' : decisions[city.from_right]}</dd></div><div><dt>결정</dt><dd>{decisions[city.decision]} · {city.correct ? '정답' : '오답'}</dd></div><div><dt>왼쪽 발신</dt><dd>{sends[city.to_left]}</dd></div><div><dt>오른쪽 발신</dt><dd>{sends[city.to_right]}</dd></div></dl></article>)}</div>
-                : <EmptyState compact title="아직 선택된 턴이 없습니다" description="목록에서 완료된 실험을 선택해 주세요." />}
-            <p className="quiet-note panel-note">첫 턴과 누락된 메시지는 수신값이 없습니다. 전송 상태의 ‘정상’은 메시지가 진실이라는 의미와는 다릅니다.</p>
-          </Panel>
-        </div>
+  // 백엔드 결과 API는 완료된 실험만 허용한다. 준비·진행·실패 상태에는 결과 조회를 유도하지 않는다.
+  const notice = !selected ? '왼쪽에서 실험을 선택하세요.' : !completed ? selected.status === 'failed' ? selected.error || '실험이 실패했습니다.' : '완료된 실험의 결과만 조회할 수 있습니다. 목록을 새로고침해 주세요.' : result.loading ? '턴별 결과를 불러오는 중…' : result.summaryError || (!result.turns.length ? '저장된 턴 결과가 없습니다.' : '')
+  return <div className="rs-workspace">
+    <aside className="rs-list" aria-label="실험 목록">
+      <div className="rs-list-heading"><h1>결과 탐색</h1><button onClick={() => { setRevision(n => n + 1); result.reload() }} disabled={loading} aria-label="실험 목록 새로고침"><RefreshCw size={16} /></button></div>
+      <p className="rs-muted">실험 목록 <span>최신순 · 50개씩</span></p>
+      <div className="rs-list-scroll" aria-busy={loading}>
+        {loading ? <p className="rs-message-block" role="status">목록을 불러오는 중…</p> : listError ? <div className="rs-message-block rs-error" role="alert"><p>{listError}</p><button onClick={() => setRevision(n => n + 1)}>목록 다시 조회</button></div> : !experiments.length ? <div className="rs-message-block"><p>표시할 실험이 없습니다.</p><a href="#/setup">실험 설정으로 이동</a></div> : <ul>{experiments.map(experiment => <li key={experiment.id}><button className="rs-experiment" aria-pressed={selected?.id === experiment.id} onClick={() => choose(experiment)}><span className="rs-list-meta"><span>#{experiment.id}</span><span data-status={experiment.status}>{statuses[experiment.status]}</span></span><strong>{experiment.name || '이름 없는 실험'}</strong><span className="rs-list-meta"><span>{experiment.config.turns}턴 · 비잔틴 {experiment.config.byzantine_count}</span><span>{experiment.mean_accuracy == null ? '—' : percent(experiment.mean_accuracy)}</span></span></button></li>)}</ul>}
       </div>
-    </>
-  )
+      <div className="rs-pagination"><button aria-label="이전 목록 페이지" disabled={offset === 0 || loading} onClick={() => page(Math.max(0, offset - 50))}><ChevronLeft size={16} /></button><span>{offset / 50 + 1} 페이지</span><button aria-label="다음 목록 페이지" disabled={loading || experiments.length < 50} onClick={() => page(offset + 50)}><ChevronRight size={16} /></button></div>
+    </aside>
+    <div className="rs-content">
+      <header className="rs-summary">
+        <div className="rs-summary-title"><div><span className="rs-muted">{selected ? `실험 #${selected.id}` : '실험 결과'}</span><span className="rs-status" data-status={selected?.status}>{selected ? statuses[selected.status] : '선택 전'}</span></div><h2 title={selected?.name || undefined}>{selected?.name || (selected ? '이름 없는 실험' : '도시의 판단을 살펴보세요')}</h2></div>
+        <div className="rs-average"><span>전체 평균 정확도</span><strong data-testid="mean-accuracy">{selected?.mean_accuracy == null ? '—' : percent(selected.mean_accuracy)}</strong></div>
+        <div className="rs-summary-config"><span>{selected ? `${selected.config.turns}턴 / 비잔틴 ${selected.config.byzantine_count}개` : '실험 조건'}</span><details key={selected?.id}><summary>상세 설정</summary><div className="rs-config-popover"><ExperimentConfigValues config={selected?.config} /></div></details></div>
+        {/* 삭제 API는 아직 없다. UI만 준비한 버튼이며 실제 요청이나 로컬 목록 삭제를 수행하지 않는다. */}
+        <button type="button" className="rs-delete-button" disabled><Trash2 size={15} aria-hidden="true" />실험 삭제</button>
+      </header>
+      <div className="rs-body">
+        {all ? <section className="rs-full-results"><div className="rs-full-heading"><button onClick={() => setAll(false)}><ArrowLeft size={16} /> 네트워크로 돌아가기</button><h2>전체 턴 결과</h2><span>{result.rows.length} / {result.turns.length}턴</span></div><p className="rs-muted">수신은 이전 턴, 발신은 현재 턴 기준입니다. 도시를 누르면 해당 턴의 상세 결과로 이동합니다.</p>{(result.allError || result.summaryError) && <div role="alert" className="rs-error">{result.allError || result.summaryError}<button onClick={result.reload}>전체 결과 다시 조회</button></div>}{(result.loading || result.rows.length < result.turns.length) && !result.allError && !result.summaryError && <p role="status">전체 결과를 불러오는 중…</p>}<div className="rs-table-scroll" tabIndex={0} aria-label="전체 턴 결과 표 스크롤"><AllResultsTable rows={result.rows} onSelect={(turn, n) => { result.setTurn(turn); chooseCity(n); setAll(false) }} /></div></section> : <>
+          <div className="rs-center">
+            <div className="rs-network-wrap"><ResultNetwork data={result.detail} city={city} onCity={chooseCity} />{notice && <div className="rs-network-notice" role={result.summaryError ? 'alert' : 'status'}><p>{notice}</p>{result.summaryError && <button onClick={result.reload}>결과 다시 조회</button>}</div>}</div>
+            <AccuracyTimeline turns={result.turns} turn={result.turn} onTurn={result.setTurn} />
+          </div>
+          <aside className="rs-inspector" aria-label="도시 결과">
+            <div className="rs-section-heading"><h2>{result.turns.length ? `${result.turn}턴 도시 결과` : '도시 결과'}</h2><button className="rs-table-button" disabled={!result.turns.length} onClick={() => setAll(true)}><Table2 size={15} />전체 턴 표</button></div>
+            <div className="rs-tabs" role="group" aria-label="도시 결과 표시 방식"><button aria-pressed={tab === 'all'} onClick={() => setTab('all')}>전체 5개 도시</button><button aria-pressed={tab === 'detail'} onClick={() => setTab('detail')}>{city ? `도시 ${city} 상세` : '선택 상세'}</button></div>
+            <div className="rs-inspector-scroll" aria-busy={Boolean(result.turns.length && !result.detail && !result.detailError)}>
+              {result.detailError ? <div className="rs-message-block rs-error" role="alert"><p>{result.detailError}</p><button onClick={result.reload}>도시 결과 다시 조회</button></div> : result.detail ? tab === 'all' ? <CityOverview data={result.detail} onCity={chooseCity} /> : <CityDetail data={result.detail} city={city} /> : <p className="rs-message-block" role="status">{result.turns.length ? '도시 결과를 불러오는 중…' : '완료된 실험을 선택하면 도시별 판단과 통신 결과를 볼 수 있습니다.'}</p>}
+            </div>
+            <p className="rs-inspector-note">실제 상태는 모든 도시의 공통 정답입니다.<br />발신 ‘정상’은 메시지가 진실이라는 뜻이 아닙니다.</p>
+          </aside>
+        </>}
+      </div>
+    </div>
+  </div>
 }

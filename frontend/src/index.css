@@ -2,19 +2,12 @@
   font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   font-size: 15px;
   line-height: 1.6;
-  color: #233044;
-  background: #f6f7f9;
-  color-scheme: light;
+  color: var(--text);
+  background: var(--background);
+  color-scheme: dark;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --surface: #ffffff;
-  --background: #f6f7f9;
-  --text: #233044;
-  --muted: #647084;
-  --border: #e0e5ec;
-  --accent: #315d9d;
-  --accent-soft: #edf2f9;
 }
 
 * { box-sizing: border-box; }

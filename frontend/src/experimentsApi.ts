@@ -43,12 +43,14 @@ export function apiErrorMessage(detail: unknown): string {
   return '서버가 요청을 처리하지 못했습니다.'
 }
 
-class HttpError extends Error {
+export class HttpError extends Error {
   status: number
+  detail: unknown
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, detail?: unknown) {
     super(message)
     this.status = status
+    this.detail = detail
   }
 }
 
@@ -62,17 +64,55 @@ async function request(url: string, options: RequestInit) {
     throw new Error('서버 응답을 확인하지 못했습니다. 백엔드 실행 상태와 연결을 확인해 주세요.')
   }
   const data = await response.json().catch(() => null)
-  if (!response.ok) throw new HttpError(response.status, data ? apiErrorMessage(data.detail) : `서버 연결 오류 (${response.status})`)
+  if (!response.ok) throw new HttpError(response.status, data ? apiErrorMessage(data.detail) : `서버 연결 오류 (${response.status})`, data?.detail)
   return data
+}
+
+// 화면에 필요한 자료형·상태만 검사한다. 설정 범위와 업무 규칙은 백엔드에서 검증한다.
+const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+const integer = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value)
+const numeric = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value)
+const nullableText = (value: unknown) => value === null || typeof value === 'string'
+const truth = (value: unknown) => value === 'safe' || value === 'danger'
+const decision = (value: unknown) => value === 'stay' || value === 'evacuate'
+const sendStatus = (value: unknown) => value === 'normal' || value === 'dropped' || value === 'flipped'
+function validConfig(value: unknown): value is ExperimentConfig {
+  return record(value) && integer(value.turns) && integer(value.byzantine_count)
+    && numeric(value.sensor_error) && numeric(value.drop_rate) && numeric(value.flip_rate)
+    && (value.seed === null || integer(value.seed))
+}
+function validExperiment(value: unknown): value is Experiment {
+  return record(value) && integer(value.id) && nullableText(value.name)
+    && ['pending', 'running', 'completed', 'failed'].includes(String(value.status))
+    && validConfig(value.config) && integer(value.completed_turns)
+    && (value.mean_accuracy === null || numeric(value.mean_accuracy)) && nullableText(value.error)
+}
+function validSummary(value: unknown): value is TurnSummary {
+  return record(value) && integer(value.turn) && truth(value.truth) && numeric(value.accuracy)
+}
+function validSummaries(value: unknown): value is TurnSummary[] {
+  return Array.isArray(value) && value.every(validSummary)
+}
+function validCity(value: unknown): value is CityResult {
+  return record(value) && integer(value.city) && typeof value.is_byzantine === 'boolean'
+    && typeof value.correct === 'boolean' && truth(value.hint) && decision(value.decision)
+    && (value.from_left === null || decision(value.from_left)) && (value.from_right === null || decision(value.from_right))
+    && sendStatus(value.to_left) && sendStatus(value.to_right)
+}
+function validDetail(value: unknown): value is TurnDetail {
+  if (!record(value)) return false
+  return integer(value.experiment_id) && validSummary({ turn: value.turn, truth: value.truth, accuracy: value.accuracy })
+    && Array.isArray(value.cities) && value.cities.every(validCity)
+}
+function validComparison(value: unknown): value is ComparisonExperiment {
+  return record(value) && integer(value.id) && nullableText(value.name) && validConfig(value.config)
+    && (value.mean_accuracy === null || numeric(value.mean_accuracy)) && validSummaries(value.accuracy)
 }
 
 async function requestExperiment(url: string, options: RequestInit): Promise<Experiment> {
   const data = await request(url, options)
-  // 타입 단언만으로는 서버 응답을 검사할 수 없어 상태 표시·폴링에 필요한 최소 필드를 확인한다.
-  if (!data || !Number.isInteger(data.id) || !['pending', 'running', 'completed', 'failed'].includes(data.status) || !Number.isInteger(data.config?.turns) || !Number.isInteger(data.completed_turns)) {
-    throw new Error('서버 응답 형식이 올바르지 않습니다.')
-  }
-  return data as Experiment
+  if (!validExperiment(data)) throw new Error('서버 응답 형식이 올바르지 않습니다.')
+  return data
 }
 
 // 프론트는 항상 백엔드 API만 호출한다. Mock/실제 엔진 선택은 백엔드 GOD_MODE가 담당한다.
@@ -90,8 +130,11 @@ export async function createExperiment(draft: ExperimentDraft, signal: AbortSign
   }
 }
 
-export function getExperiment(id: number, signal: AbortSignal) {
-  return requestExperiment(`/api/experiments/${id}`, { signal })
+export async function getExperiment(id: number, signal: AbortSignal) {
+  const experiment = await requestExperiment(`/api/experiments/${id}`, { signal })
+  // 다른 실험의 응답으로 현재 진행률이나 상태가 덮어써지는 것을 방지한다.
+  if (experiment.id !== id) throw new Error('서버 응답의 실험 ID가 요청과 다릅니다.')
+  return experiment
 }
 
 export type TurnSummary = { turn: number; truth: 'danger' | 'safe'; accuracy: number }
@@ -106,17 +149,17 @@ export type TurnDetail = TurnSummary & { experiment_id: number; cities: CityResu
 
 export async function listExperiments(offset: number, signal: AbortSignal): Promise<Experiment[]> {
   const data = await request(`/api/experiments?limit=50&offset=${offset}`, { signal })
-  if (!Array.isArray(data)) throw new Error('실험 목록 응답 형식이 올바르지 않습니다.')
+  if (!Array.isArray(data) || !data.every(validExperiment)) throw new Error('실험 목록 응답 형식이 올바르지 않습니다.')
   return data
 }
 export async function listTurns(id: number, signal: AbortSignal): Promise<TurnList> {
   const data = await request(`/api/experiments/${id}/turns`, { signal })
-  if (data?.experiment_id !== id || !Array.isArray(data.turns)) throw new Error('턴 목록 응답 형식이 올바르지 않습니다.')
+  if (data?.experiment_id !== id || !validSummaries(data.turns)) throw new Error('턴 목록 응답 형식이 올바르지 않습니다.')
   return data
 }
 export async function getTurn(id: number, turn: number, signal: AbortSignal): Promise<TurnDetail> {
   const data = await request(`/api/experiments/${id}/turns/${turn}`, { signal })
-  if (data?.experiment_id !== id || data?.turn !== turn || !Array.isArray(data.cities)) throw new Error('도시 결과 응답 형식이 올바르지 않습니다.')
+  if (!validDetail(data) || data.experiment_id !== id || data.turn !== turn) throw new Error('도시 결과 응답 형식이 올바르지 않습니다.')
   return data
 }
 
@@ -133,7 +176,7 @@ export async function compareExperiments(first: number, second: number, signal: 
   const query = new URLSearchParams([['ids', String(first)], ['ids', String(second)]])
   const data = await request(`/api/experiments/compare?${query}`, { signal })
   const rows: ComparisonExperiment[] = data?.experiments
-  if (!Array.isArray(rows) || rows.length !== 2 || ![first, second].every((id) => rows.filter((row) => row?.id === id).length === 1) || rows.some((row) => !row.config || !Number.isInteger(row.config.turns) || !Array.isArray(row.accuracy))) {
+  if (!Array.isArray(rows) || rows.length !== 2 || ![first, second].every((id) => rows.filter((row) => row?.id === id).length === 1) || rows.some((row) => !validComparison(row))) {
     throw new Error('실험 비교 응답 형식이 올바르지 않습니다.')
   }
   // 응답 배열의 순서가 달라도 화면 A/B는 사용자가 선택한 ID에 맞춰 표시한다.
