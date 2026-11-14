@@ -66,7 +66,7 @@ const checks=[],errors=[];
  await page.getByRole('link',{name:'결과 탐색',exact:true}).click();
  await page.unroute('**/api/experiments?**');await page.route('**/api/**',route=>route.fulfill({status:503,json:{detail:'테스트: 결과 목록 조회 실패'}}));
  await page.reload();await page.getByText('테스트: 결과 목록 조회 실패',{exact:true}).waitFor();
- check('error uses shared color',await page.locator('.execution-error').evaluate(n=>getComputedStyle(n).color==='rgb(255, 158, 172)'));
+ check('error uses shared color',await page.locator('.rs-list .rs-error').evaluate(n=>getComputedStyle(n).color==='rgb(255, 158, 172)'));
  await page.unroute('**/api/**');
  await page.getByRole('link',{name:'실험 설정',exact:true}).click();
  check('no JS errors',errors.length===0);
@@ -96,6 +96,30 @@ const checks=[];const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  return {checks,errors};
 
   })());
+ // 결과 탐색은 기존 Docker DB의 완료된 실험으로 검증한다. 결과 API 응답을 가짜로 만들지 않는다.
+ results.push(await (async () => {
+  await page.goto('http://127.0.0.1:8080/?workspace-results-check=1#/results'); await page.reload();
+  const response = await page.request.get('http://127.0.0.1:8080/api/experiments?limit=50');
+  if (!response.ok()) throw Error('실제 결과 API 연결 실패');
+  const experiments = await response.json();
+  const experiment = experiments.find(row => row.status === 'completed');
+  if (!experiment) return { results: 'skipped: 완료된 실험이 없어 실제 데이터 검증을 생략했습니다.' };
+  await page.locator('.rs-experiment').filter({hasText: '#' + experiment.id + '\n'}).first().click();
+  await page.getByTestId('city-overview').waitFor();
+  const summary = await (await page.request.get(`http://127.0.0.1:8080/api/experiments/${experiment.id}/turns`)).json();
+  if (await page.locator('.rs-chart g[role=button]').count() !== summary.turns.length) throw Error('그래프 턴 누락');
+  const last = summary.turns.at(-1);
+  await page.locator('.rs-chart g[role=button]').last().press('Enter');
+  await page.waitForFunction(turn => document.querySelector('.rs-network').dataset.turn === String(turn), last.turn);
+  if (await page.getByTestId('turn-accuracy').innerText() !== `${Number((last.accuracy * 100).toFixed(2))}%`) throw Error('선택 정확도 불일치');
+  await page.getByRole('button', {name:'도시 2 상세 보기', exact:true}).click();
+  await page.getByTestId('city-detail').waitFor();
+  await page.getByRole('button', {name:'전체 턴 표', exact:true}).click();
+  await page.waitForFunction(count => document.querySelectorAll('.rs-all-table tbody tr').length === count, summary.turns.length * 5);
+  await page.getByRole('button', {name:`${last.turn}턴 도시 2 보기`, exact:true}).click();
+  await page.getByTestId('city-detail').waitFor();
+  return { results: 'passed', realExperimentId: experiment.id, turns: summary.turns.length };
+ })());
  return results;
  } finally { await page.unroute("**/api/**"); await page.unroute("**/api/experiments?**"); }
 }
