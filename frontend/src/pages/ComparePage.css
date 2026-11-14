@@ -3,7 +3,7 @@
   min-height: 0;
   overflow: hidden;
 }
-.app-shell:has(.cp-workspace)>.site-header {
+.app-shell:has(.cp-workspace) > .site-header {
   flex: none;
 }
 .main-content:has(.cp-workspace) {
@@ -13,11 +13,11 @@
   min-height: 0;
   display: flex;
 }
-.app-shell:has(.cp-workspace)>.app-footer {
+.app-shell:has(.cp-workspace) > .app-footer {
   display: none;
 }
 .cp-workspace {
-  font-family: Studio,sans-serif;
+  font-family: Studio, sans-serif;
   font-size: 14px;
   width: 100%;
   min-height: 0;
@@ -29,7 +29,8 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-control-border) transparent;
 }
-.cp-workspace button,.cp-workspace select {
+.cp-workspace button,
+.cp-workspace select {
   background: var(--color-input-surface);
   color: inherit;
   border: 1px solid var(--color-border);
@@ -38,7 +39,7 @@
   font-size: 13px;
 }
 .cp-workspace button:disabled {
-  opacity: .4;
+  opacity: 0.4;
 }
 .cp-workspace button:hover:not(:disabled) {
   border-color: var(--color-control-border);
@@ -51,7 +52,9 @@
   color: var(--color-text-muted);
   font-size: 13px;
 }
-.cp-header,.cp-list-tools,.cp-section-title {
+.cp-header,
+.cp-list-tools,
+.cp-section-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -74,7 +77,7 @@
 }
 .cp-selectors label {
   display: grid;
-  grid-template-columns: auto minmax(0,1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 8px 12px;
   align-items: center;
 }
@@ -84,7 +87,7 @@
   min-height: 38px;
   color: var(--color-text);
 }
-.cp-selectors label>span {
+.cp-selectors label > span {
   grid-column: 2;
   color: var(--color-text-muted);
   font-size: 13px;
@@ -131,7 +134,7 @@
   position: absolute;
   top: 28px;
   left: 0;
-  width: min(620px,90vw);
+  width: min(620px, 90vw);
   max-height: 50dvh;
   overflow: auto;
   background: var(--color-surface);
@@ -144,13 +147,14 @@
   width: 100%;
   border-collapse: collapse;
 }
-.cp-config td,.cp-config th {
+.cp-config td,
+.cp-config th {
   padding: 7px;
   text-align: left;
   border-bottom: 1px solid var(--color-border);
   font-weight: 400;
 }
-.cp-config tr[data-different=true] {
+.cp-config tr[data-different='true'] {
   color: var(--color-accent);
 }
 .cp-config p {
@@ -244,11 +248,11 @@
 .cp-section-title {
   flex: none;
 }
-.cp-section-title [role=group] {
+.cp-section-title [role='group'] {
   display: flex;
   gap: 4px;
 }
-.cp-section-title button[data-state=on] {
+.cp-section-title button[data-state='on'] {
   background: var(--color-accent-soft);
   border-color: var(--color-active-border);
   color: var(--color-accent);
@@ -275,7 +279,8 @@
   text-align: left;
   font-size: 13px;
 }
-.cp-city-table th,.cp-city-table td {
+.cp-city-table th,
+.cp-city-table td {
   padding: 8px 12px;
   border-bottom: 1px solid var(--color-border);
   font-weight: 400;
@@ -292,12 +297,12 @@
   margin-left: 10px;
   color: var(--color-text-muted);
 }
-.cp-city-table td>span {
+.cp-city-table td > span {
   display: inline-block;
   width: 48%;
   min-width: 42px;
 }
-.cp-city-table tr[data-selected=true] {
+.cp-city-table tr[data-selected='true'] {
   background: var(--color-accent-soft);
 }
 .cp-details {
@@ -320,7 +325,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 0 20px;
 }
-.cp-details .rs-detail-values>div {
+.cp-details .rs-detail-values > div {
   font-size: 13px;
 }
 .cp-footnote {
@@ -328,19 +333,20 @@
   padding-top: 8px;
   font-size: 12px !important;
 }
-@media (min-width:1600px) {
+@media (min-width: 1600px) {
   .cp-workspace {
     padding-inline: 40px;
   }
   .cp-timeline {
     height: 280px;
   }
-  .cp-city-table th,.cp-city-table td {
+  .cp-city-table th,
+  .cp-city-table td {
     padding-block: 12px;
     font-size: 14px;
   }
 }
-@media (max-height:760px) {
+@media (max-height: 760px) {
   .cp-workspace {
     padding-top: 12px;
   }
@@ -375,13 +381,14 @@
   stroke: var(--color-accent);
   stroke-width: 2;
 }
-html:has(.cp-workspace),body:has(.cp-workspace) {
+html:has(.cp-workspace),
+body:has(.cp-workspace) {
   height: 100%;
   overflow: hidden;
 }
 /* Each experiment owns the network directly beneath its selector. */
 .cp-selectors {
-  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
   padding-bottom: 0;
 }
@@ -451,7 +458,7 @@ html:has(.cp-workspace),body:has(.cp-workspace) {
   --rs-muted: var(--color-text-muted);
 }
 /* Keep turn navigation in sight while inspecting either network or the graph. */
-.cp-workspace>.cp-turn-nav {
+.cp-workspace > .cp-turn-nav {
   position: sticky;
   top: 0;
   z-index: 4;
@@ -463,18 +470,18 @@ html:has(.cp-workspace),body:has(.cp-workspace) {
   margin-bottom: 14px;
   box-shadow: 0 4px 10px rgb(0 0 0 / 15%);
 }
-.cp-workspace>.cp-turn-nav label {
+.cp-workspace > .cp-turn-nav label {
   font-size: 15px;
   font-weight: 600;
   min-width: 85px;
 }
-@media (max-height:760px) {
-  .cp-workspace>.cp-turn-nav {
+@media (max-height: 760px) {
+  .cp-workspace > .cp-turn-nav {
     padding-block: 7px;
     margin-bottom: 10px;
   }
 }
-.cp-workspace>.cp-details {
+.cp-workspace > .cp-details {
   flex: none;
   padding: 16px 0;
   margin-top: 12px;
@@ -485,16 +492,16 @@ html:has(.cp-workspace),body:has(.cp-workspace) {
   font-weight: 600;
   white-space: nowrap;
 }
-.cp-city-table .cp-cell-value[data-tone=success] {
+.cp-city-table .cp-cell-value[data-tone='success'] {
   color: var(--color-success);
 }
-.cp-city-table .cp-cell-value[data-tone=error] {
+.cp-city-table .cp-cell-value[data-tone='error'] {
   color: var(--color-error);
 }
-.cp-city-table .cp-cell-value[data-tone=neutral] {
+.cp-city-table .cp-cell-value[data-tone='neutral'] {
   color: var(--color-text);
 }
-.cp-city-table .cp-cell-value[data-tone=muted] {
+.cp-city-table .cp-cell-value[data-tone='muted'] {
   color: var(--color-text-muted);
 }
 .cp-city-table .cp-cell-side {
@@ -504,10 +511,10 @@ html:has(.cp-workspace),body:has(.cp-workspace) {
   font-weight: 400;
   color: var(--color-text-muted);
 }
-.cp-workspace>.cp-details {
+.cp-workspace > .cp-details {
   scroll-margin-top: 80px;
 }
-.cp-workspace>.cp-details:focus-visible {
+.cp-workspace > .cp-details:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 4px;
 }
