@@ -83,6 +83,14 @@ const checks=[];const errors=[];page.on('pageerror',e=>errors.push(String(e)));
  check('preview synchronizes filter',await page.getByLabel('전체 경로',{exact:true}).getAttribute('data-state')==='on');
  await page.locator('[data-city="1"]').click();await page.locator('[data-city="1"]').press('ArrowRight');
  check('node keyboard',await page.locator('#selection-title').innerText()==='도시 02');
+ await page.locator('#preview-button').click();
+ await page.waitForFunction(()=>document.querySelectorAll('#packets circle').length>0);
+ await page.locator('[data-city="3"]').click();
+ check('selection stops playback',await page.locator('#preview-button').getAttribute('aria-pressed')==='false'&&await page.locator('#packets circle').count()===0);
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.locator('#preview-button').click();
+ check('reduced motion explains without animation',(await page.locator('#playback-status').innerText()).includes('동작 줄이기')&&await page.locator('#packets circle').count()===0);
+ await page.emulateMedia({reducedMotion:'no-preference'});
  await page.getByRole('slider',{name:'센서 오류율 슬라이더'}).focus();await page.keyboard.press('ArrowRight');
  check('slider synchronizes input',await page.locator('#sensor_error').inputValue()==='10.1');
  await page.getByRole('button',{name:'이름과 Seed 설정'}).click();await page.locator('#seed').fill('-1');
@@ -120,6 +128,74 @@ const checks=[];const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.getByTestId('city-detail').waitFor();
   return { results: 'passed', realExperimentId: experiment.id, turns: summary.turns.length };
  })());
+ // 실제 응답을 지연해 선택 턴/전체 표의 동시 조회를 재현한다. 실패 응답만 별도로 주입한다.
+ results.push(await (async () => {
+  const experiments = await (await page.request.get('http://127.0.0.1:8080/api/experiments?limit=50')).json();
+  const experiment = experiments.find(row => row.status === 'completed' && row.config.turns > 1);
+  if (!experiment) return {sharedTurn: 'skipped: 두 턴 이상 완료 실험 필요'};
+  const summary = await (await page.request.get('http://127.0.0.1:8080/api/experiments/'+experiment.id+'/turns')).json();
+  const first = Math.min(...summary.turns.map(row => row.turn));
+  const pattern = '**/api/experiments/'+experiment.id+'/turns/'+first;
+  let count=0, release, started;
+  const gate=new Promise(resolve=>{release=resolve});
+  const received=new Promise(resolve=>{started=resolve});
+  await page.route(pattern, async route=>{
+   count++; const response=await route.fetch(); started(); await gate;
+   await route.fulfill({response});
+  });
+  try {
+   await page.goto('http://127.0.0.1:8080/#/results');await page.reload();
+   await page.locator('.rs-experiment').filter({hasText:'#'+experiment.id+'\n'}).click();
+   await received;
+   await page.getByRole('button',{name:'전체 턴 표',exact:true}).click();
+   await page.locator('.rs-all-table tbody tr').first().waitFor();
+   if(count!==1)throw Error('선택 턴과 전체 표가 같은 요청을 중복 전송함');
+   // 전체 표를 닫아도 선택 턴 구독자가 남아 있으므로 공유 요청이 살아 있어야 한다.
+   await page.getByRole('button',{name:'네트워크로 돌아가기',exact:true}).click();
+   release();await page.getByTestId('city-overview').waitFor();
+   await page.getByRole('button',{name:'전체 턴 표',exact:true}).click();
+   await page.waitForFunction(n=>document.querySelectorAll('.rs-all-table tbody tr').length===n,summary.turns.length*5);
+   if(count!==1)throw Error('완료된 턴 캐시를 재사용하지 않음');
+  } finally { release(); await page.unroute(pattern); }
+  let attempts=0;
+  await page.route(pattern,route=>{attempts++;return attempts===1?route.abort('failed'):route.continue();});
+  try {
+   await page.reload();
+   await page.locator('.rs-experiment').filter({hasText:'#'+experiment.id+'\n'}).click();
+   await page.getByRole('button',{name:'도시 결과 다시 조회',exact:true}).click();
+   await page.getByTestId('city-overview').waitFor();
+   if(attempts!==2)throw Error('실패한 공유 요청이 재조회되지 않음');
+  } finally { await page.unroute(pattern); }
+  const other=experiments.find(row=>row.status==='completed'&&row.id!==experiment.id);
+  let switched=false;
+  if(other){
+   let open, arrived, delivered, calls=0;
+   const held=new Promise(resolve=>{open=resolve});
+   const receivedOld=new Promise(resolve=>{arrived=resolve});
+   const sentOld=new Promise(resolve=>{delivered=resolve});
+   await page.route(pattern,async route=>{
+    calls++;
+    if(calls!==1)return route.continue();
+    const response=await route.fetch();arrived();await held;
+    try {await route.fulfill({response});} finally {delivered();}
+   });
+   try{
+    await page.reload();
+    await page.locator('.rs-experiment').filter({hasText:'#'+experiment.id+'\n'}).click();
+    await receivedOld;
+    await page.locator('.rs-experiment').filter({hasText:'#'+other.id+'\n'}).click();
+    await page.getByTestId('city-overview').waitFor();
+    const current=await page.getByTestId('city-overview').innerText();
+    open();await sentOld;
+    if(await page.getByTestId('city-overview').innerText()!==current)throw Error('늦은 응답이 다른 실험 결과를 덮어씀');
+    await page.locator('.rs-experiment').filter({hasText:'#'+experiment.id+'\n'}).click();
+    await page.getByTestId('city-overview').waitFor();
+    if(calls!==2)throw Error('이전 실험 요청 또는 캐시가 다음 선택에 남음');
+    switched=true;
+   }finally{open();await page.unroute(pattern);}
+  }
+  return {sharedTurn:'passed',requests:count,retryAttempts:attempts,experimentSwitch:switched?'passed':'skipped'};
+ })());
  // 비교 화면은 실제 완료 실험 두 개를 사용하고, 결과 배열 순서가 아닌 ID로 선택한다.
  results.push(await (async () => {
   const rows = await (await page.request.get('http://127.0.0.1:8080/api/experiments?limit=50')).json();
@@ -134,6 +210,24 @@ const checks=[];const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   if (await page.locator('.cp-slot-network .rs-result-node[aria-pressed=true]').count() !== 2) throw Error('A/B 도시 선택 불일치');
   await page.locator('.cp-chart g[role=button]').last().press('Enter');
   if (await page.locator('.cp-chart g[aria-pressed=true]').count() !== 1) throw Error('그래프 턴 선택 불일치');
+  const markerIds = await page.locator('.cp-slot-network marker').evaluateAll(nodes=>nodes.map(n=>n.id));
+  if(new Set(markerIds).size!==markerIds.length)throw Error('비교 네트워크 화살표 ID 중복');
+  // 실제 턴 응답은 그대로 사용하고 한쪽의 통신 실패만 주입한다.
+  await page.reload();
+  const failedPath=`**/api/experiments/${completed[1].id}/turns/1`;
+  await page.route(failedPath,route=>route.abort('failed'));
+  await page.locator('#compare-A').selectOption(String(completed[0].id));
+  await page.locator('#compare-B').selectOption(String(completed[1].id));
+  await page.getByRole('button',{name:'B 다시 조회',exact:true}).waitFor();
+  if(await page.locator('.cp-slot-network').first().locator('.rs-result-node').count()!==5)throw Error('한쪽 오류가 다른 결과를 지움');
+  await page.unroute(failedPath);
+  await page.getByRole('button',{name:'B 다시 조회',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('.cp-slot-network .rs-result-node').length===10);
+  // 빠른 A/B 교체 후 양쪽 실험에 해당하는 1턴만 보여야 한다.
+  await page.locator('#compare-A').selectOption('');
+  await page.locator('#compare-B').selectOption(String(completed[0].id));
+  await page.locator('#compare-A').selectOption(String(completed[1].id));
+  await page.waitForFunction(()=>document.querySelectorAll('.cp-slot-network .rs-network[data-turn="1"] .rs-result-node').length===10);
   return { comparison: 'passed', ids: completed.slice(0,2).map(row => row.id) };
  })());
  return results;

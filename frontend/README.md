@@ -27,7 +27,7 @@ Mock God과 실제 God·City 모드 모두 화면에서 실험 실행·저장된
 상단에 고정된 턴 슬라이더·이전/다음 버튼과 그래프 선택은 두 네트워크 및 도시 결과와 동기화됩니다. 그래프와 턴 조작부는 키보드로도 조작할 수 있습니다.
 하단 표는 같은 도시 번호의 판단·정답 여부·센서값·실제 상태·비잔틴 여부를 A/B로 비교합니다. 정답·오답 등 값의 의미에 따라 색을 표시하며 A/B 문자도 함께 제공합니다.
 도시를 선택하면 네트워크 바로 아래에 양쪽 상세 결과와 수신·발신 정보를 표시합니다. 표의 상세 버튼은 해당 영역으로 이동하며 공통 헤더를 유지합니다.
-실험·턴 변경 시 이전 요청을 취소하고 오래된 결과를 표시하지 않습니다. 턴 상세는 실험 ID와 턴별로 캐시하며, 한쪽 조회 실패 시 해당 실험만 재조회할 수 있습니다.
+실험·턴 변경 시 이전 요청을 취소하고 오래된 결과를 표시하지 않습니다. 턴 상세는 실험 ID와 턴별로 캐시하며, 비교 대상을 바꾸면 해당 슬롯의 이전 실험 캐시는 정리합니다. 한쪽 조회 실패 시 해당 실험만 재조회할 수 있습니다.
 비교 선택 목록은 50개씩 조회해 완료된 실험만 표시하며, `이전 실험 더 불러오기`로 오래된 실험도 선택할 수 있습니다. 조회 실패 시 다시 조회할 수 있습니다.
 
 ## Docker Compose로 실행
@@ -155,6 +155,8 @@ Mock God은 백엔드에 구현된 모의 엔진입니다. 실제 API·DB를 사
 - `pnpm lint`, `pnpm test`(현재 14개), `pnpm build` 통과
 - Mock 모드에서 브라우저 → 백엔드 API → MySQL 저장·조회 및 비교 확인
 - 중복 실행·중복 비교 선택 방지, 조회 오류·재조회, 빠른 선택 변경 시 이전 응답 제외 확인
+- 설정 네트워크의 키보드 선택, 도시 선택 시 전달 애니메이션 중단, 동작 줄이기 설정 확인
+- 비교 네트워크의 화살표 ID 중복 방지, 한쪽 조회 실패 시 다른 쪽 결과 유지 및 실패한 쪽 재조회 확인
 - 비교 화면은 1280px·1440px·1920px 데스크톱 폭과 낮은 노트북 화면에서 검증. 이번 리디자인의 모바일·태블릿 대응 및 검증은 제외
 - Compose 설정 검사, 프론트 이미지 빌드(TypeScript 검사 포함), Nginx 설정 검사 통과
 - Docker 프론트(`8080`)에서 화면 및 `/api/health` 정상 응답, Mock 실험 실행·턴 탐색·비교 확인
@@ -164,7 +166,9 @@ Mock God은 백엔드에 구현된 모의 엔진입니다. 실제 API·DB를 사
 
 `pnpm test`는 자동 테스트이며 브라우저 통합 검사를 실행하는 명령은 아닙니다.
 `tests/workspace-browser.js`는 Playwright CLI의 `run-code --filename=tests/workspace-browser.js`로 실행하는 브라우저 검증입니다. Docker 사이트(`http://127.0.0.1:8080`)를 대상으로 하며, 비교 검증에는 완료 실험 두 개가 필요합니다. 실제 API 조회와 오류 재현용 Mock 검증을 구분합니다. 스크린샷 등 검증 산출물은 저장소 밖에 보관합니다.
- 실험 데이터는 로컬 MySQL에 저장되며 Git 커밋·푸시에 포함되지 않습니다.
+`tests/integration-browser.js`는 실행 상태·409·422·응답 유실·조회 실패와 복구를 브라우저 측 Mock 응답으로 검증합니다. 실제 엔진 검증과 구분하며, Playwright CLI의 `run-code --filename=tests/integration-browser.js`로 실행합니다.
+
+실험 데이터는 로컬 MySQL에 저장되며 Git 커밋·푸시에 포함되지 않습니다.
 
 ## 주요 파일
 
@@ -176,8 +180,11 @@ Mock God은 백엔드에 구현된 모의 엔진입니다. 실제 API·DB를 사
 | `src/experimentForm.ts` | 입력 기본값과 유효성 검사 |
 | `src/experimentsApi.ts` | 요청값 변환, API 호출과 오류·응답 확인 |
 | `src/useExperiment.ts` | 실행 요청, 상태 조회, 중복 실행 방지·재조회 |
+| `src/useResultData.ts` | 결과 탐색의 턴 조회·캐시, 요청 취소, 전체 결과 표 조회 및 재조회 |
 | `src/pages/` | 설정·결과·비교 화면 |
 | `src/components/` | 공통 헤더, 네트워크 캔버스, 실험 설정값 표시 및 UI 컴포넌트 |
+| `src/components/NetworkCanvas.tsx` | 설정 화면의 React 기반 연결 구조 미리보기·도시 선택·전달 애니메이션 |
+| `src/components/results/ResultNetwork.tsx` | 결과 탐색과 비교 화면에서 공유하는 실제 턴 결과 네트워크 |
 | `src/components/results/` | 결과 네트워크·도시 요약·상세·전체 결과 표 |
 | `src/components/compare/CompareCities.tsx`, `CompareConditions.tsx` | 비교 네트워크·도시 표·상세·조건 표시 (요청과 상태는 페이지/훅에서 관리) |
 | `src/components/compare/CompareTimeline.tsx` | 통합 정확도 그래프와 공통 턴 조작부 |
@@ -193,4 +200,4 @@ Mock God은 백엔드에 구현된 모의 엔진입니다. 실제 API·DB를 사
 | `../docker-compose.yml` | 프론트·API·DB·엔진 컨테이너 실행 |
 | `.env.example` | 환경 변수 예시 |
 | `pnpm-lock.yaml` | 의존성 버전 고정 |
-| `tests/` | 입력 검증·API 처리 자동 테스트와 `workspace-browser.js` 브라우저 검증 |
+| `tests/` | 입력·API 자동 테스트, `workspace-browser.js` 화면·실제 결과 조회 검증, `integration-browser.js` Mock 실행 상태·오류 복구 검증 |
