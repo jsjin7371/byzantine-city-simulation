@@ -120,6 +120,22 @@ const checks=[];const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.getByTestId('city-detail').waitFor();
   return { results: 'passed', realExperimentId: experiment.id, turns: summary.turns.length };
  })());
+ // 비교 화면은 실제 완료 실험 두 개를 사용하고, 결과 배열 순서가 아닌 ID로 선택한다.
+ results.push(await (async () => {
+  const rows = await (await page.request.get('http://127.0.0.1:8080/api/experiments?limit=50')).json();
+  const completed = rows.filter(row => row.status === 'completed');
+  if (completed.length < 2) return { comparison: 'skipped: 완료된 실험 두 개가 필요합니다.' };
+  await page.goto('http://127.0.0.1:8080/?comparison-check=1#/compare'); await page.reload();
+  await page.locator('#compare-A').selectOption(String(completed[0].id));
+  await page.locator('#compare-B').selectOption(String(completed[1].id));
+  await page.locator('.cp-chart').waitFor();
+  await page.waitForFunction(() => document.querySelectorAll('.cp-slot-network .rs-result-node').length === 10);
+  await page.getByRole('button', {name:'도시 2 상세 보기',exact:true}).first().click();
+  if (await page.locator('.cp-slot-network .rs-result-node[aria-pressed=true]').count() !== 2) throw Error('A/B 도시 선택 불일치');
+  await page.locator('.cp-chart g[role=button]').last().press('Enter');
+  if (await page.locator('.cp-chart g[aria-pressed=true]').count() !== 1) throw Error('그래프 턴 선택 불일치');
+  return { comparison: 'passed', ids: completed.slice(0,2).map(row => row.id) };
+ })());
  return results;
  } finally { await page.unroute("**/api/**"); await page.unroute("**/api/experiments?**"); }
 }

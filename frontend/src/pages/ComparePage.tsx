@@ -1,48 +1,37 @@
-import { useEffect, useState } from 'react'
-import { AccuracyPlaceholder } from '../components/AccuracyPlaceholder'
-import { ExperimentConfigValues } from '../components/ExperimentConfigValues'
-import { PageHeading } from '../components/PageHeading'
-import { Panel } from '../components/Panel'
+import { useEffect, useRef, useState } from 'react'
 import { compareExperiments, listExperiments } from '../experimentsApi'
-import type { ComparisonExperiment, Experiment, TurnSummary } from '../experimentsApi'
+import type { ComparisonExperiment, Experiment, ExperimentConfig } from '../experimentsApi'
+import { ResultNetwork } from '../components/results/ResultNetwork'
+import { CityDetail } from '../components/results/CityResults'
+import { percent, truths, decisions } from '../components/results/resultLabels'
+import { CompareTimeline, CompareTurnControls } from '../components/compare/CompareTimeline'
+import { useComparisonTurn } from '../components/compare/useComparisonTurn'
+import { Button } from '../components/ui/button'
+import './ComparePage.css'
 
-const percent = (value: number) => `${Number((value * 100).toFixed(2))}%`
 const message = (cause: unknown) => cause instanceof Error ? cause.message : '비교 결과를 불러오지 못했습니다.'
-
-function ComparisonChart({ turns, maxTurn }: { turns: TurnSummary[]; maxTurn: number }) {
-  // 두 그래프의 축을 똑같이 맞춘다. 짧은 실험이 끝난 뒤의 구간을 0으로 채우거나 늘리지 않는다.
-  // 둘 다 한 턴이면 0으로 나누지 않고 점을 중앙에 표시한다.
-  const x = (turn: number) => maxTurn === 1 ? 310 : 50 + (turn - 1) / (maxTurn - 1) * 520
-  return <svg className="accuracy-chart" viewBox="0 0 600 210" role="img" aria-label={`턴별 정확도: ${turns.map((row) => `${row.turn}턴 ${percent(row.accuracy)}`).join(', ')}`}>
-    {[0, 50, 100].map((value) => <g key={value}><text x="0" y={174 - value * 1.5}>{value}%</text><line x1="45" x2="580" y1={170 - value * 1.5} y2={170 - value * 1.5} /></g>)}
-    <polyline points={turns.map((row) => `${x(row.turn)},${170 - row.accuracy * 150}`).join(' ')} />
-    {turns.map((row) => <circle key={row.turn} cx={x(row.turn)} cy={170 - row.accuracy * 150} r="4" />)}
-    <text x={maxTurn === 1 ? 300 : 45} y="202">1턴</text>{maxTurn > 1 && <text x="540" y="202">{maxTurn}턴</text>}
-  </svg>
-}
-
-function ComparisonSlot({ label, selected, other, experiments, result, maxTurn, disabled, onSelect }: {
-  label: 'A' | 'B'; selected: string; other: string; experiments: Experiment[]; result?: ComparisonExperiment
-  maxTurn: number; disabled: boolean; onSelect: (id: string) => void
-}) {
-  return <Panel title={`실험 ${label}`} aside={<span className="badge">{result ? `#${result.id}` : selected ? '선택됨' : '선택 전'}</span>}>
-    <label className="field" htmlFor={`compare-${label}`}>
-      <span className="sr-only">실험 {label} 선택</span>
-      <select id={`compare-${label}`} value={selected} onChange={(event) => onSelect(event.target.value)} disabled={disabled} aria-describedby="compare-help">
-        <option value="">완료된 실험을 선택하세요</option>
-        {/* 반대편에서 선택한 실험을 비활성화해 같은 실험끼리 비교하는 것을 막는다. */}
-        {experiments.map((experiment) => <option key={experiment.id} value={experiment.id} disabled={String(experiment.id) === other}>#{experiment.id} · {experiment.name || '이름 없는 실험'} · {experiment.config.turns}턴</option>)}
-      </select>
-    </label>
-    <div className="comparison-accuracy"><span>전체 턴 평균 정확도</span><strong>{result?.mean_accuracy != null ? percent(result.mean_accuracy) : '—'}</strong></div>
-    {result?.accuracy.length ? <ComparisonChart turns={result.accuracy} maxTurn={maxTurn} /> : <AccuracyPlaceholder />}
-    {result && result.accuracy.length === 0 && <p className="quiet-note">저장된 턴 결과가 없습니다.</p>}
-    <h3 className="comparison-config-heading">실험 설정</h3>
-    <ExperimentConfigValues config={result?.config} />
-  </Panel>
-}
-
+const configFields: [keyof ExperimentConfig, string][] = [['turns','턴 수'],['byzantine_count','비잔틴 도시 수'],['sensor_error','센서 오류율'],['drop_rate','메시지 누락률'],['flip_rate','메시지 조작률'],['seed','Seed']]
+const configValue = (config: ExperimentConfig, key: keyof ExperimentConfig) => ['sensor_error','drop_rate','flip_rate'].includes(key) ? percent(config[key]!) : config[key] === null ? '무작위' : String(config[key])
 export function ComparePage() {
+  const detailRef = useRef<HTMLDivElement>(null)
+  const [detailNavigation, setDetailNavigation] = useState(0)
+  // scrollIntoView는 바깥 컨테이너까지 움직여 공통 헤더를 숨길 수 있으므로 비교 영역만 스크롤한다.
+  useEffect(() => {
+    if (!detailNavigation) return
+    const detail = detailRef.current
+    if (!detail) return
+    const workspace = detail.closest<HTMLElement>('.cp-workspace')
+    if (!workspace) return
+    const controls = workspace.querySelector('.cp-turn-nav')
+    const offset = (controls?.getBoundingClientRect().height ?? 56) + 24
+    workspace.scrollTo({
+      top: workspace.scrollTop + detail.getBoundingClientRect().top - workspace.getBoundingClientRect().top - offset,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    })
+    detail.focus({ preventScroll: true })
+  }, [detailNavigation])
+  const [turn, setTurn] = useState(1)
+  const [city, setCity] = useState<number | null>(null)
   const [experiments, setExperiments] = useState<Experiment[]>([])
   const [offset, setOffset] = useState(0)
   const [listVersion, setListVersion] = useState(0)
@@ -80,6 +69,7 @@ export function ComparePage() {
   }, [first, second, retry])
 
   function select(label: 'A' | 'B', id: string) {
+    setTurn(1); setCity(null)
     setResult(null)
     setError('')
     if (label === 'A') setFirst(id)
@@ -93,27 +83,41 @@ export function ComparePage() {
     setHasMore(false)
     setFirst('')
     setSecond('')
+    setTurn(1); setCity(null)
     setResult(null)
     setError('')
     setListVersion((value) => value + 1)
   }
   const ready = Boolean(first && second && first !== second)
   const visible = ready && result?.[0]?.id === Number(first) && result?.[1]?.id === Number(second) ? result : null
-  const maxTurn = Math.max(1, ...(visible?.map((row) => row.config.turns) ?? []))
+  const a = useComparisonTurn(visible?.[0], turn), b = useComparisonTurn(visible?.[1], turn)
+  const sides = [a, b]
+  const delta = visible?.every(row => row.mean_accuracy != null) ? Number(((visible[1].mean_accuracy! - visible[0].mean_accuracy!) * 100).toFixed(2)) : null
+  const differences = visible ? configFields.filter(([key]) => visible[0].config[key] !== visible[1].config[key]) : []
 
-  return <>
-    <PageHeading eyebrow="COMPARISON" title="두 실험 비교" description="설정의 차이가 도시의 판단 정확도에 어떤 영향을 주는지 비교하세요." />
-    <div className="comparison-intro" id="compare-help"><span className="badge">완료 실험 {experiments.length}개</span><p>완료된 서로 다른 두 실험을 선택하면 비교 결과를 불러옵니다.</p><button className="result-refresh" disabled={loading} onClick={refreshList}>목록 새로고침</button></div>
-    {loading && <p className="quiet-note" role="status">실험 목록을 불러오는 중…</p>}
-    {listError && <div role="alert"><p className="execution-error">{listError}</p><button className="button" onClick={() => { setLoading(true); setListError(''); setListVersion((value) => value + 1) }}>목록 다시 조회</button></div>}
-    {!loading && !listError && experiments.length < 2 && <p className="quiet-note">비교하려면 완료된 실험이 두 개 이상 필요합니다.{hasMore ? ' 이전 실험을 더 불러오거나 새 실험을 실행해 주세요.' : ' 실험 설정에서 실험을 실행한 뒤 목록을 새로고침해 주세요.'}</p>}
-    {hasMore && !listError && <button className="button compare-load-more" disabled={loading} onClick={() => { setLoading(true); setOffset(offset + 50) }}>이전 실험 더 불러오기</button>}
-    {ready && !visible && !error && <p className="quiet-note" role="status">비교 결과를 불러오는 중…</p>}
-    {error && <div role="alert"><p className="execution-error">{error}</p><button className="button" onClick={() => { setError(''); setResult(null); setRetry((value) => value + 1) }}>비교 다시 조회</button></div>}
-    <div className="comparison-layout">
-      <ComparisonSlot label="A" selected={first} other={second} experiments={experiments} result={visible?.[0]} maxTurn={maxTurn} disabled={loading && !experiments.length} onSelect={(id) => select('A', id)} />
-      <ComparisonSlot label="B" selected={second} other={first} experiments={experiments} result={visible?.[1]} maxTurn={maxTurn} disabled={loading && !experiments.length} onSelect={(id) => select('B', id)} />
-    </div>
-    <p className="quiet-note comparison-note">두 그래프는 같은 턴·정확도 축을 사용합니다. 짧은 실험은 마지막 턴에서 끝나며, 평균 정확도는 각 실험의 전체 턴을 기준으로 표시합니다.</p>
-  </>
+
+  return <div className="cp-workspace">
+    <header className="cp-header"><div><h1>실험 비교</h1><p>같은 턴에서, 다른 조건의 결과를 비교하세요.</p></div><div className="cp-list-tools"><span>완료 실험 {experiments.length}개</span><Button variant="outline" disabled={loading} onClick={refreshList}>목록 새로고침</Button>{hasMore && !listError && <button disabled={loading} onClick={()=>{setLoading(true);setOffset(offset+50)}}>이전 실험 더 불러오기</button>}</div></header>
+    {loading && <p role="status">실험 목록을 불러오는 중…</p>}
+    {listError && <p className="cp-error" role="alert">{listError} <button onClick={()=>{setLoading(true);setListError('');setListVersion(n=>n+1)}}>목록 다시 조회</button></p>}
+    {!loading&&!listError&&experiments.length<2&&<p className="cp-notice">완료된 실험이 두 개 이상 필요합니다. {hasMore?'이전 실험을 더 불러오세요.':<a href="#/setup">실험 설정에서 실행한 뒤 목록을 새로고침하세요.</a>}</p>}
+    <CompareTurnControls rows={visible} turn={turn} onTurn={setTurn}/>
+    <div className="cp-selectors">{(['A','B'] as const).map((label,i)=><div className="cp-slot" key={label}><label className={i?'cp-b':'cp-a'} htmlFor={`compare-${label}`}><strong>실험 {label}</strong><select id={`compare-${label}`} value={i?second:first} disabled={loading&&!experiments.length} onChange={e=>select(label,e.target.value)}><option value="">완료된 실험 선택</option>{experiments.map(e=><option key={e.id} value={e.id} disabled={String(e.id)===(i?first:second)}>#{e.id} · {e.name||'이름 없는 실험'} · {e.config.turns}턴</option>)}</select><span>전체 평균 <b data-testid={`mean-${label}`}>{visible?.[i]?.mean_accuracy==null?'—':percent(visible[i].mean_accuracy!)}</b></span></label><div className="cp-slot-network" aria-label={`실험 ${label} 네트워크`}><ResultNetwork data={sides[i].data} city={city} onCity={setCity}/>{!sides[i].data&&<p className="cp-network-empty">{sides[i].error?'도시 결과 조회 실패':sides[i].missing?'해당 턴 없음':visible?'도시 결과를 불러오는 중…':'실험을 선택하세요.'}</p>}</div></div>)}</div>
+    {/* 도시 선택 상세는 네트워크 바로 아래에서 A·B를 같은 번호로 비교한다. */}
+    {city!==null&&<div className="cp-details" ref={detailRef} tabIndex={-1} aria-label={`도시 ${city} 상세 비교`}><div className="cp-detail-heading"><h3>도시 {city} 상세 비교</h3><button onClick={()=>setCity(null)}>상세 닫기</button></div>{sides.map((side,i)=><section key={i} aria-label={`실험 ${i?'B':'A'} 도시 상세`}><strong className={i?'cp-b':'cp-a'}>실험 {i?'B':'A'}</strong>{side.data?<CityDetail data={side.data} city={city}/>:<p>{side.missing?'해당 턴 없음':side.error?'조회 실패':'결과 없음'}</p>}</section>)}</div>}
+    <div className="cp-summary-row"><div className="cp-delta"><span>평균 차이 · B − A</span><strong data-testid="mean-delta">{delta===null?'—':`${delta>0?'+':''}${delta}%p`}</strong></div></div>
+    <div className="cp-conditions"><span>{visible ? differences.length ? `다른 조건 ${differences.length}개: ${differences.map(([,label])=>label).join(', ')}`:'모든 설정값이 같습니다.':'실험 조건을 비교할 수 있습니다.'}</span><details><summary>설정 나란히 보기</summary><div className="cp-config"><table><thead><tr><th>설정</th><th>실험 A</th><th>실험 B</th><th>차이</th></tr></thead><tbody>{configFields.map(([key,label])=><tr key={key} data-different={visible?visible[0].config[key]!==visible[1].config[key]:false}><th>{label}</th>{[0,1].map(i=><td key={i}>{visible?configValue(visible[i].config,key):'—'}</td>)}<td>{visible?visible[0].config[key]!==visible[1].config[key]?'다름':'같음':'—'}</td></tr>)}</tbody></table><p>같은 Seed도 조건에 따라 난수 사용 과정이 달라질 수 있습니다.</p></div></details></div>
+    <p className="cp-caution">정확도 차이는 관측된 결과입니다. 조건·Seed가 다르면 특정 설정의 효과로 단정할 수 없습니다.</p>
+    {ready&&!visible&&!error&&<p role="status">비교 결과를 불러오는 중…</p>}{error&&<p role="alert" className="cp-error">{error} <button onClick={()=>{setError('');setResult(null);setRetry(n=>n+1)}}>비교 다시 조회</button></p>}
+    <CompareTimeline rows={visible} turn={turn} onTurn={setTurn}/>
+    <section className="cp-lower"><div className="cp-section-title"><h2>{turn}턴 도시 비교</h2><span className="cp-muted">같은 도시 번호를 나란히 비교합니다.</span></div>
+      <div className="cp-side-status">{sides.map((side,i)=><div key={i} className={i?'cp-b':'cp-a'}><strong>실험 {i?'B':'A'}</strong> {side.error?<span className="cp-error" role="alert">{side.error} <button onClick={side.retry}>{i?'B':'A'} 다시 조회</button></span>:!visible?'실험을 선택하세요.':side.missing?'해당 턴 없음':!side.data?<span role="status">도시 결과를 불러오는 중…</span>:<span>실제 상태 {truths[side.data.truth]} · 정확도 {percent(side.data.accuracy)}</span>}</div>)}</div>
+      <div className="cp-lower-scroll">
+      <table className="cp-city-table"><caption className="sr-only">선택 턴의 같은 도시를 A와 B로 비교</caption><thead><tr><th>도시</th>{['판단','정답 여부','센서값','실제 상태','비잔틴 여부'].map(label=><th key={label}>{label}<small><span className="cp-a">A</span> / <span className="cp-b">B</span></small></th>)}<th>통신 상세</th></tr></thead><tbody>{[1,2,3,4,5].map(n=><tr key={n} data-city={n} data-selected={city===n}><th>도시 {n}</th>{[0,1,2,3,4].map(field=><td key={field}>{sides.map((side,i)=>{const c=side.data?.cities.find(c=>c.city===n);const vals=c&&side.data?[decisions[c.decision],c.correct?'정답':'오답',truths[c.hint],truths[side.data.truth],c.is_byzantine?'비잔틴':'정상']:null;// 판단은 정답 여부, 센서·실제 상태는 안전/위험을 기준으로 표시한다. A·B 식별과 상태 색을 분리한다.
+        const tone = !c || !side.data ? 'muted' : field <= 1 ? c.correct ? 'success' : 'error' : field === 2 ? c.hint === 'safe' ? 'success' : 'error' : field === 3 ? side.data.truth === 'safe' ? 'success' : 'error' : c.is_byzantine ? 'error' : 'neutral';
+        return <span key={i} className="cp-cell-value" data-tone={tone}><small className="cp-cell-side">{i?'B':'A'}</small>{vals?vals[field]:'—'}</span>})}</td>)}<td><button aria-expanded={city===n} onClick={()=>{setCity(n);setDetailNavigation(value=>value+1)}}>도시 {n} 상세</button></td></tr>)}</tbody></table>
+
+      </div><p className="cp-footnote">실제 상태는 턴의 공통 값입니다. 수신 ‘없음’은 null이며, 발신 ‘정상’은 내용이 진실임을 뜻하지 않습니다.</p>
+    </section>
+  </div>
 }

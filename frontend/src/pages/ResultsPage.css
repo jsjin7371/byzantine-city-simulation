@@ -9,7 +9,7 @@
 .rs-workspace button:hover:not(:disabled) { background:var(--color-hover); border-color:var(--color-control-border); }
 .rs-workspace button:disabled { opacity:.4; cursor:not-allowed; }
 .rs-workspace button:focus-visible,.rs-workspace [tabindex]:focus-visible,.rs-workspace summary:focus-visible { outline:2px solid var(--color-focus); outline-offset:2px; }
-.rs-workspace h1 { font-size:23px; font-weight:650; letter-spacing:-.025em; }
+
 .rs-workspace h2 { font-size:17px; font-weight:600; letter-spacing:-.02em; }
 .rs-muted { color:var(--rs-muted); font-size:13px; }
 .rs-list { background:var(--color-header); border-right:1px solid var(--color-border); display:flex; flex-direction:column; padding:22px 12px 12px; min-height:0; }

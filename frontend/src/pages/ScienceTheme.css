@@ -27,7 +27,7 @@
 .a3-workspace button:focus-visible,.a3-workspace a:focus-visible,.a3-workspace input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
 .a3-workspace .page-title { padding: 20px 32px; align-items: center; }
 .a3-workspace .workspace-context { display: none; }
-.a3-workspace h1 { font-size: 32px; letter-spacing: -.035em; font-weight: 620; color: var(--color-text); }
+
 .a3-workspace .title-period { display: none; }
 .a3-workspace .page-title p { color: var(--color-text-muted); font-size: 14px; margin-top: 7px; }
 .a3-workspace .ready-state { color: #c0cada; border-color: #3c4e65; background: var(--color-surface); padding: 6px 11px; font-size: 13px; }
@@ -141,7 +141,7 @@
 .workspace-tooltip { background: #21344c!important; color: var(--color-text)!important; border: 1px solid #647c98; font-size: 13px; }
 @media(max-height:800px) {
   .a3-workspace .page-title { padding: 13px 28px 16px; }
-  .a3-workspace h1 { font-size: 28px; }
+
   .a3-workspace .page-title p { font-size: 13px; margin-top: 5px; }
   .a3-workspace .workbench { margin-inline: 24px; gap: 20px; }
   .a3-workspace .network-stage { height: 354px; }
