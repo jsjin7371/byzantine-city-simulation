@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createExperiment, getExperiment, HttpError, experimentPayload } from './experimentsApi'
 import type { Experiment } from './experimentsApi'
+import { errorMessage } from './lib/errors'
 import type { ExperimentDraft, FormErrors } from './experimentForm'
 
 export function useExperiment() {
@@ -41,7 +42,7 @@ export function useExperiment() {
       } catch (cause) {
         // 통신 오류로 실험 자체를 failed로 바꾸지 않고 마지막 상태와 ID를 유지한다.
         if (!controller.signal.aborted)
-          setError(cause instanceof Error ? cause.message : '상태 조회에 실패했습니다.')
+          setError(errorMessage(cause, '상태 조회에 실패했습니다.'))
       } finally {
         if (query.current === controller) query.current = null
         if (!controller.signal.aborted) setQuerying(false)
@@ -67,7 +68,7 @@ export function useExperiment() {
       if (!controller.signal.aborted) setExperiment(result)
     } catch (cause) {
       if (controller.signal.aborted) return
-      setError(cause instanceof Error ? cause.message : '실행 요청에 실패했습니다.')
+      setError(errorMessage(cause, '실행 요청에 실패했습니다.'))
       // 409·422는 생성 전 거절이다. 나머지는 생성 여부를 확정하지 않고 자동 재전송하지 않는다.
       if (cause instanceof HttpError && [409, 422].includes(cause.status)) {
         if (cause.status === 422 && Array.isArray(cause.detail)) {

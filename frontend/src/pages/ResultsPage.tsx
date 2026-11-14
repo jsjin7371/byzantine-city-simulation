@@ -3,12 +3,13 @@ import { useEffect, useState } from 'react'
 import { RefreshCw, Table2, ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { listExperiments } from '../experimentsApi'
 import type { Experiment } from '../experimentsApi'
+import { errorMessage } from '../lib/errors'
 import { useResultData } from '../useResultData'
 import { ExperimentConfigValues } from '../components/ExperimentConfigValues'
 import { AccuracyTimeline } from '../components/results/AccuracyTimeline'
 import { ResultNetwork } from '../components/results/ResultNetwork'
 import { CityOverview, CityDetail, AllResultsTable } from '../components/results/CityResults'
-import { percent, statuses } from '../components/results/resultLabels'
+import { meanPercent, statuses } from '../components/results/resultLabels'
 import './ResultsPage.css'
 
 export function ResultsPage() {
@@ -36,7 +37,7 @@ export function ResultsPage() {
       })
       .catch((error) => {
         if (!controller.signal.aborted)
-          setListError(error instanceof Error ? error.message : '실험 목록을 불러오지 못했습니다.')
+          setListError(errorMessage(error, '실험 목록을 불러오지 못했습니다.'))
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false)
@@ -126,7 +127,7 @@ export function ResultsPage() {
                         {experiment.config.turns}턴 · 비잔틴 {experiment.config.byzantine_count}
                       </span>
                       <span>
-                        {experiment.mean_accuracy == null ? '—' : percent(experiment.mean_accuracy)}
+                        {meanPercent(experiment.mean_accuracy)}
                       </span>
                     </span>
                   </button>
@@ -169,7 +170,7 @@ export function ResultsPage() {
           <div className="rs-average">
             <span>전체 평균 정확도</span>
             <strong data-testid="mean-accuracy">
-              {selected?.mean_accuracy == null ? '—' : percent(selected.mean_accuracy)}
+              {meanPercent(selected?.mean_accuracy)}
             </strong>
           </div>
           <div className="rs-summary-config">

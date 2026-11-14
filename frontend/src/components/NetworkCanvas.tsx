@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, useId } from 'react'
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 import { Badge } from './ui/badge'
+import { clip, pentagonPoints } from './networkGeometry'
 
 type Selection = number | 'god'
-type Point = { x: number; y: number }
 const cities = [1, 2, 3, 4, 5]
 const neighbours = (city: number) => ({
   left: city === 1 ? 5 : city - 1,
@@ -11,15 +11,6 @@ const neighbours = (city: number) => ({
 })
 const idleText = '연결 구조 미리보기입니다. 이 화면은 연결 구조만 보여줍니다.'
 
-function clip(a: Point, b: Point, halfWidth: number, halfHeight: number): Point {
-  const dx = b.x - a.x,
-    dy = b.y - a.y
-  const t = Math.min(
-    halfWidth / Math.max(Math.abs(dx), 0.0001),
-    halfHeight / Math.max(Math.abs(dy), 0.0001),
-  )
-  return { x: a.x + dx * t, y: a.y + dy * t }
-}
 function RouteArrow({ both = false }: { both?: boolean }) {
   return (
     <svg viewBox="0 0 18 18" aria-hidden="true">
@@ -128,10 +119,7 @@ export function NetworkCanvas() {
   }
   const origin = { x: size.width / 2, y: size.height / 2 + 8 }
   const radius = Math.min((size.height - 76) / 2, (size.width - 230) / 2, 274)
-  const points = cities.map((_, i) => ({
-    x: origin.x + radius * Math.cos(((-90 + i * 72) * Math.PI) / 180),
-    y: origin.y + radius * Math.sin(((-90 + i * 72) * Math.PI) / 180),
-  }))
+  const points = pentagonPoints(origin, radius)
   // 힌트는 God→도시, 메시지는 원형으로 연결된 양쪽 이웃 사이의 경로다.
   const messages = points.map((p, i) => ({
     start: clip(p, points[(i + 1) % 5], size.nodeWidth / 2 + 5, size.nodeHeight / 2 + 5),

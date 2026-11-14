@@ -3,7 +3,7 @@ import type { ComparisonExperiment, Experiment, TurnDetail } from '../../experim
 import type { useComparisonTurn } from './useComparisonTurn'
 import { ResultNetwork } from '../results/ResultNetwork'
 import { CityDetail } from '../results/CityResults'
-import { percent, truths, decisions } from '../results/resultLabels'
+import { meanPercent, percent, truths, decisions } from '../results/resultLabels'
 
 type Side = ReturnType<typeof useComparisonTurn>
 type CitiesProps = { sides: Side[]; city: number | null }
@@ -49,7 +49,7 @@ export function CompareNetworks({
             <span>
               전체 평균{' '}
               <b data-testid={`mean-${label}`}>
-                {visible?.[i]?.mean_accuracy == null ? '—' : percent(visible[i].mean_accuracy!)}
+                {meanPercent(visible?.[i]?.mean_accuracy)}
               </b>
             </span>
           </label>

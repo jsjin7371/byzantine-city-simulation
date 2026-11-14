@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, useId } from 'react'
 import type { TurnDetail } from '../../experimentsApi'
 import { decisions, truths } from './resultLabels'
+import { clip, pentagonPoints } from '../networkGeometry'
+import { onActivateKey } from '../../lib/keyboard'
 
 export function ResultNetwork({
   data,
@@ -26,10 +28,7 @@ export function ResultNetwork({
   const nodeWidth = size.height < 300 ? 106 : 118
   const cx = size.width / 2,
     cy = (size.height - radius * 1.81) / 2 + radius
-  const points = Array.from({ length: 5 }, (_, i) => ({
-    x: cx + radius * Math.cos(((-90 + i * 72) * Math.PI) / 180),
-    y: cy + radius * Math.sin(((-90 + i * 72) * Math.PI) / 180),
-  }))
+  const points = pentagonPoints({ x: cx, y: cy }, radius)
   // 연결선은 논리적인 통신 경로다. 이전 턴의 수신과 현재 턴의 발신을 구분한다.
   return (
     <div className="rs-network" data-turn={data?.turn} aria-label="선택 턴의 도시 네트워크">
@@ -75,17 +74,8 @@ export function ResultNetwork({
             </defs>
             {points.map((p, i) => {
               const q = points[(i + 1) % 5]
-              const cut = (a: typeof p, b: typeof p) => {
-                const dx = b.x - a.x,
-                  dy = b.y - a.y
-                const t = Math.min(
-                  (nodeWidth / 2 + 4) / Math.max(0.01, Math.abs(dx)),
-                  32 / Math.max(0.01, Math.abs(dy)),
-                )
-                return { x: a.x + dx * t, y: a.y + dy * t }
-              }
-              const start = cut(p, q),
-                end = cut(q, p)
+              const start = clip(p, q, nodeWidth / 2 + 4, 32),
+                end = clip(q, p, nodeWidth / 2 + 4, 32)
               return (
                 <line
                   key={i}
@@ -130,12 +120,7 @@ export function ResultNetwork({
               aria-label="God 실제 상태 보기"
               aria-pressed={city === null}
               onClick={() => onCity(null)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onCity(null)
-                }
-              }}
+              onKeyDown={onActivateKey(() => onCity(null))}
             >
               <rect x="258" y="143" width="84" height="74" rx="7" />
               <path d="m300 151 9 7-3 10h-12l-3-10Z" />
@@ -158,12 +143,7 @@ export function ResultNetwork({
                   aria-pressed={city === i + 1}
                   className={`rs-result-node ${city === i + 1 ? 'is-selected' : ''}`}
                   onClick={() => onCity(i + 1)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      onCity(i + 1)
-                    }
-                  }}
+                  onKeyDown={onActivateKey(() => onCity(i + 1))}
                 >
                   <rect width={nodeWidth} height="58" rx="6" />
                   <text x="10" y="22">

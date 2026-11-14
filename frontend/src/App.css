@@ -24,14 +24,6 @@
   margin: 0 auto;
   flex: 1;
 }
-.badge {
-  padding: 4px 9px;
-  font-size: 11px;
-  border-radius: 4px;
-  background: var(--background);
-  color: var(--muted);
-  white-space: nowrap;
-}
 .field {
   display: flex;
   flex-direction: column;
@@ -39,7 +31,8 @@
   min-width: 0;
   font-size: 13px;
 }
-.field input, .field select {
+.field input,
+.field select {
   width: 100%;
   height: 45px;
   padding: 10px 12px;
@@ -48,7 +41,8 @@
   color: var(--text);
   background: var(--surface);
 }
-.field input:disabled, .field select:disabled {
+.field input:disabled,
+.field select:disabled {
   color: var(--color-text-muted);
   -webkit-text-fill-color: var(--color-text-muted);
   background: var(--color-input-surface);
@@ -62,12 +56,6 @@
 .field small {
   font-size: 11px;
   color: var(--muted);
-}
-.field .field-error {
-  color: var(--color-error);
-}
-.field-error:empty {
-  display: none;
 }
 .field input[aria-invalid='true'] {
   border-color: var(--color-error);
@@ -85,12 +73,6 @@
 .form-feedback:empty {
   display: none;
 }
-.execution-error {
-  color: var(--color-error);
-  font-size: 13px;
-  margin-bottom: 14px;
-  overflow-wrap: anywhere;
-}
 .button {
   display: inline-flex;
   align-items: center;
@@ -102,21 +84,10 @@
   font-size: 13px;
   font-weight: 600;
 }
-.button--primary {
-  background: var(--accent);
-  color: var(--color-accent-text);
-  border-color: var(--accent);
-}
 .button:disabled {
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
   border-color: var(--color-surface-raised);
-}
-.quiet-note {
-  font-size: 12px;
-  line-height: 1.8;
-  color: var(--muted);
-  word-break: keep-all;
 }
 .config-values div {
   display: flex;
@@ -160,7 +131,8 @@
   .main-content {
     padding: 26px 16px 32px;
   }
-  .field input, .field select {
+  .field input,
+  .field select {
     font-size: 16px;
   }
   .app-footer {

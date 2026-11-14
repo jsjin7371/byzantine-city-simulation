@@ -128,6 +128,74 @@ const checks=[];const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.getByTestId('city-detail').waitFor();
   return { results: 'passed', realExperimentId: experiment.id, turns: summary.turns.length };
  })());
+ // 실제 응답을 지연해 선택 턴/전체 표의 동시 조회를 재현한다. 실패 응답만 별도로 주입한다.
+ results.push(await (async () => {
+  const experiments = await (await page.request.get('http://127.0.0.1:8080/api/experiments?limit=50')).json();
+  const experiment = experiments.find(row => row.status === 'completed' && row.config.turns > 1);
+  if (!experiment) return {sharedTurn: 'skipped: 두 턴 이상 완료 실험 필요'};
+  const summary = await (await page.request.get('http://127.0.0.1:8080/api/experiments/'+experiment.id+'/turns')).json();
+  const first = Math.min(...summary.turns.map(row => row.turn));
+  const pattern = '**/api/experiments/'+experiment.id+'/turns/'+first;
+  let count=0, release, started;
+  const gate=new Promise(resolve=>{release=resolve});
+  const received=new Promise(resolve=>{started=resolve});
+  await page.route(pattern, async route=>{
+   count++; const response=await route.fetch(); started(); await gate;
+   await route.fulfill({response});
+  });
+  try {
+   await page.goto('http://127.0.0.1:8080/#/results');await page.reload();
+   await page.locator('.rs-experiment').filter({hasText:'#'+experiment.id+'\n'}).click();
+   await received;
+   await page.getByRole('button',{name:'전체 턴 표',exact:true}).click();
+   await page.locator('.rs-all-table tbody tr').first().waitFor();
+   if(count!==1)throw Error('선택 턴과 전체 표가 같은 요청을 중복 전송함');
+   // 전체 표를 닫아도 선택 턴 구독자가 남아 있으므로 공유 요청이 살아 있어야 한다.
+   await page.getByRole('button',{name:'네트워크로 돌아가기',exact:true}).click();
+   release();await page.getByTestId('city-overview').waitFor();
+   await page.getByRole('button',{name:'전체 턴 표',exact:true}).click();
+   await page.waitForFunction(n=>document.querySelectorAll('.rs-all-table tbody tr').length===n,summary.turns.length*5);
+   if(count!==1)throw Error('완료된 턴 캐시를 재사용하지 않음');
+  } finally { release(); await page.unroute(pattern); }
+  let attempts=0;
+  await page.route(pattern,route=>{attempts++;return attempts===1?route.abort('failed'):route.continue();});
+  try {
+   await page.reload();
+   await page.locator('.rs-experiment').filter({hasText:'#'+experiment.id+'\n'}).click();
+   await page.getByRole('button',{name:'도시 결과 다시 조회',exact:true}).click();
+   await page.getByTestId('city-overview').waitFor();
+   if(attempts!==2)throw Error('실패한 공유 요청이 재조회되지 않음');
+  } finally { await page.unroute(pattern); }
+  const other=experiments.find(row=>row.status==='completed'&&row.id!==experiment.id);
+  let switched=false;
+  if(other){
+   let open, arrived, delivered, calls=0;
+   const held=new Promise(resolve=>{open=resolve});
+   const receivedOld=new Promise(resolve=>{arrived=resolve});
+   const sentOld=new Promise(resolve=>{delivered=resolve});
+   await page.route(pattern,async route=>{
+    calls++;
+    if(calls!==1)return route.continue();
+    const response=await route.fetch();arrived();await held;
+    try {await route.fulfill({response});} finally {delivered();}
+   });
+   try{
+    await page.reload();
+    await page.locator('.rs-experiment').filter({hasText:'#'+experiment.id+'\n'}).click();
+    await receivedOld;
+    await page.locator('.rs-experiment').filter({hasText:'#'+other.id+'\n'}).click();
+    await page.getByTestId('city-overview').waitFor();
+    const current=await page.getByTestId('city-overview').innerText();
+    open();await sentOld;
+    if(await page.getByTestId('city-overview').innerText()!==current)throw Error('늦은 응답이 다른 실험 결과를 덮어씀');
+    await page.locator('.rs-experiment').filter({hasText:'#'+experiment.id+'\n'}).click();
+    await page.getByTestId('city-overview').waitFor();
+    if(calls!==2)throw Error('이전 실험 요청 또는 캐시가 다음 선택에 남음');
+    switched=true;
+   }finally{open();await page.unroute(pattern);}
+  }
+  return {sharedTurn:'passed',requests:count,retryAttempts:attempts,experimentSwitch:switched?'passed':'skipped'};
+ })());
  // 비교 화면은 실제 완료 실험 두 개를 사용하고, 결과 배열 순서가 아닌 ID로 선택한다.
  results.push(await (async () => {
   const rows = await (await page.request.get('http://127.0.0.1:8080/api/experiments?limit=50')).json();

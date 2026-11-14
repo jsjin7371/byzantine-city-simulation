@@ -1,5 +1,12 @@
 import type { ComparisonExperiment } from '../../experimentsApi'
 import { percent } from '../results/resultLabels'
+import { onActivateKey } from '../../lib/keyboard'
+
+function comparisonTurns(rows: ComparisonExperiment[] | null) {
+  return [...new Set(rows?.flatMap((row) => row.accuracy.map((t) => t.turn)) ?? [])].sort(
+    (a, b) => a - b,
+  )
+}
 
 export function CompareTimeline({
   rows,
@@ -10,9 +17,7 @@ export function CompareTimeline({
   turn: number
   onTurn: (n: number) => void
 }) {
-  const turns = [...new Set(rows?.flatMap((row) => row.accuracy.map((t) => t.turn)) ?? [])].sort(
-    (a, b) => a - b,
-  )
+  const turns = comparisonTurns(rows)
   const first = turns[0] ?? 1,
     last = turns.at(-1) ?? 1
   const x = (n: number) => (last === first ? 500 : 50 + ((n - first) / (last - first)) * 900)
@@ -81,12 +86,7 @@ export function CompareTimeline({
               aria-label={`${n}턴 선택`}
               aria-pressed={n === turn}
               onClick={() => onTurn(n)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onTurn(n)
-                }
-              }}
+              onKeyDown={onActivateKey(() => onTurn(n))}
             >
               <rect
                 className="cp-hit"
@@ -125,9 +125,7 @@ export function CompareTurnControls({
   turn: number
   onTurn: (n: number) => void
 }) {
-  const turns = [...new Set(rows?.flatMap((row) => row.accuracy.map((t) => t.turn)) ?? [])].sort(
-    (a, b) => a - b,
-  )
+  const turns = comparisonTurns(rows)
   const index = turns.indexOf(turn)
   return (
     <div className="cp-turn-nav">

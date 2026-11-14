@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { compareExperiments, listExperiments } from '../experimentsApi'
 import type { ComparisonExperiment, Experiment } from '../experimentsApi'
+import { errorMessage } from '../lib/errors'
 import { CompareTimeline, CompareTurnControls } from '../components/compare/CompareTimeline'
 import { useComparisonTurn } from '../components/compare/useComparisonTurn'
 import { Button } from '../components/ui/button'
@@ -12,8 +13,7 @@ import {
 import { CompareConditions } from '../components/compare/CompareConditions'
 import './ComparePage.css'
 
-const message = (cause: unknown) =>
-  cause instanceof Error ? cause.message : '비교 결과를 불러오지 못했습니다.'
+const message = (cause: unknown) => errorMessage(cause, '비교 결과를 불러오지 못했습니다.')
 export function ComparePage() {
   const detailRef = useRef<HTMLDivElement>(null)
   const [detailNavigation, setDetailNavigation] = useState(0)

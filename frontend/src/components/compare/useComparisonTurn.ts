@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getTurn } from '../../experimentsApi'
 import type { ComparisonExperiment, TurnDetail } from '../../experimentsApi'
+import { errorMessage } from '../../lib/errors'
 
 export function useComparisonTurn(experiment: ComparisonExperiment | undefined, turn: number) {
   const cache = useRef(new Map<string, TurnDetail>())
@@ -31,7 +32,7 @@ export function useComparisonTurn(experiment: ComparisonExperiment | undefined, 
         if (!controller.signal.aborted)
           setResult({
             key,
-            error: error instanceof Error ? error.message : '도시 결과를 불러오지 못했습니다.',
+            error: errorMessage(error, '도시 결과를 불러오지 못했습니다.'),
           })
       })
     return () => controller.abort()

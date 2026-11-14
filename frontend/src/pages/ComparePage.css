@@ -1,21 +1,3 @@
-.app-shell:has(.cp-workspace) {
-  height: 100dvh;
-  min-height: 0;
-  overflow: hidden;
-}
-.app-shell:has(.cp-workspace) > .site-header {
-  flex: none;
-}
-.main-content:has(.cp-workspace) {
-  max-width: none;
-  padding: 0;
-  margin: 0;
-  min-height: 0;
-  display: flex;
-}
-.app-shell:has(.cp-workspace) > .app-footer {
-  display: none;
-}
 .cp-workspace {
   font-family: Studio, sans-serif;
   font-size: 14px;
@@ -28,6 +10,14 @@
   color: var(--color-text);
   scrollbar-width: thin;
   scrollbar-color: var(--color-control-border) transparent;
+  height: 100%;
+  --rs-muted: var(--color-text-muted);
+}
+.app-shell:has(.cp-workspace) > .site-header {
+  flex: none;
+}
+.app-shell:has(.cp-workspace) > .app-footer {
+  display: none;
 }
 .cp-workspace button,
 .cp-workspace select {
@@ -70,10 +60,6 @@
 .cp-list-tools {
   font-size: 13px;
   color: var(--color-text-muted);
-}
-.cp-selectors {
-  display: grid;
-  align-items: center;
 }
 .cp-selectors label {
   display: grid;
@@ -240,11 +226,6 @@
   min-width: 65px;
   text-align: center;
 }
-.cp-lower {
-  display: flex;
-  flex-direction: column;
-  padding-top: 12px;
-}
 .cp-section-title {
   flex: none;
 }
@@ -266,12 +247,6 @@
 }
 .cp-side-status strong {
   margin-right: 12px;
-}
-.cp-lower-scroll {
-  flex: 1;
-  overflow: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-control-border) transparent;
 }
 .cp-city-table {
   width: 100%;
@@ -370,11 +345,13 @@
   }
 }
 .main-content:has(.cp-workspace) {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  display: flex;
   flex: 1 1 0;
   overflow: hidden;
-}
-.cp-workspace {
-  height: 100%;
 }
 .cp-series-a circle {
   fill: var(--color-background);
@@ -387,11 +364,6 @@ body:has(.cp-workspace) {
   overflow: hidden;
 }
 /* Each experiment owns the network directly beneath its selector. */
-.cp-selectors {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px;
-  padding-bottom: 0;
-}
 .cp-slot {
   min-width: 0;
 }
@@ -440,22 +412,26 @@ body:has(.cp-workspace) {
   font-size: 13px;
 }
 .cp-lower {
+  display: flex;
+  flex-direction: column;
+  padding-top: 12px;
   flex: none;
   min-height: 320px;
 }
 .cp-lower-scroll {
+  flex: 1;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-control-border) transparent;
   max-height: 460px;
   min-height: 200px;
 }
-.cp-selectors {
-  flex: none;
-}
 .app-shell:has(.cp-workspace) {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   position: fixed;
   inset: 0;
-}
-.cp-workspace {
-  --rs-muted: var(--color-text-muted);
 }
 /* Keep turn navigation in sight while inspecting either network or the graph. */
 .cp-workspace > .cp-turn-nav {
@@ -480,12 +456,6 @@ body:has(.cp-workspace) {
     padding-block: 7px;
     margin-bottom: 10px;
   }
-}
-.cp-workspace > .cp-details {
-  flex: none;
-  padding: 16px 0;
-  margin-top: 12px;
-  border-block: 1px solid var(--color-border);
 }
 /* 실험 구분색 대신 값의 상태를 강조하며 A/B 문자는 모든 셀에서 유지한다. */
 .cp-city-table .cp-cell-value {
@@ -512,6 +482,10 @@ body:has(.cp-workspace) {
   color: var(--color-text-muted);
 }
 .cp-workspace > .cp-details {
+  flex: none;
+  padding: 16px 0;
+  margin-top: 12px;
+  border-block: 1px solid var(--color-border);
   scroll-margin-top: 80px;
 }
 .cp-workspace > .cp-details:focus-visible {
@@ -519,5 +493,11 @@ body:has(.cp-workspace) {
   outline-offset: 4px;
 }
 .cp-selectors {
+  display: grid;
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  padding-bottom: 0;
+  flex: none;
   scroll-margin-top: 80px;
 }
