@@ -5,6 +5,10 @@ services:
       - ./engine/tests/network_smoke.py:/tests/network_smoke.py:ro
     depends_on: [city-1, city-2, city-3, city-4, city-5, api]
   api:
+    build: !reset null
+    depends_on: !reset []
+    environment: !reset {}
+    ports: !reset []
     image: python:3.12-alpine
     command: [python, /tests/network_receiver.py]
     volumes:
