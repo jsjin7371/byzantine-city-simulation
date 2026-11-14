@@ -51,6 +51,7 @@ async page => {
   await page.locator('#run-button').click();await page.getByRole('heading',{name:'실험 준비 중',exact:true}).waitFor();
   check('decimal payload',payload.sensor_error===.12345);
   await page.getByRole('link',{name:'결과 탐색',exact:true}).click();await page.waitForTimeout(1400);await page.getByRole('link',{name:'실험 설정',exact:true}).click();
+  await page.getByRole('heading',{name:'실험 진행 중',exact:true}).waitFor();
   check('poll survives route change',await page.getByRole('heading',{name:'실험 진행 중',exact:true}).isVisible());
   for(const s of ['failed','409','422','lost','malformed','poll-error','wrong-id']) {
     await start(s);await page.locator('#run-button').click();
@@ -67,6 +68,7 @@ async page => {
       await page.waitForTimeout(1100);check(s+' no retry',posts===1&&gets===0);
       check('ack required '+s,await page.getByRole('button',{name:'조건으로 돌아가기',exact:true}).isDisabled());
       await page.getByRole('link',{name:'기존 실험 목록 확인',exact:true}).click();await page.getByRole('link',{name:'실험 설정',exact:true}).click();
+      await page.getByRole('heading',{name:'실행 요청 확인 필요',exact:true}).waitFor();
       check('uncertain preserved '+s,await page.getByRole('heading',{name:'실행 요청 확인 필요',exact:true}).isVisible());
     } else {
       await page.getByRole('button',{name:'상태 다시 조회',exact:true}).waitFor();

@@ -152,7 +152,7 @@ Mock God은 백엔드에 구현된 모의 엔진입니다. 실제 API·DB를 사
 
 ## 검증 범위와 남은 작업
 
-- `pnpm lint`, `pnpm test`(현재 13개), `pnpm build` 통과
+- `pnpm lint`, `pnpm test`(현재 14개), `pnpm build` 통과
 - Mock 모드에서 브라우저 → 백엔드 API → MySQL 저장·조회 및 비교 확인
 - 중복 실행·중복 비교 선택 방지, 조회 오류·재조회, 빠른 선택 변경 시 이전 응답 제외 확인
 - 비교 화면은 1280px·1440px·1920px 데스크톱 폭과 낮은 노트북 화면에서 검증. 이번 리디자인의 모바일·태블릿 대응 및 검증은 제외
@@ -179,9 +179,11 @@ Mock God은 백엔드에 구현된 모의 엔진입니다. 실제 API·DB를 사
 | `src/pages/` | 설정·결과·비교 화면 |
 | `src/components/` | 공통 헤더, 네트워크 캔버스, 실험 설정값 표시 및 UI 컴포넌트 |
 | `src/components/results/` | 결과 네트워크·도시 요약·상세·전체 결과 표 |
+| `src/components/compare/CompareCities.tsx`, `CompareConditions.tsx` | 비교 네트워크·도시 표·상세·조건 표시 (요청과 상태는 페이지/훅에서 관리) |
 | `src/components/compare/CompareTimeline.tsx` | 통합 정확도 그래프와 공통 턴 조작부 |
 | `src/components/compare/useComparisonTurn.ts` | 실험·턴별 조회 캐시, 요청 취소, 독립 오류·재조회 |
 | `src/styles/theme.css` | 공통 색상·폰트·페이지 제목 스타일 |
+| `src/pages/SetupPage.css` | 설정 화면의 컨트롤·테마·레이아웃 스타일 통합 |
 | `src/pages/ComparePage.css` | 비교 화면 전용 레이아웃·상태 표현 |
 | `src/App.css`, `src/index.css` | 화면 스타일 |
 | `vite.config.ts` | 개발 서버 및 API 프록시 설정 |

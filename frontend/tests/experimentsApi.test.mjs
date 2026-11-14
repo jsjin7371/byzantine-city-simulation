@@ -62,7 +62,7 @@ test('uncertain creation warns to check the list and never retries automatically
 })
 
 test('successful creation and stored Korean engine errors are returned intact', async (context) => {
-  const experiment = { id: 8, status: 'pending', config: { turns: 5 }, completed_turns: 0, error: null }
+  const experiment = { id: 8, name: null, status: 'pending', config: { turns: 5, byzantine_count: 1, sensor_error: .1, drop_rate: 0, flip_rate: 0, seed: null }, completed_turns: 0, mean_accuracy: null, error: null }
   const fetchMock = context.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(experiment), { status: 202 }))
   const signal = new AbortController().signal
   assert.deepEqual(await createExperiment(createExperimentDraft(), signal), experiment)
@@ -85,7 +85,7 @@ test('result requests use pagination and reject data for a different experiment 
 })
 
 test('comparison repeats ids, preserves A/B order and rejects duplicate selection before requesting', async (context) => {
-  const row = (id) => ({ id, name: null, config: { turns: 1 }, mean_accuracy: 1, accuracy: [{ turn: 1, truth: 'safe', accuracy: 1 }] })
+  const row = (id) => ({ id, name: null, config: { turns: 1, byzantine_count: 1, sensor_error: .1, drop_rate: 0, flip_rate: 0, seed: 0 }, mean_accuracy: 1, accuracy: [{ turn: 1, truth: 'safe', accuracy: 1 }] })
   const fetchMock = context.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify({ experiments: [row(2), row(1)] })))
   const signal = new AbortController().signal
   await assert.rejects(compareExperiments(1, 1, signal), /서로 다른/)
@@ -96,4 +96,29 @@ test('comparison repeats ids, preserves A/B order and rejects duplicate selectio
   await assert.rejects(compareExperiments(1, 2, signal), /응답 형식/)
   fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify({ detail: 'not completed' }), { status: 409 }))
   await assert.rejects(compareExperiments(1, 2, signal), /not completed/)
+})
+
+// 잘못된 응답을 0이나 정상 상태로 표시하지 않고 조회 오류로 안내한다.
+test('malformed fields are rejected without imposing configuration limits', async (context) => {
+  const signal = new AbortController().signal
+  const config = { turns: 30, byzantine_count: 1, sensor_error: .1, drop_rate: 0, flip_rate: 0, seed: 0 }
+  const experiment = { id: 1, name: null, config, status: 'completed', completed_turns: 30, mean_accuracy: null, error: null }
+  let response = [experiment]
+  context.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(response)))
+  // 응답에서 입력 범위를 다시 강제하지 않는다. Seed 0과 정확도 null도 보존한다.
+  assert.deepEqual(await listExperiments(0, signal), [experiment])
+  for (const patch of [{ config: null }, { status: 'unknown' }, { mean_accuracy: '0.5' }]) {
+    response = [{ ...experiment, ...patch }]
+    await assert.rejects(listExperiments(0, signal), /응답 형식/)
+  }
+  const city = { city: 1, is_byzantine: false, hint: 'safe', correct: true, decision: 'stay', from_left: null, from_right: 'stay', to_left: 'normal', to_right: 'dropped' }
+  const detail = { experiment_id: 1, turn: 1, truth: 'safe', accuracy: 1, cities: [city] }
+  response = detail
+  assert.deepEqual(await getTurn(1, 1, signal), detail)
+  for (const patch of [{ hint: 'unknown' }, { correct: 'false' }, { from_left: 'unknown' }, { to_right: 'timeout' }]) {
+    response = { ...detail, cities: [{ ...city, ...patch }] }
+    await assert.rejects(getTurn(1, 1, signal), /응답 형식/)
+  }
+  response = { experiment_id: 1, turns: [{ turn: 1, truth: 'safe', accuracy: '1' }] }
+  await assert.rejects(listTurns(1, signal), /응답 형식/)
 })
