@@ -5,6 +5,7 @@ import { SetupPage } from './pages/SetupPage'
 import { ResultsPage } from './pages/ResultsPage'
 import { ComparePage } from './pages/ComparePage'
 import './App.css'
+import './styles/theme.css'
 import { createExperimentDraft } from './experimentForm'
 import { useExperiment } from './useExperiment'
 
@@ -28,11 +29,11 @@ function App() {
   }, [page])
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${page === 'setup' ? 'setup-shell' : ''}`}>
       <button className="skip-link" onClick={() => document.getElementById('main-content')?.focus()}>
         본문으로 이동
       </button>
-      <AppHeader currentPage={page} />
+      {page !== 'setup' && <AppHeader currentPage={page} />}
       <main id="main-content" className="main-content" tabIndex={-1}>
         {page === 'setup' && <SetupPage draft={draft} onDraftChange={setDraft} run={run} />}
         {page === 'results' && <ResultsPage />}

@@ -1,0 +1,516 @@
+.app-shell:has(.cp-workspace) {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+.app-shell:has(.cp-workspace)>.site-header {
+  flex: none;
+}
+.main-content:has(.cp-workspace) {
+  max-width: none;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+  display: flex;
+}
+.app-shell:has(.cp-workspace)>.app-footer {
+  display: none;
+}
+.cp-workspace {
+  font-family: Studio,sans-serif;
+  font-size: 14px;
+  width: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 28px 12px;
+  display: flex;
+  flex-direction: column;
+  color: var(--color-text);
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-control-border) transparent;
+}
+.cp-workspace button,.cp-workspace select {
+  background: var(--color-input-surface);
+  color: inherit;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.cp-workspace button:disabled {
+  opacity: .4;
+}
+.cp-workspace button:hover:not(:disabled) {
+  border-color: var(--color-control-border);
+  background: var(--color-hover);
+}
+.cp-workspace h2 {
+  font-size: 17px;
+}
+.cp-workspace p {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.cp-header,.cp-list-tools,.cp-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+.cp-header {
+  margin-bottom: 16px;
+  flex: none;
+}
+.cp-header p {
+  margin-top: 3px;
+}
+.cp-list-tools {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+.cp-selectors {
+  display: grid;
+  align-items: center;
+}
+.cp-selectors label {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  gap: 8px 12px;
+  align-items: center;
+}
+.cp-selectors select {
+  width: 100%;
+  font-size: 14px;
+  min-height: 38px;
+  color: var(--color-text);
+}
+.cp-selectors label>span {
+  grid-column: 2;
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.cp-selectors b {
+  font-size: 22px;
+  color: var(--color-text);
+  margin-left: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.cp-a {
+  color: var(--color-accent);
+}
+.cp-b {
+  color: var(--color-hint);
+}
+.cp-delta {
+  border-left: 1px solid var(--color-border);
+  padding-left: 24px;
+}
+.cp-delta span {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+.cp-delta strong {
+  display: block;
+  font-size: 26px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.cp-conditions {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  font-size: 13px;
+  position: relative;
+  flex: none;
+}
+.cp-conditions summary {
+  cursor: pointer;
+  color: var(--color-accent);
+}
+.cp-config {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  width: min(620px,90vw);
+  max-height: 50dvh;
+  overflow: auto;
+  background: var(--color-surface);
+  padding: 16px;
+  border: 1px solid var(--color-control-border);
+  border-radius: 6px;
+  z-index: 5;
+}
+.cp-config table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.cp-config td,.cp-config th {
+  padding: 7px;
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 400;
+}
+.cp-config tr[data-different=true] {
+  color: var(--color-accent);
+}
+.cp-config p {
+  margin-top: 10px;
+}
+.cp-caution {
+  padding: 8px 0 12px;
+}
+.cp-workspace .cp-error {
+  color: var(--color-error);
+}
+.cp-notice {
+  padding-bottom: 10px;
+}
+.cp-notice a {
+  text-decoration: underline;
+}
+.cp-timeline {
+  flex: none;
+  height: 240px;
+  display: flex;
+  flex-direction: column;
+  border-block: 1px solid var(--color-border);
+  padding: 10px 0;
+}
+.cp-legend {
+  display: flex;
+  gap: 24px;
+  font-variant-numeric: tabular-nums;
+}
+.cp-chart {
+  width: 100%;
+  min-height: 150px;
+  flex: 1;
+  display: block;
+}
+.cp-chart text {
+  fill: var(--color-text-muted);
+  font-size: 12px;
+}
+.cp-chart line {
+  stroke: var(--color-border);
+}
+.cp-chart .cp-cursor {
+  stroke: var(--color-text-muted);
+  stroke-dasharray: 3 4;
+}
+.cp-chart .cp-series-a line {
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+.cp-chart .cp-series-b line {
+  stroke: var(--color-hint);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.cp-series-b circle {
+  fill: var(--color-hint);
+  stroke: var(--color-background);
+  stroke-width: 1;
+}
+.cp-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.cp-chart-empty {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  color: var(--color-text-muted);
+}
+.cp-turn-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+}
+.cp-turn-nav input {
+  flex: 1;
+  accent-color: var(--color-accent);
+}
+.cp-turn-nav label {
+  min-width: 65px;
+  text-align: center;
+}
+.cp-lower {
+  display: flex;
+  flex-direction: column;
+  padding-top: 12px;
+}
+.cp-section-title {
+  flex: none;
+}
+.cp-section-title [role=group] {
+  display: flex;
+  gap: 4px;
+}
+.cp-section-title button[data-state=on] {
+  background: var(--color-accent-soft);
+  border-color: var(--color-active-border);
+  color: var(--color-accent);
+}
+.cp-side-status {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  font-size: 13px;
+  padding: 10px 0;
+}
+.cp-side-status strong {
+  margin-right: 12px;
+}
+.cp-lower-scroll {
+  flex: 1;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-control-border) transparent;
+}
+.cp-city-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+.cp-city-table th,.cp-city-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: 400;
+}
+.cp-city-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--color-surface);
+  z-index: 1;
+}
+.cp-city-table small {
+  display: inline-flex;
+  gap: 5px;
+  margin-left: 10px;
+  color: var(--color-text-muted);
+}
+.cp-city-table td>span {
+  display: inline-block;
+  width: 48%;
+  min-width: 42px;
+}
+.cp-city-table tr[data-selected=true] {
+  background: var(--color-accent-soft);
+}
+.cp-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 32px;
+  padding: 18px 12px;
+}
+.cp-detail-heading {
+  grid-column: 1/-1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.cp-details section {
+  min-width: 0;
+}
+.cp-details .rs-detail-values {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+}
+.cp-details .rs-detail-values>div {
+  font-size: 13px;
+}
+.cp-footnote {
+  flex: none;
+  padding-top: 8px;
+  font-size: 12px !important;
+}
+@media (min-width:1600px) {
+  .cp-workspace {
+    padding-inline: 40px;
+  }
+  .cp-timeline {
+    height: 280px;
+  }
+  .cp-city-table th,.cp-city-table td {
+    padding-block: 12px;
+    font-size: 14px;
+  }
+}
+@media (max-height:760px) {
+  .cp-workspace {
+    padding-top: 12px;
+  }
+  .cp-header {
+    margin-bottom: 10px;
+  }
+  .cp-header p {
+    display: none;
+  }
+  .cp-timeline {
+    height: 230px;
+  }
+  .cp-selectors {
+    padding-bottom: 8px;
+  }
+  .cp-caution {
+    padding-block: 5px;
+  }
+  .cp-lower {
+    min-height: 220px;
+  }
+}
+.main-content:has(.cp-workspace) {
+  flex: 1 1 0;
+  overflow: hidden;
+}
+.cp-workspace {
+  height: 100%;
+}
+.cp-series-a circle {
+  fill: var(--color-background);
+  stroke: var(--color-accent);
+  stroke-width: 2;
+}
+html:has(.cp-workspace),body:has(.cp-workspace) {
+  height: 100%;
+  overflow: hidden;
+}
+/* Each experiment owns the network directly beneath its selector. */
+.cp-selectors {
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  gap: 24px;
+  padding-bottom: 0;
+}
+.cp-slot {
+  min-width: 0;
+}
+.cp-slot-network {
+  height: 340px;
+  position: relative;
+  margin-top: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+.cp-slot-network .rs-network {
+  padding: 12px;
+}
+.cp-slot-network .rs-legend {
+  font-size: 11px;
+}
+.cp-slot-network .rs-section-heading h2 {
+  font-size: 14px;
+}
+.cp-network-empty {
+  position: absolute;
+  inset: 70px 20px 40px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.cp-summary-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 0 6px;
+  flex: none;
+}
+.cp-summary-row .cp-delta {
+  border: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 0;
+}
+.cp-summary-row .cp-delta strong {
+  font-size: 23px;
+}
+.cp-muted {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+.cp-lower {
+  flex: none;
+  min-height: 320px;
+}
+.cp-lower-scroll {
+  max-height: 460px;
+  min-height: 200px;
+}
+.cp-selectors {
+  flex: none;
+}
+.app-shell:has(.cp-workspace) {
+  position: fixed;
+  inset: 0;
+}
+.cp-workspace {
+  --rs-muted: var(--color-text-muted);
+}
+/* Keep turn navigation in sight while inspecting either network or the graph. */
+.cp-workspace>.cp-turn-nav {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  flex: none;
+  background: var(--color-header);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 10px rgb(0 0 0 / 15%);
+}
+.cp-workspace>.cp-turn-nav label {
+  font-size: 15px;
+  font-weight: 600;
+  min-width: 85px;
+}
+@media (max-height:760px) {
+  .cp-workspace>.cp-turn-nav {
+    padding-block: 7px;
+    margin-bottom: 10px;
+  }
+}
+.cp-workspace>.cp-details {
+  flex: none;
+  padding: 16px 0;
+  margin-top: 12px;
+  border-block: 1px solid var(--color-border);
+}
+/* 실험 구분색 대신 값의 상태를 강조하며 A/B 문자는 모든 셀에서 유지한다. */
+.cp-city-table .cp-cell-value {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.cp-city-table .cp-cell-value[data-tone=success] {
+  color: var(--color-success);
+}
+.cp-city-table .cp-cell-value[data-tone=error] {
+  color: var(--color-error);
+}
+.cp-city-table .cp-cell-value[data-tone=neutral] {
+  color: var(--color-text);
+}
+.cp-city-table .cp-cell-value[data-tone=muted] {
+  color: var(--color-text-muted);
+}
+.cp-city-table .cp-cell-side {
+  display: inline;
+  margin: 0 6px 0 0;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+.cp-workspace>.cp-details {
+  scroll-margin-top: 80px;
+}
+.cp-workspace>.cp-details:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 4px;
+}
+.cp-selectors {
+  scroll-margin-top: 80px;
+}
