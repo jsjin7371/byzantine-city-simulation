@@ -12,6 +12,22 @@
 | `engine/` | 시뮬레이션 (god, city) |
 | `docs/` | 명세 |
 
+## 실행
+Docker Desktop을 켜고 저장소 루트에서 실행합니다.
+
+```powershell
+docker compose up --build -d
+docker compose ps    # api·mysql이 healthy인지 확인
+```
+
+- 화면: http://127.0.0.1:8080
+- API 문서: http://127.0.0.1:8000/docs
+- 종료: `docker compose stop` (실험 기록 유지)
+- DB까지 초기화: `docker compose down -v`
+
+`.env` 없이도 기본값으로 실행됩니다. DB 계정이나 `GOD_MODE`를 바꿀 때만 `.env.example`을 `.env`로 복사해 수정합니다.
+폴더별 개발 실행 방법은 [frontend](frontend/README.md), [backend](backend/README.md), [engine/god](engine/god/README.md) README에 있습니다.
+
 ## 브랜치
 ```
 feature/* → develop → release/* → main
