@@ -4,6 +4,31 @@
 
 > 경기대학교 2026-2 오픈소스 · 5팀 (사공우혁, 장민서, 장성진, 최서연, 우재원)
 
+## 구조
+```text
+브라우저 ─ frontend (Nginx, :8080) ─ /api/* ─▶ api (FastAPI, :8000) ─ mysql (MySQL)
+                                                  │  ▲
+                                         POST /run │  │ POST /internal/.../turns (턴마다)
+                                                  ▼  │
+                                                 god ─ POST /init·/turn ─▶ city-1 ~ city-5
+```
+
+1. 화면에서 실험을 만들면 api가 설정을 DB에 저장하고 God에 `/run`을 보냅니다.
+2. God은 정답과 비잔틴 도시를 정하고, 매 턴 City 5개에 힌트와 이웃 메시지를 보냅니다. City끼리는 직접 통신하지 않고 God이 메시지를 중계합니다.
+3. God은 턴이 끝날 때마다 결과를 api에 보내고, api가 DB에 저장합니다.
+4. 화면은 api를 조회해 실험 상태와 턴별 결과를 보여 주고, 실험끼리 비교합니다.
+
+자세한 규칙은 [engine/god README](engine/god/README.md), 데이터 형식은 [docs/spec.md](docs/spec.md)에 있습니다.
+
+## 기술 스택
+| 파트 | 기술 |
+|---|---|
+| 프론트엔드 | React 19, TypeScript, Vite, pnpm, Nginx |
+| 백엔드 | Python 3.12, FastAPI, SQLAlchemy, Alembic, MySQL 8.4 |
+| 엔진 | Python 3.12 표준 라이브러리 (HTTP 서버·클라이언트) |
+| 실행 환경 | Docker, Docker Compose |
+| CI | GitHub Actions (엔진·백엔드 테스트, 코드 스타일, 마이그레이션 검사, Docker 통신 검사, PR 제목 검사, AI 코드 리뷰) |
+
 ## 폴더
 | 폴더 | 내용 |
 |---|---|
@@ -11,6 +36,7 @@
 | `backend/` | api, DB 스키마 |
 | `engine/` | 시뮬레이션 (god, city) |
 | `docs/` | 명세 |
+| `.github/` | CI 워크플로, AI 리뷰, PR 템플릿, 브랜치 규칙 |
 
 ## 실행
 Docker Desktop을 켜고 저장소 루트에서 실행합니다.
