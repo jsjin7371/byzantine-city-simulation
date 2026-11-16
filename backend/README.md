@@ -10,7 +10,7 @@ backend/
 │  ├─ main.py             앱 생성, CORS, 서버 재시작 시 중단된 실험 정리
 │  ├─ config.py           환경 변수 (DATABASE_URL, GOD_MODE, N_CITIES ...)
 │  ├─ db.py               DB 연결
-│  ├─ models.py           테이블 4개 (experiments, turn_results, city_states, messages)
+│  ├─ models.py           테이블 3개 (experiments, turn_results, city_states)
 │  ├─ schemas.py          요청·응답 형식 + God 응답 검증
 │  ├─ runner.py           실험 실행: God 호출 → 턴 저장 → 완료 확인 (백그라운드)
 │  ├─ routers/experiments.py   /experiments API (프론트용)
@@ -35,8 +35,6 @@ docker compose logs -f api        # "Running upgrade -> 0001" 후 서버 시작 
 - MySQL: `127.0.0.1:3307` (계정 `byzantine` / `byzantine`, DB `byzantine`)
 - 종료: `docker compose stop api mysql`
 - DB까지 초기화: `docker compose down -v`
-
-> 11/2 저녁 엔진 형식으로 테이블이 바뀌었습니다. 그 전에 한 번 띄운 적이 있으면 `docker compose down -v`로 DB를 한 번 초기화한 뒤 다시 실행하세요.
 
 Compose는 기본으로 실제 엔진을 호출합니다 (`GOD_MODE=http`). 실험을 돌리려면 `docker compose up -d --build`로 God·City까지 전체를 띄웁니다.
 엔진 없이 백엔드만 확인하려면 Mock 모드로 `mysql api`만 띄웁니다. 엔진이 고장 났거나 빌드가 안 될 때 쓸 수 있습니다.
