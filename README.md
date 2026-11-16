@@ -6,11 +6,20 @@
 
 ## 구조
 ```text
-브라우저 ─ frontend (Nginx, :8080) ─ /api/* ─▶ api (FastAPI, :8000) ─ mysql (MySQL)
-                                                  │  ▲
-                                         POST /run │  │ POST /internal/.../turns (턴마다)
-                                                  ▼  │
-                                                 god ─ POST /init·/turn ─▶ city-1 ~ city-5
+브라우저
+ │
+ ▼
+frontend (Nginx, :8080)
+ │ /api/*
+ ▼
+api (FastAPI, :8000) ── mysql (MySQL 8.4)
+ │        ▲
+ │ /run   │ /internal/experiments/{id}/turns (턴마다 결과)
+ ▼        │
+god ──────┘
+ │ /init, /turn
+ ▼
+city-1 ~ city-5
 ```
 
 1. 화면에서 실험을 만들면 api가 설정을 DB에 저장하고 God에 `/run`을 보냅니다.
