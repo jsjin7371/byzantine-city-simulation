@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useId } from 'react'
 import type { TurnDetail } from '../../experimentsApi'
-import { decisions, truths } from './resultLabels'
+import { decisions, sends, truths } from './resultLabels'
 import { clip, neighbours, pentagonPoints } from '../networkGeometry'
 import { onActivateKey } from '../../lib/keyboard'
 
@@ -8,6 +8,10 @@ import { onActivateKey } from '../../lib/keyboard'
 const NODE_HEIGHT = 58
 const GOD_WIDTH = 84
 const GOD_HEIGHT = 74
+// 한 연결의 양방향 메시지를 나란히 그리기 위해 중심선에서 벌리는 거리와, 상태 표시를 받는 쪽으로 미는 거리.
+const LANE_OFFSET = 3.5
+const BADGE_SHIFT = 9
+const sendMarks = { dropped: '×', flipped: '!' }
 
 export function ResultNetwork({
   data,
@@ -34,6 +38,9 @@ export function ResultNetwork({
   const center = { x: size.width / 2, y: (size.height - radius * 1.81) / 2 + radius }
   const points = pentagonPoints(center, radius)
   const arrow = `url(#${markerId}-arrow)`
+  // 선택 턴에 도시가 왼쪽·오른쪽 이웃에게 보낸 메시지의 전송 상태. 결과가 없으면 정상으로 그린다.
+  const sendStatus = (sender: number, side: 'to_left' | 'to_right') =>
+    data?.cities.find((c) => c.city === sender)?.[side] ?? 'normal'
   // 연결선은 논리적인 통신 경로다. 이전 턴의 수신과 현재 턴의 발신을 구분한다.
   return (
     <div className="rs-network" data-turn={data?.turn} aria-label="선택 턴의 도시 네트워크">
@@ -66,23 +73,53 @@ export function ResultNetwork({
                 <path d="M2 2 8 5 2 8" fill="none" stroke="context-stroke" strokeWidth="1.4" />
               </marker>
             </defs>
-            {points.map((p, i) => {
-              const next = neighbours(i + 1).right
-              const q = points[next - 1]
-              const start = clip(p, q, nodeWidth / 2 + 4, NODE_HEIGHT / 2 + 3),
-                end = clip(q, p, nodeWidth / 2 + 4, NODE_HEIGHT / 2 + 3)
-              return (
-                <line
-                  key={i}
-                  className={`rs-message ${city === i + 1 || city === next ? 'is-active' : ''}`}
-                  x1={start.x}
-                  y1={start.y}
-                  x2={end.x}
-                  y2={end.y}
-                  markerStart={arrow}
-                  markerEnd={arrow}
-                />
-              )
+            {points.flatMap((p, i) => {
+              const from = i + 1,
+                to = neighbours(from).right
+              const q = points[to - 1]
+              const a = clip(p, q, nodeWidth / 2 + 4, NODE_HEIGHT / 2 + 3),
+                b = clip(q, p, nodeWidth / 2 + 4, NODE_HEIGHT / 2 + 3)
+              const active = city === from || city === to
+              // 한 연결에는 메시지가 양방향으로 오간다. from→to는 from의 오른쪽 발신, to→from은 to의 왼쪽 발신이다.
+              const directions = [
+                { sender: from, receiver: to, start: a, end: b, status: sendStatus(from, 'to_right') },
+                { sender: to, receiver: from, start: b, end: a, status: sendStatus(to, 'to_left') },
+              ]
+              return directions.map(({ sender, receiver, start, end, status }) => {
+                const length = Math.hypot(end.x - start.x, end.y - start.y) || 1
+                const ux = (end.x - start.x) / length,
+                  uy = (end.y - start.y) / length
+                // 진행 방향의 오른쪽으로 비켜 그리면 반대 방향 선은 자연히 반대쪽에 놓인다.
+                const ox = -uy * LANE_OFFSET,
+                  oy = ux * LANE_OFFSET
+                const label = `도시 ${sender} → 도시 ${receiver} 메시지 ${sends[status]}`
+                return (
+                  <g key={`${sender}-${receiver}`}>
+                    <line
+                      className={`rs-message ${active ? 'is-active' : ''}`}
+                      data-send={status}
+                      x1={start.x + ox}
+                      y1={start.y + oy}
+                      x2={end.x + ox}
+                      y2={end.y + oy}
+                      markerEnd={arrow}
+                    />
+                    {status !== 'normal' && (
+                      <g
+                        className="rs-send-badge"
+                        data-send={status}
+                        transform={`translate(${(start.x + end.x) / 2 + ox + ux * BADGE_SHIFT} ${(start.y + end.y) / 2 + oy + uy * BADGE_SHIFT})`}
+                      >
+                        <title>{label}</title>
+                        <circle r="6.5" />
+                        <text textAnchor="middle" dominantBaseline="central">
+                          {sendMarks[status]}
+                        </text>
+                      </g>
+                    )}
+                  </g>
+                )
+              })
             })}
             {points.map((p, i) => {
               const start = clip(center, p, GOD_WIDTH / 2 + 2, GOD_HEIGHT / 2 + 2),
@@ -175,6 +212,14 @@ export function ResultNetwork({
         <span>
           <i />
           이웃 도시 간 메시지
+        </span>
+        <span>
+          <i className="dropped" />
+          발신 누락
+        </span>
+        <span>
+          <i className="flipped" />
+          발신 조작
         </span>
         <span>
           <i className="byzantine" />
