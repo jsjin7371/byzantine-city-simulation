@@ -13,8 +13,8 @@ export function ExperimentConfigValues({ config }: { config?: ExperimentConfig }
     percent(config.drop_rate),
     percent(config.flip_rate),
     String(config.byzantine_count),
-    // seed 0도 유효하므로 null일 때만 '랜덤'으로 표시한다.
-    config.seed === null ? '랜덤' : String(config.seed),
+    // seed 0도 유효하므로 null일 때만 '무작위'로 표시한다.
+    config.seed === null ? '무작위' : String(config.seed),
   ] : []
 
   return (

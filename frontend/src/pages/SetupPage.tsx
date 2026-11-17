@@ -21,6 +21,7 @@ import { Input } from '../components/ui/input'
 import { Slider } from '../components/ui/slider'
 import { Progress } from '../components/ui/progress'
 import { Alert, AlertTitle, AlertDescription } from '../components/ui/alert'
+import { meanPercent } from '../components/results/resultLabels'
 
 type Props = {
   draft: ExperimentDraft
@@ -340,7 +341,7 @@ export function SetupPage({ draft, onDraftChange, run }: Props) {
                   )}
                   {state === 'completed' && exp?.mean_accuracy != null && (
                     <p className="accuracy-value">
-                      평균 정확도 {(exp.mean_accuracy * 100).toFixed(1)}%
+                      평균 정확도 {meanPercent(exp.mean_accuracy)}
                     </p>
                   )}
                   {(run.error || state === 'failed') && (
