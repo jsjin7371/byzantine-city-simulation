@@ -5,22 +5,9 @@
 > 경기대학교 2026-2 오픈소스 · 5팀 (사공우혁, 장민서, 장성진, 최서연, 우재원)
 
 ## 구조
-```text
-브라우저
- │
- ▼
-frontend (Nginx, :8080)
- │ /api/*
- ▼
-api (FastAPI, :8000) ── mysql (MySQL 8.4)
- │        ▲
- │ /run   │ /internal/experiments/{id}/turns (턴마다 결과)
- ▼        │
-god ──────┘
- │ /init, /turn
- ▼
-city-1 ~ city-5
-```
+
+<img width="912" height="732" alt="byzantine-city-architecture" src="https://github.com/user-attachments/assets/e106ffd2-2a69-47b4-9cba-c8f2b469e7cc" />
+
 
 1. 화면에서 실험을 만들면 api가 설정을 DB에 저장하고 God에 `/run`을 보냅니다.
 2. God은 정답과 비잔틴 도시를 정하고, 매 턴 City 5개에 힌트와 이웃 메시지를 보냅니다. City끼리는 직접 통신하지 않고 God이 메시지를 중계합니다.
