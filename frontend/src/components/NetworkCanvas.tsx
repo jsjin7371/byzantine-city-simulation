@@ -1,14 +1,10 @@
 import { useEffect, useRef, useState, useId } from 'react'
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group'
 import { Badge } from './ui/badge'
-import { clip, pentagonPoints } from './networkGeometry'
+import { cityIds, clip, neighbours, pentagonPoints } from './networkGeometry'
+import { CITY_COUNT } from '../experimentForm'
 
 type Selection = number | 'god'
-const cities = [1, 2, 3, 4, 5]
-const neighbours = (city: number) => ({
-  left: city === 1 ? 5 : city - 1,
-  right: city === 5 ? 1 : city + 1,
-})
 const idleText = '연결 구조 미리보기입니다. 이 화면은 연결 구조만 보여줍니다.'
 
 function RouteArrow({ both = false }: { both?: boolean }) {
@@ -122,8 +118,8 @@ export function NetworkCanvas() {
   const points = pentagonPoints(origin, radius)
   // 힌트는 God→도시, 메시지는 원형으로 연결된 양쪽 이웃 사이의 경로다.
   const messages = points.map((p, i) => ({
-    start: clip(p, points[(i + 1) % 5], size.nodeWidth / 2 + 5, size.nodeHeight / 2 + 5),
-    end: clip(points[(i + 1) % 5], p, size.nodeWidth / 2 + 5, size.nodeHeight / 2 + 5),
+    start: clip(p, points[(i + 1) % CITY_COUNT], size.nodeWidth / 2 + 5, size.nodeHeight / 2 + 5),
+    end: clip(points[(i + 1) % CITY_COUNT], p, size.nodeWidth / 2 + 5, size.nodeHeight / 2 + 5),
   }))
   const hints = points.map((p) => ({
     start: clip(origin, p, size.sourceWidth / 2 + 1, size.sourceHeight / 2 + 1),
@@ -166,7 +162,7 @@ export function NetworkCanvas() {
       <div className="network-toolbar">
         <div className="network-heading">
           <h2 id="network-heading">도시 네트워크</h2>
-          <Badge variant="outline">5개 도시</Badge>
+          <Badge variant="outline">{CITY_COUNT}개 도시</Badge>
         </div>
         <ToggleGroup
           type="single"
@@ -271,7 +267,7 @@ export function NetworkCanvas() {
             </g>
           </svg>
           <div id="city-nodes">
-            {cities.map((city, i) => (
+            {cityIds.map((city, i) => (
               <button
                 ref={(node) => {
                   if (node) cityNodes.current.set(city, node)

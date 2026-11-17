@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useId } from 'react'
 import type { TurnDetail } from '../../experimentsApi'
 import { decisions, truths } from './resultLabels'
-import { clip, pentagonPoints } from '../networkGeometry'
+import { clip, neighbours, pentagonPoints } from '../networkGeometry'
 import { onActivateKey } from '../../lib/keyboard'
 
 export function ResultNetwork({
@@ -73,13 +73,13 @@ export function ResultNetwork({
               </marker>
             </defs>
             {points.map((p, i) => {
-              const q = points[(i + 1) % 5]
+              const q = points[neighbours(i + 1).right - 1]
               const start = clip(p, q, nodeWidth / 2 + 4, 32),
                 end = clip(q, p, nodeWidth / 2 + 4, 32)
               return (
                 <line
                   key={i}
-                  className={`rs-message ${city === i + 1 || city === ((i + 1) % 5) + 1 ? 'is-active' : ''}`}
+                  className={`rs-message ${city === i + 1 || city === neighbours(i + 1).right ? 'is-active' : ''}`}
                   x1={start.x}
                   y1={start.y}
                   x2={end.x}

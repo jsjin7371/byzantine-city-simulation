@@ -3,7 +3,14 @@ import type { ComparisonExperiment, Experiment, TurnDetail } from '../../experim
 import type { useComparisonTurn } from './useComparisonTurn'
 import { ResultNetwork } from '../results/ResultNetwork'
 import { CityDetail } from '../results/CityResults'
-import { meanPercent, percent, truths, decisions } from '../results/resultLabels'
+import {
+  UNNAMED_EXPERIMENT,
+  meanPercent,
+  percent,
+  truths,
+  decisions,
+} from '../results/resultLabels'
+import { cityIds } from '../networkGeometry'
 
 type Side = ReturnType<typeof useComparisonTurn>
 type CitiesProps = { sides: Side[]; city: number | null }
@@ -42,7 +49,7 @@ export function CompareNetworks({
               <option value="">완료된 실험 선택</option>
               {experiments.map((e) => (
                 <option key={e.id} value={e.id} disabled={String(e.id) === (i ? first : second)}>
-                  #{e.id} · {e.name || '이름 없는 실험'} · {e.config.turns}턴
+                  #{e.id} · {e.name || UNNAMED_EXPERIMENT} · {e.config.turns}턴
                 </option>
               ))}
             </select>
@@ -180,7 +187,7 @@ export function CompareCityTable({
             </tr>
           </thead>
           <tbody>
-            {[1, 2, 3, 4, 5].map((n) => (
+            {cityIds.map((n) => (
               <tr key={n} data-city={n} data-selected={city === n}>
                 <th>도시 {n}</th>
                 {[0, 1, 2, 3, 4].map((field) => (

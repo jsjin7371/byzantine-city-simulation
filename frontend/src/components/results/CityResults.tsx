@@ -1,5 +1,6 @@
 import type { CityResult, TurnDetail } from '../../experimentsApi'
 import { decisions, percent, received, sends, truths } from './resultLabels'
+import { neighbours } from '../networkGeometry'
 
 // 동일한 필드 매핑을 요약·상세 양쪽에서 사용해 표시 의미가 어긋나지 않게 한다.
 const fields: { label: string; value: (city: CityResult, data: TurnDetail) => string }[] = [
@@ -76,8 +77,8 @@ export function CityDetail({ data, city }: { data: TurnDetail; city: number | nu
         </span>
       </div>
       <p className="rs-muted">
-        왼쪽 이웃: 도시 {city === 1 ? 5 : city! - 1} / 오른쪽 이웃: 도시{' '}
-        {city === 5 ? 1 : city! + 1}
+        왼쪽 이웃: 도시 {neighbours(row.city).left} / 오른쪽 이웃: 도시{' '}
+        {neighbours(row.city).right}
       </p>
       <dl className="rs-detail-values">
         {fields.map((field) => (

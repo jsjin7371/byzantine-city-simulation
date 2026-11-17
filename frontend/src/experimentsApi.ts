@@ -9,6 +9,9 @@ export type ExperimentConfig = {
   seed: number | null
 }
 
+// 실험 목록은 이 개수씩 조회한다. 결과 탐색의 페이지 이동과 비교 화면의 더 불러오기가 함께 쓴다.
+export const EXPERIMENT_PAGE_SIZE = 50
+
 export type Experiment = {
   id: number
   name: string | null
@@ -211,7 +214,7 @@ export type TurnList = { experiment_id: number; turns: TurnSummary[] }
 export type TurnDetail = TurnSummary & { experiment_id: number; cities: CityResult[] }
 
 export async function listExperiments(offset: number, signal: AbortSignal): Promise<Experiment[]> {
-  const data = await request(`/api/experiments?limit=50&offset=${offset}`, { signal })
+  const data = await request(`/api/experiments?limit=${EXPERIMENT_PAGE_SIZE}&offset=${offset}`, { signal })
   if (!Array.isArray(data) || !data.every(validExperiment))
     throw new Error('실험 목록 응답 형식이 올바르지 않습니다.')
   return data

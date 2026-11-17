@@ -1,20 +1,10 @@
 import type { ComparisonExperiment, ExperimentConfig } from '../../experimentsApi'
-import { percent } from '../results/resultLabels'
+import { fieldLabels, settingFields } from '../../experimentForm'
+import { configValueText as configValue } from '../results/resultLabels'
 
-const configFields: [keyof ExperimentConfig, string][] = [
-  ['turns', '턴 수'],
-  ['byzantine_count', '비잔틴 도시 수'],
-  ['sensor_error', '센서 오류율'],
-  ['drop_rate', '메시지 누락률'],
-  ['flip_rate', '메시지 조작률'],
-  ['seed', 'Seed'],
-]
-const configValue = (config: ExperimentConfig, key: keyof ExperimentConfig) =>
-  ['sensor_error', 'drop_rate', 'flip_rate'].includes(key)
-    ? percent(config[key]!)
-    : config[key] === null
-      ? '무작위'
-      : String(config[key])
+// 입력 화면과 같은 순서로 비교한다.
+const configKeys: (keyof ExperimentConfig)[] = [...settingFields.map((field) => field.name), 'seed']
+const configFields = configKeys.map((key) => [key, fieldLabels[key]] as const)
 
 export function CompareConditions({ visible }: { visible: ComparisonExperiment[] | null }) {
   const delta = visible?.every((row) => row.mean_accuracy != null)

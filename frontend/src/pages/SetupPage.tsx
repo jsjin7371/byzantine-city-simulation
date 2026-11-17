@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { createExperimentDraft, settingFields, validateExperimentDraft } from '../experimentForm'
+import {
+  NAME_MAX_LENGTH,
+  countFields,
+  createExperimentDraft,
+  fieldLabels,
+  isRateField,
+  rateFields,
+  seedMaxText,
+  settingFields,
+  validateExperimentDraft,
+} from '../experimentForm'
 import type { ExperimentDraft, ExperimentField } from '../experimentForm'
 import type { useExperiment } from '../useExperiment'
 import { NetworkCanvas } from '../components/NetworkCanvas'
@@ -21,7 +31,7 @@ import { Input } from '../components/ui/input'
 import { Slider } from '../components/ui/slider'
 import { Progress } from '../components/ui/progress'
 import { Alert, AlertTitle, AlertDescription } from '../components/ui/alert'
-import { meanPercent } from '../components/results/resultLabels'
+import { SEED_RANDOM_TEXT, meanPercent, percent } from '../components/results/resultLabels'
 
 type Props = {
   draft: ExperimentDraft
@@ -37,20 +47,12 @@ const titles = {
   uncertain: '실행 요청 확인 필요',
   idle: '실행 전',
 }
-const help = {
-  sensor_error: 'God의 힌트가 실제 상태와 다를 확률',
-  drop_rate: '이웃에게 보낸 메시지가 사라질 확률',
-  flip_rate: '이웃에게 보낸 메시지의 판단이 뒤집힐 확률',
-}
-const labels = {
-  name: '실험 이름',
-  turns: '턴 수',
-  byzantine_count: '비잔틴 도시 수',
-  sensor_error: '센서 오류율',
-  drop_rate: '메시지 누락률',
-  flip_rate: '메시지 조작률',
-  seed: 'Seed',
-}
+// 실행에 사용한 조건을 보여주는 순서. 입력 화면의 배치와 같다.
+const runConfigFields: ExperimentField[] = [
+  'name',
+  ...settingFields.map((field) => field.name),
+  'seed',
+]
 
 export function SetupPage({ draft, onDraftChange, run }: Props) {
   const [showErrors, setShowErrors] = useState(false)
@@ -110,7 +112,7 @@ export function SetupPage({ draft, onDraftChange, run }: Props) {
       id={key}
       name={key}
       value={draft[key]}
-      inputMode={key === 'name' ? 'text' : key in help ? 'decimal' : 'numeric'}
+      inputMode={key === 'name' ? 'text' : isRateField(key) ? 'decimal' : 'numeric'}
       onChange={(e) => update(key, e.target.value)}
       aria-invalid={Boolean(errors[key])}
       aria-describedby={`${key}-hint ${key}-error`}
@@ -180,12 +182,12 @@ export function SetupPage({ draft, onDraftChange, run }: Props) {
                   <fieldset className="base-settings">
                     <legend className="group-title">실험 구성</legend>
                     <div className="basic-fields">
-                      {settingFields.slice(0, 2).map((f) => (
+                      {countFields.map((f) => (
                         <div className="field" key={f.name}>
                           <label htmlFor={f.name}>{f.label}</label>
                           <div className="number-box">
                             {input(f.name)}
-                            <span>{f.name === 'turns' ? '턴' : '/ 5개'}</span>
+                            <span>{f.unit}</span>
                           </div>
                           <p className="field-hint" id={`${f.name}-hint`}>
                             {f.hint}
@@ -203,7 +205,7 @@ export function SetupPage({ draft, onDraftChange, run }: Props) {
                     <legend>
                       정보의 불확실성 <Badge variant="secondary">0–100%</Badge>
                     </legend>
-                    {settingFields.slice(2).map((f) => (
+                    {rateFields.map((f) => (
                       <div className="rate-field" key={f.name}>
                         <div className="rate-top">
                           <div className="rate-label">
@@ -221,23 +223,23 @@ export function SetupPage({ draft, onDraftChange, run }: Props) {
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent className="workspace-tooltip">
-                                {help[f.name as keyof typeof help]}
+                                {f.help}
                               </TooltipContent>
                             </Tooltip>
                           </div>
                           <span className="rate-input">
                             {input(f.name)}
-                            <span>%</span>
+                            <span>{f.unit}</span>
                           </span>
                         </div>
                         <p className="rate-help" id={`${f.name}-hint`}>
-                          {help[f.name as keyof typeof help]}
+                          {f.help}
                         </p>
                         <Slider
-                          min={0}
-                          max={100}
+                          min={f.min}
+                          max={f.max}
                           step={0.1}
-                          value={[Math.max(0, Math.min(100, Number(draft[f.name]) || 0))]}
+                          value={[Math.max(f.min, Math.min(f.max, Number(draft[f.name]) || 0))]}
                           onValueChange={([value]) => update(f.name, String(value))}
                           aria-label={`${f.label} 슬라이더`}
                           aria-valuetext={`${draft[f.name]}%`}
@@ -262,10 +264,12 @@ export function SetupPage({ draft, onDraftChange, run }: Props) {
                       <AccordionContent>
                         {(['name', 'seed'] as const).map((key) => (
                           <div className="field extra-field" key={key}>
-                            <label htmlFor={key}>{labels[key]}</label>
+                            <label htmlFor={key}>{fieldLabels[key]}</label>
                             {input(key)}
                             <p className="field-hint" id={`${key}-hint`}>
-                              {key === 'name' ? '최대 50자' : '0–2,147,483,647 · 비우면 무작위'}
+                              {key === 'name'
+                                ? `최대 ${NAME_MAX_LENGTH}자`
+                                : `0–${seedMaxText} · 비우면 ${SEED_RANDOM_TEXT}`}
                             </p>
                             {error(key)}
                           </div>
@@ -413,15 +417,16 @@ export function SetupPage({ draft, onDraftChange, run }: Props) {
                     <div className="run-config">
                       <h4>실행에 사용한 조건</h4>
                       <dl>
-                        {Object.entries(labels).map(([key, label]) => {
-                          const val = config[key as keyof typeof config]
+                        {runConfigFields.map((key) => {
+                          const val = config[key]
                           return (
                             <div key={key}>
-                              <dt>{label}</dt>
+                              <dt>{fieldLabels[key]}</dt>
                               <dd>
-                                {key in help
-                                  ? `${Number((Number(val) * 100).toFixed(10))}%`
-                                  : (val ?? (key === 'seed' ? '무작위' : '이름 없음'))}
+                                {isRateField(key)
+                                  ? // 입력한 소수 자릿수를 그대로 보여주기 위해 반올림 자릿수를 넉넉히 둔다.
+                                    percent(Number(val), 10)
+                                  : (val ?? (key === 'seed' ? SEED_RANDOM_TEXT : '이름 없음'))}
                               </dd>
                             </div>
                           )
