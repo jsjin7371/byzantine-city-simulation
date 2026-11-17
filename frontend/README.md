@@ -152,7 +152,7 @@ docker compose up --build -d mysql api
 
 ## 검증 범위와 남은 작업
 
-- `pnpm lint`, `pnpm test`(현재 14개), `pnpm build` 통과
+- `pnpm lint`, `pnpm test`(현재 16개), `pnpm build` 통과
 - Mock 모드에서 브라우저 → 백엔드 API → MySQL 저장·조회 및 비교 확인
 - 중복 실행·중복 비교 선택 방지, 조회 오류·재조회, 빠른 선택 변경 시 이전 응답 제외 확인
 - 설정 네트워크의 키보드 선택, 도시 선택 시 전달 애니메이션 중단, 동작 줄이기 설정 확인
@@ -186,7 +186,8 @@ docker compose up --build -d mysql api
 | `src/pages/` | 설정·결과·비교 화면 |
 | `src/components/` | 공통 헤더, 네트워크 캔버스, 실험 설정값 표시 및 UI 컴포넌트 |
 | `src/components/NetworkCanvas.tsx` | 설정 화면의 React 기반 연결 구조 미리보기·도시 선택·전달 애니메이션 |
-| `src/components/networkGeometry.ts` | 설정·결과 네트워크가 함께 쓰는 좌표 계산 |
+| `src/components/networkGeometry.ts` | 설정·결과 네트워크가 함께 쓰는 도시 번호·이웃·좌표 계산 |
+| `src/components/chartScale.ts` | 결과·비교 화면의 턴별 정확도 그래프가 함께 쓰는 좌표·눈금 계산 |
 | `src/components/results/ResultNetwork.tsx` | 결과 탐색과 비교 화면에서 공유하는 실제 턴 결과 네트워크 |
 | `src/components/results/` | 결과 네트워크·도시 요약·상세·전체 결과 표 |
 | `src/components/compare/CompareCities.tsx`, `CompareConditions.tsx` | 비교 네트워크·도시 표·상세·조건 표시 (요청과 상태는 페이지/훅에서 관리) |
