@@ -9,7 +9,12 @@ import { ExperimentConfigValues } from '../components/ExperimentConfigValues'
 import { AccuracyTimeline } from '../components/results/AccuracyTimeline'
 import { ResultNetwork } from '../components/results/ResultNetwork'
 import { CityOverview, CityDetail, AllResultsTable } from '../components/results/CityResults'
-import { UNNAMED_EXPERIMENT, meanPercent, statuses } from '../components/results/resultLabels'
+import {
+  UNNAMED_EXPERIMENT,
+  createdText,
+  meanPercent,
+  statuses,
+} from '../components/results/resultLabels'
 import { CITY_COUNT } from '../experimentForm'
 import './ResultsPage.css'
 
@@ -120,6 +125,12 @@ export function ResultsPage() {
                   >
                     <span className="rs-list-meta">
                       <span>#{experiment.id}</span>
+                      {/* 이름과 조건이 같은 실험을 생성 시각으로 구분한다. */}
+                      {createdText(experiment.created_at) && (
+                        <time className="rs-created" dateTime={experiment.created_at!}>
+                          {createdText(experiment.created_at)}
+                        </time>
+                      )}
                       <span data-status={experiment.status}>{statuses[experiment.status]}</span>
                     </span>
                     <strong>{experiment.name || UNNAMED_EXPERIMENT}</strong>

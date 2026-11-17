@@ -28,3 +28,10 @@ export const sendTones: Record<keyof typeof sends, string | undefined> = {
   dropped: 'dropped',
   flipped: 'flipped',
 }
+// 서버의 생성 시각(UTC)을 브라우저 시간대의 '11/14 23:47' 형식으로 바꾼다. 값이 없거나 날짜가 아니면 빈 문자열이다.
+export function createdText(iso: string | null | undefined) {
+  const date = iso ? new Date(iso) : null
+  if (!date || Number.isNaN(date.getTime())) return ''
+  const two = (value: number) => String(value).padStart(2, '0')
+  return `${two(date.getMonth() + 1)}/${two(date.getDate())} ${two(date.getHours())}:${two(date.getMinutes())}`
+}

@@ -20,6 +20,8 @@ export type Experiment = {
   completed_turns: number
   mean_accuracy: number | null
   error: string | null
+  // 생성 시각(UTC ISO 문자열). 목록에서 같은 조건의 실험을 구분하는 데만 쓰므로 없어도 된다.
+  created_at?: string | null
 }
 
 // 화면에서는 백분율(10%)을 입력받고, API에는 확률(0.1)을 보낸다.
@@ -120,7 +122,8 @@ function validExperiment(value: unknown): value is Experiment {
     validConfig(value.config) &&
     integer(value.completed_turns) &&
     (value.mean_accuracy === null || numeric(value.mean_accuracy)) &&
-    nullableText(value.error)
+    nullableText(value.error) &&
+    (value.created_at === undefined || nullableText(value.created_at))
   )
 }
 function validSummary(value: unknown): value is TurnSummary {

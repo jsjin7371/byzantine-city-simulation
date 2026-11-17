@@ -10,6 +10,7 @@ import { ResultNetwork } from '../results/ResultNetwork'
 import { CityDetail } from '../results/CityResults'
 import {
   UNNAMED_EXPERIMENT,
+  createdText,
   meanPercent,
   percent,
   truthTones,
@@ -59,6 +60,7 @@ export function CompareNetworks({
               {experiments.map((e) => (
                 <option key={e.id} value={e.id} disabled={String(e.id) === (i ? first : second)}>
                   #{e.id} · {e.name || UNNAMED_EXPERIMENT} · {e.config.turns}턴
+                  {createdText(e.created_at) && ` · ${createdText(e.created_at)}`}
                 </option>
               ))}
             </select>

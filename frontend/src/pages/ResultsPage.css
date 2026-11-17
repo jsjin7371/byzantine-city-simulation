@@ -126,6 +126,14 @@
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
+/* 생성 시각은 실험 번호 바로 옆에 붙이고 상태는 오른쪽 끝에 둔다. */
+.rs-list-meta .rs-created {
+  margin-right: auto;
+  white-space: nowrap;
+}
+.rs-list-meta .rs-created::before {
+  content: '· ';
+}
 .rs-pagination {
   display: flex;
   align-items: center;
