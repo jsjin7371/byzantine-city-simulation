@@ -120,6 +120,19 @@ const checks=[];const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   await page.locator('.rs-chart g[role=button]').last().press('Enter');
   await page.waitForFunction(turn => document.querySelector('.rs-network').dataset.turn === String(turn), last.turn);
   if (await page.getByTestId('turn-accuracy').innerText() !== `${Number((last.accuracy * 100).toFixed(2))}%`) throw Error('선택 정확도 불일치');
+  // 네트워크의 비잔틴 강조와 누락·조작 표시, 표의 색은 선택 턴의 저장된 결과와 일치해야 한다.
+  const detail = await (await page.request.get('http://127.0.0.1:8080/api/experiments/'+experiment.id+'/turns/'+last.turn)).json();
+  const sent = status => detail.cities.reduce((n, c) => n + (c.to_left === status) + (c.to_right === status), 0);
+  const byzantine = detail.cities.filter(c => c.is_byzantine).length;
+  if (await page.locator('.rs-result-node.is-byzantine').count() !== byzantine) throw Error('비잔틴 도시 강조 불일치');
+  if (await page.locator('.rs-message').count() !== detail.cities.length * 2) throw Error('방향별 메시지 선 누락');
+  for (const status of ['dropped', 'flipped']) {
+   if (await page.locator(`.rs-message[data-send=${status}]`).count() !== sent(status)) throw Error('메시지 '+status+' 선 불일치');
+   if (await page.locator(`.rs-send-badge[data-send=${status}]`).count() !== sent(status)) throw Error('메시지 '+status+' 표시 불일치');
+   if (await page.locator(`.rs-city-table td[data-tone=${status}]`).count() !== sent(status)) throw Error('표의 '+status+' 색 불일치');
+  }
+  if (await page.locator('.rs-city-table td[data-tone=byzantine]').count() !== byzantine) throw Error('표의 비잔틴 색 불일치');
+  if (experiment.created_at && await page.locator('.rs-experiment[aria-pressed=true] .rs-created').count() !== 1) throw Error('생성 시각 누락');
   await page.getByRole('button', {name:'도시 2 상세 보기', exact:true}).click();
   await page.getByTestId('city-detail').waitFor();
   await page.getByRole('button', {name:'전체 턴 표', exact:true}).click();
@@ -212,6 +225,20 @@ const checks=[];const errors=[];page.on('pageerror',e=>errors.push(String(e)));
   if (await page.locator('.cp-chart g[aria-pressed=true]').count() !== 1) throw Error('그래프 턴 선택 불일치');
   const markerIds = await page.locator('.cp-slot-network marker').evaluateAll(nodes=>nodes.map(n=>n.id));
   if(new Set(markerIds).size!==markerIds.length)throw Error('비교 네트워크 화살표 ID 중복');
+  // A·B 값이 다른 칸만 강조한다. 턴 수가 다른 실험도 있으므로 양쪽 모두에 있는 첫 턴에서 확인한다.
+  await page.locator('.cp-chart g[role=button]').first().press('Enter');
+  await page.waitForFunction(() => document.querySelectorAll('.cp-city-table .cp-cell-value[data-tone=muted]').length === 0);
+  const cells = await page.locator('.cp-city-table tbody td:has(.cp-cell-value)').evaluateAll(nodes => nodes.map(td => {
+   const [a, b] = [...td.querySelectorAll('.cp-cell-value')].map(value => value.lastChild.textContent);
+   return { marked: td.dataset.different === 'true', differs: a !== b };
+  }));
+  if (!cells.length || cells.some(cell => cell.marked !== cell.differs)) throw Error('A/B 차이 강조 불일치');
+  // 한쪽에 없는 턴은 비교 대상이 아니므로 어떤 칸도 강조하지 않는다.
+  if (completed[0].config.turns !== completed[1].config.turns) {
+   await page.locator('.cp-chart g[role=button]').last().press('Enter');
+   await page.waitForFunction(() => !document.querySelector('.cp-side-status [role=status]') && document.querySelectorAll('.cp-city-table .cp-cell-value[data-tone=muted]').length > 0);
+   if (await page.locator('.cp-city-table td[data-different=true]').count() !== 0) throw Error('없는 턴을 차이로 강조함');
+  }
   // 실제 턴 응답은 그대로 사용하고 한쪽의 통신 실패만 주입한다.
   await page.reload();
   const failedPath=`**/api/experiments/${completed[1].id}/turns/1`;

@@ -122,3 +122,13 @@ test('malformed fields are rejected without imposing configuration limits', asyn
   response = { experiment_id: 1, turns: [{ turn: 1, truth: 'safe', accuracy: '1' }] }
   await assert.rejects(listTurns(1, signal), /응답 형식/)
 })
+
+test('experiment lists accept an optional creation time but reject a malformed one', async (context) => {
+  const signal = new AbortController().signal
+  const row = { id: 3, name: null, status: 'completed', config: { turns: 5, byzantine_count: 1, sensor_error: .1, drop_rate: 0, flip_rate: 0, seed: null }, completed_turns: 5, mean_accuracy: 1, error: null }
+  const rows = [row, { ...row, id: 4, created_at: '2026-11-14T14:47:10Z' }, { ...row, id: 5, created_at: null }]
+  const fetchMock = context.mock.method(globalThis, 'fetch', async () => new Response(JSON.stringify(rows)))
+  assert.deepEqual(await listExperiments(0, signal), rows)
+  fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify([{ ...row, created_at: 20261114 }])))
+  await assert.rejects(listExperiments(0, signal), /응답 형식/)
+})

@@ -38,3 +38,7 @@ test('name length matches backend Unicode character counting', () => {
   assert.deepEqual(errorsFor({ name: '🌆'.repeat(50) }), {})
   assert.ok(errorsFor({ name: '🌆'.repeat(51) }).name)
 })
+
+test('the default draft is built from the field definitions and keeps the documented starting values', () => {
+  assert.deepEqual(createExperimentDraft(), { name: '', seed: '', turns: '10', byzantine_count: '1', sensor_error: '10', drop_rate: '0', flip_rate: '0' })
+})
