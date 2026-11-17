@@ -92,7 +92,7 @@ export function ResultsPage() {
           </button>
         </div>
         <p className="rs-muted">
-          실험 목록 <span>최신순 · {EXPERIMENT_PAGE_SIZE}개씩</span>
+          실험 목록 <span>{`최신순 · ${EXPERIMENT_PAGE_SIZE}개씩`}</span>
         </p>
         <div className="rs-list-scroll" aria-busy={loading}>
           {loading ? (
@@ -262,7 +262,7 @@ export function ResultsPage() {
                 </div>
                 <div className="rs-tabs" role="group" aria-label="도시 결과 표시 방식">
                   <button aria-pressed={tab === 'all'} onClick={() => setTab('all')}>
-                    전체 {CITY_COUNT}개 도시
+                    {`전체 ${CITY_COUNT}개 도시`}
                   </button>
                   <button aria-pressed={tab === 'detail'} onClick={() => setTab('detail')}>
                     {city ? `도시 ${city} 상세` : '선택 상세'}

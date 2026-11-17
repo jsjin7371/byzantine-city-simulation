@@ -1,5 +1,10 @@
 import type { Ref } from 'react'
-import type { ComparisonExperiment, Experiment, TurnDetail } from '../../experimentsApi'
+import type {
+  CityResult,
+  ComparisonExperiment,
+  Experiment,
+  TurnDetail,
+} from '../../experimentsApi'
 import type { useComparisonTurn } from './useComparisonTurn'
 import { ResultNetwork } from '../results/ResultNetwork'
 import { CityDetail } from '../results/CityResults'
@@ -14,6 +19,9 @@ import { cityIds } from '../networkGeometry'
 
 type Side = ReturnType<typeof useComparisonTurn>
 type CitiesProps = { sides: Side[]; city: number | null }
+// 화면의 왼쪽이 A, 오른쪽이 B다. sides 배열과 같은 순서다.
+const sideLabels = ['A', 'B'] as const
+const sideClasses = ['cp-a', 'cp-b'] as const
 // 상태와 요청은 페이지/훅에서 관리하고, 이 컴포넌트는 동일한 A·B 데이터를 표시한다.
 export function CompareNetworks({
   experiments,
@@ -36,9 +44,9 @@ export function CompareNetworks({
 }) {
   return (
     <div className="cp-selectors">
-      {(['A', 'B'] as const).map((label, i) => (
+      {sideLabels.map((label, i) => (
         <div className="cp-slot" key={label}>
-          <label className={i ? 'cp-b' : 'cp-a'} htmlFor={`compare-${label}`}>
+          <label className={sideClasses[i]} htmlFor={`compare-${label}`}>
             <strong>실험 {label}</strong>
             <select
               id={`compare-${label}`}
@@ -99,8 +107,8 @@ export function CompareCityDetails({
             <button onClick={onClose}>상세 닫기</button>
           </div>
           {sides.map((side, i) => (
-            <section key={i} aria-label={`실험 ${i ? 'B' : 'A'} 도시 상세`}>
-              <strong className={i ? 'cp-b' : 'cp-a'}>실험 {i ? 'B' : 'A'}</strong>
+            <section key={i} aria-label={`실험 ${sideLabels[i]} 도시 상세`}>
+              <strong className={sideClasses[i]}>실험 {sideLabels[i]}</strong>
               {side.data ? (
                 <CityDetail data={side.data} city={city} />
               ) : (
@@ -113,25 +121,39 @@ export function CompareCityDetails({
     </>
   )
 }
-// 판단의 색은 정답 여부, 센서와 실제 상태의 색은 안전/위험을 의미한다.
-function cityValue(data: TurnDetail | null, city: number, field: number) {
+// 비교 표의 열. 판단의 색은 정답 여부, 센서와 실제 상태의 색은 안전/위험을 의미한다.
+const goodTone = (good: boolean) => (good ? 'success' : 'error')
+const compareFields: {
+  label: string
+  value: (row: CityResult, data: TurnDetail) => { text: string; tone: string }
+}[] = [
+  {
+    label: '판단',
+    value: (row) => ({ text: decisions[row.decision], tone: goodTone(row.correct) }),
+  },
+  {
+    label: '정답 여부',
+    value: (row) => ({ text: row.correct ? '정답' : '오답', tone: goodTone(row.correct) }),
+  },
+  {
+    label: '센서값',
+    value: (row) => ({ text: truths[row.hint], tone: goodTone(row.hint === 'safe') }),
+  },
+  {
+    label: '실제 상태',
+    value: (_, data) => ({ text: truths[data.truth], tone: goodTone(data.truth === 'safe') }),
+  },
+  {
+    label: '비잔틴 여부',
+    value: (row) => ({
+      text: row.is_byzantine ? '비잔틴' : '정상',
+      tone: row.is_byzantine ? 'error' : 'neutral',
+    }),
+  },
+]
+function cityValue(data: TurnDetail | null, city: number, field: (typeof compareFields)[number]) {
   const row = data?.cities.find((item) => item.city === city)
-  if (!row || !data) return { text: '—', tone: 'muted' }
-  switch (field) {
-    case 0:
-      return { text: decisions[row.decision], tone: row.correct ? 'success' : 'error' }
-    case 1:
-      return { text: row.correct ? '정답' : '오답', tone: row.correct ? 'success' : 'error' }
-    case 2:
-      return { text: truths[row.hint], tone: row.hint === 'safe' ? 'success' : 'error' }
-    case 3:
-      return { text: truths[data.truth], tone: data.truth === 'safe' ? 'success' : 'error' }
-    default:
-      return {
-        text: row.is_byzantine ? '비잔틴' : '정상',
-        tone: row.is_byzantine ? 'error' : 'neutral',
-      }
-  }
+  return row && data ? field.value(row, data) : { text: '—', tone: 'muted' }
 }
 
 export function CompareCityTable({
@@ -149,11 +171,11 @@ export function CompareCityTable({
       </div>
       <div className="cp-side-status">
         {sides.map((side, i) => (
-          <div key={i} className={i ? 'cp-b' : 'cp-a'}>
-            <strong>실험 {i ? 'B' : 'A'}</strong>{' '}
+          <div key={i} className={sideClasses[i]}>
+            <strong>실험 {sideLabels[i]}</strong>{' '}
             {side.error ? (
               <span className="cp-error" role="alert">
-                {side.error} <button onClick={side.retry}>{i ? 'B' : 'A'} 다시 조회</button>
+                {side.error} <button onClick={side.retry}>{sideLabels[i]} 다시 조회</button>
               </span>
             ) : !ready ? (
               '실험을 선택하세요.'
@@ -175,7 +197,7 @@ export function CompareCityTable({
           <thead>
             <tr>
               <th>도시</th>
-              {['판단', '정답 여부', '센서값', '실제 상태', '비잔틴 여부'].map((label) => (
+              {compareFields.map(({ label }) => (
                 <th key={label}>
                   {label}
                   <small>
@@ -190,13 +212,13 @@ export function CompareCityTable({
             {cityIds.map((n) => (
               <tr key={n} data-city={n} data-selected={city === n}>
                 <th>도시 {n}</th>
-                {[0, 1, 2, 3, 4].map((field) => (
-                  <td key={field}>
+                {compareFields.map((field) => (
+                  <td key={field.label}>
                     {sides.map((side, i) => {
                       const value = cityValue(side.data, n, field)
                       return (
                         <span key={i} className="cp-cell-value" data-tone={value.tone}>
-                          <small className="cp-cell-side">{i ? 'B' : 'A'}</small>
+                          <small className="cp-cell-side">{sideLabels[i]}</small>
                           {value.text}
                         </span>
                       )

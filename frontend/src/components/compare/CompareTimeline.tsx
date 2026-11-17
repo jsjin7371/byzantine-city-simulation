@@ -1,6 +1,15 @@
 import type { ComparisonExperiment } from '../../experimentsApi'
 import { percent } from '../results/resultLabels'
+import { showTurnLabel, turnScale } from '../chartScale'
 import { onActivateKey } from '../../lib/keyboard'
+
+// 그래프 좌표(SVG viewBox 기준). 왼쪽은 % 눈금, 아래쪽은 턴 번호 자리다.
+const CHART = { width: 1000, height: 180, left: 50, right: 950, top: 20, bottom: 140 }
+const y = (accuracy: number) => CHART.bottom - accuracy * (CHART.bottom - CHART.top)
+const sides = [
+  { label: 'A', line: '━', className: 'cp-a', series: 'cp-series-a' },
+  { label: 'B', line: '┄', className: 'cp-b', series: 'cp-series-b' },
+]
 
 function comparisonTurns(rows: ComparisonExperiment[] | null) {
   return [...new Set(rows?.flatMap((row) => row.accuracy.map((t) => t.turn)) ?? [])].sort(
@@ -20,58 +29,54 @@ export function CompareTimeline({
   const turns = comparisonTurns(rows)
   const first = turns[0] ?? 1,
     last = turns.at(-1) ?? 1
-  const x = (n: number) => (last === first ? 500 : 50 + ((n - first) / (last - first)) * 900)
+  const x = turnScale(first, last, CHART.left, CHART.right)
   // 없는 턴은 선으로 연결하거나 0으로 보간하지 않는다. 두 실험 모두 동일한 0~100% 축을 쓴다.
   return (
     <section className="cp-timeline">
       <div className="cp-section-title">
         <h2>턴별 정확도</h2>
         <div className="cp-legend">
-          <span className="cp-a">
-            A ━{' '}
-            {rows?.[0]?.accuracy.find((t) => t.turn === turn)
-              ? percent(rows[0].accuracy.find((t) => t.turn === turn)!.accuracy)
-              : '해당 턴 없음'}
-          </span>
-          <span className="cp-b">
-            B ┄{' '}
-            {rows?.[1]?.accuracy.find((t) => t.turn === turn)
-              ? percent(rows[1].accuracy.find((t) => t.turn === turn)!.accuracy)
-              : '해당 턴 없음'}
-          </span>
+          {sides.map((side, i) => {
+            const current = rows?.[i]?.accuracy.find((t) => t.turn === turn)
+            return (
+              <span key={side.label} className={side.className}>
+                {side.label} {side.line} {current ? percent(current.accuracy) : '해당 턴 없음'}
+              </span>
+            )
+          })}
         </div>
       </div>
       {turns.length ? (
         <svg
           className="cp-chart"
-          viewBox="0 0 1000 180"
+          viewBox={`0 0 ${CHART.width} ${CHART.height}`}
           role="group"
           aria-label="A 실선 B 점선 턴별 정확도 비교"
         >
           {[0, 50, 100].map((n) => (
             <g key={n}>
-              <text x="2" y={144 - n * 1.2}>
+              <text x="2" y={y(n / 100) + 4}>
                 {n}%
               </text>
-              <line x1="50" x2="950" y1={140 - n * 1.2} y2={140 - n * 1.2} />
+              <line x1={CHART.left} x2={CHART.right} y1={y(n / 100)} y2={y(n / 100)} />
             </g>
           ))}
           <line className="cp-cursor" x1={x(turn)} x2={x(turn)} y1="14" y2="145" />
           {rows?.map((row, side) => (
-            <g key={row.id} className={side ? 'cp-series-b' : 'cp-series-a'}>
+            <g key={row.id} className={sides[side].series}>
               {row.accuracy.map((t, i) => (
                 <g key={t.turn}>
                   {i > 0 && row.accuracy[i - 1].turn === t.turn - 1 && (
                     <line
                       x1={x(row.accuracy[i - 1].turn)}
-                      y1={140 - row.accuracy[i - 1].accuracy * 120}
+                      y1={y(row.accuracy[i - 1].accuracy)}
                       x2={x(t.turn)}
-                      y2={140 - t.accuracy * 120}
+                      y2={y(t.accuracy)}
                     />
                   )}
                   <circle
                     cx={x(t.turn)}
-                    cy={140 - t.accuracy * 120}
+                    cy={y(t.accuracy)}
                     r={side ? (t.turn === turn ? 4 : 3) : t.turn === turn ? 7 : 5}
                   />
                 </g>
@@ -95,7 +100,7 @@ export function CompareTimeline({
                 width={Math.min(40, 840 / turns.length)}
                 height="172"
               />
-              {(turns.length <= 10 || n === first || n === last || n % 2 === 0) && (
+              {showTurnLabel(n, first, last, turns.length) && (
                 <text x={x(n)} y="170" textAnchor="middle">
                   {n}
                 </text>

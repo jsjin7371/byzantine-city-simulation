@@ -162,7 +162,7 @@ export function NetworkCanvas() {
       <div className="network-toolbar">
         <div className="network-heading">
           <h2 id="network-heading">도시 네트워크</h2>
-          <Badge variant="outline">{CITY_COUNT}개 도시</Badge>
+          <Badge variant="outline">{`${CITY_COUNT}개 도시`}</Badge>
         </div>
         <ToggleGroup
           type="single"
@@ -214,12 +214,8 @@ export function NetworkCanvas() {
                   markerHeight={kind === 'ring' ? 5.5 : 5}
                   orient={kind === 'hint' ? 'auto' : 'auto-start-reverse'}
                 >
-                  <path
-                    d="m2 2 6 3-6 3"
-                    fill="none"
-                    stroke={kind === 'ring' ? '#7a8795' : kind === 'active' ? '#3758b5' : '#93632c'}
-                    strokeWidth="1.4"
-                  />
+                  {/* 화살표 색은 SetupPage.css의 [data-network-marker] 규칙에서 정한다. */}
+                  <path d="m2 2 6 3-6 3" fill="none" strokeWidth="1.4" />
                 </marker>
               ))}
             </defs>
