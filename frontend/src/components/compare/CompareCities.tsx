@@ -12,6 +12,7 @@ import {
   UNNAMED_EXPERIMENT,
   meanPercent,
   percent,
+  truthTones,
   truths,
   decisions,
 } from '../results/resultLabels'
@@ -137,17 +138,17 @@ const compareFields: {
   },
   {
     label: '센서값',
-    value: (row) => ({ text: truths[row.hint], tone: goodTone(row.hint === 'safe') }),
+    value: (row) => ({ text: truths[row.hint], tone: truthTones[row.hint] }),
   },
   {
     label: '실제 상태',
-    value: (_, data) => ({ text: truths[data.truth], tone: goodTone(data.truth === 'safe') }),
+    value: (_, data) => ({ text: truths[data.truth], tone: truthTones[data.truth] }),
   },
   {
     label: '비잔틴 여부',
     value: (row) => ({
       text: row.is_byzantine ? '비잔틴' : '정상',
-      tone: row.is_byzantine ? 'error' : 'neutral',
+      tone: row.is_byzantine ? 'byzantine' : 'neutral',
     }),
   },
 ]

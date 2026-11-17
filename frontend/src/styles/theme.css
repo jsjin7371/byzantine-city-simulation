@@ -27,6 +27,8 @@
   --color-success: #72e0ba;
   --color-byzantine: #f5c26b;
   --color-byzantine-soft: #2e2716;
+  --color-dropped: #ff9eac;
+  --color-flipped: #ff9a5a;
   --surface: var(--color-surface);
   --background: var(--color-background);
   --text: var(--color-text);

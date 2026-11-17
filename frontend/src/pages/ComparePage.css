@@ -468,6 +468,9 @@ body:has(.cp-workspace) {
 .cp-city-table .cp-cell-value[data-tone='error'] {
   color: var(--color-error);
 }
+.cp-city-table .cp-cell-value[data-tone='byzantine'] {
+  color: var(--color-byzantine);
+}
 .cp-city-table .cp-cell-value[data-tone='neutral'] {
   color: var(--color-text);
 }

@@ -533,6 +533,28 @@
   font-size: 12px;
   color: var(--color-accent);
 }
+/* 값의 의미를 색으로 함께 보여준다. 글자가 의미를 담고 있으므로 색은 보조 수단이다. */
+:is(.rs-city-table, .rs-detail-values, .rs-all-table) [data-tone='success'] {
+  color: var(--color-success);
+}
+:is(.rs-city-table, .rs-detail-values, .rs-all-table) [data-tone='error'] {
+  color: var(--color-error);
+}
+:is(.rs-city-table, .rs-detail-values, .rs-all-table) [data-tone='byzantine'] {
+  color: var(--color-byzantine);
+  font-weight: 600;
+}
+:is(.rs-city-table, .rs-detail-values, .rs-all-table) [data-tone='dropped'] {
+  color: var(--color-dropped);
+  font-weight: 600;
+}
+:is(.rs-city-table, .rs-detail-values, .rs-all-table) [data-tone='flipped'] {
+  color: var(--color-flipped);
+  font-weight: 600;
+}
+:is(.rs-city-table, .rs-detail-values, .rs-all-table) [data-tone='muted'] {
+  color: var(--rs-muted);
+}
 .rs-correct,
 .rs-result-node .rs-correct {
   color: var(--color-success);
