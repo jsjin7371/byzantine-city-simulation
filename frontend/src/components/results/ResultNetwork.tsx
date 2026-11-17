@@ -134,7 +134,7 @@ export function ResultNetwork({
                   tabIndex={0}
                   aria-label={`도시 ${i + 1} 상세 보기`}
                   aria-pressed={city === i + 1}
-                  className={`rs-result-node ${city === i + 1 ? 'is-selected' : ''}`}
+                  className={`rs-result-node ${city === i + 1 ? 'is-selected' : ''} ${row?.is_byzantine ? 'is-byzantine' : ''}`}
                   onClick={() => onCity(i + 1)}
                   onKeyDown={onActivateKey(() => onCity(i + 1))}
                 >
@@ -142,7 +142,12 @@ export function ResultNetwork({
                   <text x="10" y="22">
                     도시 {i + 1}
                   </text>
-                  <text x={nodeWidth - 10} y="22" textAnchor="end" className="rs-node-caption">
+                  <text
+                    x={nodeWidth - 10}
+                    y="22"
+                    textAnchor="end"
+                    className={`rs-node-caption ${row?.is_byzantine ? 'rs-byzantine' : ''}`}
+                  >
                     {row?.is_byzantine ? '비잔틴' : row ? '정상' : ''}
                   </text>
                   <text
@@ -170,6 +175,10 @@ export function ResultNetwork({
         <span>
           <i />
           이웃 도시 간 메시지
+        </span>
+        <span>
+          <i className="byzantine" />
+          비잔틴 도시
         </span>
         <span>수신: 이전 턴 · 발신: 현재 턴</span>
       </div>

@@ -25,6 +25,8 @@
   --color-error-surface: #2b1c2b;
   --color-error-border: #894d5b;
   --color-success: #72e0ba;
+  --color-byzantine: #f5c26b;
+  --color-byzantine-soft: #2e2716;
   --surface: var(--color-surface);
   --background: var(--color-background);
   --text: var(--color-text);

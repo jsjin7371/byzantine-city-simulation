@@ -285,6 +285,16 @@
 .rs-result-node text:last-child {
   font-size: 13px;
 }
+/* 비잔틴 도시는 색과 점선 테두리로 함께 구분한다. 선택 색보다 먼저 두어 선택 시에도 점선은 남는다. */
+.rs-result-node.is-byzantine rect {
+  stroke: var(--color-byzantine);
+  stroke-dasharray: 5 3;
+  fill: var(--color-byzantine-soft);
+}
+.rs-result-node text.rs-byzantine {
+  fill: var(--color-byzantine);
+  font-weight: 600;
+}
 .rs-result-node.is-selected rect {
   stroke: var(--color-accent);
   stroke-width: 2;
@@ -366,6 +376,13 @@
 }
 .rs-legend i.hint {
   border-top: 2px dashed var(--color-hint);
+}
+.rs-legend i.byzantine {
+  width: 12px;
+  height: 9px;
+  border: 1.5px dashed var(--color-byzantine);
+  border-radius: 2px;
+  background: var(--color-byzantine-soft);
 }
 .rs-timeline {
   padding: 12px 20px;
