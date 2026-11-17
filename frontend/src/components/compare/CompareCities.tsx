@@ -168,7 +168,10 @@ export function CompareCityTable({
     <section className="cp-lower">
       <div className="cp-section-title">
         <h2>{turn}턴 도시 비교</h2>
-        <span className="cp-muted">같은 도시 번호를 나란히 비교합니다.</span>
+        <span className="cp-muted">
+          같은 도시 번호를 나란히 비교합니다. <i className="cp-different-key" aria-hidden="true" />
+          A·B가 다른 값
+        </span>
       </div>
       <div className="cp-side-status">
         {sides.map((side, i) => (
@@ -213,19 +216,22 @@ export function CompareCityTable({
             {cityIds.map((n) => (
               <tr key={n} data-city={n} data-selected={city === n}>
                 <th>도시 {n}</th>
-                {compareFields.map((field) => (
-                  <td key={field.label}>
-                    {sides.map((side, i) => {
-                      const value = cityValue(side.data, n, field)
-                      return (
+                {compareFields.map((field) => {
+                  const values = sides.map((side) => cityValue(side.data, n, field))
+                  // 양쪽 결과가 모두 있을 때만 비교한다. 조회 중이거나 없는 턴은 차이로 보지 않는다.
+                  const different =
+                    sides.every((side) => side.data) && values[0].text !== values[1].text
+                  return (
+                    <td key={field.label} data-different={different}>
+                      {values.map((value, i) => (
                         <span key={i} className="cp-cell-value" data-tone={value.tone}>
                           <small className="cp-cell-side">{sideLabels[i]}</small>
                           {value.text}
                         </span>
-                      )
-                    })}
-                  </td>
-                ))}
+                      ))}
+                    </td>
+                  )
+                })}
                 <td>
                   <button aria-expanded={city === n} onClick={() => onDetail(n)}>
                     도시 {n} 상세
