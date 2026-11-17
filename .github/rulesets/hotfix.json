@@ -1,0 +1,15 @@
+{
+  "name": "hotfix",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": ["refs/heads/hotfix/**"],
+      "exclude": []
+    }
+  },
+  "rules": [
+    { "type": "non_fast_forward" }
+  ],
+  "bypass_actors": []
+}

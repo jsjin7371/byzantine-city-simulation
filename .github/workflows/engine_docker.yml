@@ -1,0 +1,47 @@
+name: Engine Docker
+
+on:
+  pull_request:
+    branches: [develop, "release/**", main]
+    paths:
+      - "engine/**"
+      - "docker-compose.yml"
+      - ".github/workflows/engine_docker.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  network:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME: engine-docker-${{ github.run_id }}-${{ github.run_attempt }}
+      COMPOSE_FILE: docker-compose.yml:engine/tests/docker-compose.network.yml
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Docker Compose 확인
+        run: |
+          docker compose version
+          docker compose config --quiet
+
+      - name: 엔진 이미지 빌드
+        run: docker compose build god city-1
+
+      - name: 검사 컨테이너 실행
+        run: >-
+          docker compose up -d --no-build --wait --wait-timeout 120
+          god city-1 city-2 city-3 city-4 city-5 api
+
+      - name: God·City 통신 검사
+        run: docker compose exec -T god python /tests/network_smoke.py
+
+      - name: 실패 로그 출력
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: 검사 환경 정리
+        if: always()
+        run: docker compose down --volumes --remove-orphans

@@ -1,0 +1,31 @@
+name: PR Title Check
+
+# develop으로 가는 PR 제목이 README의 커밋 규칙을 따르는지 검사
+# 형식: <type>: <내용>  예: "feat: 실험 삭제 API 구현"
+# 허용 type: feat, fix, test, docs, refactor, chore
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [develop]
+
+permissions: {}
+
+jobs:
+  check-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR 제목 형식 검사
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|test|docs|refactor|chore): .+'
+          echo "PR 제목: $PR_TITLE"
+          if [[ "$PR_TITLE" =~ $pattern ]]; then
+            echo "✅ PR 제목이 규칙에 맞습니다."
+          else
+            echo "❌ PR 제목이 README의 커밋 규칙을 따르지 않습니다."
+            echo "형식: <type>: <내용>  (예: feat: 실험 삭제 API 구현)"
+            echo "허용 type: feat, fix, test, docs, refactor, chore"
+            exit 1
+          fi

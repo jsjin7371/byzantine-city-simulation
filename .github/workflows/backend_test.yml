@@ -1,0 +1,36 @@
+name: Backend Test
+
+# 백엔드 코드가 바뀌면 pytest 실행
+# 테스트는 SQLite 임시 DB와 Mock God을 사용하므로 MySQL, 엔진 없이 실행됨
+
+on:
+  pull_request:
+    branches: [develop, "release/**", main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend_test.yml"
+  push:
+    branches: [develop]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend_test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: 의존성 설치
+        run: pip install -r requirements-dev.txt
+      - name: pytest 실행
+        run: python -m pytest -v
