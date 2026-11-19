@@ -80,14 +80,14 @@ def test_409_while_experiment_active(client):
 
 
 def test_god_failure_marks_failed(client):
-    state = start(client)
-
     def boom(game_id, payload):
         raise GodGameError("down")
 
-    client.app.state.game_god.turn = boom
-    assert play(client, state, 1).status_code == 502
-    assert client.get(f"/games/{state['game_id']}").json()["status"] == "failed"
+    for turn in (boom, lambda game_id, payload: {}):  # 호출 실패, 필드가 빠진 성공 응답
+        state = start(client)
+        client.app.state.game_god.turn = turn
+        assert play(client, state, 1).status_code == 502
+        assert client.get(f"/games/{state['game_id']}").json()["status"] == "failed"
 
 
 def test_start_failure_leaves_no_game(client):

@@ -84,13 +84,16 @@ def play_turn(game_id: int, body: GameTurnIn, request: Request, db: Session = De
         raise HTTPException(status.HTTP_409_CONFLICT, f"expected turn {game.state['turn'] + 1}, got {body.turn}")
     try:
         result = request.app.state.game_god.turn(game_id, body.model_dump())
+        changes = {k: result[k] for k in ("turn", "game_over", "outcome", "end_reason", "next_hints", "next_share_pairs")}
     except GodGameError as e:
         if e.status in (409, 422):  # 요청 문제는 그대로 돌려주고 게임은 계속
             raise HTTPException(e.status, str(e)) from e
         fail(db, game, e)
-    db.add(GameTurn(game_id=game_id, turn=result["turn"], result=result))
-    game.state = {**game.state, **{k: result[k] for k in ("turn", "game_over", "outcome", "end_reason", "next_hints", "next_share_pairs")}}
-    if result["game_over"]:
+    except (KeyError, TypeError) as e:  # 성공 응답인데 7.8 형식이 아님
+        fail(db, game, GodGameError(f"엔진(God) 턴 응답 형식이 잘못되었습니다. (상세: {e!r})"))
+    db.add(GameTurn(game_id=game_id, turn=changes["turn"], result=result))
+    game.state = {**game.state, **changes}
+    if changes["game_over"]:
         game.status = Status.FINISHED
     db.commit()
     return result
