@@ -14,8 +14,8 @@ from god.game import Game, GameConfig  # noqa: E402
 DIFFS = {"easy": dict(mafia_count=2, sensor_error=0.4), "normal": dict(mafia_count=1, sensor_error=0.3),
          "hard": dict(mafia_count=1, sensor_error=0.2)}  # spec 7.2 난이도 프리셋
 PILOT_WIN = {"easy": 0.5712, "normal": 0.2408, "hard": 0.0209}  # mafia_pilot.csv difficulty 행 (wary, 10000판)
-COLS = ["citizen_type", "connection", "difficulty", "runs", "accuracy", "accuracy_ci", "win_rate", "win_ci",
-        "suspicion_hit", "suspicion_hit_ci", "caught_rate", "caught_ci", "caught_turn", "caught_turn_ci"]
+METRICS = ["accuracy", "win_rate", "suspicion_hit", "caught_rate", "caught_turn"]
+COLS = ["citizen_type", "connection", "difficulty", "runs"] + [f"{m}{x}" for m in METRICS for x in ("", "_lo", "_hi")]
 
 
 def city_turn(_, req):
@@ -32,20 +32,33 @@ def play(kind, conn, diff, seed):
     while not g.game_over:
         res = g.play({"turn": g.turn + 1, "claims": {}}, city_turn)
     hit = None
-    if kind != "majority":  # 시민마다 최고 의심 도시들 중 마피아 몫 (동점이면 나눠 센다)
+    if kind != "majority":  # 시민마다 최고 의심 도시들 중 마피아 몫. 동점이면 나눠 센다.
         mafia = {str(c) for c, role in g.roles.items() if role != "citizen"}
-        hit = fmean(len(mafia & {s for s, v in g.suspicion[r].items() if v == max(g.suspicion[r].values())})
-                    / sum(v == max(g.suspicion[r].values()) for v in g.suspicion[r].values()) for r in g.citizens)
+        hits = []
+        for r in g.citizens:
+            top = max(g.suspicion[r].values())
+            tied = {c for c, v in g.suspicion[r].items() if v == top}
+            hits.append(len(tied & mafia) / len(tied))
+        hit = fmean(hits)
     caught = res["end_reason"] == "caught"
-    return res["accuracy"], res["outcome"] in ("win", "perfect_win"), hit, caught, res["turn"] if caught else None
+    # 정확도는 게임 종료 시점 값 (15턴 또는 발각 턴)
+    return dict(accuracy=res["accuracy"], win_rate=res["outcome"] in ("win", "perfect_win"), suspicion_hit=hit,
+                caught_rate=caught, caught_turn=res["turn"] if caught else None)
 
 
-def ci(xs):
-    """평균, 95% 신뢰구간 반폭 (정규근사). 값이 없으면 (None, None)."""
-    xs = [x for x in xs if x is not None]
-    if not xs:
-        return None, None
-    return fmean(xs), 1.96 * stdev(xs) / math.sqrt(len(xs)) if len(xs) > 1 else None
+def wilson(xs):
+    """0/1 값의 평균과 95% Wilson 구간 (극단값·적은 판 수에서도 0~1 안)."""
+    n, p, z = len(xs), fmean(xs), 1.96
+    mid = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return p, mid - half, mid + half
+
+
+def normal(xs):
+    """연속값의 평균과 95% 정규근사 구간."""
+    m = fmean(xs)
+    h = 1.96 * stdev(xs) / math.sqrt(len(xs)) if len(xs) > 1 else 0
+    return m, m - h, m + h
 
 
 def run(job):
@@ -53,9 +66,10 @@ def run(job):
     base = zlib.crc32(f"{kind}/{conn}/{diff}".encode())  # 조건마다 고정 시드, 판마다 +i
     games = [play(kind, conn, diff, base + i) for i in range(runs)]
     row = dict(citizen_type=kind, connection=conn, difficulty=diff, runs=runs)
-    for name, col in zip(("accuracy", "win", "suspicion_hit", "caught"), zip(*games)):
-        row[name + ("_rate" if name in ("win", "caught") else "")], row[name + "_ci"] = ci(map(float, col) if None not in col else col)
-    row["caught_turn"], row["caught_turn_ci"] = ci([g[4] for g in games])
+    for m in METRICS:
+        xs = [g[m] for g in games if g[m] is not None]  # 의심 적중(majority)·발각 턴(발각 없음)은 값이 없을 수 있다
+        stat = wilson if m in ("win_rate", "caught_rate") else normal
+        row.update(zip((m, m + "_lo", m + "_hi"), stat([float(x) for x in xs]) if xs else ()))
     return row
 
 
@@ -73,20 +87,17 @@ def main(runs, ai):
     if ai and not os.environ.get("LLM_API_KEY"):
         print("LLM_API_KEY가 없어 ai는 건너뜀 (가짜 LLM 결과는 의미 없음)")
         ai = False
-    jobs = [(k, c, d, runs) for k, c, d in itertools.product(("majority", "wary", "ai"), ("all", "ring"), DIFFS)
-            if k != "ai" or ai]
+    kinds = ["majority", "wary"] + ["ai"] * ai
+    jobs = [(k, c, d, runs) for k, c, d in itertools.product(kinds, ("all", "ring"), DIFFS)]
     with Pool() as p:
-        rows = {(r["citizen_type"], r["connection"], r["difficulty"]): r for r in p.map(run, [j for j in jobs if j[0] != "ai"])}
-    rows.update({(j[0], j[1], j[2]): run(j) for j in jobs if j[0] == "ai"})  # ai는 호출 병렬이 엔진 안에 있어 순차로
+        rows = p.map(run, [j for j in jobs if j[0] != "ai"]) + [run(j) for j in jobs if j[0] == "ai"]  # ai는 호출 병렬이 엔진 안에 있어 순차
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mafia_compare.csv")
     with open(out, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, COLS)
         w.writeheader()
-        for k, c, d in itertools.product(("majority", "wary", "ai"), ("all", "ring"), DIFFS):
-            r = rows.get((k, c, d), dict(citizen_type=k, connection=c, difficulty=d))
+        for r in rows:
             w.writerow({x: round(v, 4) if isinstance(v, float) else v for x, v in r.items()})
-            if (k, c, d) in rows:
-                print(k, c, d, *(f"{x}={r[x]:.3f}" for x in ("accuracy", "win_rate", "caught_rate") if r[x] is not None))
+            print(r["citizen_type"], r["connection"], r["difficulty"], *(f"{m}={r[m]:.3f}" for m in METRICS[:2] + METRICS[3:4] if m in r))
 
 
 if __name__ == "__main__":
