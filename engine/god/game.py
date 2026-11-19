@@ -91,7 +91,15 @@ class Game:
         self.past = {c: [] for c in self.citizens}  # 시민 → 지난 힌트 (오래된 것부터)
         self.wary = config.citizen_type != "majority"
         self.suspicion = {c: {str(o): 0 for o in range(1, N + 1) if o != c} for c in self.citizens}
-        self.hints = self._draw_hints()
+        self.hints, self.pairs = self._draw_hints(), self._draw_pairs()
+
+    def _draw_pairs(self):
+        """다음 턴 공유 쌍 (7.5 3). 힌트와 함께 턴 전에 뽑아 플레이어에게 보여 준다."""
+        combos = [list(x) for x in itertools.combinations(self.citizens, 2)]
+        mode = self.config.share_mode
+        if mode == "pairs":
+            return self.rng.sample(combos, min(self.config.share_pairs, len(combos)))
+        return combos if mode == "all" else []
 
     def _draw_hints(self):
         err, truth = self.config.sensor_error, self.truth
@@ -107,7 +115,8 @@ class Game:
         return {"game_id": self.game_id, "config": asdict(self.config), "truth": self.truth,
                 "roles": {str(c): r for c, r in self.roles.items()}, "player_city": self.player,
                 "turn": self.turn, "game_over": self.game_over, "outcome": self.outcome,
-                "end_reason": self.end_reason, "next_hints": self.hints}
+                "end_reason": self.end_reason, "next_hints": self.hints,
+                "next_share_pairs": self.pairs}
 
     def _claims(self, body):
         if not isinstance(body, dict):
@@ -144,12 +153,9 @@ class Game:
             return None if claim is None else {"claim": claim, "note": ""}
         received = {r: {str(s): message(s, r) for s in neighbors(r, N, cfg.connection)} for r in self.citizens}
 
-        # 3. 정보 공유. 같은 보낸 도시가 쌍의 두 시민에게 다른 주장을 했으면 모순.
-        combos = list(itertools.combinations(self.citizens, 2))
-        pairs = (combos if cfg.share_mode == "all" else rng.sample(combos, min(cfg.share_pairs, len(combos)))
-                 if cfg.share_mode == "pairs" else [])
+        # 3. 정보 공유. 쌍은 직전에 공개한 next_share_pairs. 같은 보낸 도시가 쌍의 두 시민에게 다른 주장을 했으면 모순.
         sharing = []
-        for a, b in pairs:
+        for a, b in self.pairs:
             ra, rb = received[a], received[b]
             contradictions = [{"city": int(s), "told": {str(a): ra[s], str(b): rb[s]}} for s in ra
                               if ra[s] and rb.get(s) and ra[s]["claim"] != rb[s]["claim"]]
@@ -204,6 +210,7 @@ class Game:
                             "win" if wrong * 2 > len(decisions) else "loss")
         hints = self.hints
         self.hints = None if self.game_over else self._draw_hints()
+        self.pairs = None if self.game_over else self._draw_pairs()
 
         cities = [{"city": c, "role": self.roles[c], "hint": None, "received": None, "decision": None,
                    "correct": None, "suspicion": None, "reason": None} if self.roles[c] != "citizen" else
@@ -214,4 +221,4 @@ class Game:
         return {"game_id": self.game_id, "turn": t, "truth": self.truth,
                 "accuracy": (len(decisions) - wrong) / len(decisions), "cities": cities, "sharing": sharing, "vote": vote,
                 "game_over": self.game_over, "outcome": self.outcome, "end_reason": self.end_reason,
-                "next_hints": self.hints}
+                "next_hints": self.hints, "next_share_pairs": self.pairs}

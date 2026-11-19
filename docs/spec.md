@@ -311,18 +311,19 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 ### 7.4 마피아에게 보이는 정보
 
 - 플레이어는 정답, 모든 도시의 역할, **시민별 이번 턴 힌트**를 주장을 고르기 전에 본다.
+- 이번 턴 **공유 쌍**도 주장을 고르기 전에 본다 (7.7 `next_share_pairs`). 어느 시민끼리 대조되는지 알고 모순 위험을 관리하게 한다.
 - 근거: 힌트를 모르면 시민마다 다른 말을 고를 근거가 없어 "항상 반대"가 최선이 된다.
 - 턴이 끝나면 의심도, 판단 이유, 공유 내용, 투표 결과도 모두 본다 (숨기는 정보 없음).
 
 ### 7.5 한 턴의 진행 순서 (God)
 
 턴 t에서:
-1. 시민별 힌트 `hint_t`를 뽑는다. 직전 턴 끝에 미리 뽑아 플레이어에게 보여 준다 (7.7 `next_hints`).
+1. 시민별 힌트 `hint_t`와 공유 쌍을 뽑는다. 직전 턴 끝(1턴은 게임 생성 시)에 힌트, 공유 쌍 순으로 미리 뽑아 플레이어에게 보여 준다 (7.7 `next_hints`, `next_share_pairs`).
 2. 주장 모으기. 받는 도시 r, 보내는 도시 s (`connection`에 따라 s가 r의 이웃일 때만):
    - s가 시민: 직전 턴 결정 `decision_{t-1}`을 모두에게 같게 보낸다. 1턴에는 `null`.
    - s가 동료 또는 `player == "bot"`인 플레이어: 정답의 반대를 모두에게 보낸다. 1턴부터 보낸다.
    - s가 사람 플레이어: 요청의 `claims[r]`. 시민마다 다르게 고를 수 있다.
-3. 정보 공유: `share_mode`에 따라 시민 쌍을 고른다 (`all`: 모든 시민 쌍, `pairs`: 무작위 `share_pairs`쌍, `none`: 없음). God이 쌍 (a, b)가 이번 턴에 받은 주장을 비교해, 같은 보낸 도시 s가 a와 b에게 다른 주장을 보냈으면(둘 다 `null`이 아닐 때) s에 대한 **모순**으로 기록한다. 쌍에게 전달되는 것은 모순 목록뿐이다 (받은 주장 전체는 `cities[].received`에 있다). 신이 중계하고 도시끼리 직접 통신하지 않는다.
+3. 정보 공유: 1에서 공개한 쌍으로 공유한다 (`all`: 모든 시민 쌍, `pairs`: 무작위 `share_pairs`쌍, `none`: 없음). God이 쌍 (a, b)가 이번 턴에 받은 주장을 비교해, 같은 보낸 도시 s가 a와 b에게 다른 주장을 보냈으면(둘 다 `null`이 아닐 때) s에 대한 **모순**으로 기록한다. 쌍에게 전달되는 것은 모순 목록뿐이다 (받은 주장 전체는 `cities[].received`에 있다). 신이 중계하고 도시끼리 직접 통신하지 않는다.
 4. 각 시민 City를 한 번 호출한다 (힌트, 받은 주장, 자기가 속한 쌍의 공유 내용과 모순, 직전 의심도). City는 결정, 의심도, 판단 이유를 돌려준다. 공유를 같은 호출에 넣으므로 시민당 호출은 턴마다 1회다.
 5. 고발 투표 (7.6).
 6. 종료 판정 (7.6).
@@ -382,7 +383,8 @@ God ↔ 백엔드, 백엔드 ↔ 프론트가 같은 형식을 쓴다. 도시 id
   "game_over": true,
   "outcome": "loss",
   "end_reason": "caught",
-  "next_hints": null
+  "next_hints": null,
+  "next_share_pairs": null
 }
 ```
 - `cities`: 모든 도시를 한 번씩. `received`는 이번 턴에 받은 메시지 (보낸 도시 id → 메시지 또는 `null`).
@@ -391,6 +393,7 @@ God ↔ 백엔드, 백엔드 ↔ 프론트가 같은 형식을 쓴다. 도시 id
 - `end_reason`: `null`(계속) / `"caught"` / `"turns_done"`.
 - `outcome`: `game_over == false`이면 `null`.
 - `next_hints`: 다음 턴 시민별 힌트 (시민 id → `"danger"`/`"safe"`). 게임이 끝났으면 `null`.
+- `next_share_pairs`: 다음 턴 공유 쌍 `[[시민 id, 시민 id], ...]` (정수, 쌍 안은 작은 id 먼저). 다음 턴 `sharing[].pair`와 같은 순서로 같다. `share_mode == "none"`이면 `[]`, `"all"`이면 모든 시민 쌍. 게임이 끝났으면 `null`.
 
 ### 7.8 백엔드 ↔ God
 
@@ -415,7 +418,8 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
   "game_over": false,
   "outcome": null,
   "end_reason": null,
-  "next_hints": { "1": "danger", "2": "safe", "4": "danger", "5": "danger" }
+  "next_hints": { "1": "danger", "2": "safe", "4": "danger", "5": "danger" },
+  "next_share_pairs": [[2, 5]]
 }
 ```
 - `turn`: 끝난 턴 수 (시작 직후 0).
