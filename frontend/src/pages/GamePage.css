@@ -26,3 +26,7 @@
 .gm-gauge { display: grid; grid-template-columns: 56px 1fr 28px; align-items: center; gap: 8px; font-size: 12px; }
 .gm-reason { font-size: 13px; }
 .gm-workspace h1 { font-size: var(--page-title-size); font-weight: 620; letter-spacing: -.035em; }
+.gm-node.is-me circle { stroke: var(--text); stroke-width: 4; }
+.gm-bar { position: relative; }
+.gm-line { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--color-error); }
+.gm-rules { list-style: disc; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 2px; }

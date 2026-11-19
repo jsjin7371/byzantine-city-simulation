@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { claimTargets, defaultClaims, createGame, getGame, playTurn } from '../src/gameApi.ts'
+import { claimTargets, defaultClaims, createGame, getGame, playTurn, previewSuspicion, majority } from '../src/gameApi.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
 const state = {
@@ -44,4 +44,14 @@ test('playTurn wraps claims in message objects and rejects a different turn', as
   assert.equal(url, '/api/games/7/turns')
   assert.deepEqual(JSON.parse(options.body), { turn: 1, claims: { 2: { claim: 'stay', note: '' }, 3: { claim: 'evacuate', note: '' } } })
   await assert.rejects(playTurn(7, 2, {}), /응답 형식/)
+})
+
+test('previewSuspicion follows the 7.6 rule', () => {
+  assert.deepEqual(previewSuspicion(30, 'danger', 'evacuate'), { delta: -20, next: 10, contradiction: false })
+  assert.deepEqual(previewSuspicion(55, 'danger', 'stay'), { delta: 10, next: 65, contradiction: false })
+  assert.deepEqual(previewSuspicion(10, 'safe', 'stay'), { delta: -20, next: 0, contradiction: false })
+  assert.deepEqual(previewSuspicion(50, 'safe', 'evacuate', ['stay', 'stay']), { delta: 30, next: 80, contradiction: true })
+  assert.deepEqual(previewSuspicion(95, 'safe', 'evacuate', ['evacuate']), { delta: 10, next: 100, contradiction: false })
+  assert.equal(majority(4), 3)
+  assert.equal(majority(3), 2)
 })
