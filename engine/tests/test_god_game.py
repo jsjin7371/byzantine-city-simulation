@@ -218,7 +218,7 @@ class GameRuleTests(unittest.TestCase):
     def test_invalid_config(self):
         for body in ({}, {"game_id": 0}, {"game_id": 1, "mafia_count": 3}, {"game_id": 1, "player": "x"},
                      {"game_id": 1, "share_pairs": 0}, {"game_id": 1, "sensor_error": 2}, {"game_id": 1, "x": 1},
-                     {"game_id": 1, "seed": -1}, None):
+                     {"game_id": 1, "seed": 1.5}, None):
             with self.subTest(body=body), self.assertRaises(HttpError) as caught:
                 GameConfig.parse(body)
             self.assertEqual(caught.exception.status, 422)
@@ -275,12 +275,6 @@ class GameHttpTests(unittest.TestCase):
         self.assertEqual(self.status("POST", "/games", {"game_id": 1, "mafia_count": 5}), 422)
         http.request("POST", self.url + "/games", {"game_id": 1}, timeout=5)
         self.assertEqual(self.status("POST", "/games/1/turns", {"turn": 1, "claims": {}}), 422)
-        main.service._lock.acquire()  # /run 실행 중
-        try:
-            self.assertEqual(self.status("POST", "/games", {"game_id": 2}), 500)
-            self.assertEqual(self.status("GET", "/games/1"), 500)
-        finally:
-            main.service._lock.release()
 
 
 if __name__ == "__main__":

@@ -45,21 +45,16 @@ class GameConfig:
         for name, allowed in CHOICES.items():
             if getattr(config, name) not in allowed:
                 raise HttpError(422, f"invalid {name}: expected one of {', '.join(allowed)}")
-        for name, low, high in (("share_pairs", 1, None), ("mafia_count", 1, 2), ("seed", 0, 2**31 - 1)):
-            value = getattr(config, name)
-            if name == "seed" and value is None:
-                continue
-            if type(value) is not int or value < low or (high is not None and value > high):
-                raise HttpError(422, f"invalid {name}: expected integer in {low}..{high}")
+        if type(config.share_pairs) is not int or config.share_pairs < 1:
+            raise HttpError(422, "invalid share_pairs: expected integer >= 1")
+        if type(config.mafia_count) is not int or config.mafia_count not in (1, 2):
+            raise HttpError(422, "invalid mafia_count: expected 1 or 2")
+        if config.seed is not None and type(config.seed) is not int:
+            raise HttpError(422, "invalid seed: expected integer or null")
         e = config.sensor_error
         if type(e) not in (int, float) or not math.isfinite(e) or not 0 <= e <= 1:
             raise HttpError(422, "invalid sensor_error: expected finite number in 0..1")
         return game_id, config
-
-
-def mafia_row(city, role):
-    return {"city": city, "role": role, "hint": None, "received": None, "decision": None,
-            "correct": None, "suspicion": None, "reason": None}
 
 
 def validate_reply(reply, keys, wary):
@@ -121,8 +116,9 @@ class Game:
         if self.game_over or body["turn"] != self.turn + 1:
             raise HttpError(409, f"expected turn {self.turn + 1}" if not self.game_over else "game is over")
         claims = body.get("claims")
-        if not isinstance(claims, dict) or set(claims) != self.receivers():
-            want = ", ".join(sorted(self.receivers())) or "none"
+        receivers = self.receivers()
+        if not isinstance(claims, dict) or set(claims) != receivers:
+            want = ", ".join(sorted(receivers)) or "none"
             raise HttpError(422, f"claims must have exactly the citizens next to the player: {want}")
         for key, msg in claims.items():
             if (not isinstance(msg, dict) or msg.get("claim") not in ("evacuate", "stay")
@@ -201,12 +197,13 @@ class Game:
         hints = self.hints
         self.hints = None if self.game_over else self._draw_hints()
 
-        cities = [mafia_row(c, self.roles[c]) if self.roles[c] != "citizen" else
+        cities = [{"city": c, "role": self.roles[c], "hint": None, "received": None, "decision": None,
+                   "correct": None, "suspicion": None, "reason": None} if self.roles[c] != "citizen" else
                   {"city": c, "role": "citizen", "hint": hints[str(c)], "received": received[c],
                    "decision": decisions[c], "correct": decisions[c] == answer,
                    "suspicion": replies[c]["suspicion"], "reason": replies[c].get("reason")}
                   for c in range(1, N + 1)]
         return {"game_id": self.game_id, "turn": t, "truth": self.truth,
-                "accuracy": 1 - wrong / len(decisions), "cities": cities, "sharing": sharing, "vote": vote,
+                "accuracy": (len(decisions) - wrong) / len(decisions), "cities": cities, "sharing": sharing, "vote": vote,
                 "game_over": self.game_over, "outcome": self.outcome, "end_reason": self.end_reason,
                 "next_hints": self.hints}
