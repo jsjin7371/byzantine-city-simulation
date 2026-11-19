@@ -57,6 +57,8 @@ python experiments/mafia_strategy.py           # wary, 의심도 수치 후보 �
 
 아래 표와 `mafia_strategy.csv`는 수치 변경(다름 +10 → +20, 난이도 재보정) 전 결과다. '현재'는 그때 값.
 
+변경 후 (다름 +20, 난이도 쉬움 m1 e0.48 / 보통 m1 e0.4 / 어려움 m1 e0.3, 2000판) 봇 → smart: 쉬움 0.312 → 0.518 (0.496~0.540), 보통 0.095 → 0.330 (0.310~0.351), 어려움 0.008 → 0.147 (0.132~0.163). 위 결과 표와 `mafia_pilot.csv`·`mafia_compare.csv`도 변경 전 값이다.
+
 수치 후보별 승률 (봇 → smart, 괄호는 95% 구간, 발각률은 봇 → smart):
 
 | 후보 (다름/같음/모순, 임계값) | easy | normal | hard | normal 발각률 |

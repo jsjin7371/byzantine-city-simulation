@@ -79,9 +79,9 @@ export function previewSuspicion(current: number, hint: Truth, claim: Claim, par
 
 // 7.2 난이도 표. 나머지 값은 백엔드 기본값을 쓴다.
 export const difficulties = {
-  easy: { label: '쉬움', mafia_count: 2, sensor_error: 0.4, citizen_type: 'wary' },
-  normal: { label: '보통', mafia_count: 1, sensor_error: 0.3, citizen_type: 'wary' },
-  hard: { label: '어려움', mafia_count: 1, sensor_error: 0.2, citizen_type: 'wary' },
+  easy: { label: '쉬움', mafia_count: 1, sensor_error: 0.48, citizen_type: 'wary' },
+  normal: { label: '보통', mafia_count: 1, sensor_error: 0.4, citizen_type: 'wary' },
+  hard: { label: '어려움', mafia_count: 1, sensor_error: 0.3, citizen_type: 'wary' },
 } as const
 export type Difficulty = keyof typeof difficulties
 

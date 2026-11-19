@@ -24,10 +24,10 @@ test('createGame posts the difficulty preset and validates the state', async (co
   const [url, options] = fetchMock.mock.calls[0].arguments
   assert.equal(url, '/api/games')
   assert.equal(options.method, 'POST')
-  assert.deepEqual(JSON.parse(options.body), { mafia_count: 2, sensor_error: 0.4, citizen_type: 'wary' })
+  assert.deepEqual(JSON.parse(options.body), { mafia_count: 1, sensor_error: 0.48, citizen_type: 'wary' })
   fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify(state), { status: 201 }))
   await createGame('hard', 'majority')
-  assert.deepEqual(JSON.parse(fetchMock.mock.calls[1].arguments[1].body), { mafia_count: 1, sensor_error: 0.2, citizen_type: 'majority' })
+  assert.deepEqual(JSON.parse(fetchMock.mock.calls[1].arguments[1].body), { mafia_count: 1, sensor_error: 0.3, citizen_type: 'majority' })
   fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify({ detail: '실험이 실행 중입니다.' }), { status: 409 }))
   await assert.rejects(createGame('easy'), /실험이 실행 중/)
   fetchMock.mock.mockImplementation(async () => new Response('{}', { status: 201 }))

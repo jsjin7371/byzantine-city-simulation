@@ -289,15 +289,15 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 | `sensor_error` | 0.0~1.0 | 0.1 | 기존과 같음 |
 | `seed` | int \| null | `null` | 기존과 같음. 정답, 마피아 위치, 힌트, 공유 쌍을 모두 이 seed로 뽑는다 |
 
-난이도는 프론트가 위 값의 묶음(프리셋)으로 고른다. 나머지 값은 기본값. `bot_win_rate`는 1단계 파일럿 값 (`experiments/mafia_pilot.csv`, 10000판).
+난이도는 프론트가 위 값의 묶음(프리셋)으로 고른다. 나머지 값은 기본값. `bot_win_rate`는 1단계 파일럿 방식(`experiments/mafia_pilot.py` difficulty 조건, 10000판)으로 잰 값. `smart`는 실험 C 전략(`experiments/mafia_strategy.py`, 2000판) 승률로 참고용.
 
-| 난이도 | `mafia_count` | `sensor_error` | `citizen_type` | `bot_win_rate` |
-|---|---|---|---|---|
-| 쉬움 | 2 | 0.4 | `"wary"` | 0.57 |
-| 보통 | 1 | 0.3 | `"wary"` | 0.24 |
-| 어려움 | 1 | 0.2 | `"wary"` | 0.02 |
+| 난이도 | `mafia_count` | `sensor_error` | `citizen_type` | `bot_win_rate` | `smart` |
+|---|---|---|---|---|---|
+| 쉬움 | 1 | 0.48 | `"wary"` | 0.32 | 0.518 |
+| 보통 | 1 | 0.4 | `"wary"` | 0.10 | 0.330 |
+| 어려움 | 1 | 0.3 | `"wary"` | 0.01 | 0.147 |
 
-`citizen_type`을 `"majority"`로 바꾸면 `bot_win_rate`는 쉬움 1.0 / 보통 0.508 / 어려움 0.227 (`experiments/mafia_compare.csv`, `connection=all`, 1000판). `"ai"`는 측정값이 없어 `null`.
+`citizen_type`을 `"majority"`로 바꾸면 `bot_win_rate`는 쉬움 0.873 / 보통 0.748 / 어려움 0.482 (`experiments/mafia_compare.py`, `connection=all`, 1000판). `"ai"`는 측정값이 없어 `null`.
 
 ### 7.3 시민의 기억 범위
 
