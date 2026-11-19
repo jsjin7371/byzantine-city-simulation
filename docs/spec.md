@@ -312,17 +312,17 @@ experiments 1 ─── N turn_results 1 ─── N city_states
    - s가 시민: 직전 턴 결정 `decision_{t-1}`을 모두에게 같게 보낸다. 1턴에는 `null`.
    - s가 동료 또는 `player == "bot"`인 플레이어: 정답의 반대를 모두에게 보낸다. 1턴부터 보낸다.
    - s가 사람 플레이어: 요청의 `claims[r]`. 시민마다 다르게 고를 수 있다.
-3. 정보 공유: `share_mode`에 따라 시민 쌍을 고른다 (`all`: 모든 시민 쌍, `pairs`: 무작위 `share_pairs`쌍, `none`: 없음). 쌍 (a, b)는 이번 턴에 받은 주장 전체를 서로 본다. 같은 보낸 도시 s가 a와 b에게 다른 주장을 보냈으면(둘 다 `null`이 아닐 때) s에 대한 **모순**으로 기록한다. 신이 중계하고 도시끼리 직접 통신하지 않는다.
+3. 정보 공유: `share_mode`에 따라 시민 쌍을 고른다 (`all`: 모든 시민 쌍, `pairs`: 무작위 `share_pairs`쌍, `none`: 없음). God이 쌍 (a, b)가 이번 턴에 받은 주장을 비교해, 같은 보낸 도시 s가 a와 b에게 다른 주장을 보냈으면(둘 다 `null`이 아닐 때) s에 대한 **모순**으로 기록한다. 쌍에게 전달되는 것은 모순 목록뿐이다 (받은 주장 전체는 `cities[].received`에 있다). 신이 중계하고 도시끼리 직접 통신하지 않는다.
 4. 각 시민 City를 한 번 호출한다 (힌트, 받은 주장, 자기가 속한 쌍의 공유 내용과 모순, 직전 의심도). City는 결정, 의심도, 판단 이유를 돌려준다. 공유를 같은 호출에 넣으므로 시민당 호출은 턴마다 1회다.
 5. 고발 투표 (7.6).
 6. 종료 판정 (7.6).
 
-마피아 도시는 결정하지 않는다 (`decision`, `correct`는 `null`).
+마피아 도시(플레이어, 동료)는 결정하지 않는다. `cities[]`에서 마피아 항목은 `city`, `role`만 값이 있고 `hint`, `received`, `decision`, `correct`, `suspicion`, `reason`은 모두 `null`이다.
 
 ### 7.6 고발 투표와 판정
 
 - **투표 열림**: 어떤 시민이든 어떤 도시에 대한 의심도가 임계값(파일럿) 이상이면 그 턴 끝에 연다. 다수결 시민은 의심도가 없으므로 투표가 열리지 않는다.
-- **투표**: 시민만 투표한다. 각 시민은 자기를 뺀 도시 중 의심도가 가장 높은 도시 하나에 투표한다. 최고값이 동점이면 기권(`null`).
+- **투표**: 시민만 투표한다. 각 시민은 자기를 뺀 **모든** 도시(임계값을 넘은 도시로 한정하지 않음) 중 의심도가 가장 높은 도시 하나에 투표한다. 최고값이 동점이면 기권(`null`).
 - **집계**: 기존 다수결 로직. 한 도시가 시민 수의 과반(시민 4명이면 3표, 3명이면 2표)을 받으면 그 도시가 `accused`. 없으면 `accused = null`.
 - **발각**: `accused`가 마피아(플레이어 또는 동료)이면 즉시 종료, 패배 (`end_reason: "caught"`). 동료가 지목돼도 마피아 팀 전체가 진다.
 - **오지목**: `accused`가 시민이면 아무 일도 없다 (탈락 없음, 의심도 그대로). 기록만 남기고 게임은 계속된다.
@@ -354,11 +354,13 @@ God ↔ 백엔드, 백엔드 ↔ 프론트가 같은 형식을 쓴다. 도시 id
       "suspicion": { "2": 10, "3": 60, "4": 20, "5": 5 },
       "reason": "3번이 2번에게 한 말과 나에게 한 말이 달랐다." },
     { "city": 3, "role": "player", "hint": null, "received": null,
+      "decision": null, "correct": null, "suspicion": null, "reason": null },
+    { "city": 5, "role": "colleague", "hint": null, "received": null,
       "decision": null, "correct": null, "suspicion": null, "reason": null }
   ],
   "sharing": [
     { "pair": [1, 2],
-      "contradictions": [ { "city": 3, "told": { "1": "stay", "2": "evacuate" } } ] }
+      "contradictions": [ { "city": 3, "told": { "1": {"claim": "stay", "note": ""}, "2": {"claim": "evacuate", "note": ""} } } ] }
   ],
   "vote": {
     "ballots": { "1": 3, "2": 3, "4": null, "5": 3 },
@@ -372,8 +374,8 @@ God ↔ 백엔드, 백엔드 ↔ 프론트가 같은 형식을 쓴다. 도시 id
 }
 ```
 - `cities`: 모든 도시를 한 번씩. `received`는 이번 턴에 받은 메시지 (보낸 도시 id → 메시지 또는 `null`).
-- `sharing`: 이번 턴에 공유한 쌍. 모순이 없으면 `contradictions: []`. `share_mode == "none"`이면 `[]`.
-- `vote`: 투표가 열리지 않았으면 `null`. `ballots`는 시민 id → 투표한 도시 id 또는 `null`(기권).
+- `sharing`: 이번 턴에 공유한 쌍과 모순만 담는다. `told`는 받은 시민 id → 메시지 객체. 모순이 없으면 `contradictions: []`. `share_mode == "none"`이면 `[]`.
+- `vote`: 투표가 열리지 않았으면 `null`. `ballots`는 시민 id → 투표한 도시 id 또는 `null`(기권). `accused`는 도시 id 또는 `null`. `caught`는 bool로, `accused`가 마피아(플레이어 또는 동료)일 때만 `true`.
 - `end_reason`: `null`(계속) / `"caught"` / `"turns_done"`.
 - `outcome`: `game_over == false`이면 `null`.
 - `next_hints`: 다음 턴 시민별 힌트 (시민 id → `"danger"`/`"safe"`). 게임이 끝났으면 `null`.
@@ -405,7 +407,7 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 }
 ```
 - `turn`: 끝난 턴 수 (시작 직후 0).
-- `claims`: 키는 플레이어와 이웃인 시민 전부. 빠지거나 남으면 `422`. `player == "bot"`이면 `{}`.
+- `claims`: 키는 플레이어와 이웃인 시민 전부. 빠지거나 남으면 `422`. 값은 메시지 객체이고 `claim`은 필수, `note`는 생략 가능(기본 `""`, 엔진은 무시하고 `""`로 저장). `player == "bot"`이면 `{}`.
 - 요청의 `turn`이 `turn + 1`이 아니거나 게임이 끝났으면 `409`. 모르는 `game_id`는 `404`.
 - 오류 본문은 기존과 같이 `{"error": "이유"}`.
 
@@ -413,12 +415,13 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
-| POST | `/games` | 7.2 설정값으로 게임 시작 (`201`). 백엔드가 `game_id`를 만들어 God에 전달하고 게임 상태를 돌려준다 |
-| POST | `/games/{id}/turns` | `{"turn", "claims"}`로 한 턴 진행. 턴 결과 JSON(7.7)으로 응답 |
-| GET | `/games/{id}` | 게임 상태 + `"status"`: `"in_progress"` / `"finished"` / `"abandoned"` / `"failed"` |
-| GET | `/games/{id}/turns/{turn}` | 저장된 턴 결과 JSON |
+| POST | `/games` | 7.2 설정값으로 게임 시작 (`201`). 백엔드가 `game_id`를 만들어 God에 전달하고 `GET /games/{game_id}`와 같은 형식(`status: "in_progress"` 포함)으로 돌려준다 |
+| POST | `/games/{game_id}/turns` | `{"turn", "claims"}`로 한 턴 진행. 턴 결과 JSON(7.7)으로 응답 |
+| GET | `/games/{game_id}` | 게임 상태(7.8) + `"status"`: `"in_progress"` / `"finished"` / `"abandoned"` / `"failed"` + `"bot_win_rate"` |
+| GET | `/games/{game_id}/turns/{turn}` | 저장된 턴 결과 JSON |
 
 - 요청·응답 형식은 7.7, 7.8과 같다. 백엔드는 턴 결과를 받은 그대로 저장한다 (예: `games`, `game_turns` JSON 컬럼). 테이블 설계는 4단계에서 정한다.
+- `bot_win_rate`: 같은 설정에서 `player == "bot"`의 마피아 승률 (0.0~1.0, 결과 화면 비교용). 값은 1단계 파일럿이 채우고 백엔드가 설정별로 들고 있다. 없으면 `null`. God은 이 필드를 모른다.
 - 새 게임을 시작하면 이전 `in_progress` 게임은 `abandoned`.
 - 실험(`/experiments`)이 `pending`·`running`이면 `POST /games`는 `409`.
 - 오류 코드(404/409/422)와 `detail` 형식은 3절과 같다.
@@ -427,8 +430,14 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 
 시민 City만 호출한다. 기존 `/run`용 `/turn`(`from_left`·`from_right`)은 그대로 두고, 게임 입력은 `received` 필드로 구분한다 (2단계에서 일반화).
 
-- 요청: `{"turn", "hint", "received", "shared", "suspicion"}`. `shared`는 이 시민이 속한 쌍의 7.7 `sharing` 항목 목록, `suspicion`은 직전 턴 자기 의심도 (1턴은 모두 0, 다수결 시민은 `null`). `memory`가 `"recent"`·`"full"`이면 `"past_hints": [...]`를 더한다.
-- 응답: `{"decision", "suspicion", "reason"}`.
+- 요청 필드
+  - `turn`: int
+  - `hint`: `"danger"` / `"safe"`
+  - `received`: 7.7 `cities[].received`와 같음 (보낸 도시 id 문자열 → 메시지 객체 또는 `null`)
+  - `shared`: 이 시민이 속한 쌍의 7.7 `sharing` 항목 배열 (없으면 `[]`)
+  - `suspicion`: 직전 턴 자기 의심도. 자기를 뺀 도시 id 문자열 → 0~100 int. 1턴은 모두 `0`. 다수결 시민은 `null`
+  - `past_hints`: `memory`가 `"recent"`·`"full"`일 때만. 이번 턴을 뺀 자기 과거 힌트 배열 (`"danger"`/`"safe"`, 오래된 것부터). `"turn"`이면 필드 없음
+- 응답: `{"decision": "evacuate" | "stay", "suspicion": 요청과 같은 형식 | null, "reason": string | null}`.
 - 시민은 자기 결정을 다음 턴 주장으로 모두에게 보내므로 응답에 보낼 값은 없다 (God이 다음 턴 `received`에 넣는다).
 
 ### 7.11 LLM 호출 위치와 키
