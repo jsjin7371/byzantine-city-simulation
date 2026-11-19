@@ -3,6 +3,7 @@
   python experiments/mafia_pilot.py --check   기존 측정값(삼인성호 exp3)과 대조
   python experiments/mafia_pilot.py           전체 비교를 돌려 mafia_pilot.csv 저장"""
 import csv, itertools, os, random, sys, zlib
+from statistics import fmean
 from multiprocessing import Pool
 
 N, TURNS = 5, 15
@@ -30,7 +31,7 @@ def play(cfg, rng):
         rec = {}
         for r in cits:
             rec[r] = {s: prev[s] for s in cits if s != r}
-            for s in mafia if t or not cfg.get("silent_t1") else ():  # silent_t1: exp3처럼 1턴엔 마피아도 말 안 함
+            for s in mafia if t or not cfg["silent_t1"] else ():  # silent_t1: exp3처럼 1턴엔 마피아도 말 안 함
                 # tailor: 사람 플레이어 대용. 나를 많이 의심하는 시민에게만 참말을 해 의심을 식힌다.
                 rec[r][s] = player == "tailor" and s == pl and susp[r][pl] >= thr / 2
         # 정보 공유 (7.5-3)
@@ -53,7 +54,7 @@ def play(cfg, rng):
                     continue
                 w = 1.0
                 if wary:
-                    v = susp[r][s] + (down * -1 if c == mine else up) + (contra if s in caught_by[r] else 0)
+                    v = susp[r][s] + (-down if c == mine else up) + (contra if s in caught_by[r] else 0)
                     susp[r][s] = v = max(0, min(100, v))
                     w = 1 - v / 100  # 의심할수록 덜 믿는다
                 score += w if c else -w
@@ -76,20 +77,19 @@ def play(cfg, rng):
 
 def run(cfg):
     rng = random.Random(cfg["seed"])
-    res = [play(cfg, rng) for _ in range(cfg["runs"])]
-    n = len(res)
-    return {**cfg, "bot_win_rate": sum(r[0] for r in res) / n, "perfect_rate": sum(r[1] for r in res) / n,
-            "caught_rate": sum(r[2] for r in res) / n, "accuracy": sum(r[3] for r in res) / n,
-            "wrong_accuse_rate": sum(r[4] for r in res) / n}
+    cols = zip(*(play(cfg, rng) for _ in range(cfg["runs"])))
+    names = ("bot_win_rate", "perfect_rate", "caught_rate", "accuracy", "wrong_accuse_rate")
+    return {**cfg, **{k: fmean(v) for k, v in zip(names, cols)}}
 
 
 BASE = dict(citizen="wary", memory="turn", k_mem=0, share="pairs", share_pairs=1, mafia=1, sensor=0.1,
-            up=10, down=20, contra=20, thr=60, player="bot", runs=RUNS)
+            up=10, down=20, contra=20, thr=60, player="bot", runs=RUNS, silent_t1=False)
 
 
 def cfg(**kw):
     c = {**BASE, **kw}
-    c.setdefault("seed", zlib.crc32(repr(sorted(c.items())).encode()))  # 조건마다 고정 시드
+    key = sorted((k, v) for k, v in c.items() if k != "silent_t1")  # silent_t1은 빼서 기존 시드 유지
+    c.setdefault("seed", zlib.crc32(repr(key).encode()))  # 조건마다 고정 시드
     return c
 
 
@@ -128,7 +128,12 @@ def conditions():
 
 
 def main():
-    stages, cfgs = zip(*conditions())
+    seen, conds = set(), []
+    for st, c in conditions():  # 앞 단계와 같은 조건(BASE 등)은 다시 돌리지 않는다
+        if c["seed"] not in seen:
+            seen.add(c["seed"])
+            conds.append((st, c))
+    stages, cfgs = zip(*conds)
     with Pool() as p:
         rows = p.map(run, cfgs)
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mafia_pilot.csv")
