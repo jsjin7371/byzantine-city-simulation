@@ -100,9 +100,7 @@ class Game(Base):
 
 class GameTurn(Base):
     __tablename__ = "game_turns"
-    __table_args__ = (UniqueConstraint("game_id", "turn", name="uq_game_turns_game_turn"),)
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"))
-    turn: Mapped[int] = mapped_column(Integer)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"), primary_key=True)
+    turn: Mapped[int] = mapped_column(Integer, primary_key=True)
     result: Mapped[dict] = mapped_column(JSON)  # 턴 결과 JSON(7.7) 그대로

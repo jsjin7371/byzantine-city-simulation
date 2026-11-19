@@ -37,7 +37,7 @@ def to_out(game: Game) -> dict:
 
 
 def fail(db: Session, game: Game, e: GodGameError):
-    """God 호출이 실패하면 게임을 failed로 두고 502로 알린다."""
+    """턴 진행 중 God 호출이 실패하면 게임을 failed로 두고 502로 알린다."""
     game.status = Status.FAILED
     db.commit()
     raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"게임 엔진 호출에 실패해 게임이 중단되었습니다. ({e})")
@@ -56,11 +56,12 @@ def create_game(body: GameConfig, request: Request, db: Session = Depends(get_db
         db.execute(update(Game).where(Game.status == Status.IN_PROGRESS).values(status=Status.ABANDONED))
         game = Game(config=body.model_dump(), status=Status.IN_PROGRESS)
         db.add(game)
-        db.commit()
+        db.flush()  # id만 받아 둔다. God 시작이 성공할 때까지 커밋하지 않아 state 없는 게임이 남지 않는다
         try:
             game.state = request.app.state.game_god.start({"game_id": game.id, **game.config})
-        except GodGameError as e:
-            fail(db, game, e)
+        except Exception as e:  # GodGameError 외에 응답 형식 오류 등도 포함
+            db.rollback()
+            raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"게임 엔진 호출에 실패해 게임을 시작하지 못했습니다. ({e})") from e
         db.commit()
     return to_out(game)
 
@@ -94,7 +95,7 @@ def play_turn(game_id: int, body: GameTurnIn, request: Request, db: Session = De
 @router.get("/{game_id}/turns/{turn}", summary="저장된 턴 결과")
 def get_turn(game_id: int, turn: int, db: Session = Depends(get_db)):
     get_game_or_404(db, game_id)
-    row = db.scalars(select(GameTurn).where(GameTurn.game_id == game_id, GameTurn.turn == turn)).first()
+    row = db.get(GameTurn, (game_id, turn))
     if row is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"turn {turn} not found in game {game_id}")
     return row.result

@@ -2,8 +2,6 @@
 from collections.abc import Callable
 
 from app.config import Settings
-from types import SimpleNamespace
-
 from app.god.client import game_http, run_http
 from app.god.mock import run_mock
 from app.god.mock_game import MockGodGames
@@ -19,12 +17,19 @@ def get_runner(settings: Settings) -> RunGod:
     raise ValueError(f"GOD_MODE must be 'mock' or 'http', got {settings.god_mode!r}")
 
 
+class HttpGodGames:
+    def __init__(self, url: str, timeout: float):
+        self.url, self.timeout = url, timeout
+
+    def start(self, payload: dict) -> dict:
+        return game_http("POST", f"{self.url}/games", payload, self.timeout)
+
+    def turn(self, game_id: int, payload: dict) -> dict:
+        return game_http("POST", f"{self.url}/games/{game_id}/turns", payload, self.timeout)
+
+
 def get_game_god(settings: Settings):
     """게임용 God. start(payload)와 turn(game_id, payload)를 가진다."""
     if settings.god_mode == "http":
-        url, t = settings.god_url, settings.god_timeout
-        return SimpleNamespace(
-            start=lambda payload: game_http("POST", f"{url}/games", payload, t),
-            turn=lambda game_id, payload: game_http("POST", f"{url}/games/{game_id}/turns", payload, t),
-        )
+        return HttpGodGames(settings.god_url, settings.god_timeout)
     return MockGodGames()

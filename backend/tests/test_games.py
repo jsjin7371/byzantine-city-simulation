@@ -72,3 +72,16 @@ def test_god_failure_marks_failed(client):
     client.app.state.game_god.turn = boom
     assert play(client, state, 1).status_code == 502
     assert client.get(f"/games/{state['game_id']}").json()["status"] == "failed"
+
+
+def test_start_failure_leaves_no_game(client):
+    prev = start(client)
+
+    for exc in (GodGameError("down"), ValueError("bad json")):
+        def boom(payload, exc=exc):
+            raise exc
+
+        client.app.state.game_god.start = boom
+        assert client.post("/games", json={}).status_code == 502
+        assert client.get(f"/games/{prev['game_id'] + 1}").status_code == 404  # 행이 남지 않음
+        assert client.get(f"/games/{prev['game_id']}").json()["status"] == "in_progress"

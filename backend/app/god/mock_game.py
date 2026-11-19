@@ -61,11 +61,11 @@ class MockGodGames:
                 else:
                     msg = bad
                 received[str(s)] = msg
-            votes = [DECISION_OF[g["hints"][c]]] + [m["claim"] for m in received.values() if m]
+            votes = [DECISION_OF[g["hints"][str(c)]]] + [m["claim"] for m in received.values() if m]
             evac = votes.count("evacuate")
-            decisions[c] = DECISION_OF[g["hints"][c]] if evac * 2 == len(votes) else (
+            decisions[c] = DECISION_OF[g["hints"][str(c)]] if evac * 2 == len(votes) else (
                 "evacuate" if evac * 2 > len(votes) else "stay")
-            cities.append({"city": c, "role": "citizen", "hint": g["hints"][c], "received": received,
+            cities.append({"city": c, "role": "citizen", "hint": g["hints"][str(c)], "received": received,
                            "decision": decisions[c], "correct": decisions[c] == answer, "suspicion": None,
                            "reason": "힌트와 받은 주장의 다수결로 정했다."})
         g["prev"] = decisions
@@ -79,7 +79,7 @@ class MockGodGames:
         return {"game_id": g["id"], "turn": g["turn"], "truth": truth,
                 "accuracy": 1 - wrong / len(decisions), "cities": cities, "sharing": [], "vote": None,
                 "game_over": g["over"], "outcome": g["outcome"], "end_reason": g["end_reason"],
-                "next_hints": self._hint_json()}
+                "next_hints": g["hints"]}
 
     def _receivers(self) -> list[int]:
         """사람 플레이어가 주장을 보내야 하는 시민들. bot이면 없음."""
@@ -91,16 +91,12 @@ class MockGodGames:
 
     def _hints(self) -> dict:
         g = self.game
-        return {c: OPPOSITE_TRUTH[g["truth"]] if g["rng"].random() < g["config"]["sensor_error"] else g["truth"]
+        return {str(c): OPPOSITE_TRUTH[g["truth"]] if g["rng"].random() < g["config"]["sensor_error"] else g["truth"]
                 for c, r in g["roles"].items() if r == "citizen"}
-
-    def _hint_json(self):
-        h = self.game["hints"]
-        return None if h is None else {str(c): v for c, v in h.items()}
 
     def _state(self) -> dict:
         g = self.game
         return {"game_id": g["id"], "config": g["config"], "truth": g["truth"],
                 "roles": {str(c): r for c, r in g["roles"].items()}, "player_city": g["player"],
                 "turn": g["turn"], "game_over": g["over"], "outcome": g["outcome"],
-                "end_reason": g["end_reason"], "next_hints": self._hint_json()}
+                "end_reason": g["end_reason"], "next_hints": g["hints"]}

@@ -26,13 +26,11 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_games_status'), 'games', ['status'], unique=False)
     op.create_table('game_turns',
-    sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('game_id', sa.Integer(), nullable=False),
     sa.Column('turn', sa.Integer(), nullable=False),
     sa.Column('result', sa.JSON(), nullable=False),
     sa.ForeignKeyConstraint(['game_id'], ['games.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('game_id', 'turn', name='uq_game_turns_game_turn')
+    sa.PrimaryKeyConstraint('game_id', 'turn')
     )
 
 
