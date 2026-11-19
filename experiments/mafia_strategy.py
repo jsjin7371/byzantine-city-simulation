@@ -12,10 +12,9 @@ import god.game as game  # noqa: E402
 from god.game import OPPOSITE, TURNS, Game, GameConfig  # noqa: E402
 from god.simulation import DECISION_OF, neighbors  # noqa: E402
 
-BASE = dict(up=10, down=20, contra=20, threshold=60)  # spec 7.6 현재 값
-TUNE = [BASE, dict(BASE, up=20), dict(BASE, up=5), dict(BASE, down=10), dict(BASE, down=5),
-        dict(BASE, contra=40), dict(BASE, contra=0), dict(BASE, threshold=40), dict(BASE, threshold=80),
-        dict(BASE, up=20, down=10)]
+BASE = dict(up=20, down=20, contra=20, threshold=60)  # spec 7.6 현재 값
+TUNE = [BASE, dict(BASE, up=10), dict(BASE, up=5), dict(BASE, down=10), dict(BASE, down=5),
+        dict(BASE, contra=40), dict(BASE, contra=0), dict(BASE, threshold=40), dict(BASE, threshold=80)]
 OUT = os.path.dirname(os.path.abspath(__file__))
 
 

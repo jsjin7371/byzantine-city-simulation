@@ -62,7 +62,7 @@ export type TurnResult = {
 
 export const TOTAL_TURNS = 15
 // 7.6 의심도 규칙 (눈치 시민). engine/city/logic.py와 같은 값.
-export const SUSPICION = { agree: -20, disagree: 10, contradiction: 20, threshold: 60 }
+export const SUSPICION = { agree: -20, disagree: 20, contradiction: 20, threshold: 60 }
 
 // 시민 과반 (4명이면 3, 3명이면 2). 15턴에 이만큼 오답이면 승리.
 export const majority = (citizens: number) => Math.floor(citizens / 2) + 1

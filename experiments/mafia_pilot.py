@@ -83,7 +83,7 @@ def run(cfg):
 
 
 BASE = dict(citizen="wary", memory="turn", k_mem=0, share="pairs", share_pairs=1, mafia=1, sensor=0.1,
-            up=10, down=20, contra=20, thr=60, player="bot", runs=RUNS, silent_t1=False)
+            up=20, down=20, contra=20, thr=60, player="bot", runs=RUNS, silent_t1=False)
 
 
 def cfg(**kw):

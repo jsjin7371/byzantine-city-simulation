@@ -28,7 +28,7 @@ def decide(hint, received):
     else:
         return my_vote # 동점이면 힌트를 따름.
 
-SUSPICION_UP, SUSPICION_DOWN, SUSPICION_CONTRA = 10, 20, 20  # 7.6 의심도 증감
+SUSPICION_UP, SUSPICION_DOWN, SUSPICION_CONTRA = 20, 20, 20  # 7.6 의심도 증감
 
 
 def pick(score, hint):
