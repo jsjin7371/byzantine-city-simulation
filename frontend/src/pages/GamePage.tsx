@@ -6,6 +6,7 @@ import { decisions, percent, truths } from '../components/results/resultLabels'
 import { errorMessage } from '../lib/errors'
 import {
   TOTAL_TURNS,
+  citizenTypes,
   claimTargets,
   createGame,
   defaultClaims,
@@ -15,7 +16,7 @@ import {
   outcomeLabels,
   playTurn,
 } from '../gameApi'
-import type { Claim, Difficulty, GameState, TurnResult } from '../gameApi'
+import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
 import './GamePage.css'
 
 const roleLabels = { player: '나(마피아)', colleague: '동료 마피아', citizen: '시민' }
@@ -124,6 +125,7 @@ function TurnReport({ result }: { result: TurnResult }) {
 
 export function GamePage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
+  const [citizenType, setCitizenType] = useState<CitizenType>('wary')
   const [state, setState] = useState<GameState | null>(null)
   const [claims, setClaims] = useState<Record<string, Claim>>({})
   const [result, setResult] = useState<TurnResult | null>(null)
@@ -144,7 +146,7 @@ export function GamePage() {
 
   const start = () =>
     run(async () => {
-      const game = await createGame(difficulty)
+      const game = await createGame(difficulty, citizenType)
       setState(game)
       setResult(null)
       setClaims(defaultClaims(game))
@@ -183,6 +185,25 @@ export function GamePage() {
               {difficulties[key].label}
             </Button>
           ))}
+        </div>
+        <div className="gm-row" role="group" aria-label="시민 종류">
+          {(Object.keys(citizenTypes) as CitizenType[]).map((key) => (
+            <Button
+              key={key}
+              variant={citizenType === key ? 'default' : 'outline'}
+              aria-pressed={citizenType === key}
+              onClick={() => setCitizenType(key)}
+            >
+              {citizenTypes[key].label}
+            </Button>
+          ))}
+        </div>
+        <p className="gm-muted">
+          {Object.values(citizenTypes)
+            .map((c) => `${c.label}: ${c.hint}`)
+            .join(' / ')}
+        </p>
+        <div className="gm-row">
           <Button onClick={start} disabled={busy}>
             {state ? '새 게임' : '게임 시작'}
           </Button>

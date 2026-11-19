@@ -14,15 +14,19 @@ router = APIRouter(prefix="/games", tags=["games"])
 
 _create_lock = Lock()  # 실험 확인과 게임 생성을 한 번에 하나만 (실험 API와 같은 이유)
 
-# 1단계 파일럿 봇 승률 (7.2 난이도 표). 나머지 설정이 기본값일 때만 적용한다.
-BOT_WIN_RATE = {(2, 0.4): 0.57, (1, 0.3): 0.24, (1, 0.2): 0.02}
-_DEFAULTS = {"connection": "all", "citizen_type": "wary", "memory": "turn", "share_mode": "pairs", "share_pairs": 1}
+# 봇 승률 (7.2 난이도 표). wary는 1단계 파일럿, majority는 experiments/mafia_compare.csv. ai는 측정값 없음(null).
+# 나머지 설정이 기본값일 때만 적용한다.
+BOT_WIN_RATE = {
+    ("wary", 2, 0.4): 0.57, ("wary", 1, 0.3): 0.24, ("wary", 1, 0.2): 0.02,
+    ("majority", 2, 0.4): 1.0, ("majority", 1, 0.3): 0.508, ("majority", 1, 0.2): 0.227,
+}
+_DEFAULTS = {"connection": "all", "memory": "turn", "share_mode": "pairs", "share_pairs": 1}
 
 
 def bot_win_rate(config: dict) -> float | None:
     if any(config.get(k) != v for k, v in _DEFAULTS.items()):
         return None
-    return BOT_WIN_RATE.get((config["mafia_count"], config["sensor_error"]))
+    return BOT_WIN_RATE.get((config["citizen_type"], config["mafia_count"], config["sensor_error"]))
 
 
 def get_game_or_404(db: Session, game_id: int) -> Game:

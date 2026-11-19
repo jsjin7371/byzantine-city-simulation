@@ -33,6 +33,8 @@ def test_full_game_flow(client):
 
 def test_bot_win_rate(client):
     assert start(client, mafia_count=2, sensor_error=0.4)["bot_win_rate"] == 0.57
+    assert start(client, mafia_count=1, sensor_error=0.3, citizen_type="majority")["bot_win_rate"] == 0.508
+    assert start(client, mafia_count=1, sensor_error=0.3, citizen_type="ai")["bot_win_rate"] is None
     assert start(client, sensor_error=0.3, share_mode="none")["bot_win_rate"] is None
 
 
