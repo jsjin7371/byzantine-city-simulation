@@ -2,7 +2,7 @@
 import logging
 
 from common.http import request, serve
-from god.simulation import CITY_IDS, GodService
+from god.simulation import CITY_IDS, N_CITIES, GodService
 
 
 def city_alive(i):
@@ -25,6 +25,8 @@ def run(body):
 
 
 def main():
+    if N_CITIES < 3:  # ring은 왼쪽·오른쪽 이웃이 달라야 한다
+        raise ValueError("God requires N_CITIES >= 3")
     logging.basicConfig(level=logging.INFO)
     serve({("GET", "/health"): health, ("POST", "/run"): run})
 

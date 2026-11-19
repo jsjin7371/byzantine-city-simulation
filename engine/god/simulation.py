@@ -17,7 +17,6 @@ from common.http import request
 
 N_CITIES = int(os.getenv("N_CITIES", "5"))  # 띄워 둔 City 컨테이너 수 = n_cities 상한
 CITY_IDS = tuple(range(1, N_CITIES + 1))
-CONNECTIONS = ("ring", "all")
 DECISION_OF = {"danger": "evacuate", "safe": "stay"}
 OPPOSITE_TRUTH = {"danger": "safe", "safe": "danger"}
 DECISIONS = frozenset(DECISION_OF.values())
@@ -46,7 +45,7 @@ class ExperimentConfig:
         if "experiment_id" not in body:
             raise ValueError("experiment_id is required")
         config = cls(**body)
-        if not isinstance(config.connection, str) or config.connection not in CONNECTIONS:
+        if config.connection not in ("ring", "all"):
             raise ValueError("invalid connection: expected 'ring' or 'all'")
         # ring은 왼쪽·오른쪽 이웃이 달라야 하므로 3곳 이상
         for name, low, high in (
