@@ -297,6 +297,8 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 | 보통 | 1 | 0.3 | `"wary"` | 0.24 |
 | 어려움 | 1 | 0.2 | `"wary"` | 0.02 |
 
+`citizen_type`을 `"majority"`로 바꾸면 `bot_win_rate`는 쉬움 1.0 / 보통 0.508 / 어려움 0.227 (`experiments/mafia_compare.csv`, `connection=all`, 1000판). `"ai"`는 측정값이 없어 `null`.
+
 ### 7.3 시민의 기억 범위
 
 - 기본값 `"turn"`: 시민은 **이번 턴의 힌트, 이번 턴에 받은 주장, 이번 턴 공유 내용**과 **자기 의심도(직전 턴 값)** 만 본다. 과거 힌트·주장은 보지 않는다. 기억은 의심도에만 누적된다.
