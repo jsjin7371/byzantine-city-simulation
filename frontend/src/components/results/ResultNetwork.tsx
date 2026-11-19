@@ -11,6 +11,7 @@ const GOD_HEIGHT = 74
 // 한 연결의 양방향 메시지를 나란히 그리기 위해 중심선에서 벌리는 거리와, 상태 표시를 받는 쪽으로 미는 거리.
 const LANE_OFFSET = 3.5
 const BADGE_SHIFT = 9
+const BADGE_RADIUS = 6.5
 const sendMarks = { dropped: '×', flipped: '!' }
 
 export function ResultNetwork({
@@ -41,6 +42,42 @@ export function ResultNetwork({
   // 선택 턴에 도시가 왼쪽·오른쪽 이웃에게 보낸 메시지의 전송 상태. 결과가 없으면 정상으로 그린다.
   const sendStatus = (sender: number, side: 'to_left' | 'to_right') =>
     data?.cities.find((c) => c.city === sender)?.[side] ?? 'normal'
+  // 한 연결에는 메시지가 양방향으로 오간다. from→to는 from의 오른쪽 발신, to→from은 to의 왼쪽 발신이다.
+  const messages = points.flatMap((p, i) => {
+    const from = i + 1,
+      to = neighbours(from).right
+    const q = points[to - 1]
+    const a = clip(p, q, nodeWidth / 2 + 4, NODE_HEIGHT / 2 + 3),
+      b = clip(q, p, nodeWidth / 2 + 4, NODE_HEIGHT / 2 + 3)
+    const directions = [
+      { sender: from, receiver: to, start: a, end: b, status: sendStatus(from, 'to_right') },
+      { sender: to, receiver: from, start: b, end: a, status: sendStatus(to, 'to_left') },
+    ]
+    return directions.map(({ sender, receiver, start, end, status }) => {
+      const length = Math.hypot(end.x - start.x, end.y - start.y) || 1
+      const ux = (end.x - start.x) / length,
+        uy = (end.y - start.y) / length
+      // 진행 방향의 오른쪽으로 비켜 그리면 반대 방향 선은 자연히 반대쪽에 놓인다.
+      const ox = -uy * LANE_OFFSET,
+        oy = ux * LANE_OFFSET
+      // 상태 표시는 받는 쪽으로 조금 민다. 선이 짧은 작은 화면에서는 선 밖(노드 위)으로 나가지 않게 줄인다.
+      const shift = Math.max(0, Math.min(BADGE_SHIFT, length / 2 - BADGE_RADIUS - 1))
+      // 양방향 표시는 서로 반대로 움직인다. 중심에서 반지름 이상 떨어지도록, 덜 민 만큼 선 옆으로 더 비킨다.
+      const gap = BADGE_RADIUS + 0.5
+      const side = Math.max(LANE_OFFSET, Math.sqrt(Math.max(0, gap * gap - shift * shift))) / LANE_OFFSET
+      return {
+        sender,
+        receiver,
+        status,
+        active: city === from || city === to,
+        line: { x1: start.x + ox, y1: start.y + oy, x2: end.x + ox, y2: end.y + oy },
+        badge: {
+          x: (start.x + end.x) / 2 + ox * side + ux * shift,
+          y: (start.y + end.y) / 2 + oy * side + uy * shift,
+        },
+      }
+    })
+  })
   // 연결선은 논리적인 통신 경로다. 이전 턴의 수신과 현재 턴의 발신을 구분한다.
   return (
     <div className="rs-network" data-turn={data?.turn} aria-label="선택 턴의 도시 네트워크">
@@ -73,54 +110,15 @@ export function ResultNetwork({
                 <path d="M2 2 8 5 2 8" fill="none" stroke="context-stroke" strokeWidth="1.4" />
               </marker>
             </defs>
-            {points.flatMap((p, i) => {
-              const from = i + 1,
-                to = neighbours(from).right
-              const q = points[to - 1]
-              const a = clip(p, q, nodeWidth / 2 + 4, NODE_HEIGHT / 2 + 3),
-                b = clip(q, p, nodeWidth / 2 + 4, NODE_HEIGHT / 2 + 3)
-              const active = city === from || city === to
-              // 한 연결에는 메시지가 양방향으로 오간다. from→to는 from의 오른쪽 발신, to→from은 to의 왼쪽 발신이다.
-              const directions = [
-                { sender: from, receiver: to, start: a, end: b, status: sendStatus(from, 'to_right') },
-                { sender: to, receiver: from, start: b, end: a, status: sendStatus(to, 'to_left') },
-              ]
-              return directions.map(({ sender, receiver, start, end, status }) => {
-                const length = Math.hypot(end.x - start.x, end.y - start.y) || 1
-                const ux = (end.x - start.x) / length,
-                  uy = (end.y - start.y) / length
-                // 진행 방향의 오른쪽으로 비켜 그리면 반대 방향 선은 자연히 반대쪽에 놓인다.
-                const ox = -uy * LANE_OFFSET,
-                  oy = ux * LANE_OFFSET
-                const label = `도시 ${sender} → 도시 ${receiver} 메시지 ${sends[status]}`
-                return (
-                  <g key={`${sender}-${receiver}`}>
-                    <line
-                      className={`rs-message ${active ? 'is-active' : ''}`}
-                      data-send={status}
-                      x1={start.x + ox}
-                      y1={start.y + oy}
-                      x2={end.x + ox}
-                      y2={end.y + oy}
-                      markerEnd={arrow}
-                    />
-                    {status !== 'normal' && (
-                      <g
-                        className="rs-send-badge"
-                        data-send={status}
-                        transform={`translate(${(start.x + end.x) / 2 + ox + ux * BADGE_SHIFT} ${(start.y + end.y) / 2 + oy + uy * BADGE_SHIFT})`}
-                      >
-                        <title>{label}</title>
-                        <circle r="6.5" />
-                        <text textAnchor="middle" dominantBaseline="central">
-                          {sendMarks[status]}
-                        </text>
-                      </g>
-                    )}
-                  </g>
-                )
-              })
-            })}
+            {messages.map((m) => (
+              <line
+                key={`${m.sender}-${m.receiver}`}
+                className={`rs-message ${m.active ? 'is-active' : ''}`}
+                data-send={m.status}
+                {...m.line}
+                markerEnd={arrow}
+              />
+            ))}
             {points.map((p, i) => {
               const start = clip(center, p, GOD_WIDTH / 2 + 2, GOD_HEIGHT / 2 + 2),
                 end = clip(p, center, nodeWidth / 2 + 4, NODE_HEIGHT / 2 + 4)
@@ -201,6 +199,23 @@ export function ResultNetwork({
                 </g>
               )
             })}
+            {/* 누락·조작 표시는 노드보다 나중에 그려 작은 화면에서 노드에 가려지지 않게 한다. */}
+            {messages
+              .filter((m) => m.status !== 'normal')
+              .map((m) => (
+                <g
+                  key={`${m.sender}-${m.receiver}`}
+                  className="rs-send-badge"
+                  data-send={m.status}
+                  transform={`translate(${m.badge.x} ${m.badge.y})`}
+                >
+                  <title>{`도시 ${m.sender} → 도시 ${m.receiver} 메시지 ${sends[m.status]}`}</title>
+                  <circle r={BADGE_RADIUS} />
+                  <text textAnchor="middle" dominantBaseline="central">
+                    {sendMarks[m.status as keyof typeof sendMarks]}
+                  </text>
+                </g>
+              ))}
           </svg>
         )}
       </div>
