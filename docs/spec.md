@@ -434,5 +434,5 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 ### 7.11 LLM 호출 위치와 키
 
 - **City가 호출한다.** 근거: 판단 주체가 City라는 구조를 지키고 God에는 규칙(공유·모순·투표)만 남긴다. 11/6 결정대로 God–City는 내부망으로 두고, `citizen_type == "ai"`일 때만 City 컨테이너를 외부 접속용 네트워크에 추가로 붙인다.
-- 게이트웨이: `.github/scripts/ai_review.py`와 같은 Baze 게이트웨이. 환경변수 `BAZE_API_KEY`, `BAZE_URL`, `MODEL`은 City 컨테이너에만 준다. 키가 없으면 테스트용 가짜 LLM을 쓴다 (5단계).
+- 게임 전용 키를 쓴다 (PR 리뷰 키와 분리). OpenAI 호환 chat completions로 호출하고, 환경변수 `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`은 City 컨테이너에만 준다. 키가 없으면 테스트용 가짜 LLM을 쓴다 (5단계).
 - 결정, 의심도, 판단 이유는 한 번의 호출로 받는다. 같은 seed 재현은 AI 시민에 보장하지 않는다.
