@@ -1,7 +1,10 @@
 """City 게임 판단 (spec 7.6, 7.10): 의심도 증감·제한, 모순 가산, wary·majority 결정, memory."""
 import os
+from pathlib import Path
+import sys
 import unittest
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault("CITY_ID", "1")
 from city.logic import game_turn
 from city import main
