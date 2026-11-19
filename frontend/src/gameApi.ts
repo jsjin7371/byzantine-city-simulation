@@ -62,7 +62,7 @@ export type TurnResult = {
 
 export const TOTAL_TURNS = 15
 // 7.6 의심도 규칙 (눈치 시민). engine/city/logic.py와 같은 값.
-export const SUSPICION = { agree: -20, disagree: 10, contradiction: 20, threshold: 60 }
+export const SUSPICION = { agree: -20, disagree: 20, contradiction: 20, threshold: 60 }
 
 // 시민 과반 (4명이면 3, 3명이면 2). 15턴에 이만큼 오답이면 승리.
 export const majority = (citizens: number) => Math.floor(citizens / 2) + 1
@@ -79,9 +79,9 @@ export function previewSuspicion(current: number, hint: Truth, claim: Claim, par
 
 // 7.2 난이도 표. 나머지 값은 백엔드 기본값을 쓴다.
 export const difficulties = {
-  easy: { label: '쉬움', mafia_count: 2, sensor_error: 0.4, citizen_type: 'wary' },
-  normal: { label: '보통', mafia_count: 1, sensor_error: 0.3, citizen_type: 'wary' },
-  hard: { label: '어려움', mafia_count: 1, sensor_error: 0.2, citizen_type: 'wary' },
+  easy: { label: '쉬움', mafia_count: 1, sensor_error: 0.48, citizen_type: 'wary' },
+  normal: { label: '보통', mafia_count: 1, sensor_error: 0.4, citizen_type: 'wary' },
+  hard: { label: '어려움', mafia_count: 1, sensor_error: 0.3, citizen_type: 'wary' },
 } as const
 export type Difficulty = keyof typeof difficulties
 

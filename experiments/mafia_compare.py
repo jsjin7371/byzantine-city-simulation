@@ -11,9 +11,9 @@ from city.ai import ai_turn  # noqa: E402
 from city.logic import game_turn  # noqa: E402
 from god.game import Game, GameConfig  # noqa: E402
 
-DIFFS = {"easy": dict(mafia_count=2, sensor_error=0.4), "normal": dict(mafia_count=1, sensor_error=0.3),
-         "hard": dict(mafia_count=1, sensor_error=0.2)}  # spec 7.2 난이도 프리셋
-PILOT_WIN = {"easy": 0.5712, "normal": 0.2408, "hard": 0.0209}  # mafia_pilot.csv difficulty 행 (wary, 10000판)
+DIFFS = {"easy": dict(mafia_count=1, sensor_error=0.48), "normal": dict(mafia_count=1, sensor_error=0.4),
+         "hard": dict(mafia_count=1, sensor_error=0.3)}  # spec 7.2 난이도 프리셋
+PILOT_WIN = {"easy": 0.3219, "normal": 0.0979, "hard": 0.0081}  # mafia_pilot.csv difficulty 행 (wary, 10000판)
 METRICS = ["accuracy", "win_rate", "suspicion_hit", "caught_rate", "caught_turn"]
 COLS = ["citizen_type", "connection", "difficulty", "runs"] + [f"{m}{x}" for m in METRICS for x in ("", "_lo", "_hi")]
 

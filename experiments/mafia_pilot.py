@@ -83,7 +83,7 @@ def run(cfg):
 
 
 BASE = dict(citizen="wary", memory="turn", k_mem=0, share="pairs", share_pairs=1, mafia=1, sensor=0.1,
-            up=10, down=20, contra=20, thr=60, player="bot", runs=RUNS, silent_t1=False)
+            up=20, down=20, contra=20, thr=60, player="bot", runs=RUNS, silent_t1=False)
 
 
 def cfg(**kw):
@@ -110,7 +110,7 @@ PARAMS = [(10, 10, 50), (10, 20, 60), (10, 20, 80), (10, 30, 60), (5, 10, 60), (
 SENSORS = (0.1, 0.2, 0.3, 0.4)
 MEMS = [("turn", 0), ("recent", 1), ("recent", 2), ("recent", 4), ("full", 0)]
 SHARES = [("none", 1), ("pairs", 1), ("pairs", 2), ("pairs", 3), ("all", 1)]
-DIFFS = {"easy": dict(mafia=2, sensor=0.4), "normal": dict(mafia=1, sensor=0.3), "hard": dict(mafia=1, sensor=0.2)}
+DIFFS = {"easy": dict(mafia=1, sensor=0.48), "normal": dict(mafia=1, sensor=0.4), "hard": dict(mafia=1, sensor=0.3)}
 
 
 def conditions():
