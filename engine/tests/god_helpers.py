@@ -72,7 +72,7 @@ class Transport:
         self.fail_city = None
         self.fail_turn = None
 
-    def __call__(self, method, url, data):
+    def __call__(self, method, url, data, timeout=1):
         assert method == "POST"
         if url.startswith("http://city-"):
             city = int(url.split("city-")[1].split(":")[0])

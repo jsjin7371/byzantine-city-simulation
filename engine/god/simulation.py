@@ -180,10 +180,10 @@ class GodService:
     def _city_init(self, city, settings):
         return self._post(f"http://city-{city}:8000/init", settings)
 
-    def _post(self, url, body):
+    def _post(self, url, body, timeout=1):
         """재시도 없이 요청하고 실패한 주소와 HTTP 오류 응답을 함께 남긴다."""
         try:
-            return self.transport("POST", url, body)
+            return self.transport("POST", url, body, timeout)
         except HTTPError as exc:
             reason = str(exc)
             try:

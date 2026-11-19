@@ -25,6 +25,7 @@ def run(body):
     return service.run(body)
 
 
+AI_CITY_TIMEOUT = 40
 game = None  # 진행 중 게임은 하나. 새 POST /games가 오면 버린다 (7.8)
 
 
@@ -41,7 +42,9 @@ def start_game(body):
 
 
 def play_turn(body, game_id):
-    return current_game(game_id).play(body, lambda city, req: service._post(f"http://city-{city}:8000/turn", req))
+    g = current_game(game_id)
+    timeout = AI_CITY_TIMEOUT if g.config.citizen_type == "ai" else 1  # AI는 City의 LLM 제한(30초)보다 길게
+    return g.play(body, lambda city, req: service._post(f"http://city-{city}:8000/turn", req, timeout))
 
 
 def get_game(_, game_id):

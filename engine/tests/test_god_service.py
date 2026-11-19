@@ -17,7 +17,7 @@ class ServiceTests(unittest.TestCase):
         """도시 초기화가 실패하면 턴을 시작하지 않고 백엔드에도 보내지 않는다."""
         for failure in (None, {}, {"ok": False}, TimeoutError("init timeout")):
             calls = []
-            def transport(method, url, body):
+            def transport(method, url, body, timeout=1):
                 calls.append(url)
                 if url == "http://city-3:8000/init":
                     if isinstance(failure, Exception):
@@ -41,7 +41,7 @@ class ServiceTests(unittest.TestCase):
         bad += [{"decision": "stay", "sent": sent}, {"decision": "stay", "to": to}]
         for reply in bad:
             with self.subTest(reply=reply), self.assertRaisesRegex(RuntimeError, "turn 1, city 1"):
-                GodService(lambda method, url, data: {"ok": True} if url.endswith("/init") else reply).run({"experiment_id": 1})
+                GodService(lambda method, url, data, timeout=1: {"ok": True} if url.endswith("/init") else reply).run({"experiment_id": 1})
 
     def test_run_posts_every_turn_then_returns_ok(self):
         """턴마다 결과를 백엔드에 보내고, 끝나면 ok를 돌려준다."""
@@ -68,7 +68,7 @@ class ServiceTests(unittest.TestCase):
         """백엔드 전송이 실패하면 재시도하지 않고 멈춘다."""
         for failure in (URLError("connection refused"), TimeoutError("timeout"), ValueError("bad JSON")):
             calls = []
-            def transport(method, url, data):
+            def transport(method, url, data, timeout=1):
                 if "city-" in url:
                     if url.endswith("/init"):
                         return {"ok": True}
@@ -106,7 +106,7 @@ class ServiceTests(unittest.TestCase):
         for ack in (None, [], {}, {"ok": False}, {"ok": True, "experiment_id": 1, "turn": 2},
                     {"ok": True, "experiment_id": 2, "turn": 1},
                     {"ok": True, "experiment_id": True, "turn": True}):
-            def transport(method, url, data):
+            def transport(method, url, data, timeout=1):
                 if url.endswith("/init"):
                     return {"ok": True}
                 return stay_reply(data) if "city-" in url else ack
@@ -117,7 +117,7 @@ class ServiceTests(unittest.TestCase):
         """도시 응답 형식이나 결정 값이 잘못되면 실패로 처리한다."""
         for reply in (None, [], {}, {"decision": "safe"}, {"decision": []}, {"decision": True}):
             with self.subTest(reply=reply), self.assertRaisesRegex(RuntimeError, "city 1"):
-                GodService(lambda method, url, data: {"ok": True} if url.endswith("/init") else reply).run({"experiment_id": 1})
+                GodService(lambda method, url, data, timeout=1: {"ok": True} if url.endswith("/init") else reply).run({"experiment_id": 1})
 
     def test_busy_service_rejects_another_experiment(self):
         """실험이 도는 동안 들어온 다른 실험 요청은 거부한다."""

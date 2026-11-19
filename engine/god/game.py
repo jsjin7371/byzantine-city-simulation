@@ -6,6 +6,7 @@ God은 주장 모으기, 공유·모순, 의심도 수집, 고발 투표, 판정
 import itertools
 import math
 import random
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 
 from common.http import HttpError
@@ -154,19 +155,26 @@ class Game:
                               if ra[s] and rb.get(s) and ra[s]["claim"] != rb[s]["claim"]]
             sharing.append({"pair": [a, b], "contradictions": contradictions})
 
-        # 4. 시민 City 호출 (턴마다 1회)
-        replies = {}
+        # 4. 시민 City 호출 (턴마다 1회, 병렬). 요청은 메인 스레드에서 만들고 결과는 시민 순서로 모은다.
+        requests = {}
         for r in self.citizens:
-            request = {"turn": t, "hint": self.hints[str(r)], "received": received[r],
-                       "shared": [x for x in sharing if r in x["pair"]],
-                       "suspicion": self.suspicion[r] if self.wary else None}
+            requests[r] = {"turn": t, "hint": self.hints[str(r)], "received": received[r],
+                           "shared": [x for x in sharing if r in x["pair"]],
+                           "suspicion": self.suspicion[r] if self.wary else None}
             if cfg.memory != "turn":
-                request["past_hints"] = self.past[r][-1:] if cfg.memory == "recent" else list(self.past[r])
+                requests[r]["past_hints"] = self.past[r][-1:] if cfg.memory == "recent" else list(self.past[r])
+            if cfg.citizen_type == "ai":  # 7.10: 홀수 도시 suspicious, 짝수 도시 trusting
+                requests[r]["personality"] = "suspicious" if r % 2 else "trusting"
+
+        def ask(r):
             try:
-                replies[r] = city_turn(r, request)
-                validate_reply(replies[r], self.suspicion[r], self.wary)
+                reply = city_turn(r, requests[r])
+                validate_reply(reply, self.suspicion[r], self.wary)
+                return reply
             except Exception as exc:
                 raise RuntimeError(f"turn {t}, city {r}: {exc}") from exc
+        with ThreadPoolExecutor(len(self.citizens)) as pool:
+            replies = dict(zip(self.citizens, pool.map(ask, self.citizens)))  # 실패는 가장 앞 시민 것부터 올린다
         decisions = {r: replies[r]["decision"] for r in self.citizens}
         if self.wary:
             self.suspicion = {r: replies[r]["suspicion"] for r in self.citizens}

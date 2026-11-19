@@ -50,7 +50,7 @@ class HttpTests(unittest.TestCase):
             fixtures[("GET", f"/city-{city}/health")] = lambda _, c=city: {"ok": True, "city": c}
 
         with running_server(fixtures) as fixture_url:
-            def transport(method, url, data=None):
+            def transport(method, url, data=None, timeout=1):
                 parsed = urlsplit(url)
                 prefix = f"/{parsed.hostname}" if parsed.hostname.startswith("city-") else ""
                 return http.request(method, f"{fixture_url}{prefix}{parsed.path}", data)
