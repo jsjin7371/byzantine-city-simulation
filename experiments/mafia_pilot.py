@@ -64,9 +64,8 @@ def play(cfg, rng):
             votes = {}
             for r in cits:
                 top = max(susp[r].values())
-                best = [s for s, v in susp[r].items() if v == top]
-                if len(best) == 1:
-                    votes[best[0]] = votes.get(best[0], 0) + 1
+                x = rng.choice([s for s, v in susp[r].items() if v == top])  # 동점이면 무작위
+                votes[x] = votes.get(x, 0) + 1
             accused = next((s for s, n in votes.items() if n > len(cits) / 2), None)
             if accused in mafia:
                 return False, False, True, sum(dec.values()) / len(cits), wrong_accuse
@@ -111,7 +110,7 @@ PARAMS = [(10, 10, 50), (10, 20, 60), (10, 20, 80), (10, 30, 60), (5, 10, 60), (
 SENSORS = (0.1, 0.2, 0.3, 0.4)
 MEMS = [("turn", 0), ("recent", 1), ("recent", 2), ("recent", 4), ("full", 0)]
 SHARES = [("none", 1), ("pairs", 1), ("pairs", 2), ("pairs", 3), ("all", 1)]
-DIFFS = {"easy": dict(mafia=2, sensor=0.3), "normal": dict(mafia=1, sensor=0.3), "hard": dict(mafia=1, sensor=0.2)}
+DIFFS = {"easy": dict(mafia=2, sensor=0.4), "normal": dict(mafia=1, sensor=0.3), "hard": dict(mafia=1, sensor=0.2)}
 
 
 def conditions():
