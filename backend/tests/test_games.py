@@ -1,0 +1,74 @@
+from app.god.client import GodGameError
+from app.models import Experiment, Status
+
+
+def start(client, **cfg):
+    r = client.post("/games", json={"seed": 1, **cfg})
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def claims_for(state):
+    return {str(c): {"claim": "stay"} for c, r in state["roles"].items() if r == "citizen"}
+
+
+def play(client, state, turn):
+    return client.post(f"/games/{state['game_id']}/turns", json={"turn": turn, "claims": claims_for(state)})
+
+
+def test_full_game_flow(client):
+    state = start(client)
+    assert state["status"] == "in_progress" and state["turn"] == 0 and state["bot_win_rate"] is None
+    for t in range(1, 16):
+        r = play(client, state, t)
+        assert r.status_code == 200, r.text
+        assert r.json()["turn"] == t
+    last = r.json()
+    assert last["game_over"] and last["end_reason"] == "turns_done" and last["next_hints"] is None
+    got = client.get(f"/games/{state['game_id']}").json()
+    assert got["status"] == "finished" and got["turn"] == 15 and got["outcome"] == last["outcome"]
+    assert client.get(f"/games/{state['game_id']}/turns/3").json()["turn"] == 3
+    assert play(client, state, 16).status_code == 409  # 끝난 게임
+
+
+def test_bot_win_rate(client):
+    assert start(client, mafia_count=2, sensor_error=0.4)["bot_win_rate"] == 0.57
+    assert start(client, sensor_error=0.3, share_mode="none")["bot_win_rate"] is None
+
+
+def test_errors(client):
+    state = start(client)
+    gid = state["game_id"]
+    assert client.get("/games/999").status_code == 404
+    assert client.get(f"/games/{gid}/turns/1").status_code == 404
+    assert play(client, state, 2).status_code == 409  # 다음 턴이 아님
+    assert client.post(f"/games/{gid}/turns", json={"turn": 1, "claims": {}}).status_code == 422  # claims 부족
+    assert client.get(f"/games/{gid}").json()["status"] == "in_progress"
+    assert client.post("/games", json={"mafia_count": 3}).status_code == 422
+
+
+def test_new_game_abandons_previous(client):
+    first = start(client)
+    second = start(client)
+    assert client.get(f"/games/{first['game_id']}").json()["status"] == "abandoned"
+    assert play(client, first, 1).status_code == 409
+    assert client.get(f"/games/{second['game_id']}").json()["status"] == "in_progress"
+
+
+def test_409_while_experiment_active(client):
+    with client.app.state.session_factory() as s:
+        s.add(Experiment(status=Status.RUNNING, turns=5, sensor_error=0.1, drop_rate=0, flip_rate=0,
+                         byzantine_count=1, n_cities=5))
+        s.commit()
+    assert client.post("/games", json={}).status_code == 409
+
+
+def test_god_failure_marks_failed(client):
+    state = start(client)
+
+    def boom(game_id, payload):
+        raise GodGameError("down")
+
+    client.app.state.game_god.turn = boom
+    assert play(client, state, 1).status_code == 502
+    assert client.get(f"/games/{state['game_id']}").json()["status"] == "failed"
