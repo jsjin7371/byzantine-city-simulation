@@ -49,6 +49,12 @@ class GameTurn(unittest.TestCase):
         d, _, _ = game_turn("danger", {"3": m(S), "4": m(S), "5": m(S)}, [], {"3": 90, "4": 90, "5": 90})
         self.assertEqual(d, E)
 
+    def test_wary_tie_exact(self):
+        # 힌트 1표 vs 0.7 + 0.3 (stay): 정확히 동점이라 힌트를 따라야 한다 (float이면 5.5e-17 차이로 stay)
+        d, s, _ = game_turn("danger", {"3": m(S), "4": m(S)}, [], {"3": 20, "4": 60})
+        self.assertEqual(s, {"3": 30, "4": 70})
+        self.assertEqual(d, E)
+
     def test_majority(self):
         d, s, r = game_turn("danger", {"2": m(S), "3": m(S), "4": m(S)}, [], None)
         self.assertEqual((d, s, r), (S, None, None))
