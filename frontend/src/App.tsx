@@ -4,6 +4,7 @@ import { navigation, readPageFromHash } from './navigation'
 import { SetupPage } from './pages/SetupPage'
 import { ResultsPage } from './pages/ResultsPage'
 import { ComparePage } from './pages/ComparePage'
+import { GamePage } from './pages/GamePage'
 import './App.css'
 import './styles/theme.css'
 import { createExperimentDraft } from './experimentForm'
@@ -38,6 +39,7 @@ function App() {
         {page === 'setup' && <SetupPage draft={draft} onDraftChange={setDraft} run={run} />}
         {page === 'results' && <ResultsPage />}
         {page === 'compare' && <ComparePage />}
+        {page === 'game' && <GamePage />}
       </main>
       <footer className="app-footer">
         <span>Byzantine City Simulation</span><span>5팀 (사공우혁, 장민서, 장성진, 최서연, 우재원)</span>
