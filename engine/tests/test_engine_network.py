@@ -68,14 +68,15 @@ def faulty_city(mode, endpoint):
                 elif mode == "timeout":
                     time.sleep(.2)
                 else:
-                    reply = {"decision": "stay", "sent_left": "stay", "sent_right": "stay",
-                             "to_left": "normal", "to_right": "normal"}
+                    # 고장 도시는 3번이고 ring 이웃은 2(왼쪽), 4(오른쪽)
+                    reply = {"decision": "stay", "sent": {"2": "stay", "4": "stay"},
+                             "to": {"2": "normal", "4": "normal"}}
                     if mode == "missing":
-                        del reply["sent_right"]
+                        del reply["sent"]["4"]
                     elif mode == "decision":
                         reply["decision"] = "safe"
                     elif mode == "state":
-                        reply["to_right"] = "lost"
+                        reply["to"]["4"] = "lost"
                     raw = json.dumps(reply).encode()
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
@@ -156,15 +157,16 @@ class EngineNetworkTests(unittest.TestCase):
             self.assertEqual(turn["accuracy"], sum(c["decision"] == DECISION_OF[turn["truth"]]
                                                   for c in turn["cities"]) / 5)
             for i, row in enumerate(turn["cities"]):
+                me, left, right = str(i + 1), str((i - 1) % 5 + 1), str((i + 1) % 5 + 1)
                 if index == 0:
                     expected = (None, None)
                 else:
                     previous = replies[(index - 1) * 5:index * 5]
-                    expected = (previous[(i - 1) % 5]["sent_right"], previous[(i + 1) % 5]["sent_left"])
+                    expected = (previous[(i - 1) % 5]["sent"][me], previous[(i + 1) % 5]["sent"][me])
                 self.assertEqual((row["from_left"], row["from_right"]), expected)
                 reply = replies[index * 5 + i]
                 self.assertEqual((row["decision"], row["to_left"], row["to_right"]),
-                                 (reply["decision"], reply["to_left"], reply["to_right"]))
+                                 (reply["decision"], reply["to"][left], reply["to"][right]))
 
     def test_five_real_cities_initialize_and_run_twenty_turns(self):
         """실제 도시 5곳이 초기화되고 20턴을 끝까지 실행한다."""
@@ -249,8 +251,8 @@ class EngineNetworkTests(unittest.TestCase):
         """도시가 오류·잘못된 JSON·필드 누락·시간 초과로 응답하면 재시도 없이 멈추고 결과를 저장하지 않는다."""
         for endpoint, mode, reason in (("/init", "status", "maintenance window"),
                 ("/turn", "status", "maintenance window"), ("/turn", "json", "JSONDecodeError"),
-                ("/turn", "missing", "sent_right"), ("/turn", "decision", "decision"),
-                ("/turn", "state", "to_right"), ("/turn", "timeout", "timed out")):
+                ("/turn", "missing", "City sent"), ("/turn", "decision", "decision"),
+                ("/turn", "state", "status to 4"), ("/turn", "timeout", "timed out")):
             with self.subTest(endpoint=endpoint, mode=mode), faulty_city(mode, endpoint) as base:
                 with self.system(city_override=base, timeout=.05 if mode == "timeout" else 1) as (url, experiment_id, saved, events):
                     with self.assertRaises(HTTPError) as caught:

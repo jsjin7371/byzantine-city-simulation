@@ -1,6 +1,5 @@
 """God의 HTTP 서버를 시작한다. 도시의 판단은 City 서비스가 담당한다."""
 import logging
-import os
 
 from common.http import request, serve
 from god.simulation import CITY_IDS, N_CITIES, GodService
@@ -26,8 +25,8 @@ def run(body):
 
 
 def main():
-    if os.getenv("N_CITIES", str(N_CITIES)) != str(N_CITIES):
-        raise ValueError("God requires N_CITIES=5")
+    if N_CITIES < 3:  # ring은 왼쪽·오른쪽 이웃이 달라야 한다
+        raise ValueError("God requires N_CITIES >= 3")
     logging.basicConfig(level=logging.INFO)
     serve({("GET", "/health"): health, ("POST", "/run"): run})
 

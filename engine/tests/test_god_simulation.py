@@ -7,8 +7,8 @@ from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from god.simulation import DECISION_OF, ExperimentConfig, city_seed, simulate
-from god_helpers import MockCity, mock_vote, results
+from god.simulation import DECISION_OF, ExperimentConfig, city_seed, neighbors, simulate
+from god_helpers import MockCity, mock_vote, results, stay_reply
 
 
 class SimulationTests(unittest.TestCase):
@@ -72,9 +72,8 @@ class SimulationTests(unittest.TestCase):
 
     def test_city_decision_is_recorded_without_god_voting(self):
         """신은 직접 투표하지 않고 도시가 보낸 결정을 그대로 기록한다."""
-        reply = {"decision": "stay", "sent_left": "evacuate", "sent_right": None,
-                 "to_left": "normal", "to_right": "dropped"}
-        turn = next(simulate(ExperimentConfig(1, sensor_error=0), lambda *_: reply, lambda *_: {"ok": True}))
+        turn = next(simulate(ExperimentConfig(1, sensor_error=0), lambda _, inputs: stay_reply(inputs),
+                             lambda *_: {"ok": True}))
         self.assertTrue(all(c["decision"] == "stay" for c in turn["cities"]))
 
     def test_same_seed_repeats_and_different_seeds_vary(self):
@@ -112,7 +111,7 @@ class SimulationTests(unittest.TestCase):
             return mock.init(city, body)
         def turn(city, body):
             events.append(("turn", city))
-            self.assertEqual(set(body), {"hint", "from_left", "from_right"})
+            self.assertEqual(set(body), {"hint", "received"})
             return mock.turn(city, body)
         config = ExperimentConfig(10, turns=2, seed=7, byzantine_count=2, drop_rate=.3, flip_rate=.4)
         turns = list(simulate(config, turn, init))
@@ -133,19 +132,21 @@ class SimulationTests(unittest.TestCase):
             calls.append((city, copy.deepcopy(inputs)))
             # Deliberately different from the City decision. God must not derive
             # messages from decision, truth, rates, or a "flipped" status.
-            return {"decision": "stay", "sent_left": "evacuate" if city % 2 else "stay",
-                    "sent_right": None if city == 5 else "evacuate",
-                    "to_left": "normal", "to_right": "dropped" if city == 5 else "flipped"}
+            left, right = inputs["received"]
+            return {"decision": "stay",
+                    "sent": {left: "evacuate" if city % 2 else "stay", right: None if city == 5 else "evacuate"},
+                    "to": {left: "normal", right: "dropped" if city == 5 else "flipped"}}
         turns = list(simulate(ExperimentConfig(1, turns=2, drop_rate=1, flip_rate=1, byzantine_count=5),
                               city_turn, lambda *_: {"ok": True}))
-        self.assertTrue(all(v["from_left"] is None and v["from_right"] is None for _, v in calls[:5]))
+        self.assertTrue(all(set(v["received"].values()) == {None} for _, v in calls[:5]))
         for city, inputs in calls[5:]:
             right = city % 5 + 1
-            self.assertEqual(inputs["from_left"], None if city == 1 else "evacuate")
-            self.assertEqual(inputs["from_right"], "evacuate" if right % 2 else "stay")
+            self.assertEqual(list(inputs["received"]), [str((city - 2) % 5 + 1), str(right)])
+            from_left, from_right = inputs["received"].values()
+            self.assertEqual(from_left, None if city == 1 else "evacuate")
+            self.assertEqual(from_right, "evacuate" if right % 2 else "stay")
             row = turns[1]["cities"][city - 1]
-            self.assertEqual((row["from_left"], row["from_right"]),
-                             (inputs["from_left"], inputs["from_right"]))
+            self.assertEqual((row["from_left"], row["from_right"]), (from_left, from_right))
             self.assertEqual((row["to_left"], row["to_right"]),
                              ("normal", "dropped" if city == 5 else "flipped"))
 
@@ -155,11 +156,9 @@ class SimulationTests(unittest.TestCase):
         rng.choice.return_value = "danger"
         rng.sample.return_value = []
         rng.random.side_effect = [.1, .9, .2, .8, .3, .7, .4, .6, .49, .51]
-        reply = {"decision": "stay", "sent_left": "stay", "sent_right": "stay",
-                 "to_left": "normal", "to_right": "normal"}
         with patch("god.simulation.random.Random", return_value=rng):
             turns = list(simulate(ExperimentConfig(1, turns=2, sensor_error=.5),
-                                  lambda *_: reply, lambda *_: {"ok": True}))
+                                  lambda _, inputs: stay_reply(inputs), lambda *_: {"ok": True}))
         self.assertEqual([[c["hint"] for c in t["cities"]] for t in turns],
                          [["safe", "danger", "safe", "danger", "safe"],
                           ["danger", "safe", "danger", "safe", "danger"]])
@@ -175,13 +174,55 @@ class SimulationTests(unittest.TestCase):
         self.assertNotEqual(seeds, [city_seed(43, c) for c in range(1, 6)])
         self.assertIsNone(city_seed(None, 1))
 
+    def test_neighbors_ring_and_all(self):
+        """ring은 [왼쪽, 오른쪽] 2곳, all은 자기를 뺀 n-1곳과 주고받는다."""
+        self.assertEqual(neighbors(1, 5, "ring"), [5, 2])
+        self.assertEqual(neighbors(5, 5, "ring"), [4, 1])
+        for n in (3, 5):
+            for city in range(1, n + 1):
+                self.assertEqual(neighbors(city, n, "all"), [c for c in range(1, n + 1) if c != city])
+
+    def test_all_connection_inputs_and_rows(self):
+        """all 연결이면 City는 이웃 n-1곳의 값을 받고, 결과 줄은 received·to로 남는다."""
+        calls = []
+        mock = MockCity()
+        def turn(city, inputs):
+            calls.append((city, inputs))
+            return mock.turn(city, inputs)
+        turns = list(simulate(ExperimentConfig(1, turns=2, seed=3, connection="all", n_cities=4),
+                              turn, mock.init))
+        self.assertEqual([c for c, _ in calls], [1, 2, 3, 4] * 2)
+        for city, inputs in calls:
+            self.assertEqual(sorted(inputs["received"]), [str(c) for c in range(1, 5) if c != city])
+        for row in turns[0]["cities"]:
+            self.assertEqual(set(row), {"city", "is_byzantine", "hint", "received", "decision", "to"})
+            self.assertEqual(set(row["received"].values()), {None})
+            self.assertEqual(len(row["to"]), 3)
+        self.assertEqual(turns[0]["accuracy"] * 4, sum(
+            c["decision"] == DECISION_OF[turns[0]["truth"]] for c in turns[0]["cities"]))
+
+    def test_per_recipient_messages_are_relayed(self):
+        """도시가 수신자마다 다른 값을 보내면 신은 각 수신자에게 그 값만 전달한다."""
+        calls = []
+        def city_turn(city, inputs):
+            calls.append((city, inputs))
+            # 짝수 id 수신자에게는 evacuate, 홀수 id 수신자에게는 stay
+            sent = {k: "evacuate" if int(k) % 2 == 0 else "stay" for k in inputs["received"]}
+            return {"decision": "stay", "sent": sent, "to": dict.fromkeys(sent, "normal")}
+        for connection in ("ring", "all"):
+            calls.clear()
+            list(simulate(ExperimentConfig(1, turns=2, connection=connection), city_turn, lambda *_: {"ok": True}))
+            for city, inputs in calls[5:]:
+                expected = "evacuate" if city % 2 == 0 else "stay"
+                self.assertEqual(set(inputs["received"].values()), {expected})
+
 
 class MockCityTests(unittest.TestCase):
     def test_vote_ignores_null_and_tie_uses_hint(self):
         """(테스트용 City) 받지 못한 메시지는 빼고 투표하며, 동점이면 힌트를 따른다."""
-        self.assertEqual(mock_vote({"hint": "danger", "from_left": None, "from_right": None}), "evacuate")
-        self.assertEqual(mock_vote({"hint": "safe", "from_left": "evacuate", "from_right": None}), "stay")
-        self.assertEqual(mock_vote({"hint": "danger", "from_left": "stay", "from_right": "stay"}), "stay")
+        self.assertEqual(mock_vote({"hint": "danger", "received": {"5": None, "2": None}}), "evacuate")
+        self.assertEqual(mock_vote({"hint": "safe", "received": {"5": "evacuate", "2": None}}), "stay")
+        self.assertEqual(mock_vote({"hint": "danger", "received": {"5": "stay", "2": "stay"}}), "stay")
 
     def test_directional_drop_before_flip(self):
         """(테스트용 City) 왼쪽·오른쪽을 따로 판정하고, 누락을 조작보다 먼저 검사한다."""
@@ -190,23 +231,23 @@ class MockCityTests(unittest.TestCase):
         rng = Mock()
         rng.random.side_effect = [.1, .9, .1]
         mock.rng[1] = rng
-        reply = mock.turn(1, {"hint": "safe", "from_left": None, "from_right": None})
-        self.assertEqual(reply, {"decision": "stay", "sent_left": None, "to_left": "dropped",
-                                 "sent_right": "evacuate", "to_right": "flipped"})
+        reply = mock.turn(1, {"hint": "safe", "received": {"5": None, "2": None}})
+        self.assertEqual(reply, {"decision": "stay", "sent": {"5": None, "2": "evacuate"},
+                                 "to": {"5": "dropped", "2": "flipped"}})
         self.assertEqual(rng.random.call_count, 3)
 
     def test_byzantine_base_is_opposite_truth_not_decision(self):
         """(테스트용 City) 비잔틴은 자기 결정이 아니라 정답의 반대를 보낸다."""
         mock = MockCity()
         mock.init(1, {"seed": 1, "drop_rate": 0, "flip_rate": 0, "is_byzantine": True, "truth": "danger"})
-        reply = mock.turn(1, {"hint": "safe", "from_left": None, "from_right": None})
-        self.assertEqual((reply["decision"], reply["sent_left"], reply["sent_right"]), ("stay", "stay", "stay"))
+        reply = mock.turn(1, {"hint": "safe", "received": {"5": None, "2": None}})
+        self.assertEqual((reply["decision"], reply["sent"]), ("stay", {"5": "stay", "2": "stay"}))
 
     def test_reinit_resets_rng_and_removes_previous_truth(self):
         """(테스트용 City) 다시 초기화하면 난수가 처음부터 시작되고 이전 정답은 지워진다."""
         mock = MockCity()
         settings = {"seed": 42, "drop_rate": .3, "flip_rate": .4, "is_byzantine": True, "truth": "safe"}
-        inputs = {"hint": "danger", "from_left": None, "from_right": None}
+        inputs = {"hint": "danger", "received": {"5": None, "2": None}}
         mock.init(1, settings)
         first = [mock.turn(1, inputs) for _ in range(10)]
         mock.init(1, settings)

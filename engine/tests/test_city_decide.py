@@ -14,25 +14,31 @@ class DecideTests(unittest.TestCase):
 
     def test_first_turn_follows_hint(self):
         """이웃 소식이 없는 첫 턴은 힌트대로 결정한다."""
-        self.assertEqual(decide("danger", None, None), E)
-        self.assertEqual(decide("safe", None, None), S)
+        self.assertEqual(decide("danger", [None, None]), E)
+        self.assertEqual(decide("safe", [None, None]), S)
 
     def test_neighbors_overrule_hint(self):
         """이웃 2곳이 힌트와 다르면 2:1로 힌트가 뒤집힌다."""
-        self.assertEqual(decide("safe", E, E), E)
-        self.assertEqual(decide("danger", S, S), S)
+        self.assertEqual(decide("safe", [E, E]), E)
+        self.assertEqual(decide("danger", [S, S]), S)
 
     def test_tie_follows_hint(self):
         """1:1 동점이면 힌트를 따른다. 이웃 1곳이 누락됐을 때만 생긴다."""
-        self.assertEqual(decide("safe", E, None), S)
-        self.assertEqual(decide("safe", None, E), S)
-        self.assertEqual(decide("danger", S, None), E)
-        self.assertEqual(decide("danger", None, S), E)
+        self.assertEqual(decide("safe", [E, None]), S)
+        self.assertEqual(decide("safe", [None, E]), S)
+        self.assertEqual(decide("danger", [S, None]), E)
+        self.assertEqual(decide("danger", [None, S]), E)
 
     def test_hint_and_one_neighbor_beat_the_other(self):
         """이웃 의견이 갈리면 힌트와 같은 쪽이 2:1로 이긴다."""
-        self.assertEqual(decide("danger", E, S), E)
-        self.assertEqual(decide("safe", E, S), S)
+        self.assertEqual(decide("danger", [E, S]), E)
+        self.assertEqual(decide("safe", [E, S]), S)
+
+    def test_all_connection_counts_every_neighbor(self):
+        """all 연결에서는 이웃 4곳의 값을 모두 센다."""
+        self.assertEqual(decide("safe", [E, E, E, None]), E)
+        self.assertEqual(decide("safe", [E, E, S, S]), S)
+        self.assertEqual(decide("danger", [S, S, S, E]), S)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from god import main
 from god.simulation import GodService
-from god_helpers import Transport
+from god_helpers import Transport, stay_reply
 
 
 class ServiceTests(unittest.TestCase):
@@ -30,16 +30,15 @@ class ServiceTests(unittest.TestCase):
 
     def test_city_sent_values_and_status_validation(self):
         """도시 응답의 보낸 값과 상태가 서로 맞지 않거나 빠지면 거부한다."""
-        valid = {"decision": "stay", "sent_left": "stay", "sent_right": None,
-                 "to_left": "normal", "to_right": "dropped"}
-        bad = [dict(valid, sent_left=None), dict(valid, sent_right="stay"),
-               dict(valid, sent_left="safe"), dict(valid, sent_left=[]),
-               dict(valid, to_left="lost"), dict(valid, to_right=[]),
-               dict(valid, to_right="flipped")]
-        for key in ("sent_left", "sent_right", "to_left", "to_right"):
-            reply = valid.copy()
-            del reply[key]
-            bad.append(reply)
+        # 도시 1의 ring 이웃은 5(왼쪽), 2(오른쪽)
+        sent, to = {"5": "stay", "2": None}, {"5": "normal", "2": "dropped"}
+        bad = [{"5": None, "2": None}, {"5": "stay", "2": "stay"}, {"5": "safe", "2": None},
+               {"5": [], "2": None}, {"5": "stay"}, {"5": "stay", "2": None, "3": "stay"}, [], None]
+        bad = [{"decision": "stay", "sent": s, "to": to} for s in bad]
+        bad += [{"decision": "stay", "sent": sent, "to": t}
+                for t in ({"5": "lost", "2": "dropped"}, {"5": "normal", "2": []},
+                          {"5": "normal", "2": "flipped"}, {"5": "normal"}, None)]
+        bad += [{"decision": "stay", "sent": sent}, {"decision": "stay", "to": to}]
         for reply in bad:
             with self.subTest(reply=reply), self.assertRaisesRegex(RuntimeError, "turn 1, city 1"):
                 GodService(lambda method, url, data: {"ok": True} if url.endswith("/init") else reply).run({"experiment_id": 1})
@@ -73,8 +72,7 @@ class ServiceTests(unittest.TestCase):
                 if "city-" in url:
                     if url.endswith("/init"):
                         return {"ok": True}
-                    return {"decision": "stay", "sent_left": "stay", "sent_right": "stay",
-                            "to_left": "normal", "to_right": "normal"}
+                    return stay_reply(data)
                 calls.append(url)
                 raise failure
             with self.subTest(failure=failure), self.assertRaisesRegex(RuntimeError, "no automatic retry"):
@@ -111,8 +109,7 @@ class ServiceTests(unittest.TestCase):
             def transport(method, url, data):
                 if url.endswith("/init"):
                     return {"ok": True}
-                return {"decision": "stay", "sent_left": "stay", "sent_right": "stay",
-                        "to_left": "normal", "to_right": "normal"} if "city-" in url else ack
+                return stay_reply(data) if "city-" in url else ack
             with self.subTest(ack=ack), self.assertRaisesRegex(RuntimeError, "invalid backend acknowledgement"):
                 GodService(transport).run({"experiment_id": 1})
 
@@ -162,14 +159,9 @@ class HealthTests(unittest.TestCase):
 
     def test_entrypoint_registers_both_routes(self):
         """서버를 시작하면 /health와 /run 경로가 등록된다."""
-        with patch.dict("os.environ", {"N_CITIES": "5"}), patch.object(main, "serve") as serve, patch.object(main.logging, "basicConfig"):
+        with patch.object(main, "serve") as serve, patch.object(main.logging, "basicConfig"):
             main.main()
             self.assertEqual(serve.call_args.args[0], {("GET", "/health"): main.health, ("POST", "/run"): main.run})
-
-    def test_entrypoint_rejects_other_city_count(self):
-        """도시 수가 5가 아니면 서버를 시작하지 않는다."""
-        with patch.dict("os.environ", {"N_CITIES": "7"}), self.assertRaisesRegex(ValueError, "N_CITIES=5"):
-            main.main()
 
 
 if __name__ == "__main__":
