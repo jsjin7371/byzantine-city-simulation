@@ -18,10 +18,16 @@ from god.simulation import DECISION_OF, ExperimentConfig, simulate
 def mock_vote(inputs):
     """Test-only City voting; tie uses the sensor hint."""
     own = DECISION_OF[inputs["hint"]]
-    votes = [own] + [inputs[k] for k in ("from_left", "from_right") if inputs[k] is not None]
+    votes = [own] + [v for v in inputs["received"].values() if v is not None]
     evacuate = votes.count("evacuate")
     decision = own if evacuate * 2 == len(votes) else ("evacuate" if evacuate * 2 > len(votes) else "stay")
     return decision
+
+
+def stay_reply(inputs):
+    """Test-only City reply: stay, and send stay normally to every neighbor."""
+    keys = inputs["received"]
+    return {"decision": "stay", "sent": dict.fromkeys(keys, "stay"), "to": dict.fromkeys(keys, "normal")}
 
 
 class MockCity:
@@ -40,15 +46,15 @@ class MockCity:
         decision = mock_vote(inputs)
         opposite = {"evacuate": "stay", "stay": "evacuate"}
         base = opposite[DECISION_OF[settings["truth"]]] if settings["is_byzantine"] else decision
-        reply = {"decision": decision}
-        for side in ("left", "right"):
+        reply = {"decision": decision, "sent": {}, "to": {}}
+        for key in inputs["received"]:
             if rng.random() < settings["drop_rate"]:
                 value, status = None, "dropped"
             elif rng.random() < settings["flip_rate"]:
                 value, status = opposite[base], "flipped"
             else:
                 value, status = base, "normal"
-            reply[f"sent_{side}"], reply[f"to_{side}"] = value, status
+            reply["sent"][key], reply["to"][key] = value, status
         self.sent.append((city, copy.deepcopy(reply)))
         return reply
 

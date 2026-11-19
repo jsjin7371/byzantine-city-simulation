@@ -190,6 +190,8 @@ FastAPI 기본 형식: `{"detail": "experiment 99 not found"}`
 - 실패: `500` + `{"error": "이유"}` (`common/http.py` 기본 동작). API는 이유를 보고 화면용 한국어 문장을 만들어 실험의 `error`에 저장하고, 원문은 뒤에 `(상세: ...)`로 붙인다 (`backend/app/god/client.py`).
   예: `"도시 3에 연결하지 못해 실험을 시작하지 못했습니다. City 컨테이너가 켜져 있는지 확인해 주세요. (상세: God 500: ...)"`
 - 엔진은 모르는 필드가 오면 거부하므로 API는 위 7개 필드만 보낸다.
+- 엔진 전용 선택 필드 (API는 보내지 않음): `n_cities` (3~City 컨테이너 수 `N_CITIES`, 기본 5), `connection` (`"ring"` 기본 / `"all"`). `"all"`이면 턴 결과의 도시 줄은 `from_*`·`to_*` 대신 `received`·`to`(이웃 id 문자열 → 값)를 쓰므로 백엔드 저장 형식과 맞지 않는다 (게임 전용).
+- God → City `/turn`: 요청 `{"hint", "received": {이웃 id 문자열: 받은 값 | null}}`, 응답 `{"decision", "sent": {이웃 id: 보낸 값 | null}, "to": {이웃 id: 상태}}`. ring의 이웃 순서는 [왼쪽, 오른쪽]이고 God이 이를 `from_left`·`from_right`·`to_left`·`to_right`로 바꿔 보낸다.
 - `seed`: 엔진이 `random.Random(seed)`로 정답·비잔틴 도시·힌트를 만들고, City에는 도시별 seed를 나눠 준다. City는 이 seed로 누락·조작 난수를 초기화하므로, 같은 seed면 누락·조작 결과까지 같다.
 - God은 실험을 **한 번에 하나만** 실행한다. 그래서 API가 `POST /experiments` 단계에서 실행 중인 실험이 있으면 `409`로 거절하고, God에는 항상 한 번에 하나의 `/run`만 보낸다.
 - 한 번 시도한 `experiment_id`는 다시 실행하지 않는다 (API는 항상 새 id로 요청).
@@ -436,7 +438,7 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 
 ### 7.10 City (게임용 `/turn`)
 
-시민 City만 호출한다. 기존 `/run`용 `/turn`(`from_left`·`from_right`)은 그대로 두고, 게임 입력은 `received` 필드로 구분한다 (2단계에서 일반화).
+시민 City만 호출한다. 기존 `/run`용 `/turn`도 2단계에서 `received`(이웃 id → 값)로 일반화했다 (4절 ①). 게임 입력은 값이 메시지 객체이고 아래 필드가 더 있다.
 
 - 요청 필드
   - `turn`: int

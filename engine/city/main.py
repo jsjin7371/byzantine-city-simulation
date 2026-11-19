@@ -26,24 +26,23 @@ def init(body):
 
 def turn(body: dict) -> dict:
     """
-    힌트와 이웃 메시지로 이번 턴의 결정과 보낼 메시지를 정한다.
+    힌트와 이웃 메시지로 이번 턴의 결정과 이웃별로 보낼 메시지를 정한다.
     Args:
-        body: {"hint", "from_left", "from_right"}
+        body: {"hint", "received": {이웃 id 문자열: 받은 값(evacuate | stay | None)}}
 
     Returns:
-        {"decision", "sent_left", "to_left", "sent_right", "to_right"}
-        - sent_left, sent_right는 보낼 메시지 (evacuate | stay | None)
-        - to_left, to_right는 "normal" | "flipped" | "dropped" 중 하나 (상태정보)
+        {"decision", "sent": {이웃 id: 보낼 값}, "to": {이웃 id: 상태}}
+        - sent의 값은 보낼 메시지 (evacuate | stay | None)
+        - to의 값은 "normal" | "flipped" | "dropped" 중 하나 (상태정보)
     """
-    decision = decide(body["hint"], body["from_left"], body["from_right"]) # 다수결로 결정
-    sent_left, to_left = broadcast(decision, state) # 왼쪽 도시로 보낼 메시지와 상태(조작 | 누락 | 정상)
-    sent_right, to_right = broadcast(decision, state) # 오른쪽 도시로 보낼 메시지와 상태(조작 | 누락 | 정상)
+    decision = decide(body["hint"], body["received"].values()) # 다수결로 결정
+    sent, to = {}, {}
+    # 받은 이웃에게 그대로 보낸다 (연결은 양방향). 수신자마다 따로 판정한다.
+    for city_id in body["received"]:
+        sent[city_id], to[city_id] = broadcast(decision, state)
 
-    return {"decision": decision,
-            "sent_left": sent_left, "to_left": to_left,
-            "sent_right": sent_right, "to_right": to_right}
+    return {"decision": decision, "sent": sent, "to": to}
 
-    
 
 # [기능 추가] 받을 요청을 늘리려면 표에 (메서드, 주소): 함수 를 한 줄 추가한다.
 #   예) serve({("GET", "/health"): health, ("POST", "/turn"): turn})
