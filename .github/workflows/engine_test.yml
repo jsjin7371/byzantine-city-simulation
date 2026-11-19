@@ -46,6 +46,9 @@ jobs:
       - name: God HTTP 서버
         if: ${{ !cancelled() }}
         run: python -m unittest test_god_http -v
+      - name: God 마피아 게임
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_god_game -v
       - name: Docker 검사 스크립트
         if: ${{ !cancelled() }}
         run: python -m unittest test_network_smoke -v

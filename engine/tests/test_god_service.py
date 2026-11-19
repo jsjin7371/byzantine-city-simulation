@@ -158,10 +158,11 @@ class HealthTests(unittest.TestCase):
             self.assertEqual(main.health(None), {"ok": True, "cities": {1: True, 2: False, 3: False, 4: False, 5: False}})
 
     def test_entrypoint_registers_both_routes(self):
-        """서버를 시작하면 /health와 /run 경로가 등록된다."""
+        """서버를 시작하면 /health, /run, /games 경로가 등록된다."""
         with patch.object(main, "serve") as serve, patch.object(main.logging, "basicConfig"):
             main.main()
-            self.assertEqual(serve.call_args.args[0], {("GET", "/health"): main.health, ("POST", "/run"): main.run})
+            self.assertEqual(serve.call_args.args[0], {("GET", "/health"): main.health, ("POST", "/run"): main.run,
+                                                       **main.GAME_ROUTES})
 
 
 if __name__ == "__main__":

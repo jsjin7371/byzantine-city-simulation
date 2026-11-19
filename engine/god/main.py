@@ -1,7 +1,8 @@
 """God의 HTTP 서버를 시작한다. 도시의 판단은 City 서비스가 담당한다."""
 import logging
 
-from common.http import request, serve
+from common.http import HttpError, request, serve
+from god.game import Game, GameConfig
 from god.simulation import CITY_IDS, N_CITIES, GodService
 
 
@@ -24,11 +25,53 @@ def run(body):
     return service.run(body)
 
 
+game = None  # 진행 중 게임은 하나. 새 POST /games가 오면 버린다 (7.8)
+
+
+def locked(handler):
+    """/run과 같은 잠금을 잡아 /run 실행 중이면 500으로 거절한다."""
+    def wrapped(*args):
+        if not service._lock.acquire(blocking=False):
+            raise RuntimeError("God is already running an experiment")
+        try:
+            return handler(*args)
+        finally:
+            service._lock.release()
+    return wrapped
+
+
+def current_game(game_id):
+    if game is None or str(game.game_id) != game_id:
+        raise HttpError(404, f"game {game_id} not found")
+    return game
+
+
+@locked
+def start_game(body):
+    global game
+    game = Game(*GameConfig.parse(body))
+    return game.state()
+
+
+@locked
+def play_turn(body, game_id):
+    return current_game(game_id).play(body, lambda city, req: service._post(f"http://city-{city}:8000/turn", req))
+
+
+@locked
+def get_game(_, game_id):
+    return current_game(game_id).state()
+
+
+GAME_ROUTES = {("POST", "/games"): start_game, ("POST", "/games/{}/turns"): play_turn,
+               ("GET", "/games/{}"): get_game}
+
+
 def main():
     if N_CITIES < 3:  # ring은 왼쪽·오른쪽 이웃이 달라야 한다
         raise ValueError("God requires N_CITIES >= 3")
     logging.basicConfig(level=logging.INFO)
-    serve({("GET", "/health"): health, ("POST", "/run"): run})
+    serve({("GET", "/health"): health, ("POST", "/run"): run, **GAME_ROUTES})
 
 
 if __name__ == "__main__":
