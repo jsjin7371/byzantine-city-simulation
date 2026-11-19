@@ -1,28 +1,25 @@
 import type { ExperimentConfig } from '../experimentsApi'
-import { percent } from './results/resultLabels'
+import { CITY_COUNT, fieldLabels } from '../experimentForm'
+import { configValueText } from './results/resultLabels'
 
-const labels = ['턴 수', '센서 오류율', '메시지 누락률', '메시지 조작률', '비잔틴 도시 수 (5개 중)', 'Seed']
+// 결과 탐색의 상세 설정에 보여주는 항목과 순서.
+const fields: { key: keyof ExperimentConfig; label: string }[] = [
+  { key: 'turns', label: fieldLabels.turns },
+  { key: 'sensor_error', label: fieldLabels.sensor_error },
+  { key: 'drop_rate', label: fieldLabels.drop_rate },
+  { key: 'flip_rate', label: fieldLabels.flip_rate },
+  { key: 'byzantine_count', label: `${fieldLabels.byzantine_count} (${CITY_COUNT}개 중)` },
+  { key: 'seed', label: fieldLabels.seed },
+]
 
 export function ExperimentConfigValues({ config }: { config?: ExperimentConfig }) {
-  // 결과 탐색과 비교 화면에서 같은 항목 순서와 표시 형식을 사용한다.
-  // 비교할 실험을 아직 선택하지 않았으면 빈 배열로 두고 아래에서 '—'를 표시한다.
-  // API의 확률(0~1)은 입력 화면과 같은 백분율로 표시한다.
-  const values = config ? [
-    String(config.turns),
-    percent(config.sensor_error),
-    percent(config.drop_rate),
-    percent(config.flip_rate),
-    String(config.byzantine_count),
-    // seed 0도 유효하므로 null일 때만 '랜덤'으로 표시한다.
-    config.seed === null ? '랜덤' : String(config.seed),
-  ] : []
-
+  // 실험을 아직 선택하지 않았으면 값 대신 '—'를 표시한다.
   return (
     <dl className="config-values">
-      {labels.map((label, index) => (
-        <div key={label}>
+      {fields.map(({ key, label }) => (
+        <div key={key}>
           <dt>{label}</dt>
-          <dd>{values[index] ?? '—'}</dd>
+          <dd>{config ? configValueText(config, key) : '—'}</dd>
         </div>
       ))}
     </dl>

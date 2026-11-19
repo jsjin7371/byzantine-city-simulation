@@ -277,6 +277,20 @@
   width: 48%;
   min-width: 42px;
 }
+/* A와 B의 값이 다른 칸. 값의 색은 그대로 두고 배경과 왼쪽 선으로만 표시한다. */
+.cp-city-table td[data-different='true'] {
+  background: var(--color-active-surface);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
+.cp-different-key {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin: 0 5px 0 10px;
+  vertical-align: -2px;
+  background: var(--color-active-surface);
+  box-shadow: inset 3px 0 0 var(--color-accent);
+}
 .cp-city-table tr[data-selected='true'] {
   background: var(--color-accent-soft);
 }
@@ -467,6 +481,9 @@ body:has(.cp-workspace) {
 }
 .cp-city-table .cp-cell-value[data-tone='error'] {
   color: var(--color-error);
+}
+.cp-city-table .cp-cell-value[data-tone='byzantine'] {
+  color: var(--color-byzantine);
 }
 .cp-city-table .cp-cell-value[data-tone='neutral'] {
   color: var(--color-text);

@@ -1,7 +1,7 @@
 /* eslint-disable react/set-state-in-effect -- Loading belongs to the abortable list request, including page changes and refresh. */
 import { useEffect, useState } from 'react'
 import { RefreshCw, Table2, ArrowLeft, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
-import { listExperiments } from '../experimentsApi'
+import { EXPERIMENT_PAGE_SIZE, listExperiments } from '../experimentsApi'
 import type { Experiment } from '../experimentsApi'
 import { errorMessage } from '../lib/errors'
 import { useResultData } from '../useResultData'
@@ -9,7 +9,13 @@ import { ExperimentConfigValues } from '../components/ExperimentConfigValues'
 import { AccuracyTimeline } from '../components/results/AccuracyTimeline'
 import { ResultNetwork } from '../components/results/ResultNetwork'
 import { CityOverview, CityDetail, AllResultsTable } from '../components/results/CityResults'
-import { meanPercent, statuses } from '../components/results/resultLabels'
+import {
+  UNNAMED_EXPERIMENT,
+  createdText,
+  meanPercent,
+  statuses,
+} from '../components/results/resultLabels'
+import { CITY_COUNT } from '../experimentForm'
 import './ResultsPage.css'
 
 export function ResultsPage() {
@@ -91,7 +97,7 @@ export function ResultsPage() {
           </button>
         </div>
         <p className="rs-muted">
-          실험 목록 <span>최신순 · 50개씩</span>
+          실험 목록 <span>{`최신순 · ${EXPERIMENT_PAGE_SIZE}개씩`}</span>
         </p>
         <div className="rs-list-scroll" aria-busy={loading}>
           {loading ? (
@@ -119,9 +125,15 @@ export function ResultsPage() {
                   >
                     <span className="rs-list-meta">
                       <span>#{experiment.id}</span>
+                      {/* 이름과 조건이 같은 실험을 생성 시각으로 구분한다. */}
+                      {createdText(experiment.created_at) && (
+                        <time className="rs-created" dateTime={experiment.created_at!}>
+                          {createdText(experiment.created_at)}
+                        </time>
+                      )}
                       <span data-status={experiment.status}>{statuses[experiment.status]}</span>
                     </span>
-                    <strong>{experiment.name || '이름 없는 실험'}</strong>
+                    <strong>{experiment.name || UNNAMED_EXPERIMENT}</strong>
                     <span className="rs-list-meta">
                       <span>
                         {experiment.config.turns}턴 · 비잔틴 {experiment.config.byzantine_count}
@@ -140,15 +152,15 @@ export function ResultsPage() {
           <button
             aria-label="이전 목록 페이지"
             disabled={offset === 0 || loading}
-            onClick={() => page(Math.max(0, offset - 50))}
+            onClick={() => page(Math.max(0, offset - EXPERIMENT_PAGE_SIZE))}
           >
             <ChevronLeft size={16} />
           </button>
-          <span>{offset / 50 + 1} 페이지</span>
+          <span>{offset / EXPERIMENT_PAGE_SIZE + 1} 페이지</span>
           <button
             aria-label="다음 목록 페이지"
-            disabled={loading || experiments.length < 50}
-            onClick={() => page(offset + 50)}
+            disabled={loading || experiments.length < EXPERIMENT_PAGE_SIZE}
+            onClick={() => page(offset + EXPERIMENT_PAGE_SIZE)}
           >
             <ChevronRight size={16} />
           </button>
@@ -164,7 +176,7 @@ export function ResultsPage() {
               </span>
             </div>
             <h2 title={selected?.name || undefined}>
-              {selected?.name || (selected ? '이름 없는 실험' : '도시의 판단을 살펴보세요')}
+              {selected?.name || (selected ? UNNAMED_EXPERIMENT : '도시의 판단을 살펴보세요')}
             </h2>
           </div>
           <div className="rs-average">
@@ -261,7 +273,7 @@ export function ResultsPage() {
                 </div>
                 <div className="rs-tabs" role="group" aria-label="도시 결과 표시 방식">
                   <button aria-pressed={tab === 'all'} onClick={() => setTab('all')}>
-                    전체 5개 도시
+                    {`전체 ${CITY_COUNT}개 도시`}
                   </button>
                   <button aria-pressed={tab === 'detail'} onClick={() => setTab('detail')}>
                     {city ? `도시 ${city} 상세` : '선택 상세'}

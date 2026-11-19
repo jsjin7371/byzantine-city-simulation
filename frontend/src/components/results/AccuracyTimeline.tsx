@@ -1,5 +1,10 @@
 import type { TurnSummary } from '../../experimentsApi'
 import { percent } from './resultLabels'
+import { showTurnLabel, turnScale } from '../chartScale'
+import { onActivateKey } from '../../lib/keyboard'
+
+// 그래프 좌표(SVG viewBox 기준). 왼쪽은 % 눈금, 아래쪽은 턴 번호 자리다.
+const CHART = { width: 640, height: 166, left: 48, right: 612, top: 20, bottom: 132 }
 
 export function AccuracyTimeline({
   turns,
@@ -15,9 +20,9 @@ export function AccuracyTimeline({
   // 실제 턴 번호를 X축으로 사용한다. 한 턴만 있는 실험도 중앙에 선택 가능한 점을 표시한다.
   const first = turns[0]?.turn ?? 1,
     last = turns.at(-1)?.turn ?? 1
-  const x = (n: number) => (first === last ? 330 : 48 + ((n - first) / (last - first)) * 564)
+  const x = turnScale(first, last, CHART.left, CHART.right)
   // API의 0~1 정확도를 SVG 좌표로 변환한다. 화면의 백분율은 별도로 포맷한다.
-  const y = (accuracy: number) => 132 - accuracy * 112
+  const y = (accuracy: number) => CHART.bottom - accuracy * (CHART.bottom - CHART.top)
   return (
     <section className="rs-timeline" aria-label="턴별 정확도">
       <div className="rs-section-heading">
@@ -30,7 +35,7 @@ export function AccuracyTimeline({
       {turns.length ? (
         <svg
           className="rs-chart"
-          viewBox="0 0 640 166"
+          viewBox={`0 0 ${CHART.width} ${CHART.height}`}
           role="group"
           aria-label="전체 턴 정확도 그래프. 점을 선택해 턴 이동"
         >
@@ -39,7 +44,7 @@ export function AccuracyTimeline({
               <text x="2" y={y(value / 100) + 4}>
                 {value}%
               </text>
-              <line x1="48" x2="612" y1={y(value / 100)} y2={y(value / 100)} />
+              <line x1={CHART.left} x2={CHART.right} y1={y(value / 100)} y2={y(value / 100)} />
             </g>
           ))}
           {current && <line className="rs-cursor" x1={x(turn)} x2={x(turn)} y1="15" y2="137" />}
@@ -52,12 +57,7 @@ export function AccuracyTimeline({
               aria-label={`${row.turn}턴 정확도 ${percent(row.accuracy)}`}
               aria-pressed={row.turn === turn}
               onClick={() => onTurn(row.turn)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault()
-                  onTurn(row.turn)
-                }
-              }}
+              onKeyDown={onActivateKey(() => onTurn(row.turn))}
             >
               <rect
                 className="rs-hit"
@@ -75,10 +75,7 @@ export function AccuracyTimeline({
               <title>
                 {row.turn}턴 · {percent(row.accuracy)}
               </title>
-              {(turns.length <= 10 ||
-                row.turn === first ||
-                row.turn === last ||
-                row.turn % 2 === 0) && (
+              {showTurnLabel(row.turn, first, last, turns.length) && (
                 <text x={x(row.turn)} y="158" textAnchor="middle">
                   {row.turn}
                 </text>
