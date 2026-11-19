@@ -1,8 +1,9 @@
 """God 마피아 게임 (docs/spec.md 7.5~7.8). City는 7.10 형식으로 답하는 대역이다."""
 from pathlib import Path
-import sys
-import unittest
 import os
+import sys
+import time
+import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
 
@@ -260,9 +261,8 @@ class GameAiTests(unittest.TestCase):
             return out
         with patch.dict(os.environ, {"LLM_API_KEY": ""}):
             games = run(ai_city, citizen_type="ai")
-        self.assertEqual(games[-1]["end_reason"] in ("turns_done", "caught"), True)
+        self.assertIn(games[-1]["end_reason"], ("turns_done", "caught"))
         # 규칙 시민: 호출이 겹치게 느려도 결과가 같은 seed의 순차 결과(무작위 지연 없는 대역)와 같다
-        import time
         slow = lambda c, req: (time.sleep(0.01 * (6 - c)), majority_city(c, req))[1]
         self.assertEqual(run(slow, citizen_type="majority"), run(majority_city, citizen_type="majority"))
 
@@ -273,7 +273,7 @@ class GameHttpTests(unittest.TestCase):
                        patch.object(http.BaseHTTPRequestHandler, "log_message")):
             target.start()
             self.addCleanup(target.stop)
-        service = GodService(lambda method, url, body: majority_city(None, body))
+        service = GodService(lambda method, url, body, timeout=1: majority_city(None, body))
         for target in (patch.object(main, "service", service), patch.object(main, "game", None)):
             target.start()
             self.addCleanup(target.stop)

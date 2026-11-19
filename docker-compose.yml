@@ -5,11 +5,12 @@ x-city: &city # 아래에서 사용되는 *city (yml의 앵커라는 개념)
     context: ./engine
     dockerfile: Dockerfile.city
   image: byzantine-city   # city 5곳이 같은 이미지 사용
-  # AI 시민용 LLM 설정(.env). 비면 City가 가짜 LLM을 쓴다. 기본 bridge 네트워크라 외부 접속은 이미 가능
-  environment: &llm
-    LLM_API_KEY: ${LLM_API_KEY:-}
-    LLM_BASE_URL: ${LLM_BASE_URL:-}
-    LLM_MODEL: ${LLM_MODEL:-}
+
+# AI 시민용 LLM 설정(.env). 비면 City가 가짜 LLM을 쓴다. 기본 bridge 네트워크라 외부 접속은 이미 가능
+x-llm: &llm
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_MODEL: ${LLM_MODEL:-}
 
 services:
   # ---------- 프론트엔드 ----------
@@ -28,7 +29,6 @@ services:
       dockerfile: Dockerfile.god
     environment:
       N_CITIES: 5
-      AI_CITY_TIMEOUT: 40   # AI 시민 City 호출 시간 제한(초). City의 LLM 제한 30초보다 길게
     depends_on: [city-1, city-2, city-3, city-4, city-5]
 
   # *city는 city라는 이름의 앵커를 참조하여, 각 city 서비스에 공통 설정을 적용

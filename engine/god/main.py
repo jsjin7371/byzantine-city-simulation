@@ -1,6 +1,5 @@
 """God의 HTTP 서버를 시작한다. 도시의 판단은 City 서비스가 담당한다."""
 import logging
-import os
 
 from common.http import HttpError, request, serve
 from god.game import Game, GameConfig
@@ -26,6 +25,7 @@ def run(body):
     return service.run(body)
 
 
+AI_CITY_TIMEOUT = 40
 game = None  # 진행 중 게임은 하나. 새 POST /games가 오면 버린다 (7.8)
 
 
@@ -43,8 +43,7 @@ def start_game(body):
 
 def play_turn(body, game_id):
     g = current_game(game_id)
-    # AI 시민은 City의 LLM 시간 제한(30초)보다 길게, 규칙 시민은 기본 1초
-    timeout = float(os.environ.get("AI_CITY_TIMEOUT", 40)) if g.config.citizen_type == "ai" else None
+    timeout = AI_CITY_TIMEOUT if g.config.citizen_type == "ai" else 1  # AI는 City의 LLM 제한(30초)보다 길게
     return g.play(body, lambda city, req: service._post(f"http://city-{city}:8000/turn", req, timeout))
 
 

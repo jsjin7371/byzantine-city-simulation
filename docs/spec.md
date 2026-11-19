@@ -453,8 +453,8 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 
 ### 7.11 LLM 호출 위치와 키
 
-- **City가 호출한다.** 근거: 판단 주체가 City라는 구조를 지키고 God에는 규칙(공유·모순·투표)만 남긴다. 11/6 결정대로 God–City는 내부망으로 두고, `citizen_type == "ai"`일 때만 City 컨테이너를 외부 접속용 네트워크에 추가로 붙인다.
-- God의 AI 시민 City 호출 시간 제한은 env `AI_CITY_TIMEOUT`(기본 40초, City의 LLM 30초보다 길게). 시민 5곳은 병렬로 부른다. 규칙 시민은 기본 1초.
+- **City가 호출한다.** 근거: 판단 주체가 City라는 구조를 지키고 God에는 규칙(공유·모순·투표)만 남긴다. compose는 기본 bridge 네트워크 하나만 쓰고 분리하지 않는다. 그래서 City 컨테이너가 외부 LLM 주소를 바로 호출할 수 있다.
+- God의 AI 시민 City 호출 시간 제한은 40초(City의 LLM 30초보다 길게, `god/main.py` 상수). 시민 5곳은 병렬로 부른다. 규칙 시민은 기본 1초.
 - 게임 전용 키를 쓴다 (PR 리뷰 키와 분리). OpenAI 호환 chat completions로 호출하고, 환경변수 `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`은 City 컨테이너에만 준다. 키가 없으면 테스트용 가짜 LLM을 쓴다 (5단계).
 - 결정, 의심도, 판단 이유는 한 번의 호출로 받는다. 같은 seed 재현은 AI 시민에 보장하지 않는다.
 - `LLM_BASE_URL`은 chat completions **전체 주소**다 (예: `https://api.openai.com/v1/chat/completions`, 게이트웨이는 끝 슬래시까지). 비면 OpenAI 기본 주소.

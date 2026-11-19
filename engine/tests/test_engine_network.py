@@ -128,7 +128,7 @@ class EngineNetworkTests(unittest.TestCase):
 
         experiment_id = next(self.ids)
         with running_server({("POST", f"/internal/experiments/{experiment_id}/turns"): receive}) as api:
-            def transport(method, url, data=None):
+            def transport(method, url, data=None, timeout=1):
                 parsed = urlsplit(url)
                 if parsed.hostname == "api":
                     base = api
