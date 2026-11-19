@@ -2,6 +2,7 @@ import os
 import random
 
 from common.http import serve
+from city.ai import ai_turn
 from city.logic import broadcast, decide, game_turn
 
 CITY_ID = int(os.environ["CITY_ID"])  # 도시 번호, 도커 컴포즈에서 city마다 환경변수로 전달됨.
@@ -35,6 +36,10 @@ def turn(body: dict) -> dict:
         - sent의 값은 보낼 메시지 (evacuate | stay | None)
         - to의 값은 "normal" | "flipped" | "dropped" 중 하나 (상태정보)
     """
+    if "personality" in body:  # AI 시민 (spec 7.10)
+        decision, suspicion, reason = ai_turn(body["personality"], body["hint"], body["received"],
+                                              body["shared"], body["suspicion"])
+        return {"decision": decision, "suspicion": suspicion, "reason": reason}
     if "shared" in body:  # 게임용 요청 (spec 7.10)
         decision, suspicion, reason = game_turn(body["hint"], body["received"], body["shared"],
                                                 body["suspicion"], body.get("past_hints", ()))
