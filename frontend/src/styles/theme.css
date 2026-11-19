@@ -1,0 +1,50 @@
+/* Shared colors only. Page layout and visualization remain page-owned. */
+@font-face { font-family:Studio;src:url('/fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:swap; }
+:root {
+  --color-background: #0a0e1a;
+  --color-surface: #111b2d;
+  --color-surface-raised: #18263b;
+  --color-input-surface: #0b1423;
+  --color-header: #0d1423;
+  --color-header-border: #26354a;
+  --color-text: #edf2fa;
+  --color-text-muted: #b0bdd0;
+  --color-border: #304057;
+  --color-control-border: #586b85;
+  --color-accent: #50d8ed;
+  --color-accent-text: #08202e;
+  --color-accent-soft: #163244;
+  --color-active-surface: #132b3b;
+  --color-active-border: #316477;
+  --color-active-text: #75e1ef;
+  --color-hover: #1a283c;
+  --color-focus: #84e6f4;
+  --color-hint: #c4a5ff;
+  --color-hint-soft: #28223e;
+  --color-error: #ff9eac;
+  --color-error-surface: #2b1c2b;
+  --color-error-border: #894d5b;
+  --color-success: #72e0ba;
+  --surface: var(--color-surface);
+  --background: var(--color-background);
+  --text: var(--color-text);
+  --muted: var(--color-text-muted);
+  --border: var(--color-border);
+  --accent: var(--color-accent);
+  --accent-soft: var(--color-accent-soft);
+  color: var(--color-text);
+  background: var(--color-background);
+  color-scheme: dark;
+}
+
+/* 화면별 제목의 크기와 무게가 달라지지 않도록 공통 타이포그래피를 사용한다. */
+:root { --page-title-size:32px; }
+@media(max-height:800px) { :root { --page-title-size:28px; } }
+:is(.a3-workspace,.rs-workspace,.cp-workspace) h1 {
+  font-family:Studio,sans-serif;
+  font-size:var(--page-title-size);
+  font-weight:620;
+  line-height:1.4;
+  letter-spacing:-.035em;
+  color:var(--color-text);
+}
