@@ -198,11 +198,7 @@ export function GamePage() {
             </Button>
           ))}
         </div>
-        <p className="gm-muted">
-          {Object.values(citizenTypes)
-            .map((c) => `${c.label}: ${c.hint}`)
-            .join(' / ')}
-        </p>
+        <p className="gm-muted">{citizenTypes[citizenType].hint}</p>
         <div className="gm-row">
           <Button onClick={start} disabled={busy}>
             {state ? '새 게임' : '게임 시작'}
