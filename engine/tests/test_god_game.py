@@ -2,6 +2,7 @@
 from pathlib import Path
 import sys
 import unittest
+import os
 from unittest.mock import patch
 from urllib.error import HTTPError
 
@@ -13,6 +14,7 @@ from god import main
 from god.game import Game, GameConfig
 from god.simulation import DECISION_OF, GodService
 from god_helpers import running_server
+from city.ai import ai_turn
 
 
 def majority_city(_, req):
@@ -231,6 +233,38 @@ class GameRuleTests(unittest.TestCase):
                 play(new_game(), lambda c, req: reply)
         with self.assertRaisesRegex(RuntimeError, "suspicion=null"):
             play(new_game(citizen_type="majority"), lambda c, req: {"decision": "stay", "suspicion": {}})
+
+
+class GameAiTests(unittest.TestCase):
+    def test_personality_alternates_only_for_ai(self):
+        """ai면 요청에 홀수 suspicious·짝수 trusting이 들어가고, 다른 시민 종류엔 없다."""
+        city = fixed_city()
+        g = new_game(citizen_type="ai", player="bot")
+        play(g, city)
+        self.assertEqual({c: r["personality"] for c, r in city.calls},
+                         {c: "suspicious" if c % 2 else "trusting" for c in g.citizens})
+        city = fixed_city()
+        play(new_game(player="bot"), city)
+        self.assertTrue(all("personality" not in r for _, r in city.calls))
+
+    def test_parallel_matches_sequential_and_fake_llm_game(self):
+        """병렬 호출 결과가 순차 계산과 같고, 가짜 LLM(키 없음) AI 시민으로 한 판 끝까지 간다."""
+        def ai_city(c, req):
+            d, s, r = ai_turn(req["personality"], req["hint"], req["received"], req["shared"], req["suspicion"])
+            return {"decision": d, "suspicion": s, "reason": r}
+
+        def run(city, **cfg):
+            g, out = new_game(player="bot", **cfg), []
+            while not g.game_over:
+                out.append(play(g, city))
+            return out
+        with patch.dict(os.environ, {"LLM_API_KEY": ""}):
+            games = run(ai_city, citizen_type="ai")
+        self.assertEqual(games[-1]["end_reason"] in ("turns_done", "caught"), True)
+        # 규칙 시민: 호출이 겹치게 느려도 결과가 같은 seed의 순차 결과(무작위 지연 없는 대역)와 같다
+        import time
+        slow = lambda c, req: (time.sleep(0.01 * (6 - c)), majority_city(c, req))[1]
+        self.assertEqual(run(slow, citizen_type="majority"), run(majority_city, citizen_type="majority"))
 
 
 class GameHttpTests(unittest.TestCase):
