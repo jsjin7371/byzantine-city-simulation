@@ -90,4 +90,7 @@ def game_http(method: str, url: str, payload: dict | None, timeout: float) -> di
             body = None
         error = body.get("error") if isinstance(body, dict) else None
         raise GodGameError(error if isinstance(error, str) else response.text, response.status_code)
-    return response.json()
+    try:
+        return response.json()
+    except ValueError as e:
+        raise GodGameError(f"엔진(God) 응답이 JSON이 아닙니다. (상세: {e})", response.status_code) from e

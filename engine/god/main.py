@@ -2,7 +2,7 @@
 import logging
 
 from common.http import HttpError, request, serve
-from god.game import Game, GameConfig
+from god.game import N, Game, GameConfig
 from god.simulation import CITY_IDS, N_CITIES, GodService
 
 
@@ -37,6 +37,8 @@ def current_game(game_id):
 
 def start_game(body):
     global game
+    if N_CITIES != N:  # 게임은 도시 5개 고정 (7.1)
+        raise HttpError(503, f"game requires N_CITIES = {N}, got {N_CITIES}")
     game = Game(*GameConfig.parse(body))
     return game.state()
 
