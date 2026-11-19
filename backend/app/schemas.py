@@ -144,3 +144,27 @@ class TurnAck(BaseModel):
     ok: bool = True
     experiment_id: int
     turn: int
+
+
+# ---------- 마피아 게임 (docs/spec.md 7절) ----------
+
+class GameConfig(BaseModel):
+    connection: Literal["all", "ring"] = "all"
+    citizen_type: Literal["majority", "wary", "ai"] = "wary"
+    memory: Literal["turn", "recent", "full"] = "turn"
+    share_mode: Literal["all", "pairs", "none"] = "pairs"
+    share_pairs: int = Field(1, ge=1)
+    mafia_count: Literal[1, 2] = 1
+    player: Literal["human", "bot"] = "human"
+    sensor_error: float = Field(0.1, ge=0.0, le=1.0)
+    seed: int | None = Field(None, ge=0, le=2**31 - 1)
+
+
+class GameMessage(BaseModel):
+    claim: Decision
+    note: str = ""
+
+
+class GameTurnIn(BaseModel):
+    turn: int
+    claims: dict[str, GameMessage] = {}
