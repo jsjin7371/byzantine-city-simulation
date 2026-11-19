@@ -2,7 +2,7 @@ import os
 import random
 
 from common.http import serve
-from city.logic import broadcast, decide
+from city.logic import broadcast, decide, game_turn
 
 CITY_ID = int(os.environ["CITY_ID"])  # 도시 번호, 도커 컴포즈에서 city마다 환경변수로 전달됨.
 state = {}  # 도시 상태를 담는 dict. turn()에서 읽고 쓰고, init()에서 초기화
@@ -35,6 +35,10 @@ def turn(body: dict) -> dict:
         - sent의 값은 보낼 메시지 (evacuate | stay | None)
         - to의 값은 "normal" | "flipped" | "dropped" 중 하나 (상태정보)
     """
+    if "shared" in body:  # 게임용 요청 (spec 7.10)
+        decision, suspicion, reason = game_turn(body["hint"], body["received"], body["shared"],
+                                                body["suspicion"], body.get("past_hints", ()))
+        return {"decision": decision, "suspicion": suspicion, "reason": reason}
     decision = decide(body["hint"], body["received"].values()) # 다수결로 결정
     sent, to = {}, {}
     # 받은 이웃에게 그대로 보낸다 (연결은 양방향). 수신자마다 따로 판정한다.

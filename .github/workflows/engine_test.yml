@@ -28,6 +28,9 @@ jobs:
       - name: City 판단 규칙
         if: ${{ !cancelled() }}
         run: python -m unittest test_city_decide -v
+      - name: City 게임 판단
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_city_game -v
       - name: City 메시지 전송
         if: ${{ !cancelled() }}
         run: python -m unittest test_city_broadcast -v
