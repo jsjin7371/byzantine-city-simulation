@@ -89,7 +89,7 @@ def play_turn(game_id: int, body: GameTurnIn, request: Request, db: Session = De
             raise HTTPException(e.status, str(e)) from e
         fail(db, game, e)
     db.add(GameTurn(game_id=game_id, turn=result["turn"], result=result))
-    game.state = {**game.state, **{k: result[k] for k in ("turn", "game_over", "outcome", "end_reason", "next_hints")}}
+    game.state = {**game.state, **{k: result[k] for k in ("turn", "game_over", "outcome", "end_reason", "next_hints", "next_share_pairs")}}
     if result["game_over"]:
         game.status = Status.FINISHED
     db.commit()
