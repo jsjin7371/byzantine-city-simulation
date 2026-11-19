@@ -253,3 +253,186 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 - [x] 빠진 응답 값: 현재안 유지, 회신 없음 (프론트, 11/3)
 - [x] seed 입력 칸: 넣는 것으로 진행, 비우면 매번 랜덤 (프론트, 11/3)
 - [x] 상태 polling 간격: 1초, `completed`/`failed`가 되면 중단 (백엔드 제안, 변경 시 프론트가 공유)
+
+## 7. 마피아 게임 (0단계 결정, 11/19)
+
+> 기획서 `AI도시_마피아_기획서.md` 0단계 결정. 의심도 증감 폭, 고발 임계값, 난이도별 값, 공유 쌍 수는 1단계 파일럿이 측정 후 채운다.
+> 기존 `/run` 실험 API와 1~6절은 그대로 둔다. 게임은 별도 경로(`/games`)를 쓴다.
+
+### 7.1 용어와 공통 값
+
+| 항목 | 값 |
+|---|---|
+| 도시 수 | 5 |
+| 역할 `role` | `"player"`(플레이어 마피아, 1명) / `"colleague"`(자동 마피아 동료, 항상 정답의 반대) / `"citizen"`(시민) |
+| 시민 | `role == "citizen"`인 도시. 마피아가 1명이면 4명, 2명이면 3명 |
+| 턴 수 | 15 (고정) |
+| 누락·조작 | 게임에서는 `drop_rate = flip_rate = 0` 고정 (조작이 가짜 모순을 만들지 않게) |
+| 주장 `claim` | `"evacuate"`(대피, 기획서의 0) / `"stay"`(잔류, 기획서의 1). 기존 `decision`과 같은 값 |
+| 의심도 `suspicion` | 다른 도시 id(문자열) → 0~100 정수. 다수결 시민은 `null` |
+| 판단 이유 `reason` | 1~2문장 문자열. 규칙 시민은 규칙이 만든 짧은 문장, 없으면 `null` |
+| 시민 정확도 `accuracy` | 이번 턴 시민 중 정답 비율 (마피아 제외. 기존 실험의 정확도와 다름) |
+
+### 7.2 설정값
+
+| 필드 | 값 | 기본값 | 설명 |
+|---|---|---|---|
+| `connection` | `"all"` / `"ring"` | `"all"` | 모두 대화 / 양옆만 |
+| `citizen_type` | `"majority"` / `"wary"` / `"ai"` | `"wary"` | 다수결 / 눈치 / AI 시민. 한 판의 시민은 모두 같은 종류 |
+| `memory` | `"turn"` / `"recent"` / `"full"` | `"turn"` | 7.3 참고 |
+| `share_mode` | `"all"` / `"pairs"` / `"none"` | `"pairs"` | 7.5 참고 |
+| `share_pairs` | int ≥ 1 | 파일럿 | `share_mode == "pairs"`일 때 턴마다 고르는 시민 쌍 수 |
+| `mafia_count` | 1 / 2 | 1 | 플레이어 포함 마피아 수 (동료 = `mafia_count - 1`) |
+| `player` | `"human"` / `"bot"` | `"human"` | `"bot"`이면 플레이어 도시도 항상 반대로 말한다 (실험 모드, 기준 봇 승률 측정) |
+| `sensor_error` | 0.0~1.0 | 0.1 | 기존과 같음 |
+| `seed` | int \| null | `null` | 기존과 같음. 정답, 마피아 위치, 힌트, 공유 쌍을 모두 이 seed로 뽑는다 |
+
+난이도는 프론트가 위 값의 묶음(프리셋)으로 고른다. 프리셋 값은 파일럿 후 정한다.
+
+### 7.3 시민의 기억 범위
+
+- 기본값 `"turn"`: 시민은 **이번 턴의 힌트, 이번 턴에 받은 주장, 이번 턴 공유 내용**과 **자기 의심도(직전 턴 값)** 만 본다. 과거 힌트·주장은 보지 않는다. 기억은 의심도에만 누적된다.
+- 파일럿 비교 후보
+  1. `"turn"` (기본값)
+  2. `"recent"`: 최근 k턴의 자기 힌트도 본다 (k는 파일럿이 정함)
+  3. `"full"`: 자기 힌트 이력 전체. 게임이 성립하지 않는 것을 확인하는 대조군 (기획서 "제약": 마피아 승률 0% 예상)
+- 근거: 정답이 한 판 동안 고정이라 힌트 이력을 보면 대화를 무시해도 맞힌다.
+
+### 7.4 마피아에게 보이는 정보
+
+- 플레이어는 정답, 모든 도시의 역할, **시민별 이번 턴 힌트**를 주장을 고르기 전에 본다.
+- 근거: 힌트를 모르면 시민마다 다른 말을 고를 근거가 없어 "항상 반대"가 최선이 된다.
+- 턴이 끝나면 의심도, 판단 이유, 공유 내용, 투표 결과도 모두 본다 (숨기는 정보 없음).
+
+### 7.5 한 턴의 진행 순서 (God)
+
+턴 t에서:
+1. 시민별 힌트 `hint_t`를 뽑는다. 직전 턴 끝에 미리 뽑아 플레이어에게 보여 준다 (7.7 `next_hints`).
+2. 주장 모으기. 받는 도시 r, 보내는 도시 s (`connection`에 따라 s가 r의 이웃일 때만):
+   - s가 시민: 직전 턴 결정 `decision_{t-1}`을 모두에게 같게 보낸다. 1턴에는 `null`.
+   - s가 동료 또는 `player == "bot"`인 플레이어: 정답의 반대를 모두에게 보낸다. 1턴부터 보낸다.
+   - s가 사람 플레이어: 요청의 `claims[r]`. 시민마다 다르게 고를 수 있다.
+3. 정보 공유: `share_mode`에 따라 시민 쌍을 고른다 (`all`: 모든 시민 쌍, `pairs`: 무작위 `share_pairs`쌍, `none`: 없음). 쌍 (a, b)는 이번 턴에 받은 주장 전체를 서로 본다. 같은 보낸 도시 s가 a와 b에게 다른 주장을 보냈으면(둘 다 `null`이 아닐 때) s에 대한 **모순**으로 기록한다. 신이 중계하고 도시끼리 직접 통신하지 않는다.
+4. 각 시민 City를 한 번 호출한다 (힌트, 받은 주장, 자기가 속한 쌍의 공유 내용과 모순, 직전 의심도). City는 결정, 의심도, 판단 이유를 돌려준다. 공유를 같은 호출에 넣으므로 시민당 호출은 턴마다 1회다.
+5. 고발 투표 (7.6).
+6. 종료 판정 (7.6).
+
+마피아 도시는 결정하지 않는다 (`decision`, `correct`는 `null`).
+
+### 7.6 고발 투표와 판정
+
+- **투표 열림**: 어떤 시민이든 어떤 도시에 대한 의심도가 임계값(파일럿) 이상이면 그 턴 끝에 연다. 다수결 시민은 의심도가 없으므로 투표가 열리지 않는다.
+- **투표**: 시민만 투표한다. 각 시민은 자기를 뺀 도시 중 의심도가 가장 높은 도시 하나에 투표한다. 최고값이 동점이면 기권(`null`).
+- **집계**: 기존 다수결 로직. 한 도시가 시민 수의 과반(시민 4명이면 3표, 3명이면 2표)을 받으면 그 도시가 `accused`. 없으면 `accused = null`.
+- **발각**: `accused`가 마피아(플레이어 또는 동료)이면 즉시 종료, 패배 (`end_reason: "caught"`). 동료가 지목돼도 마피아 팀 전체가 진다.
+- **오지목**: `accused`가 시민이면 아무 일도 없다 (탈락 없음, 의심도 그대로). 기록만 남기고 게임은 계속된다.
+- **15턴 종료 판정**: 15턴의 시민 결정 기준.
+
+| `outcome` | 조건 |
+|---|---|
+| `"perfect_win"` | 들키지 않고 시민 전부 오답 |
+| `"win"` | 들키지 않고 시민 과반이 오답 (4명이면 3명 이상, 3명이면 2명 이상) |
+| `"loss"` | 그 외. 시민 4명이 2:2이면 과반 오답이 아니므로 패배 |
+
+### 7.7 턴 결과 JSON
+
+God ↔ 백엔드, 백엔드 ↔ 프론트가 같은 형식을 쓴다. 도시 id는 JSON 키일 때 문자열(`"1"`~`"5"`), 값일 때 정수.
+
+메시지 객체: `{"claim": "evacuate" | "stay", "note": ""}`. `note`(한마디)는 예약 필드로 지금은 항상 `""`이고 엔진은 무시한다 (7단계 대화 모드용). 보내지 않은 칸은 `null`.
+
+```json
+{
+  "game_id": 7,
+  "turn": 3,
+  "truth": "danger",
+  "accuracy": 0.5,
+  "cities": [
+    { "city": 1, "role": "citizen", "hint": "danger",
+      "received": { "2": {"claim": "evacuate", "note": ""}, "3": {"claim": "stay", "note": ""},
+                    "4": {"claim": "stay", "note": ""}, "5": {"claim": "evacuate", "note": ""} },
+      "decision": "evacuate", "correct": true,
+      "suspicion": { "2": 10, "3": 60, "4": 20, "5": 5 },
+      "reason": "3번이 2번에게 한 말과 나에게 한 말이 달랐다." },
+    { "city": 3, "role": "player", "hint": null, "received": null,
+      "decision": null, "correct": null, "suspicion": null, "reason": null }
+  ],
+  "sharing": [
+    { "pair": [1, 2],
+      "contradictions": [ { "city": 3, "told": { "1": "stay", "2": "evacuate" } } ] }
+  ],
+  "vote": {
+    "ballots": { "1": 3, "2": 3, "4": null, "5": 3 },
+    "accused": 3,
+    "caught": true
+  },
+  "game_over": true,
+  "outcome": "loss",
+  "end_reason": "caught",
+  "next_hints": null
+}
+```
+- `cities`: 모든 도시를 한 번씩. `received`는 이번 턴에 받은 메시지 (보낸 도시 id → 메시지 또는 `null`).
+- `sharing`: 이번 턴에 공유한 쌍. 모순이 없으면 `contradictions: []`. `share_mode == "none"`이면 `[]`.
+- `vote`: 투표가 열리지 않았으면 `null`. `ballots`는 시민 id → 투표한 도시 id 또는 `null`(기권).
+- `end_reason`: `null`(계속) / `"caught"` / `"turns_done"`.
+- `outcome`: `game_over == false`이면 `null`.
+- `next_hints`: 다음 턴 시민별 힌트 (시민 id → `"danger"`/`"safe"`). 게임이 끝났으면 `null`.
+
+### 7.8 백엔드 ↔ God
+
+God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하나이고, 새 `POST /games`가 오면 기존 게임은 버린다. God이 재시작되면 게임은 사라지고, 백엔드는 다음 요청이 실패하면 그 게임을 `failed`로 둔다. `/run` 실행 중에는 `/games` 요청을 `500`(`"God is already running an experiment"`)으로 거절한다. 턴 결과는 `/internal/...` 콜백 없이 응답 본문으로 돌려준다.
+
+| 메서드 | 경로 | 요청 | 응답 |
+|---|---|---|---|
+| POST | `/games` | `game_id` + 7.2 설정값 전부 | 게임 상태 (아래) |
+| POST | `/games/{game_id}/turns` | `{"turn": 3, "claims": {"1": {"claim": "stay", "note": ""}, ...}}` | 턴 결과 JSON (7.7) |
+| GET | `/games/{game_id}` | - | 게임 상태 |
+
+게임 상태:
+```json
+{
+  "game_id": 7,
+  "config": { "connection": "all", "citizen_type": "wary", "memory": "turn", "share_mode": "pairs",
+              "share_pairs": 1, "mafia_count": 1, "player": "human", "sensor_error": 0.1, "seed": 42 },
+  "truth": "danger",
+  "roles": { "1": "citizen", "2": "citizen", "3": "player", "4": "citizen", "5": "citizen" },
+  "player_city": 3,
+  "turn": 2,
+  "game_over": false,
+  "outcome": null,
+  "end_reason": null,
+  "next_hints": { "1": "danger", "2": "safe", "4": "danger", "5": "danger" }
+}
+```
+- `turn`: 끝난 턴 수 (시작 직후 0).
+- `claims`: 키는 플레이어와 이웃인 시민 전부. 빠지거나 남으면 `422`. `player == "bot"`이면 `{}`.
+- 요청의 `turn`이 `turn + 1`이 아니거나 게임이 끝났으면 `409`. 모르는 `game_id`는 `404`.
+- 오류 본문은 기존과 같이 `{"error": "이유"}`.
+
+### 7.9 프론트 ↔ 백엔드
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| POST | `/games` | 7.2 설정값으로 게임 시작 (`201`). 백엔드가 `game_id`를 만들어 God에 전달하고 게임 상태를 돌려준다 |
+| POST | `/games/{id}/turns` | `{"turn", "claims"}`로 한 턴 진행. 턴 결과 JSON(7.7)으로 응답 |
+| GET | `/games/{id}` | 게임 상태 + `"status"`: `"in_progress"` / `"finished"` / `"abandoned"` / `"failed"` |
+| GET | `/games/{id}/turns/{turn}` | 저장된 턴 결과 JSON |
+
+- 요청·응답 형식은 7.7, 7.8과 같다. 백엔드는 턴 결과를 받은 그대로 저장한다 (예: `games`, `game_turns` JSON 컬럼). 테이블 설계는 4단계에서 정한다.
+- 새 게임을 시작하면 이전 `in_progress` 게임은 `abandoned`.
+- 실험(`/experiments`)이 `pending`·`running`이면 `POST /games`는 `409`.
+- 오류 코드(404/409/422)와 `detail` 형식은 3절과 같다.
+
+### 7.10 City (게임용 `/turn`)
+
+시민 City만 호출한다. 기존 `/run`용 `/turn`(`from_left`·`from_right`)은 그대로 두고, 게임 입력은 `received` 필드로 구분한다 (2단계에서 일반화).
+
+- 요청: `{"turn", "hint", "received", "shared", "suspicion"}`. `shared`는 이 시민이 속한 쌍의 7.7 `sharing` 항목 목록, `suspicion`은 직전 턴 자기 의심도 (1턴은 모두 0, 다수결 시민은 `null`). `memory`가 `"recent"`·`"full"`이면 `"past_hints": [...]`를 더한다.
+- 응답: `{"decision", "suspicion", "reason"}`.
+- 시민은 자기 결정을 다음 턴 주장으로 모두에게 보내므로 응답에 보낼 값은 없다 (God이 다음 턴 `received`에 넣는다).
+
+### 7.11 LLM 호출 위치와 키
+
+- **City가 호출한다.** 근거: 판단 주체가 City라는 구조를 지키고 God에는 규칙(공유·모순·투표)만 남긴다. 11/6 결정대로 God–City는 내부망으로 두고, `citizen_type == "ai"`일 때만 City 컨테이너를 외부 접속용 네트워크에 추가로 붙인다.
+- 게이트웨이: `.github/scripts/ai_review.py`와 같은 Baze 게이트웨이. 환경변수 `BAZE_API_KEY`, `BAZE_URL`, `MODEL`은 City 컨테이너에만 준다. 키가 없으면 테스트용 가짜 LLM을 쓴다 (5단계).
+- 결정, 의심도, 판단 이유는 한 번의 호출로 받는다. 같은 seed 재현은 AI 시민에 보장하지 않는다.
