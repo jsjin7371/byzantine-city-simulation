@@ -457,7 +457,7 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 - 게임 전용 키를 쓴다 (PR 리뷰 키와 분리). OpenAI 호환 chat completions로 호출하고, 환경변수 `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`은 City 컨테이너에만 준다. 키가 없으면 테스트용 가짜 LLM을 쓴다 (5단계).
 - 결정, 의심도, 판단 이유는 한 번의 호출로 받는다. 같은 seed 재현은 AI 시민에 보장하지 않는다.
 - `LLM_BASE_URL`은 chat completions **전체 주소**다 (예: `https://api.openai.com/v1/chat/completions`, 게이트웨이는 끝 슬래시까지). 비면 OpenAI 기본 주소.
-- 프롬프트: 성격, 이번 턴 힌트, 받은 주장, 공유에서 드러난 모순 도시, 직전 의심도. `response_format`은 `json_schema`(strict)로 보내고, 모델이 400으로 거절하면 빼고 한 번 더 보낸다. 응답은 `choices[0].message.content`를 JSON으로 읽고, 실패하면 첫 `{` ~ 마지막 `}`를 읽는다.
+- 프롬프트: 성격, 이번 턴 힌트, 받은 주장, 공유에서 드러난 모순 도시, 직전 의심도. `response_format`은 모델마다 지원이 달라 쓰지 않고 프롬프트로 JSON만 요구한다. 응답은 `choices[0].message.content`를 JSON으로 읽고, 실패하면 첫 `{` ~ 마지막 `}`를 읽는다.
 - 검증: `decision`은 두 값 중 하나, 의심도는 요청에 있던 도시만 0~100 정수로 자른다(빠진 도시는 직전 값), `reason`은 200자까지. 호출 오류나 형식 오류면 **눈치 있는 시민 규칙 결과**로 대신하고 `reason` 앞에 `[AI 응답 실패(오류 종류)로 눈치 규칙 대체]`를 붙인다.
 - 가짜 LLM: `LLM_API_KEY`가 비면 눈치 있는 시민 규칙 결과를 JSON 문자열로 돌려주는 함수가 모델 자리에 들어가 같은 파싱·검증을 탄다. CI·테스트는 이것만 쓴다.
 - **비결정성**: 같은 seed라도 AI 시민의 결정·의심도·이유는 판마다 달라질 수 있다 (가짜 LLM일 때만 재현된다).

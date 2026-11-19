@@ -1,7 +1,6 @@
 """AI 시민 (spec 7.10, 7.11): 프롬프트 → OpenAI 호환 chat completions → JSON 검증. 깨지면 wary 규칙으로 대체."""
 import json
 import os
-import urllib.error
 import urllib.request
 
 from city.logic import game_turn
@@ -28,34 +27,15 @@ def build_prompt(personality, hint, received, shared, suspicion):
     )
 
 
-def schema(suspicion):
-    ids = list(suspicion)
-    return {"type": "object", "additionalProperties": False, "required": ["decision", "suspicion", "reason"],
-            "properties": {
-                "decision": {"type": "string", "enum": ["evacuate", "stay"]},
-                "suspicion": {"type": "object", "additionalProperties": False, "required": ids,
-                              "properties": {i: {"type": "integer"} for i in ids}},
-                "reason": {"type": "string"}}}
-
-
-def call_llm(prompt, suspicion):
-    """실제 호출. 반환: 모델이 쓴 문자열. json_schema를 거절(400)하면 response_format 없이 한 번 더."""
+def call_llm(prompt):
+    """실제 호출. 반환: 모델이 쓴 문자열. response_format은 모델마다 지원이 달라 쓰지 않는다 (프롬프트로 JSON 요구)."""
     # ponytail: 429·5xx 재시도 없음 (바로 wary 대체). 실제 키로 빈도 확인 후 필요하면 추가.
-    body = {"model": os.environ.get("LLM_MODEL", ""),
-            "messages": [{"role": "user", "content": prompt}],
-            "response_format": {"type": "json_schema",
-                                "json_schema": {"name": "citizen_turn", "strict": True, "schema": schema(suspicion)}}}
+    body = {"model": os.environ.get("LLM_MODEL", ""), "messages": [{"role": "user", "content": prompt}]}
     url = os.environ.get("LLM_BASE_URL") or "https://api.openai.com/v1/chat/completions"
     headers = {"Content-Type": "application/json", "Authorization": "Bearer " + os.environ["LLM_API_KEY"]}
-    for _ in range(2):
-        req = urllib.request.Request(url, json.dumps(body).encode(), headers)
-        try:
-            with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
-                return json.load(r)["choices"][0]["message"]["content"]
-        except urllib.error.HTTPError as e:
-            if e.code != 400 or "response_format" not in body:
-                raise
-            del body["response_format"]
+    req = urllib.request.Request(url, json.dumps(body).encode(), headers)
+    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+        return json.load(r)["choices"][0]["message"]["content"]
 
 
 def fake_llm(hint, received, shared, suspicion):
@@ -81,16 +61,15 @@ def parse(text, suspicion):
         if isinstance(v, bool) or not isinstance(v, (int, float)):
             raise ValueError(f"{k}번 의심도가 숫자가 아님")
         new[k] = max(0, min(100, round(v)))
-    reason = data.get("reason")
-    reason = str(reason).strip()[:200] if reason else None
-    return data["decision"], new, reason or None
+    reason = str(data.get("reason") or "").strip()[:200] or None
+    return data["decision"], new, reason
 
 
 def ai_turn(personality, hint, received, shared, suspicion, llm=None):
     """AI 시민 한 턴. 반환: (결정, 의심도, 이유). llm은 테스트용 (prompt → 문자열)."""
     if llm is None:
         if os.environ.get("LLM_API_KEY"):
-            llm = lambda p: call_llm(p, suspicion)
+            llm = call_llm
         else:
             llm = lambda p: fake_llm(hint, received, shared, suspicion)
     try:
