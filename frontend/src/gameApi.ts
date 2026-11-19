@@ -76,9 +76,6 @@ export function previewSuspicion(current: number, hint: Truth, claim: Claim, par
   return { delta, next: Math.min(100, Math.max(0, current + delta)), contradiction }
 }
 
-// 다음 턴 공유 쌍에서 city의 상대들.
-export const sharePartners = (pairs: [number, number][] | null | undefined, city: number) =>
-  (pairs ?? []).filter((p) => p.includes(city)).map(([a, b]) => (a === city ? b : a))
 
 // 7.2 난이도 표. 나머지 값은 백엔드 기본값을 쓴다.
 export const difficulties = {

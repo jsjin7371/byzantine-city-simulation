@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { claimTargets, defaultClaims, createGame, getGame, playTurn, previewSuspicion, sharePartners, majority } from '../src/gameApi.ts'
+import { claimTargets, defaultClaims, createGame, getGame, playTurn, previewSuspicion, majority } from '../src/gameApi.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
 const state = {
@@ -52,8 +52,6 @@ test('previewSuspicion follows the 7.6 rule', () => {
   assert.deepEqual(previewSuspicion(10, 'safe', 'stay'), { delta: -20, next: 0, contradiction: false })
   assert.deepEqual(previewSuspicion(50, 'safe', 'evacuate', ['stay', 'stay']), { delta: 30, next: 80, contradiction: true })
   assert.deepEqual(previewSuspicion(95, 'safe', 'evacuate', ['evacuate']), { delta: 10, next: 100, contradiction: false })
-  assert.deepEqual(sharePartners([[2, 3], [5, 2]], 2), [3, 5])
-  assert.deepEqual(sharePartners(undefined, 2), [])
   assert.equal(majority(4), 3)
   assert.equal(majority(3), 2)
 })

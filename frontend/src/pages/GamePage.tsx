@@ -18,14 +18,13 @@ import {
   outcomeLabels,
   playTurn,
   previewSuspicion,
-  sharePartners,
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
 import './GamePage.css'
 
 const roleLabels = { player: '나(마피아)', colleague: '동료 마피아', citizen: '시민' }
 
-// 의심도 게이지. 고발 기준(60) 위치에 선을 긋는다.
+// 의심도 게이지. 투표 열림 기준(60) 위치에 선을 긋는다.
 function Gauge({ value, label }: { value: number; label: string }) {
   return (
     <div className="gm-bar">
@@ -204,14 +203,15 @@ export function GamePage() {
     ? Object.values(state.roles).filter((r) => r === 'citizen').length
     : 0
   const wrong = citizens.filter((c) => c.correct === false).length
-  const wary = state?.config.citizen_type !== 'majority'
+  const wary = state?.config.citizen_type !== 'majority' // 의심도가 있는 시민
+  const ruled = state?.config.citizen_type === 'wary' // 7.6 규칙을 따르는 시민만 예상을 보인다
   return (
     <div className="gm-workspace">
       <h1>AI 시민을 속여라</h1>
       <section className="gm-panel">
         <ul className="gm-rules">
           <li>
-            목표: 나는 마피아. {TOTAL_TURNS}턴째에 시민 과반(4명이면 3명, 3명이면 2명)이 오답을
+            목표: 나는 마피아. {TOTAL_TURNS}턴째에 시민 과반이 오답을
             고르게 하면 승리, 전부 오답이면 완승.
           </li>
           <li>
@@ -271,10 +271,10 @@ export function GamePage() {
             <p>
               지난 턴 틀린 시민 {result ? wrong : '—'}/{citizenCount} ({TOTAL_TURNS}턴에{' '}
               {majority(citizenCount)}명 이상 필요)
-              {wary && ` · 나에 대한 최고 의심도 ${topSuspicion} / 고발 기준 ${SUSPICION.threshold}`}
+              {wary && ` · 나에 대한 최고 의심도 ${topSuspicion} / 투표 열림 기준 ${SUSPICION.threshold}`}
             </p>
             {wary && <Gauge value={topSuspicion} label="나에 대한 최고 의심도" />}
-            <GameMap state={state} result={result} />
+            <GameMap state={state} result={shown} />
           </section>
 
           {state.game_over ? (
@@ -303,7 +303,9 @@ export function GamePage() {
                   const hint = state.next_hints?.[city]
                   const current = mySuspicion(city)
                   const last = result?.cities.find((c) => c.city === city)?.decision
-                  const partners = sharePartners(state.next_share_pairs, city)
+                  const partners = (state.next_share_pairs ?? [])
+                    .filter((p) => p.includes(city))
+                    .map(([a, b]) => (a === city ? b : a))
                   const partnerClaims = partners.map((o) => claims[o]).filter(Boolean)
                   const preview =
                     hint && claims[city]
@@ -328,12 +330,12 @@ export function GamePage() {
                           <span>{current}</span>
                         </div>
                       )}
-                      {wary && preview && (
+                      {ruled && preview && (
                         <p className={over ? 'rs-incorrect' : 'gm-muted'}>
                           예상 {preview.delta > 0 ? '+' : ''}
                           {preview.delta} → {preview.next}
                           {preview.contradiction && ' (모순 위험)'}
-                          {over && ' · 고발 기준 넘음'}
+                          {over && ' · 투표 열림'}
                         </p>
                       )}
                       <div className="gm-row">
