@@ -258,7 +258,7 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 
 ## 7. 마피아 게임 (0단계 결정, 11/19)
 
-> 기획서 `AI도시_마피아_기획서.md` 0단계 결정. 의심도 증감 폭, 고발 임계값, 난이도별 값, 공유 쌍 수는 1단계 파일럿이 측정 후 채운다.
+> 기획서 `AI도시_마피아_기획서.md` 0단계 결정. 의심도 증감 폭, 고발 임계값, 공유 쌍 수는 1단계 파일럿(`experiments/mafia_pilot.py`), 다름 +20과 난이도별 값은 실험 C(`experiments/mafia_strategy.py`)로 정했다.
 > 기존 `/run` 실험 API와 1~6절은 그대로 둔다. 게임은 별도 경로(`/games`)를 쓴다.
 
 ### 7.1 용어와 공통 값
@@ -289,15 +289,15 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 | `sensor_error` | 0.0~1.0 | 0.1 | 기존과 같음 |
 | `seed` | int \| null | `null` | 기존과 같음. 정답, 마피아 위치, 힌트, 공유 쌍을 모두 이 seed로 뽑는다 |
 
-난이도는 프론트가 위 값의 묶음(프리셋)으로 고른다. 나머지 값은 기본값. `bot_win_rate`는 1단계 파일럿 방식(`experiments/mafia_pilot.py` difficulty 조건, 10000판)으로 잰 값. `smart`는 실험 C 전략(`experiments/mafia_strategy.py`, 2000판) 승률로 참고용.
+난이도는 프론트가 위 값의 묶음(프리셋)으로 고른다. 나머지 값은 기본값. `bot_win_rate`는 1단계 파일럿 값 (`experiments/mafia_pilot.csv` difficulty 행, 10000판).
 
-| 난이도 | `mafia_count` | `sensor_error` | `citizen_type` | `bot_win_rate` | `smart` |
-|---|---|---|---|---|---|
-| 쉬움 | 1 | 0.48 | `"wary"` | 0.32 | 0.518 |
-| 보통 | 1 | 0.4 | `"wary"` | 0.10 | 0.330 |
-| 어려움 | 1 | 0.3 | `"wary"` | 0.01 | 0.147 |
+| 난이도 | `mafia_count` | `sensor_error` | `citizen_type` | `bot_win_rate` |
+|---|---|---|---|---|
+| 쉬움 | 1 | 0.48 | `"wary"` | 0.32 |
+| 보통 | 1 | 0.4 | `"wary"` | 0.10 |
+| 어려움 | 1 | 0.3 | `"wary"` | 0.01 |
 
-`citizen_type`을 `"majority"`로 바꾸면 `bot_win_rate`는 쉬움 0.873 / 보통 0.748 / 어려움 0.482 (`experiments/mafia_compare.py`, `connection=all`, 1000판). `"ai"`는 측정값이 없어 `null`.
+`citizen_type`을 `"majority"`로 바꾸면 `bot_win_rate`는 쉬움 0.873 / 보통 0.748 / 어려움 0.482 (`experiments/mafia_compare.csv`, `connection=all`, 1000판). `"ai"`는 측정값이 없어 `null`.
 
 ### 7.3 시민의 기억 범위
 
@@ -437,7 +437,7 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 | GET | `/games/{game_id}/turns/{turn}` | 저장된 턴 결과 JSON |
 
 - 요청·응답 형식은 7.7, 7.8과 같다. 백엔드는 턴 결과를 받은 그대로 저장한다 (예: `games`, `game_turns` JSON 컬럼). 테이블 설계는 4단계에서 정한다.
-- `bot_win_rate`: 같은 설정에서 `player == "bot"`의 마피아 승률 (0.0~1.0, 결과 화면 비교용). 값은 1단계 파일럿이 채우고 백엔드가 설정별로 들고 있다. 없으면 `null`. God은 이 필드를 모른다.
+- `bot_win_rate`: 같은 설정에서 `player == "bot"`의 마피아 승률 (0.0~1.0, 결과 화면 비교용). 값은 7.2 난이도 표의 측정값을 백엔드가 설정별로 들고 있다. 프리셋 밖 설정(`mafia_count` 2, 표에 없는 `sensor_error`, 기본값이 아닌 `connection`·`memory`·`share_mode`·`share_pairs`, `citizen_type` `"ai"`)이면 `null`. God은 이 필드를 모른다.
 - 새 게임을 시작하면 이전 `in_progress` 게임은 `abandoned`.
 - 실험(`/experiments`)이 `pending`·`running`이면 `POST /games`는 `409`.
 - 오류 코드(404/409/422)와 `detail` 형식은 3절과 같다.

@@ -14,7 +14,7 @@ router = APIRouter(prefix="/games", tags=["games"])
 
 _create_lock = Lock()  # 실험 확인과 게임 생성을 한 번에 하나만 (실험 API와 같은 이유)
 
-# 봇 승률 (7.2 난이도 표). wary는 mafia_pilot.py 10000판, majority는 mafia_compare.py 1000판. ai는 측정값 없음(null).
+# 봇 승률 (7.2 난이도 표). wary는 experiments/mafia_pilot.csv, majority는 experiments/mafia_compare.csv. ai는 측정값 없음(null).
 # 나머지 설정이 기본값일 때만 적용한다.
 BOT_WIN_RATE = {
     ("wary", 1, 0.48): 0.32, ("wary", 1, 0.4): 0.10, ("wary", 1, 0.3): 0.01,
