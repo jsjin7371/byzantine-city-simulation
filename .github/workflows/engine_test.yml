@@ -34,6 +34,9 @@ jobs:
       - name: City 메시지 전송
         if: ${{ !cancelled() }}
         run: python -m unittest test_city_broadcast -v
+      - name: City AI 시민 (가짜 LLM)
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_city_ai -v
       - name: God 시뮬레이션 규칙
         if: ${{ !cancelled() }}
         run: python -m unittest test_god_simulation -v
