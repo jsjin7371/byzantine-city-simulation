@@ -2,7 +2,8 @@ import os
 import random
 
 from common.http import serve
-from city.logic import broadcast, decide
+from city.ai import ai_turn
+from city.logic import broadcast, decide, game_turn
 
 CITY_ID = int(os.environ["CITY_ID"])  # 도시 번호, 도커 컴포즈에서 city마다 환경변수로 전달됨.
 state = {}  # 도시 상태를 담는 dict. turn()에서 읽고 쓰고, init()에서 초기화
@@ -26,24 +27,31 @@ def init(body):
 
 def turn(body: dict) -> dict:
     """
-    힌트와 이웃 메시지로 이번 턴의 결정과 보낼 메시지를 정한다.
+    힌트와 이웃 메시지로 이번 턴의 결정과 이웃별로 보낼 메시지를 정한다.
     Args:
-        body: {"hint", "from_left", "from_right"}
+        body: {"hint", "received": {이웃 id 문자열: 받은 값(evacuate | stay | None)}}
 
     Returns:
-        {"decision", "sent_left", "to_left", "sent_right", "to_right"}
-        - sent_left, sent_right는 보낼 메시지 (evacuate | stay | None)
-        - to_left, to_right는 "normal" | "flipped" | "dropped" 중 하나 (상태정보)
+        {"decision", "sent": {이웃 id: 보낼 값}, "to": {이웃 id: 상태}}
+        - sent의 값은 보낼 메시지 (evacuate | stay | None)
+        - to의 값은 "normal" | "flipped" | "dropped" 중 하나 (상태정보)
     """
-    decision = decide(body["hint"], body["from_left"], body["from_right"]) # 다수결로 결정
-    sent_left, to_left = broadcast(decision, state) # 왼쪽 도시로 보낼 메시지와 상태(조작 | 누락 | 정상)
-    sent_right, to_right = broadcast(decision, state) # 오른쪽 도시로 보낼 메시지와 상태(조작 | 누락 | 정상)
+    if "personality" in body:  # AI 시민 (spec 7.10)
+        decision, suspicion, reason = ai_turn(body["personality"], body["hint"], body["received"],
+                                              body["shared"], body["suspicion"])
+        return {"decision": decision, "suspicion": suspicion, "reason": reason}
+    if "shared" in body:  # 게임용 요청 (spec 7.10)
+        decision, suspicion, reason = game_turn(body["hint"], body["received"], body["shared"],
+                                                body["suspicion"], body.get("past_hints", ()))
+        return {"decision": decision, "suspicion": suspicion, "reason": reason}
+    decision = decide(body["hint"], body["received"].values()) # 다수결로 결정
+    sent, to = {}, {}
+    # 받은 이웃에게 그대로 보낸다 (연결은 양방향). 수신자마다 따로 판정한다.
+    for city_id in body["received"]:
+        sent[city_id], to[city_id] = broadcast(decision, state)
 
-    return {"decision": decision,
-            "sent_left": sent_left, "to_left": to_left,
-            "sent_right": sent_right, "to_right": to_right}
+    return {"decision": decision, "sent": sent, "to": to}
 
-    
 
 # [기능 추가] 받을 요청을 늘리려면 표에 (메서드, 주소): 함수 를 한 줄 추가한다.
 #   예) serve({("GET", "/health"): health, ("POST", "/turn"): turn})

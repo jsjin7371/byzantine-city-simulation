@@ -65,3 +65,32 @@ def run_http(base_url: str, payload: dict, timeout: float) -> dict:
         reason = error if isinstance(error, str) else response.text
         raise GodError(f"{explain_god_error(reason)} (상세: God {response.status_code}: {reason})")
     return response.json()
+
+
+class GodGameError(GodError):
+    """게임 호출 실패. status는 God이 돌려준 HTTP 상태 (연결 실패 등은 None)."""
+
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
+
+
+def game_http(method: str, url: str, payload: dict | None, timeout: float) -> dict:
+    """7.8의 /games 호출. 실패하면 God의 {"error"}를 담아 GodGameError."""
+    try:
+        response = httpx.request(method, url, json=payload, timeout=timeout)
+    except httpx.TimeoutException as e:
+        raise GodGameError(f"엔진 응답이 {timeout:.0f}초 안에 오지 않았습니다.") from e
+    except httpx.HTTPError as e:
+        raise GodGameError(f"엔진(God)에 연결하지 못했습니다. (상세: {e})") from e
+    if not response.is_success:
+        try:
+            body = response.json()
+        except ValueError:
+            body = None
+        error = body.get("error") if isinstance(body, dict) else None
+        raise GodGameError(error if isinstance(error, str) else response.text, response.status_code)
+    try:
+        return response.json()
+    except ValueError as e:
+        raise GodGameError(f"엔진(God) 응답이 JSON이 아닙니다. (상세: {e})", response.status_code) from e

@@ -66,7 +66,7 @@ export class HttpError extends Error {
   }
 }
 
-async function request(url: string, options: RequestInit) {
+export async function request(url: string, options: RequestInit = {}) {
   let response: Response
   try {
     // 화면 전환에 의한 취소와 HTTP 요청당 15초 제한을 함께 적용한다.

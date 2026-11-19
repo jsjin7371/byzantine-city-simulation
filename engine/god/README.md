@@ -29,12 +29,11 @@ God은 City의 판단을 대신하거나 발신값에 누락·조작을 추가�
 도시 1의 왼쪽은 5, 오른쪽은 2입니다. 도시 5의 왼쪽은 4, 오른쪽은 1입니다.
 각 도시는 이번 턴에 받은 메시지로 판단하고, 이번 턴에 보낸 메시지는 이웃의 **다음 턴** 입력이 됩니다.
 
-| 도시 i의 다음 턴 입력 | 가져오는 값 |
-|---|---|
-| `from_left` | 왼쪽 이웃이 오른쪽으로 보낸 `sent_right` |
-| `from_right` | 오른쪽 이웃이 왼쪽으로 보낸 `sent_left` |
-
-예를 들어 도시 1은 다음 턴에 도시 5의 `sent_right`와 도시 2의 `sent_left`를 받습니다.
+City 입력 `received`는 이웃 id 문자열 → 받은 값이고, 응답 `sent`·`to`는 이웃 id 문자열 → 보낸 값·상태입니다.
+도시 i의 다음 턴 `received[j]`는 이웃 j가 보낸 `sent["i"]`입니다 (수신자마다 다른 값을 보낼 수 있음).
+예를 들어 도시 1은 다음 턴에 `{"5": 도시 5의 sent["1"], "2": 도시 2의 sent["1"]}`를 받습니다.
+ring의 이웃 순서는 [왼쪽, 오른쪽]이고, 백엔드 JSON에는 이를 `from_left`·`from_right`·`to_left`·`to_right`로 바꿔 넣습니다.
+`/run`에 `connection: "all"`을 주면 자기를 뺀 모든 도시가 이웃입니다 (기본 `"ring"`, 게임 전용).
 누락된 메시지는 `null`로 전달합니다.
 도시를 1~5 순서로 호출하지만 모든 도시의 응답을 모을 때까지 입력을 갱신하지 않아 같은 턴의 메시지가 섞이지 않습니다.
 
@@ -120,7 +119,7 @@ Pop-Location
 ```
 
 서버는 `0.0.0.0:8000`에서 요청을 받습니다. 종료하려면 `Ctrl+C`를 누릅니다.
-`N_CITIES`는 생략하거나 `5`로 설정해야 하며, 다른 값이면 시작하지 않습니다.
+`N_CITIES`(기본 5)는 띄워 둔 City 수이고, `/run`의 `n_cities`(기본 5) 상한입니다.
 
 Docker에서는 저장소 루트에서 실행합니다.
 
@@ -215,9 +214,9 @@ God은 `http://city-{1..5}:8000`으로 다음 데이터를 주고받습니다.
 | 경로 | God이 보내는 값 | God이 받는 값 |
 |---|---|---|
 | `POST /init` | `experiment_id`, `drop_rate`, `flip_rate`, `is_byzantine`, `seed`; 비잔틴일 때만 `truth` | `{"ok": true}` |
-| `POST /turn` | `hint`, `from_left`, `from_right` | `decision`, `sent_left`, `sent_right`, `to_left`, `to_right` |
+| `POST /turn` | `hint`, `received` | `decision`, `sent`, `to` |
 
-`sent_left/right`는 `evacuate`, `stay`, `null` 중 하나입니다.
+`sent`의 값은 `evacuate`, `stay`, `null` 중 하나이고, 키는 `received`의 키와 같아야 합니다.
 상태가 `dropped`이면 발신값은 `null`, `normal/flipped`이면 `evacuate` 또는 `stay`여야 합니다.
 
 ### God → 백엔드: 턴 결과 전송
@@ -247,7 +246,7 @@ God은 `http://city-{1..5}:8000`으로 다음 데이터를 주고받습니다.
 ```
 
 `from_left/right`는 이번 턴에 City로 보낸 수신값, `to_left/right`는 이번 턴 발신 상태입니다.
-실제 발신값인 `sent_left/right`는 다음 턴 중계에 사용하며 백엔드 JSON에는 넣지 않습니다.
+실제 발신값인 `sent`는 다음 턴 중계에 사용하며 백엔드 JSON에는 넣지 않습니다.
 
 God은 백엔드에서 다음 응답을 받아 실험 ID와 턴 번호가 요청과 같은지 확인합니다.
 

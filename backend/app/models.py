@@ -17,6 +17,9 @@ class Status:
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    IN_PROGRESS = "in_progress"
+    FINISHED = "finished"
+    ABANDONED = "abandoned"
 
 
 class Experiment(Base):
@@ -83,3 +86,21 @@ class CityState(Base):
     to_right: Mapped[str] = mapped_column(String(16))
 
     turn_result: Mapped[TurnResult] = relationship(back_populates="city_states")
+
+
+class Game(Base):
+    __tablename__ = "games"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), index=True)  # in_progress | finished | abandoned | failed
+    config: Mapped[dict] = mapped_column(JSON)
+    state: Mapped[dict | None] = mapped_column(JSON)  # God의 게임 상태(7.8). 턴마다 갱신
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class GameTurn(Base):
+    __tablename__ = "game_turns"
+
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id", ondelete="CASCADE"), primary_key=True)
+    turn: Mapped[int] = mapped_column(Integer, primary_key=True)
+    result: Mapped[dict] = mapped_column(JSON)  # 턴 결과 JSON(7.7) 그대로
