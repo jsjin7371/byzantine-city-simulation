@@ -1,8 +1,10 @@
 """Mock God 게임 (docs/spec.md 7.5~7.8). 프론트가 엔진 없이 개발·시연하는 용도의 단순 규칙.
 
-시민은 모두 다수결(힌트 1표 + 받은 주장마다 1표, 동점이면 힌트), 의심도·공유·투표는 없다.
+시민은 모두 다수결(힌트 1표 + 받은 주장마다 1표, 동점이면 힌트), 의심도·투표는 없다.
+공유 쌍은 미리 공개(next_share_pairs)하고 모순만 기록한다. 시민은 모순을 쓰지 않는다.
 게임 상태는 메모리에 한 판만 둔다 (진짜 God과 같은 규칙).
 """
+import itertools
 import random
 
 from app.god.client import GodGameError
@@ -27,7 +29,7 @@ class MockGodGames:
         self.game = {"id": payload["game_id"], "config": cfg, "rng": rng, "truth": rng.choice(["danger", "safe"]),
                      "roles": roles, "player": mafia[0], "turn": 0, "over": False, "outcome": None,
                      "end_reason": None, "prev": {}}
-        self.game["hints"] = self._hints()
+        self.game["hints"], self.game["pairs"] = self._hints(), self._pairs()
         return self._state()
 
     def turn(self, game_id: int, payload: dict) -> dict:
@@ -43,7 +45,7 @@ class MockGodGames:
         truth, ring = g["truth"], g["config"]["connection"] == "ring"
         answer = DECISION_OF[truth]
         bad = {"claim": OPPOSITE_DECISION[answer], "note": ""}
-        cities, decisions = [], {}
+        cities, decisions, got = [], {}, {}
         for c in range(1, N + 1):
             if g["roles"][c] != "citizen":
                 cities.append({"city": c, "role": g["roles"][c], "hint": None, "received": None, "decision": None,
@@ -61,6 +63,7 @@ class MockGodGames:
                 else:
                     msg = bad
                 received[str(s)] = msg
+            got[c] = received
             votes = [DECISION_OF[g["hints"][str(c)]]] + [m["claim"] for m in received.values() if m]
             evac = votes.count("evacuate")
             decisions[c] = DECISION_OF[g["hints"][str(c)]] if evac * 2 == len(votes) else (
@@ -75,11 +78,15 @@ class MockGodGames:
             g["over"], g["end_reason"] = True, "turns_done"
             g["outcome"] = ("perfect_win" if wrong == len(decisions) else
                             "win" if wrong * 2 > len(decisions) else "loss")
+        sharing = [{"pair": [a, b], "contradictions": [
+            {"city": int(s), "told": {str(a): got[a][s], str(b): got[b][s]}} for s in got[a]
+            if got[a][s] and got[b][s] and got[a][s]["claim"] != got[b][s]["claim"]]} for a, b in g["pairs"]]
         g["hints"] = None if g["over"] else self._hints()
+        g["pairs"] = None if g["over"] else self._pairs()
         return {"game_id": g["id"], "turn": g["turn"], "truth": truth,
-                "accuracy": 1 - wrong / len(decisions), "cities": cities, "sharing": [], "vote": None,
+                "accuracy": 1 - wrong / len(decisions), "cities": cities, "sharing": sharing, "vote": None,
                 "game_over": g["over"], "outcome": g["outcome"], "end_reason": g["end_reason"],
-                "next_hints": g["hints"]}
+                "next_hints": g["hints"], "next_share_pairs": g["pairs"]}
 
     def _receivers(self) -> list[int]:
         """사람 플레이어가 주장을 보내야 하는 시민들. bot이면 없음."""
@@ -88,6 +95,14 @@ class MockGodGames:
             return []
         ring = g["config"]["connection"] == "ring"
         return [c for c in range(1, N + 1) if g["roles"][c] == "citizen" and (not ring or (p - c) % N in (1, N - 1))]
+
+    def _pairs(self) -> list:
+        g = self.game
+        combos = [list(x) for x in itertools.combinations([c for c, r in g["roles"].items() if r == "citizen"], 2)]
+        mode = g["config"]["share_mode"]
+        if mode == "pairs":
+            return g["rng"].sample(combos, min(g["config"]["share_pairs"], len(combos)))
+        return combos if mode == "all" else []
 
     def _hints(self) -> dict:
         g = self.game
@@ -99,4 +114,5 @@ class MockGodGames:
         return {"game_id": g["id"], "config": g["config"], "truth": g["truth"],
                 "roles": {str(c): r for c, r in g["roles"].items()}, "player_city": g["player"],
                 "turn": g["turn"], "game_over": g["over"], "outcome": g["outcome"],
-                "end_reason": g["end_reason"], "next_hints": g["hints"]}
+                "end_reason": g["end_reason"], "next_hints": g["hints"],
+                "next_share_pairs": g["pairs"]}

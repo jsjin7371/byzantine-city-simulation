@@ -31,6 +31,20 @@ def test_full_game_flow(client):
     assert play(client, state, 16).status_code == 409  # 끝난 게임
 
 
+def test_share_pairs_announced(client):
+    """mock God도 next_share_pairs를 내고, 다음 턴은 그 쌍으로 공유한다. 끝나면 null."""
+    state = start(client, share_pairs=2)
+    pairs = state["next_share_pairs"]
+    assert len(pairs) == 2 and all(len(p) == 2 for p in pairs)
+    for t in range(1, 16):
+        r = play(client, state, t).json()
+        assert [s["pair"] for s in r["sharing"]] == pairs
+        pairs = r["next_share_pairs"]
+        assert client.get(f"/games/{state['game_id']}").json()["next_share_pairs"] == pairs
+    assert pairs is None
+    assert start(client, share_mode="none")["next_share_pairs"] == []
+
+
 def test_bot_win_rate(client):
     assert start(client, mafia_count=2, sensor_error=0.4)["bot_win_rate"] == 0.57
     assert start(client, sensor_error=0.3, share_mode="none")["bot_win_rate"] is None

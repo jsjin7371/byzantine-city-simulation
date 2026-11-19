@@ -102,6 +102,25 @@ class GameRuleTests(unittest.TestCase):
             if row["role"] == "citizen":
                 self.assertEqual(len(row["received"]), 2)
 
+    def test_share_pairs_announced_before_turn(self):
+        """next_share_pairs로 공개한 쌍이 그 턴 공유 쌍이다. 같은 seed면 같고, none은 [], all은 모든 쌍, 끝나면 null."""
+        g, seen = new_game(share_pairs=2, citizen_type="majority"), []
+        for _ in range(15):
+            announced = g.state()["next_share_pairs"]
+            result = play(g, fixed_city())
+            self.assertEqual([s["pair"] for s in result["sharing"]], announced)
+            self.assertEqual(result["next_share_pairs"], g.state()["next_share_pairs"])
+            seen.append(announced)
+        self.assertIsNone(result["next_share_pairs"])
+        self.assertGreater(len({str(x) for x in seen}), 1)  # 턴마다 새로 뽑는다
+        g2, again = new_game(share_pairs=2, citizen_type="majority"), []
+        for _ in range(15):
+            again.append(g2.state()["next_share_pairs"])
+            play(g2, fixed_city())
+        self.assertEqual(again, seen)
+        self.assertEqual(new_game(share_mode="none").state()["next_share_pairs"], [])
+        self.assertEqual(len(new_game(share_mode="all").state()["next_share_pairs"]), 6)
+
     def test_bot_and_colleague_always_lie(self):
         """봇 플레이어와 동료는 1턴부터 정답의 반대를 보낸다. 봇이면 claims는 {}."""
         g = new_game(player="bot", mafia_count=2)
