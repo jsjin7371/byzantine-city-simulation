@@ -57,6 +57,17 @@ God은 City의 판단을 대신하거나 발신값에 누락·조작을 추가�
 
 지정한 모든 턴의 전송이 확인되면 `/run`에 `{"ok": true}`를 반환합니다.
 
+## City 판단 규칙
+
+각 City는 다수결로 `decision`을 정합니다 ([city/logic.py](../city/logic.py)의 `decide()`).
+
+1. 힌트를 결정으로 바꿔 1표로 셉니다 (`danger` → `evacuate`, `safe` → `stay`).
+2. 좌우에서 받은 메시지를 1표씩 더합니다. 누락된 메시지(`null`)는 세지 않습니다.
+3. 많은 쪽으로 결정하고, 동점이면 힌트를 따릅니다.
+
+첫 턴은 받은 메시지가 없어 힌트대로 결정합니다.
+비잔틴 도시도 같은 규칙으로 판단하며, 거짓은 이웃에게 보내는 메시지에만 적용됩니다.
+
 ## 센서 오류와 비잔틴 도시
 
 `sensor_error`는 정답과 반대인 힌트를 줄 확률입니다.
@@ -127,7 +138,8 @@ docker compose exec -T god python -c "from common.http import request; print(req
 
 City 서버는 `/health`, `/init`, `/turn`을 제공합니다.
 **실험을 끝까지 실행하려면 `api:8000`에 백엔드 결과 수신 API가 있어야 합니다.**
-기본 Compose에는 결과 수신기가 없으므로 아래 통신 검사 환경을 사용하거나 실제 백엔드를 함께 연결하세요.
+기본 Compose에서는 `api` 컨테이너(백엔드)가 결과를 받으므로 `docker compose up --build -d`로 전체를 띄우면 됩니다.
+백엔드 없이 엔진만 확인하려면 아래 통신 검사 환경을 사용하세요.
 로컬 실행에서도 같은 City·백엔드 주소를 사용할 수 있어야 합니다.
 
 ## HTTP API
@@ -297,7 +309,7 @@ python -m unittest discover -s engine/tests -p "test_*.py" -v
 ## Docker 통신 검사
 
 Docker Desktop의 Linux 엔진을 실행한 뒤 저장소 루트에서 다음을 실행합니다.
-기본 Compose에 테스트용 수신기 `api`를 추가하고, 컨테이너 내부 DNS와 8000번 포트를 사용합니다.
+기본 Compose의 `api`(백엔드)를 테스트용 수신기로 교체하고, 컨테이너 내부 DNS와 8000번 포트를 사용합니다.
 
 ```powershell
 $networkComposeArgs = @(
