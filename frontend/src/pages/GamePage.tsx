@@ -127,7 +127,6 @@ export function GamePage() {
   const [state, setState] = useState<GameState | null>(null)
   const [claims, setClaims] = useState<Record<string, Claim>>({})
   const [result, setResult] = useState<TurnResult | null>(null)
-  const [botWinRate, setBotWinRate] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -148,7 +147,6 @@ export function GamePage() {
       const game = await createGame(difficulty)
       setState(game)
       setResult(null)
-      setBotWinRate(game.bot_win_rate ?? null)
       setClaims(defaultClaims(game))
     }, '게임을 시작하지 못했습니다.')
 
@@ -157,6 +155,8 @@ export function GamePage() {
       if (!state) return
       const turn = await playTurn(state.game_id, state.turn + 1, claims)
       setResult(turn)
+      // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다.
+      if (turn.game_over) return setState(await getGame(state.game_id))
       setState({
         ...state,
         turn: turn.turn,
@@ -165,8 +165,6 @@ export function GamePage() {
         end_reason: turn.end_reason,
         next_hints: turn.next_hints,
       })
-      // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다.
-      if (turn.game_over) setBotWinRate((await getGame(state.game_id)).bot_win_rate ?? null)
     }, '턴을 진행하지 못했습니다.')
 
   const targets = state ? claimTargets(state) : []
@@ -213,8 +211,8 @@ export function GamePage() {
                 {state.outcome ? outcomeLabels[state.outcome] : '종료'}
                 {state.end_reason && ` · ${endReasonLabels[state.end_reason]}`}
               </h2>
-              {botWinRate !== null && (
-                <p>같은 설정의 기준 봇 승률: {percent(botWinRate)}</p>
+              {state.bot_win_rate != null && (
+                <p>같은 설정의 기준 봇 승률: {percent(state.bot_win_rate)}</p>
               )}
             </section>
           ) : (

@@ -30,7 +30,6 @@ export type GameState = {
   outcome: Outcome | null
   end_reason: 'caught' | 'turns_done' | null
   next_hints: Record<string, Truth> | null
-  status?: 'in_progress' | 'finished' | 'abandoned' | 'failed'
   bot_win_rate?: number | null
 }
 
@@ -68,11 +67,6 @@ export const difficulties = {
   hard: { label: '어려움', mafia_count: 1, sensor_error: 0.2, citizen_type: 'wary' },
 } as const
 export type Difficulty = keyof typeof difficulties
-
-export function gamePayload(difficulty: Difficulty) {
-  const { mafia_count, sensor_error, citizen_type } = difficulties[difficulty]
-  return { mafia_count, sensor_error, citizen_type }
-}
 
 // 플레이어가 주장을 보내야 하는 시민: 플레이어와 이웃인 시민 전부 (7.8 claims 키).
 export function claimTargets(state: Pick<GameState, 'config' | 'roles' | 'player_city'>): number[] {
@@ -116,10 +110,11 @@ function validState(data: unknown, id?: number): data is GameState {
 }
 
 export async function createGame(difficulty: Difficulty, signal?: AbortSignal): Promise<GameState> {
+  const { label: _label, ...payload } = difficulties[difficulty]
   const data = await request('/api/games', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(gamePayload(difficulty)),
+    body: JSON.stringify(payload),
     signal,
   })
   if (!validState(data)) throw new Error('게임 응답 형식이 올바르지 않습니다.')
