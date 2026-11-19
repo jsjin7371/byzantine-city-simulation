@@ -165,6 +165,7 @@ export function GamePage() {
 
   const start = () =>
     run(async () => {
+      setState(null) // 실패해도 이전 게임을 이어서 진행하지 않게 (God은 새 요청 때 이전 게임을 버린다)
       const game = await createGame(difficulty, citizenType)
       setState(game)
       setHistory([])
@@ -178,8 +179,6 @@ export function GamePage() {
       const turn = await playTurn(state.game_id, state.turn + 1, claims)
       setHistory([...history, turn])
       setViewed(0)
-      // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다.
-      if (turn.game_over) return setState(await getGame(state.game_id))
       setState({
         ...state,
         turn: turn.turn,
@@ -189,6 +188,8 @@ export function GamePage() {
         next_hints: turn.next_hints,
         next_share_pairs: turn.next_share_pairs,
       })
+      // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다 (실패해도 종료 상태는 위에서 반영됨).
+      if (turn.game_over) setState(await getGame(state.game_id))
     }, '턴을 진행하지 못했습니다.')
 
   const targets = state ? claimTargets(state) : []
