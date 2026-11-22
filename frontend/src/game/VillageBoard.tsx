@@ -378,7 +378,7 @@ function Trial({ vote, houses }: { vote: NonNullable<TurnResult['vote']>; houses
       {Object.entries(votes).map(([city, n]) => {
         const t = at(Number(city))
         return (
-          <g key={city} transform={`translate(${t.x - 102},${t.y - 14})`} fontSize="12" fontWeight="700">
+          <g key={city} transform={`translate(${t.x + (t.x > PLAZA.x ? 68 : -102)},${t.y - 14})`} fontSize="12" fontWeight="700">
             <rect width="34" height="18" rx="3" fill="#7a2416" />
             <text x="17" y="13" textAnchor="middle" className="vb-light">
               {n}표
