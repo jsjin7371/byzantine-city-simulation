@@ -364,8 +364,8 @@ function Trial({ vote, houses }: { vote: NonNullable<TurnResult['vote']>; houses
         const v = at(Number(from))
         const t = at(to)
         const d = Math.hypot(v.x - PLAZA.x, v.y - PLAZA.y)
-        const px = PLAZA.x + ((v.x - PLAZA.x) / d) * 46
-        const py = PLAZA.y + ((v.y - PLAZA.y) / d) * 30
+        const px = PLAZA.x + ((v.x - PLAZA.x) / d) * 56
+        const py = PLAZA.y + ((v.y - PLAZA.y) / d) * 40
         const e = Math.hypot(t.x - px, t.y - 20 - py)
         const ex = t.x - ((t.x - px) / e) * 50
         const ey = t.y - 20 - ((t.y - 20 - py) / e) * 36

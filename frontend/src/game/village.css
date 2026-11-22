@@ -61,7 +61,8 @@
 
 .vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
 
-.vb-stamp rect { fill: #f6ebcd; stroke: var(--rust); }
+.vb-stamp rect { stroke: var(--rust); }
+.vb-stamp rect:first-child { fill: #f6ebcd; }
 .vb-stamp text { fill: var(--rust); }
 .vb-stamp.is-caught rect:first-child { fill: var(--rust); }
 .vb-stamp.is-caught text { fill: #f6ebcd; }
