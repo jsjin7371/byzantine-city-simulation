@@ -13,20 +13,11 @@
 .gm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .gm-target { min-width: 160px; }
 .gm-muted { color: var(--muted); font-size: 13px; }
-.gm-map { width: 100%; max-width: 480px; }
-.gm-node circle { fill: var(--color-surface-raised); stroke: var(--color-control-border); stroke-width: 2; }
-.gm-node.is-correct circle { stroke: var(--color-success); }
-.gm-node.is-incorrect circle { stroke: var(--color-error); }
-.gm-node text { fill: var(--text); font-size: 12px; }
-.gm-node .gm-caption { fill: var(--muted); font-size: 10px; }
-.gm-node.is-correct .gm-caption { fill: var(--color-success); }
-.gm-node.is-incorrect .gm-caption { fill: var(--color-error); }
 .gm-citizens { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .gm-citizen { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; }
 .gm-gauge { display: grid; grid-template-columns: 56px 1fr 28px; align-items: center; gap: 8px; font-size: 12px; }
 .gm-reason { font-size: 13px; }
 .gm-workspace h1 { font-size: var(--page-title-size); font-weight: 620; letter-spacing: -.035em; }
-.gm-node.is-me circle { stroke: var(--text); stroke-width: 4; }
 .gm-bar { position: relative; }
 .gm-line { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--color-error); }
 .gm-rules { list-style: disc; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 2px; }
