@@ -7,7 +7,6 @@ import {
   SUSPICION,
   TOTAL_TURNS,
   citizenTypes,
-  claimTargets,
   createGame,
   defaultClaims,
   difficulties,
@@ -16,10 +15,11 @@ import {
   majority,
   outcomeLabels,
   playTurn,
-  previewSuspicion,
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
 import { VillageBoard } from '../game/VillageBoard'
+import { VillageLog } from '../game/VillageLog'
+import { villageLines } from '../game/village'
 import './GamePage.css'
 
 // 의심도 게이지. 투표 열림 기준(60) 위치에 선을 긋는다.
@@ -153,13 +153,11 @@ export function GamePage() {
       if (turn.game_over) setState(await getGame(state.game_id))
     }, '턴을 진행하지 못했습니다.')
 
-  const targets = state ? claimTargets(state) : []
   const result = history.at(-1) ?? null
   const shown = history[viewed - 1] ?? result
+  const latest = state != null && !state.game_over && shown === result // 할 말은 마지막 턴에서만 고른다
   const citizens = result?.cities.filter((c) => c.role === 'citizen') ?? []
   const me = state ? String(state.player_city) : ''
-  const mySuspicion = (city: number) =>
-    result?.cities.find((c) => c.city === city)?.suspicion?.[me] ?? 0
   const topSuspicion = Math.max(0, ...citizens.map((c) => c.suspicion?.[me] ?? 0))
   const citizenCount = state
     ? Object.values(state.roles).filter((r) => r === 'citizen').length
@@ -236,10 +234,27 @@ export function GamePage() {
               {wary && ` · 나에 대한 최고 의심도 ${topSuspicion} / 투표 열림 기준 ${SUSPICION.threshold}`}
             </p>
             {wary && <Gauge value={topSuspicion} label="나에 대한 최고 의심도" />}
-            <VillageBoard state={state} result={shown} />
+            <div className="vb-table">
+              <VillageBoard
+                state={state}
+                result={shown}
+                picker={
+                  latest
+                    ? { claims, ruled, onClaim: (city, claim) => setClaims({ ...claims, [city]: claim }) }
+                    : undefined
+                }
+              />
+              <VillageLog lines={shown ? villageLines(state, shown) : null}>
+                {!state.game_over && (
+                  <Button onClick={submit} disabled={busy || !latest}>
+                    {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
+                  </Button>
+                )}
+              </VillageLog>
+            </div>
           </section>
 
-          {state.game_over ? (
+          {state.game_over && (
             <section className="gm-panel" aria-live="polite">
               <h2>
                 {state.outcome ? outcomeLabels[state.outcome] : '종료'}
@@ -248,78 +263,6 @@ export function GamePage() {
               {state.bot_win_rate != null && (
                 <p>같은 설정의 기준 봇 승률: {percent(state.bot_win_rate)}</p>
               )}
-            </section>
-          ) : (
-            <section className="gm-panel">
-              <h2>{state.turn + 1}턴 · 시민에게 할 말</h2>
-              {state.next_share_pairs != null && (
-                <p className="gm-muted">
-                  다음 턴 공유 쌍:{' '}
-                  {state.next_share_pairs.length === 0
-                    ? '없음'
-                    : state.next_share_pairs.map(([a, b]) => `도시 ${a} ↔ 도시 ${b}`).join(', ')}
-                </p>
-              )}
-              <div className="gm-citizens">
-                {targets.map((city) => {
-                  const hint = state.next_hints?.[city]
-                  const current = mySuspicion(city)
-                  const last = result?.cities.find((c) => c.city === city)?.decision
-                  const partners = (state.next_share_pairs ?? [])
-                    .filter((p) => p.includes(city))
-                    .map(([a, b]) => (a === city ? b : a))
-                  const partnerClaims = partners.map((o) => claims[o]).filter(Boolean)
-                  const preview =
-                    hint && claims[city]
-                      ? previewSuspicion(current, hint, claims[city], partnerClaims)
-                      : null
-                  const over = preview != null && preview.next >= SUSPICION.threshold
-                  return (
-                    <article key={city} className="gm-citizen">
-                      <h3>
-                        도시 {city} · 다음 힌트 {hint ? truths[hint] : '—'} · 지난 결정{' '}
-                        {last ? decisions[last] : '—'}
-                      </h3>
-                      {partners.length > 0 && (
-                        <p className="gm-muted">
-                          공유 상대: {partners.map((o) => `도시 ${o}`).join(', ')}
-                        </p>
-                      )}
-                      {wary && (
-                        <div className="gm-gauge">
-                          <span>나 의심</span>
-                          <Gauge value={current} label={`도시 ${city}의 나에 대한 의심도`} />
-                          <span>{current}</span>
-                        </div>
-                      )}
-                      {ruled && preview && (
-                        <p className={over ? 'rs-incorrect' : 'gm-muted'}>
-                          예상 {preview.delta > 0 ? '+' : ''}
-                          {preview.delta} → {preview.next}
-                          {preview.contradiction && ' (모순 위험)'}
-                          {over && ' · 투표 열림'}
-                        </p>
-                      )}
-                      <div className="gm-row">
-                        {(['evacuate', 'stay'] as const).map((claim) => (
-                          <Button
-                            key={claim}
-                            size="sm"
-                            variant={claims[city] === claim ? 'default' : 'outline'}
-                            aria-pressed={claims[city] === claim}
-                            onClick={() => setClaims({ ...claims, [city]: claim })}
-                          >
-                            {decisions[claim]}
-                          </Button>
-                        ))}
-                      </div>
-                    </article>
-                  )
-                })}
-              </div>
-              <Button onClick={submit} disabled={busy}>
-                턴 진행
-              </Button>
             </section>
           )}
 
