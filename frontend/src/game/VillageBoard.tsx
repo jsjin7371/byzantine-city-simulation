@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS, previewSuspicion } from '../gameApi'
@@ -282,6 +282,7 @@ function HouseView({ h, pick }: { h: House; pick?: Pick }) {
       {...(pick
         ? { role: 'button', tabIndex: 0, 'aria-expanded': pick.open, onClick: pick.onOpen, onKeyDown: pressKey(pick.onOpen) }
         : { role: 'img' })}
+      data-city={h.city}
       aria-label={label}
     >
       <title>{label}</title>
@@ -511,6 +512,18 @@ export function VillageBoard({
   picker?: NotePicker
 }) {
   const [open, setOpen] = useState<number | null>(null)
+  const svg = useRef<SVGSVGElement>(null)
+  const last = useRef<number | null>(null)
+  // 쪽지가 열리면 첫 선택 버튼으로, 닫히면 그 집으로 포커스를 옮긴다.
+  useEffect(() => {
+    if (open != null) {
+      last.current = open
+      svg.current?.querySelector<SVGElement>('.vb-opt')?.focus()
+    } else if (last.current != null) {
+      svg.current?.querySelector<SVGElement>(`.vb-house[data-city="${last.current}"]`)?.focus()
+      last.current = null
+    }
+  }, [open])
   const turn = result?.turn ?? state.turn
   const houses = villageHouses(state, result)
   const pairs = (result ? result.next_share_pairs : state.next_share_pairs) ?? []
@@ -527,6 +540,7 @@ export function VillageBoard({
   const opened = picker ? houses.find((h) => h.city === open && h.reachable) : undefined
   return (
     <svg
+      ref={svg}
       className="vb-board"
       viewBox="0 0 900 660"
       role="group"
