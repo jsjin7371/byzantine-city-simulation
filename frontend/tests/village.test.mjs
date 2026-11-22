@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { TOP_ARC, houseSlots, sharePath, tally, villageHouses } from '../src/game/village.ts'
+import { TOP_ARC, clashingPairs, houseSlots, pairMid, sharePath, tally, villageHouses, villageLines } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
 const state = {
@@ -65,4 +65,56 @@ test('ring connection makes only the two neighbours reachable', () => {
 
 test('tally counts ballots per accused city', () => {
   assert.deepEqual(tally({ 1: 3, 4: 3, 5: 1 }), { 3: 2, 1: 1 })
+})
+
+test('a contradiction knot appears only when the two houses that meet hear different words', () => {
+  assert.deepEqual(clashingPairs([[1, 5], [4, 5]], { 1: 'stay', 4: 'evacuate', 5: 'evacuate' }), [[1, 5]])
+  assert.deepEqual(clashingPairs([[1, 5]], { 1: 'stay', 5: 'stay' }), [])
+  assert.deepEqual(pairMid(3, 5, 1), [450, 165])
+  assert.deepEqual(pairMid(3, 4, 2), [450, 330])
+})
+
+const msg = (claim) => ({ claim, note: '' })
+const citizen = (city, hint, claim, suspicion, reason = null) => ({
+  city, role: 'citizen', hint, received: { 3: msg(claim) }, decision: 'stay', correct: false, suspicion, reason,
+})
+const turn = {
+  turn: 4,
+  cities: [
+    citizen(1, 'danger', 'stay', { 2: 0, 3: 50, 4: 10, 5: 0 }, '3번이 이상하다.'),
+    { city: 2, role: 'colleague', hint: null, received: null, decision: null, correct: null, suspicion: null, reason: null },
+    { city: 3, role: 'player', hint: null, received: null, decision: null, correct: null, suspicion: null, reason: null },
+    citizen(4, 'danger', 'evacuate', { 1: 30, 2: 0, 3: 0, 5: 0 }),
+  ],
+  sharing: [{ pair: [1, 4], contradictions: [{ city: 3, told: { 1: msg('stay'), 4: msg('evacuate') } }] }],
+  vote: null,
+}
+const texts = (lines) => lines.map((l) => l.text)
+
+test('village lines: contradiction, matching and mismatching words, trial warning, suspicion between villagers', () => {
+  const lines = villageLines(state, turn)
+  assert.deepEqual(lines[0], { kind: 'when', text: '4일째 밤, 1번과 4번이 만났다' })
+  assert.deepEqual(lines[1], { kind: 'say', who: 1, text: '잠깐, 3번이 나한텐 잔류라더니 4번한텐 대피라고 했대?' })
+  assert.ok(texts(lines).includes('음… 내가 본 건 태풍인데, 3번은 잔류래'))
+  assert.ok(texts(lines).includes('그치, 나도 태풍이라고 봤어'))
+  assert.ok(lines.some((l) => l.who === 1 && l.text === '3번 좀 수상한데. 한 번만 더 그러면 재판이야'))
+  assert.ok(texts(lines).includes('4번이 1번을 의심하고 있다'))
+  assert.ok(!texts(lines).includes('3번이 이상하다.')) // 눈치 시민은 reason 대신 템플릿
+})
+
+test('majority citizens have no suspicion lines and ai citizens speak their reason', () => {
+  const majority = villageLines({ ...state, config: { ...config, citizen_type: 'majority' } }, turn)
+  assert.ok(!texts(majority).some((t) => t.includes('수상') || t.includes('의심')))
+  const ai = villageLines({ ...state, config: { ...config, citizen_type: 'ai' } }, turn)
+  assert.ok(ai.some((l) => l.who === 1 && l.text === '3번이 이상하다.'))
+})
+
+test('trial lines: one accusation per voter, then the verdict', () => {
+  const vote = (accused, caught) => villageLines(state, { ...turn, vote: { ballots: { 1: 3, 4: 1 }, accused, caught } })
+  const lines = vote(null, false)
+  assert.ok(lines.some((l) => l.who === 1 && l.text === '나는 3번을 지목한다'))
+  assert.ok(lines.some((l) => l.who === 4 && l.text === '나는 1번을 지목한다'))
+  assert.equal(lines.at(-1).text, '과반이 모이지 않아 아무도 지목되지 않았다')
+  assert.equal(vote(1, false).at(-1).text, '1번이 지목됐지만 마을 사람이었다. 게임은 계속된다')
+  assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 사기꾼이 들켰다')
 })
