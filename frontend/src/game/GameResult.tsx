@@ -9,7 +9,7 @@ function Peaks({ peaks }: { peaks: (number | null)[] }) {
   const y = (v: number) => h - Math.min(v, 100)
   const label = peaks.map((v, i) => `${i + 1}일 ${v ?? '—'}`).join(', ')
   return (
-    <svg className="gr-peaks" viewBox={`0 0 ${peaks.length * 34 + 16} ${h + 22}`} role="img" aria-label={`날짜별 나에 대한 최고 의심도: ${label}`}>
+    <svg className="gr-peaks" preserveAspectRatio="xMinYMin meet" viewBox={`0 0 ${peaks.length * 34 + 16} ${h + 22}`} role="img" aria-label={`날짜별 나에 대한 최고 의심도: ${label}`}>
       {peaks.map((v, i) => (
         <g key={i} transform={`translate(${16 + i * 34},0)`}>
           {v != null && <rect className={v >= SUSPICION.threshold ? 'is-over' : undefined} y={y(v)} width="22" height={h - y(v)} />}

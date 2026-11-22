@@ -375,9 +375,11 @@ function Trial({
         const d = Math.hypot(v.x - PLAZA.x, v.y - PLAZA.y)
         const px = PLAZA.x + ((v.x - PLAZA.x) / d) * 56
         const py = PLAZA.y + ((v.y - PLAZA.y) / d) * 40
-        const e = Math.hypot(t.x - px, t.y - 20 - py)
+        // 지붕 쪽을 겨눠 화살촉이 집 아래 의심 게이지 숫자를 가리지 않게
+        const ty = t.y - 40
+        const e = Math.hypot(t.x - px, ty - py)
         const ex = t.x - ((t.x - px) / e) * 50
-        const ey = t.y - 20 - ((t.y - 20 - py) / e) * 36
+        const ey = ty - ((ty - py) / e) * 36
         const cx = (px + ex) / 2 + ((ey - py) / e) * 30
         const cy = (py + ey) / 2 - ((ex - px) / e) * 30
         return (

@@ -159,7 +159,7 @@
 .gr-result h2 { font-size: 22px; margin-bottom: 4px; }
 .gr-result h3 { font: 700 16px/1.3 "Batang", "Gungsuh", serif; margin: 16px 0 6px; }
 .gr-result ul { margin: 0; padding-left: 20px; line-height: 1.6; }
-.gr-peaks { display: block; width: 100%; max-width: 560px; height: auto; }
+.gr-peaks { display: block; height: 130px; width: auto; max-width: 100%; }
 .gr-peaks rect { fill: #8aa04c; stroke: var(--ink); stroke-width: 1.2; }
 .gr-peaks rect.is-over { fill: var(--rust); }
 .gr-peaks text { font-size: 11px; fill: var(--ink); }
