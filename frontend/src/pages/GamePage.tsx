@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Progress } from '../components/ui/progress'
 import { decisions, percent, truths } from '../components/results/resultLabels'
@@ -10,16 +10,15 @@ import {
   createGame,
   defaultClaims,
   difficulties,
-  endReasonLabels,
   getGame,
   majority,
-  outcomeLabels,
   playTurn,
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
 import { VillageBoard } from '../game/VillageBoard'
 import { VillageLog } from '../game/VillageLog'
-import { villageLines } from '../game/village'
+import { GameResult } from '../game/GameResult'
+import { nightSteps, villageLines, visibleLines } from '../game/village'
 import './GamePage.css'
 
 // 의심도 게이지. 투표 열림 기준(60) 위치에 선을 긋는다.
@@ -111,6 +110,23 @@ export function GamePage() {
   const [viewed, setViewed] = useState(0) // 다시 볼 턴 (1부터). 0이면 마지막 턴
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [step, setStep] = useState<number | null>(null) // 밤 연출 중인 단계. null이면 최종 상태
+
+  const result = history.at(-1) ?? null
+  const steps = useMemo(() => (result ? nightSteps(result) : []), [result])
+  // 단계마다 정해진 시간 뒤 다음 단계로. 마지막(다음 날)에 닿으면 연출 끝.
+  useEffect(() => {
+    if (step == null) return
+    const next = steps[step + 1]?.phase === 'day' ? null : step + 1
+    const timer = setTimeout(() => setStep(next), steps[step].ms)
+    return () => clearTimeout(timer)
+  }, [step, steps])
+  useEffect(() => {
+    if (step == null) return
+    const skip = (e: KeyboardEvent) => e.key === 'Escape' && setStep(null)
+    window.addEventListener('keydown', skip)
+    return () => window.removeEventListener('keydown', skip)
+  }, [step])
 
   async function run(task: () => Promise<void>, fallback: string) {
     setBusy(true)
@@ -131,6 +147,7 @@ export function GamePage() {
       setState(game)
       setHistory([])
       setViewed(0)
+      setStep(null)
       setClaims(defaultClaims(game))
     }, '게임을 시작하지 못했습니다.')
 
@@ -140,6 +157,8 @@ export function GamePage() {
       const turn = await playTurn(state.game_id, state.turn + 1, claims)
       setHistory([...history, turn])
       setViewed(0)
+      // 움직임 줄이기 설정이면 연출 없이 바로 최종 상태
+      setStep(matchMedia('(prefers-reduced-motion: reduce)').matches ? null : 0)
       setState({
         ...state,
         turn: turn.turn,
@@ -153,10 +172,12 @@ export function GamePage() {
       if (turn.game_over) setState(await getGame(state.game_id))
     }, '턴을 진행하지 못했습니다.')
 
-  const result = history.at(-1) ?? null
-  const shown = history[viewed - 1] ?? result
-  const latest = state != null && !state.game_over && shown === result // 할 말은 마지막 턴에서만 고른다
-  const citizens = result?.cities.filter((c) => c.role === 'citizen') ?? []
+  const playing = step != null && result != null
+  const shown = playing ? result : (history[viewed - 1] ?? result)
+  const latest = state != null && !state.game_over && shown === result && !playing // 할 말은 마지막 턴에서만 고른다
+  const lines = shown && state ? villageLines(state, shown) : null
+  const settled = playing ? (history.at(-2) ?? null) : result // 연출 중에는 지난 턴 숫자
+  const citizens = settled?.cities.filter((c) => c.role === 'citizen') ?? []
   const me = state ? String(state.player_city) : ''
   const topSuspicion = Math.max(0, ...citizens.map((c) => c.suspicion?.[me] ?? 0))
   const citizenCount = state
@@ -229,7 +250,7 @@ export function GamePage() {
               {TOTAL_TURNS}턴
             </h2>
             <p>
-              지난 턴 틀린 시민 {result ? wrong : '—'}/{citizenCount} ({TOTAL_TURNS}턴에{' '}
+              지난 턴 틀린 시민 {settled ? wrong : '—'}/{citizenCount} ({TOTAL_TURNS}턴에{' '}
               {majority(citizenCount)}명 이상 필요)
               {wary && ` · 나에 대한 최고 의심도 ${topSuspicion} / 투표 열림 기준 ${SUSPICION.threshold}`}
             </p>
@@ -238,35 +259,32 @@ export function GamePage() {
               <VillageBoard
                 state={state}
                 result={shown}
+                stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
                 picker={
                   latest
                     ? { claims, ruled, onClaim: (city, claim) => setClaims({ ...claims, [city]: claim }) }
                     : undefined
                 }
               />
-              <VillageLog lines={shown ? villageLines(state, shown) : null}>
-                {!state.game_over && (
-                  <Button onClick={submit} disabled={busy || !latest}>
-                    {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
+              <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} live={playing}>
+                {playing ? (
+                  <Button variant="outline" onClick={() => setStep(null)}>
+                    건너뛰기 (Esc)
                   </Button>
+                ) : (
+                  !state.game_over && (
+                    <Button onClick={submit} disabled={busy || !latest}>
+                      {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
+                    </Button>
+                  )
                 )}
               </VillageLog>
             </div>
           </section>
 
-          {state.game_over && (
-            <section className="gm-panel" aria-live="polite">
-              <h2>
-                {state.outcome ? outcomeLabels[state.outcome] : '종료'}
-                {state.end_reason && ` · ${endReasonLabels[state.end_reason]}`}
-              </h2>
-              {state.bot_win_rate != null && (
-                <p>같은 설정의 기준 봇 승률: {percent(state.bot_win_rate)}</p>
-              )}
-            </section>
-          )}
+          {state.game_over && !playing && <GameResult state={state} history={history} />}
 
-          {history.length > 1 && (
+          {history.length > 1 && !playing && (
             <div className="gm-row" role="group" aria-label="턴 다시 보기">
               {history.map((t) => (
                 <Button
@@ -281,7 +299,12 @@ export function GamePage() {
               ))}
             </div>
           )}
-          {shown && <TurnReport result={shown} />}
+          {shown && !playing && (
+            <details className="gm-details">
+              <summary>{shown.turn}턴 자세한 표</summary>
+              <TurnReport result={shown} />
+            </details>
+          )}
         </>
       )}
     </div>

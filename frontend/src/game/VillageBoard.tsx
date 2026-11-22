@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import type { CSSProperties, KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS, previewSuspicion } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
-import { TRAILS, clashingPairs, pairMid, sharePath, tally, villageHouses } from './village'
-import type { House } from './village'
+import { TRAILS, clashingPairs, pairMid, reached, sharePath, stagedHouses, tally, villageHouses } from './village'
+import type { House, Phase } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
@@ -314,12 +314,16 @@ function HouseView({ h, pick }: { h: House; pick?: Pick }) {
           {h.city}번 집{h.role === 'colleague' && ' · 동료'}
         </text>
       )}
-      {h.flag && <use href={`#vb-flag-${h.flag}`} x={x + 28} y={y - 62} filter="url(#vb-rough)" />}
+      {h.flag && (
+        <g key={h.flag} className="vb-flag" transform={`translate(${x + 28},${y - 62})`}>
+          <use href={`#vb-flag-${h.flag}`} filter="url(#vb-rough)" />
+        </g>
+      )}
       {h.lit != null && <use href={h.lit ? '#vb-win-on' : '#vb-win-off'} x={x - 18} y={y - 20} filter="url(#vb-rough)" />}
       {h.suspicion != null && (
         <g transform={`translate(${x - 10},${y + 30})`} className={over ? 'vb-gauge is-over' : 'vb-gauge'}>
           <rect x="-50" y="-5" width="100" height="10" rx="5" fill="#5a3d22" />
-          <rect className="vb-gauge-fill" x="-48" y="-3" width={(96 * h.suspicion) / 100} height="6" rx="3" />
+          <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
           {/* 재판 기준 60 말뚝 */}
           <g className="vb-post">
             <path d={`M${-48 + 0.96 * SUSPICION.threshold} -12 V9`} />
@@ -342,9 +346,21 @@ function HouseView({ h, pick }: { h: House; pick?: Pick }) {
 }
 
 // 광장 재판: 투표한 시민의 말이 광장에서 지목한 집으로 실을 잇는다.
-function Trial({ vote, houses }: { vote: NonNullable<TurnResult['vote']>; houses: House[] }) {
+// shown: 지금까지 나온 지목 수, verdict: 판정 도장을 찍었는가 (연출 중에는 한 명씩).
+function Trial({
+  vote,
+  houses,
+  shown = Infinity,
+  verdict = true,
+}: {
+  vote: NonNullable<TurnResult['vote']>
+  houses: House[]
+  shown?: number
+  verdict?: boolean
+}) {
   const at = (city: number) => houses.find((h) => h.city === city)!
-  const votes = tally(vote.ballots)
+  const ballots = Object.entries(vote.ballots).slice(0, shown)
+  const votes = tally(Object.fromEntries(ballots))
   const stamp =
     vote.accused === null ? '과반 없음' : `${vote.accused}번 집 ${vote.caught ? '발각' : '오지목'}`
   const label = `광장 재판: ${Object.entries(vote.ballots)
@@ -353,7 +369,7 @@ function Trial({ vote, houses }: { vote: NonNullable<TurnResult['vote']>; houses
   return (
     <g role="img" aria-label={label}>
       <title>{label}</title>
-      {Object.entries(vote.ballots).map(([from, to]) => {
+      {ballots.map(([from, to]) => {
         const v = at(Number(from))
         const t = at(to)
         const d = Math.hypot(v.x - PLAZA.x, v.y - PLAZA.y)
@@ -365,7 +381,7 @@ function Trial({ vote, houses }: { vote: NonNullable<TurnResult['vote']>; houses
         const cx = (px + ex) / 2 + ((ey - py) / e) * 30
         const cy = (py + ey) / 2 - ((ex - px) / e) * 30
         return (
-          <g key={from}>
+          <g key={from} className="vb-ballot">
             <path d={`M${px} ${py - 18} Q${cx} ${cy} ${ex} ${ey}`} fill="none" stroke="#7a2416" strokeWidth="2.6" strokeDasharray="7 5" markerEnd="url(#vb-arr)" />
             <g transform={`translate(${px},${py})`}>
               <use href="#vb-pawn" />
@@ -387,13 +403,34 @@ function Trial({ vote, houses }: { vote: NonNullable<TurnResult['vote']>; houses
           </g>
         )
       })}
-      <g className={vote.caught ? 'vb-stamp is-caught' : 'vb-stamp'}>
-        <rect x="390" y="400" width="120" height="30" rx="3" strokeWidth="2.5" />
-        <rect x="394" y="404" width="112" height="22" rx="2" fill="none" strokeWidth="1" />
-        <text x="450" y="420" fontSize="14" fontWeight="700" textAnchor="middle">
-          {stamp}
-        </text>
-      </g>
+      {verdict && (
+        <g className={vote.caught ? 'vb-stamp is-caught' : 'vb-stamp'}>
+          <rect x="390" y="400" width="120" height="30" rx="3" strokeWidth="2.5" />
+          <rect x="394" y="404" width="112" height="22" rx="2" fill="none" strokeWidth="1" />
+          <text x="450" y="420" fontSize="14" fontWeight="700" textAnchor="middle">
+            {stamp}
+          </text>
+        </g>
+      )}
+    </g>
+  )
+}
+
+// 밤에 내 집에서 각 집으로 날아가는 쪽지 (보낸 말 그대로).
+function Notes({ result, houses }: { result: TurnResult; houses: House[] }) {
+  const me = houses[0]
+  return (
+    <g aria-hidden>
+      {houses.slice(1).map((h, i) => {
+        const claim = result.cities.find((c) => c.city === h.city)?.received?.[me.city]?.claim
+        if (!claim) return null
+        const style = { '--dx': `${h.x + 70 - me.x}px`, '--dy': `${h.y - 30 - me.y}px`, animationDelay: `${i * 120}ms` }
+        return (
+          <g key={h.city} className="vb-fly" style={style as CSSProperties}>
+            <use href={`#vb-note-${claim}`} x={me.x} y={me.y} />
+          </g>
+        )
+      })}
     </g>
   )
 }
@@ -500,16 +537,22 @@ export type NotePicker = {
   ruled: boolean // 7.6 규칙 시민일 때만 의심도 미리보기
 }
 
+// 밤 연출 중인 단계. prev는 지난 턴 결과 (깃발·의심도가 바뀌기 전 모습).
+export type Stage = { phase: Phase; ballots: number; prev: TurnResult | null }
+
 // 숲속 마을 보드 (명세 2번). result가 없으면 1턴 전, 있으면 그 턴이 끝난 상태를 그린다.
 // picker가 있으면 집을 눌러 다음 턴에 할 말을 고른다 (명세 1번).
+// stage가 있으면 그 턴의 밤을 단계별로 보여 준다 (밤 → 쪽지 → 깃발 → 의심 → 재판 → 판정 → 다음 날).
 export function VillageBoard({
   state,
   result,
   picker,
+  stage,
 }: {
   state: GameState
   result: TurnResult | null
   picker?: NotePicker
+  stage?: Stage
 }) {
   const [open, setOpen] = useState<number | null>(null)
   const svg = useRef<SVGSVGElement>(null)
@@ -524,9 +567,11 @@ export function VillageBoard({
       last.current = null
     }
   }, [open])
-  const turn = result?.turn ?? state.turn
-  const houses = villageHouses(state, result)
-  const pairs = (result ? result.next_share_pairs : state.next_share_pairs) ?? []
+  const night = result && stage && stage.phase !== 'day' ? { ...stage, result } : null
+  const at = (p: Phase) => !night || reached(night.phase, p)
+  const turn = night ? night.result.turn - 1 : (result?.turn ?? state.turn)
+  const houses = night ? stagedHouses(state, night.prev, night.result, night.phase) : villageHouses(state, result)
+  const pairs = (night ? night.result.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
   const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집`).join(', ')
   const clashes = picker ? clashingPairs(pairs, picker.claims) : []
   const preview = (h: House, claim?: Claim) => {
@@ -541,7 +586,7 @@ export function VillageBoard({
   return (
     <svg
       ref={svg}
-      className="vb-board"
+      className={night ? 'vb-board is-playing' : 'vb-board'}
       viewBox="0 0 900 660"
       role="group"
       aria-label={`${turn}턴 뒤 마을 보드`}
@@ -549,11 +594,12 @@ export function VillageBoard({
     >
       <Defs />
       <Ground />
-      <Calendar turn={turn} over={result?.game_over ?? false} />
+      <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <Sky danger={state.truth === 'danger'} />
+      {night && <rect className="vb-night" width="900" height="598" />}
       {pairs.length > 0 && (
-        <g className="vb-share" role="img" aria-label={`다음 턴에 만나는 집: ${pairLabel}`}>
-          <title>{`다음 턴에 만나는 집: ${pairLabel}`}</title>
+        <g className="vb-share" role="img" aria-label={`${night ? '오늘 밤' : '다음 턴에'} 만나는 집: ${pairLabel}`}>
+          <title>{`${night ? '오늘 밤' : '다음 턴에'} 만나는 집: ${pairLabel}`}</title>
           {pairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
             return (
@@ -583,7 +629,28 @@ export function VillageBoard({
           }
         />
       ))}
-      {result?.vote && <Trial vote={result.vote} houses={houses} />}
+      {night && at('notes') && <Notes result={night.result} houses={houses} />}
+      {night &&
+        at('suspicion') &&
+        night.result.sharing
+          .filter((s) => s.contradictions.some((c) => c.city === state.player_city))
+          .map(({ pair: [a, b] }) => {
+            const [mx, my] = pairMid(state.player_city, a, b)
+            return (
+              <g key={`${a}-${b}`} role="img" aria-label={`모순 발견: ${a}번 집과 ${b}번 집`}>
+                <g className="vb-knot">
+                  <use href="#vb-knot" x={mx} y={my} />
+                </g>
+                <rect x={mx - 50} y={my - 50} width="100" height="22" rx="3" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
+                <text x={mx} y={my - 34} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-rust">
+                  모순 발견
+                </text>
+              </g>
+            )
+          })}
+      {result?.vote && at('trial') && (
+        <Trial vote={result.vote} houses={houses} shown={night?.ballots} verdict={at('verdict')} />
+      )}
       {clashes.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
         const label = `모순 위험: ${a}번 집과 ${b}번 집에 다른 말`
