@@ -1,0 +1,67 @@
+/* 게임 화면 전용 밝은 숲 톤 (목업 A3). .gm-workspace 안에서만 변수를 바꿔 다른 화면 다크 테마는 그대로 둔다. */
+.gm-workspace {
+  --ink: #3b2a1a;
+  --wood: #6b4a2a;
+  --parch: #efe0b9;
+  --forest: #2f4a28;
+  --rust: #a8361f;
+  --leave: #35598a;
+  --stay: #d9a12e;
+
+  --surface: var(--parch);
+  --background: #dfe3d2;
+  --text: var(--ink);
+  --muted: #6b5338;
+  --border: #c3a878;
+  --color-error: var(--rust);
+  --color-success: var(--forest);
+  --ui-background: #f6ebcd;
+  --ui-foreground: var(--ink);
+  --ui-primary: var(--forest);
+  color-scheme: light;
+  color: var(--ink);
+  background: var(--background);
+  padding: 20px;
+  border-radius: 8px;
+}
+.gm-workspace h1,
+.gm-workspace h2 { font-family: "Batang", "Gungsuh", serif; }
+.gm-workspace .rs-correct { color: var(--forest); }
+.gm-workspace .rs-incorrect { color: var(--rust); }
+
+.vb-board {
+  display: block;
+  width: 100%;
+  max-width: 900px;
+  height: auto;
+  border: 12px solid var(--wood);
+  border-radius: 6px;
+  box-shadow: 0 4px 0 #4a3119;
+  fill: var(--ink);
+}
+.vb-board text { font-family: "Pretendard", "Malgun Gothic", sans-serif; }
+.vb-board .vb-serif { font-family: "Batang", "Gungsuh", serif; }
+.vb-board .vb-light { fill: #f3e7c6; }
+.vb-board .vb-dday { fill: #ffd35a; }
+.vb-board .vb-cal-num { fill: #4a3119; }
+
+.vb-cloth.is-evacuate { fill: var(--leave); stroke: #1f3554; }
+.vb-cloth.is-stay { fill: var(--stay); stroke: #7a5512; }
+.vb-cloth-text.is-evacuate { fill: #f3e7c6; }
+.vb-cloth-text.is-stay { fill: var(--ink); }
+
+.vb-badge { fill: #d9a95f; stroke: var(--wood); }
+.vb-badge.is-mafia { fill: var(--rust); stroke: #4a1a10; }
+.vb-house.is-far { opacity: .45; }
+
+.vb-gauge-fill { fill: #e0703f; }
+.vb-gauge.is-over .vb-gauge-fill { fill: #c2452a; }
+.vb-post path { stroke: var(--rust); stroke-width: 3; }
+.vb-gauge.is-over .vb-post path { stroke: #2b1a0c; }
+
+.vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
+
+.vb-stamp rect { fill: #f6ebcd; stroke: var(--rust); }
+.vb-stamp text { fill: var(--rust); }
+.vb-stamp.is-caught rect:first-child { fill: var(--rust); }
+.vb-stamp.is-caught text { fill: #f6ebcd; }

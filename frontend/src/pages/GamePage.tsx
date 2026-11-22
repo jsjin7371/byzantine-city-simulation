@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Progress } from '../components/ui/progress'
-import { pentagonPoints } from '../components/networkGeometry'
 import { decisions, percent, truths } from '../components/results/resultLabels'
 import { errorMessage } from '../lib/errors'
 import {
@@ -20,9 +19,8 @@ import {
   previewSuspicion,
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
+import { VillageBoard } from '../game/VillageBoard'
 import './GamePage.css'
-
-const roleLabels = { player: '나(마피아)', colleague: '동료 마피아', citizen: '시민' }
 
 // 의심도 게이지. 투표 열림 기준(60) 위치에 선을 긋는다.
 function Gauge({ value, label }: { value: number; label: string }) {
@@ -31,43 +29,6 @@ function Gauge({ value, label }: { value: number; label: string }) {
       <Progress value={value} aria-label={label} />
       <span className="gm-line" style={{ left: `${SUSPICION.threshold}%` }} aria-hidden />
     </div>
-  )
-}
-
-function GameMap({ state, result }: { state: GameState; result: TurnResult | null }) {
-  const points = pentagonPoints({ x: 200, y: 150 }, 110)
-  return (
-    <svg className="gm-map" viewBox="0 0 400 300" role="img" aria-label="도시 지도">
-      {points.map((p, i) => {
-        const city = i + 1
-        const row = result?.cities.find((c) => c.city === city)
-        const tone =
-          row?.correct == null ? 'is-neutral' : row.correct ? 'is-correct' : 'is-incorrect'
-        const mine = city === state.player_city
-        return (
-          <g
-            key={city}
-            className={`gm-node ${tone}${mine ? ' is-me' : ''}`}
-            transform={`translate(${p.x} ${p.y})`}
-          >
-            <circle r="34" />
-            <text y="-6" textAnchor="middle">
-              {mine ? `나 · 도시 ${city}` : `도시 ${city}`}
-            </text>
-            <text y="12" textAnchor="middle" className="gm-caption">
-              {row?.decision
-                ? `${decisions[row.decision]} · ${row.correct ? '정답' : '오답'}`
-                : roleLabels[state.roles[city]]}
-            </text>
-            {result?.vote?.accused === city && (
-              <text y="28" textAnchor="middle" className="gm-caption">
-                고발됨
-              </text>
-            )}
-          </g>
-        )
-      })}
-    </svg>
   )
 }
 
@@ -275,7 +236,7 @@ export function GamePage() {
               {wary && ` · 나에 대한 최고 의심도 ${topSuspicion} / 투표 열림 기준 ${SUSPICION.threshold}`}
             </p>
             {wary && <Gauge value={topSuspicion} label="나에 대한 최고 의심도" />}
-            <GameMap state={state} result={shown} />
+            <VillageBoard state={state} result={shown} />
           </section>
 
           {state.game_over ? (
