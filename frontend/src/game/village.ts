@@ -12,6 +12,8 @@ const SLOTS = [
 ]
 // 위쪽 두 집(2, 3번 자리)은 광장을 거치지 않는 숲길로 바로 이어진다.
 export const TOP_ARC = 'M285 215 Q450 115 615 215'
+// 바닥에 깔리는 오솔길 6개 (집 5개 + 위쪽 숲길)
+export const TRAILS = [...SLOTS.map(({ trail: [a, b, c, d, e, f] }) => `M${a} ${b} Q${c} ${d} ${e} ${f}`), TOP_ARC]
 
 // 집 5채 자리: 내 집은 아래 가운데, 나머지는 내 다음 번호부터 시계방향 (양옆이 ring 이웃).
 export function houseSlots(player: number) {

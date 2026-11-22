@@ -3,19 +3,11 @@ import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS, previewSuspicion } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
-import { TOP_ARC, clashingPairs, pairMid, sharePath, tally, villageHouses } from './village'
+import { TRAILS, clashingPairs, pairMid, sharePath, tally, villageHouses } from './village'
 import type { House } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
-const TRAILS = [
-  'M230 262 Q320 330 398 338',
-  'M670 262 Q580 330 502 338',
-  'M230 470 Q330 400 398 360',
-  'M670 470 Q570 400 502 360',
-  'M450 512 L450 392',
-  TOP_ARC,
-]
 const TREES = [
   [60, 150], [112, 178], [40, 455], [82, 505], [44, 560], [850, 150], [806, 182], [860, 300], [818, 346], [866, 400],
   [852, 515], [812, 560], [350, 556], [314, 582], [760, 566], [520, 230], [380, 232], [140, 130], [772, 128], [128, 560],
