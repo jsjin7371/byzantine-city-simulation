@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { KeyboardEvent } from 'react'
-import { SUSPICION, TOTAL_TURNS, citizenTypes, difficulties } from '../gameApi'
+import { TOTAL_TURNS, citizenTypes, difficulties } from '../gameApi'
 import type { CitizenType, Difficulty } from '../gameApi'
 
 const DIFF_LAYOUT: Record<Difficulty, { x: number; w: number; cx: number; rx: number }> = {
@@ -40,12 +40,12 @@ const ROLE_CARDS: RoleCardSpec[] = [
     cx: 420,
     rotate: -0.9,
     stampRotate: -13,
-    tag: '· 가장 쉬움',
+    tag: '· 입문용',
     tagClass: 'vb-muted',
     tagX: 402,
     tagSize: 17,
-    lines: ['들은 말·본 날씨, 많은 쪽을 따라요.', '아무도 의심하지 않아 재판이 없어요.'],
-    ariaLabel: '다수결 주민 선택: 들은 말과 본 날씨 중 많은 쪽을 따라요. 아무도 의심하지 않아 재판이 없어요.',
+    lines: ['보고 들은 것 중 많은 쪽을 따라요.', '아무도 의심하지 않아 재판이 없어요.'],
+    ariaLabel: '다수결 주민 선택 (입문용): 본 날씨와 들은 말 중 많은 쪽을 따라요. 아무도 의심하지 않아 재판이 없어요.',
   },
   {
     key: 'wary',
@@ -59,8 +59,8 @@ const ROLE_CARDS: RoleCardSpec[] = [
     tagClass: 'vb-rust',
     tagX: 683,
     tagSize: 17,
-    lines: ['본 것과 다르거나 엇갈리면 의심해요.', `의심 ${SUSPICION.threshold} 넘으면 광장 재판이 열려요!`],
-    ariaLabel: `눈치 주민 선택: 본 것과 다르거나 엇갈리면 의심해요. 의심 ${SUSPICION.threshold} 넘으면 광장 재판이 열려요!`,
+    lines: ['내 말이 본 날씨와 다르거나 엇갈리면', '의심이 쌓여 광장 재판이 열려요.'],
+    ariaLabel: '눈치 주민 선택 (기본): 내 말이 본 날씨와 다르거나 엇갈리면 의심이 쌓여 광장 재판이 열려요.',
   },
   {
     key: 'ai',
@@ -70,12 +70,12 @@ const ROLE_CARDS: RoleCardSpec[] = [
     cx: 1020,
     rotate: 0.8,
     stampRotate: -13,
-    tag: '· 미연결 시 눈치',
+    tag: '· 못 쓰면 눈치로',
     tagClass: 'vb-muted',
     tagX: 960,
     tagSize: 16.5,
-    lines: ['AI가 상황을 읽고 스스로 판단해요.', '의심 많은 주민, 잘 믿는 주민이 섞여요.'],
-    ariaLabel: 'AI 주민 선택: AI가 상황을 읽고 스스로 판단해요. 의심 많은 주민, 잘 믿는 주민이 섞여요.',
+    lines: ['상황을 살피며 스스로 판단해요.', '의심 많은 주민, 잘 믿는 주민이 섞여요.'],
+    ariaLabel: 'AI 주민 선택 (못 쓰면 눈치로): 상황을 살피며 스스로 판단해요. 의심 많은 주민, 잘 믿는 주민이 섞여요.',
   },
 ]
 
@@ -248,7 +248,7 @@ function StartDefs() {
         <rect x="424" y="80" width="592" height="96" rx="4" />
       </clipPath>
       <clipPath id="vs-clip-goal-note">
-        <path d="M366 194 H1056 L1074 212 V250 H366 Z" />
+        <path d="M366 190 H1056 L1074 208 V258 H366 Z" />
       </clipPath>
       <clipPath id="vs-clip-plank-1">
         <path d="M404 272 H1004 L1036 305 L1004 338 H404 Z" />
@@ -269,7 +269,7 @@ function StartDefs() {
         <rect x="530" y="610" width="380" height="72" rx="4" />
       </clipPath>
       <clipPath id="vs-clip-exit-sign">
-        <path d="M50 26 H184 V64 H50 L28 45 Z" />
+        <path d="M50 26 H208 V64 H50 L28 45 Z" />
       </clipPath>
       <clipPath id="vs-clip-hill-mid">
         <path d="M-240 432 Q200 398 440 438 Q720 482 1000 434 Q1240 392 1680 426 V920 H-240 Z" />
@@ -451,28 +451,28 @@ export function GameStart({
         <StartDefs />
         <StartBackdrop />
 
-        {/* 왼쪽 위 "← 나가기" 나무 화살표 표지 */}
+        {/* 왼쪽 위 "← 실험 설정" 나무 화살표 표지 */}
         <a
           href="#/setup"
           className={busy ? 'gs-exit is-busy' : 'vb-clickable gs-exit'}
           aria-disabled={busy || undefined}
-          aria-label="나가기"
+          aria-label="실험 설정으로 돌아가기"
           onClick={(e) => {
             if (busy) e.preventDefault()
           }}
         >
-          <rect x="154" y="18" width="9" height="68" fill="#5a3d22" stroke="#3b2a1a" strokeWidth="1.6" filter="url(#vs-rough)" />
+          <rect x="178" y="18" width="9" height="68" fill="#5a3d22" stroke="#3b2a1a" strokeWidth="1.6" filter="url(#vs-rough)" />
           <path
-            d="M50 26 H184 V64 H50 L28 45 Z"
+            d="M50 26 H208 V64 H50 L28 45 Z"
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
             filter="url(#vs-rough)"
           />
-          <rect x="26" y="24" width="160" height="42" filter="url(#vs-grain)" clipPath="url(#vs-clip-exit-sign)" />
-          <circle cx="160" cy="45" r="2.8" fill="#4a3119" />
-          <text x="100" y="52" fontSize="21" fontWeight="700" textAnchor="middle" className="vb-pencil">
-            ← 나가기
+          <rect x="26" y="24" width="184" height="42" filter="url(#vs-grain)" clipPath="url(#vs-clip-exit-sign)" />
+          <circle cx="184" cy="45" r="2.8" fill="#4a3119" />
+          <text x="112" y="52" fontSize="21" fontWeight="700" textAnchor="middle" className="vb-pencil">
+            ← 실험 설정
           </text>
         </a>
 
@@ -533,20 +533,23 @@ export function GameStart({
           </text>
         </g>
 
-        {/* 목표 한 줄 종이 쪽지 */}
-        <g aria-label={`목표: 나는 마피아. ${TOTAL_TURNS}일째 밤까지 주민 과반을 속여 틀린 결정을 내리게 하라.`}>
+        {/* 목표 종이 쪽지 */}
+        <g aria-label={`목표: 마피아로 숨어 ${TOTAL_TURNS}일째 밤에 주민 반 넘게 틀린 결정을 내리게 해요. 재판에 걸리면 바로 져요.`}>
           <path
-            d="M366 194 H1056 L1074 212 V250 H366 Z"
+            d="M366 190 H1056 L1074 208 V258 H366 Z"
             fill="#f6ebcd"
             stroke="#8a6a3e"
             strokeWidth="2.2"
             filter="url(#vs-rough)"
           />
-          <rect x="366" y="194" width="708" height="56" filter="url(#vs-grain)" clipPath="url(#vs-clip-goal-note)" />
-          <path d="M1056 194 V212 H1074" fill="#e4d2a6" stroke="#8a6a3e" strokeWidth="1.6" filter="url(#vs-rough)" />
-          <circle cx="384" cy="210" r="5.5" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" filter="url(#vs-rough)" />
-          <text x="720" y="230" fontSize="23" fontWeight="700" textAnchor="middle" className="vb-pencil">
-            나는 마피아. {TOTAL_TURNS}일째 밤까지 주민 과반을 속여 틀린 결정을 내리게 하라.
+          <rect x="366" y="190" width="708" height="68" filter="url(#vs-grain)" clipPath="url(#vs-clip-goal-note)" />
+          <path d="M1056 190 V208 H1074" fill="#e4d2a6" stroke="#8a6a3e" strokeWidth="1.6" filter="url(#vs-rough)" />
+          <circle cx="384" cy="206" r="5.5" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" filter="url(#vs-rough)" />
+          <text x="720" y="218" fontSize="20" fontWeight="700" textAnchor="middle" className="vb-pencil">
+            마피아로 숨어 {TOTAL_TURNS}일째 밤에 주민 반 넘게 틀린 결정을 내리게 해요.
+          </text>
+          <text x="720" y="245" fontSize="20" fontWeight="700" textAnchor="middle" className="vb-pencil">
+            재판에 걸리면 바로 져요.
           </text>
         </g>
 
@@ -643,7 +646,7 @@ export function GameStart({
           </g>
 
           {/* 두 번째 화살표 판자: 주민 */}
-          <g transform="rotate(0.4, 720, 387)" role="radiogroup" aria-label="주민">
+          <g transform="rotate(0.4, 720, 387)" role="radiogroup" aria-label="주민 종류">
             <path
               d="M404 354 H1004 L1036 387 L1004 420 H404 Z"
               fill="#c99a5b"
