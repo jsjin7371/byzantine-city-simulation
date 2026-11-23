@@ -146,11 +146,9 @@
 .gm-workspace [data-ui-button][data-variant='outline'] { border-color: var(--wood); background: transparent; color: var(--ink); }
 .gm-workspace [data-ui-button][aria-pressed='true'] { box-shadow: 0 2px 0 #1c2e18; }
 
-/* 밤 연출 (목업 A3): 밤빛 → 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
+/* 밤 연출 (목업 A3): 밤빛 → 오솔길로 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
 .vb-gauge-fill { transform-box: fill-box; transform-origin: left center; }
 .vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 700ms ease both; }
-.vb-fly { transform: translate(var(--dx), var(--dy)); animation: vb-fly 1000ms cubic-bezier(0.23, 1, 0.32, 1) both; }
-@keyframes vb-fly { from { transform: none; opacity: 0; } 15% { opacity: 1; } }
 .vb-board.is-playing .vb-gauge-fill { transition: transform 900ms cubic-bezier(0.23, 1, 0.32, 1); }
 .vb-flag { transform-box: fill-box; transform-origin: left bottom; }
 .vb-board.is-playing .vb-flag { animation: vb-flip 420ms cubic-bezier(0.23, 1, 0.32, 1); }

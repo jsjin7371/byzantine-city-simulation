@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
-import { TRAILS, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, tally, villageHouses } from './village'
+import { TRAILS, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses } from './village'
 import type { House, Phase } from './village'
 import './village.css'
 
@@ -88,6 +88,15 @@ function Defs() {
           <path d="M16 -11 V-5 H22" fill="none" className={`vb-cloth is-${claim}`} strokeWidth="1.3" />
           <text x="-2" y="5" fontSize="11.5" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
             {decisions[claim]}
+          </text>
+        </g>
+      ))}
+      {/* 다른 집이 보내는 주장 (작은 쪽지, 첫 글자) */}
+      {(['evacuate', 'stay'] as const).map((claim) => (
+        <g key={claim} id={`vb-chip-${claim}`}>
+          <rect x="-10" y="-8" width="20" height="16" rx="3" className={`vb-cloth is-${claim}`} strokeWidth="1.3" />
+          <text y="4" fontSize="10" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
+            {decisions[claim][0]}
           </text>
         </g>
       ))}
@@ -419,21 +428,47 @@ function Trial({
   )
 }
 
-// 밤에 내 집에서 각 집으로 날아가는 쪽지 (보낸 말 그대로).
-function Notes({ result, houses }: { result: TurnResult; houses: House[] }) {
-  const me = houses[0]
+// 밤에 오솔길을 따라 각 집으로 가는 말: 내 쪽지(큰 쪽지)와 다른 집의 주장(작은 쪽지).
+function Talk({ result, player }: { result: TurnResult; player: number }) {
+  const ref = useRef<SVGGElement>(null)
+  // SMIL 시각은 문서가 열린 때 기준이라, 그려지는 순간 직접 출발시킨다 (출발 전에는 투명)
+  useLayoutEffect(() => {
+    ref.current?.querySelectorAll<SVGAnimationElement>('animate, animateMotion').forEach((a) => a.beginElement())
+  }, [])
+  const notes = talkNotes(player, result).sort((a, b) => Number(a.from === player) - Number(b.from === player)) // 내 쪽지를 맨 위에
   return (
-    <g aria-hidden>
-      {houses.slice(1).map((h, i) => {
-        const claim = result.cities.find((c) => c.city === h.city)?.received?.[me.city]?.claim
-        if (!claim) return null
-        const style = { '--dx': `${h.x + 70 - me.x}px`, '--dy': `${h.y - 30 - me.y}px`, animationDelay: `${i * 120}ms` }
+    <g ref={ref} aria-hidden>
+      {notes.map((n, i) => {
+        const wait = Math.min(i * 0.025, 0.3) // 출발을 조금씩 엇갈리게
+        const [p0, p1] = n.back ? [1, 0] : [0, 1]
         return (
-          <g key={h.city} className="vb-fly" style={style as CSSProperties}>
-            <use href={`#vb-note-${claim}`} x={me.x} y={me.y} />
+          <g key={`${n.from}-${n.to}`} opacity="0">
+            <use href={n.from === player ? `#vb-note-${n.claim}` : `#vb-chip-${n.claim}`} />
+            <animateMotion begin="indefinite" dur="1200ms" fill="freeze" path={n.path} calcMode="linear" keyPoints={`${p0};${p0};${p1}`} keyTimes={`0;${wait};1`} />
+            <animate attributeName="opacity" begin="indefinite" dur="1200ms" fill="freeze" values="0;1;1;0" keyTimes={`0;${wait};0.9;1`} />
           </g>
         )
       })}
+    </g>
+  )
+}
+
+// 길 범례: 갈색 길은 모두에게 말하기, 노란 점선은 쪽지 맞춰 보기 (선 모양도 달라 색만으로 구분하지 않는다).
+function Legend({ ring }: { ring: boolean }) {
+  const talk = ring ? '양옆 집에게 말하기' : '모두에게 말하기'
+  const label = `범례: 갈색 길은 ${talk}, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 주장을 보낸다. 노란 점선은 오늘 밤 쪽지 맞춰 보기, 두 시민이 받은 쪽지를 서로 맞춰 본다`
+  return (
+    <g role="img" aria-label={label}>
+      <title>{label}</title>
+      <rect x="12" y="10" width="236" height="52" rx="4" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" opacity=".95" />
+      <path d="M22 26 H52" stroke="#9c7442" strokeWidth="9" strokeLinecap="round" />
+      <path d="M22 26 H52" stroke="#c9a068" strokeWidth="5" strokeLinecap="round" />
+      <path d="M22 47 H52" stroke="#3b2a1a" strokeWidth="7" opacity=".35" />
+      <path d="M22 47 H52" stroke="#ffd35a" strokeWidth="4" strokeDasharray="6 4" />
+      <g fontSize="12" fontWeight="700" aria-hidden>
+        <text x="62" y="30">갈색 길: {talk}</text>
+        <text x="62" y="51">노란 점선: 오늘 밤 쪽지 맞춰 보기</text>
+      </g>
     </g>
   )
 }
@@ -599,6 +634,7 @@ export function VillageBoard({
       <Ground />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <Sky danger={state.truth === 'danger'} />
+      <Legend ring={state.config.connection === 'ring'} />
       {night && <rect className="vb-night" width="900" height="598" />}
       {pairs.length > 0 && (
         <g className="vb-share" role="img" aria-label={`오늘 밤 쪽지 맞춰 보기: ${pairLabel}`}>
@@ -640,7 +676,7 @@ export function VillageBoard({
           }
         />
       ))}
-      {night && at('notes') && <Notes result={night.result} houses={houses} />}
+      {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
       {caught.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
         return (
