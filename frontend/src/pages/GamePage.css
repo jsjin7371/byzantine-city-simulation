@@ -20,4 +20,3 @@
 .gm-workspace h1 { font-size: var(--page-title-size); font-weight: 620; letter-spacing: -.035em; }
 .gm-bar { position: relative; }
 .gm-line { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--color-error); }
-.gm-rules { list-style: disc; padding-left: 18px; font-size: 13px; display: flex; flex-direction: column; gap: 2px; }

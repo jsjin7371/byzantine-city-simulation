@@ -5,15 +5,13 @@ import { decisions, percent, truths } from '../components/results/resultLabels'
 import { errorMessage } from '../lib/errors'
 import {
   SUSPICION,
-  TOTAL_TURNS,
-  citizenTypes,
   createGame,
   defaultClaims,
-  difficulties,
   getGame,
   playTurn,
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
+import { GameStart } from '../game/GameStart'
 import { VillageBoard } from '../game/VillageBoard'
 import { VillageLog } from '../game/VillageLog'
 import { GameResult } from '../game/GameResult'
@@ -233,63 +231,18 @@ export function GamePage() {
     <>
       <PencilFilters />
       {!state ? (
-        <div className="gm-workspace">
-          <h1>AI 시민을 속여라</h1>
-          <section className="gm-panel">
-            <ul className="gm-rules">
-              <li>
-                목표: 나는 마피아. {TOTAL_TURNS}턴째에 주민 과반이 오답을
-                고르게 하면 승리, 전부 오답이면 완승.
-              </li>
-              <li>
-                의심도(나에 대한): 주민 관측과 같은 말 {SUSPICION.agree}, 다른 말 +
-                {SUSPICION.disagree}, 공유 쌍인 두 주민에게 서로 다른 말을 하면 모순 +
-                {SUSPICION.contradiction}.
-              </li>
-              <li>
-                패배: 누구든 의심도 {SUSPICION.threshold} 이상이면 재판이 열리고 주민 과반이 나나
-                동료를 지목하면 즉시 패배. {TOTAL_TURNS}턴에 과반 오답이 아니어도 패배.
-              </li>
-            </ul>
-            <div className="gm-row" role="group" aria-label="난이도">
-              {(Object.keys(difficulties) as Difficulty[]).map((key) => (
-                <Button
-                  key={key}
-                  variant={difficulty === key ? 'default' : 'outline'}
-                  aria-pressed={difficulty === key}
-                  onClick={() => setDifficulty(key)}
-                >
-                  {difficulties[key].label}
-                </Button>
-              ))}
-            </div>
-            <div className="gm-row" role="group" aria-label="주민 종류">
-              {(Object.keys(citizenTypes) as CitizenType[]).map((key) => (
-                <Button
-                  key={key}
-                  variant={citizenType === key ? 'default' : 'outline'}
-                  aria-pressed={citizenType === key}
-                  onClick={() => setCitizenType(key)}
-                >
-                  {citizenTypes[key].label}
-                </Button>
-              ))}
-            </div>
-            <p className="gm-muted">{citizenTypes[citizenType].hint}</p>
-            <div className="gm-row">
-              <Button onClick={start} disabled={busy}>
-                게임 시작
-              </Button>
-            </div>
-            {error && (
-              <p role="alert" className="rs-incorrect">
-                {error}
-              </p>
-            )}
-          </section>
-        </div>
+        <GameStart
+          difficulty={difficulty}
+          citizenType={citizenType}
+          busy={busy}
+          error={error}
+          onDifficulty={setDifficulty}
+          onCitizenType={setCitizenType}
+          onStart={start}
+        />
       ) : (
         <div className="gm-workspace gm-play">
+          <h1 className="sr-only">AI 시민을 속여라</h1>
           <div className="gm-stage">
             <section className="gm-board-zone" aria-label="마을 보드">
               <header className="gm-hud">

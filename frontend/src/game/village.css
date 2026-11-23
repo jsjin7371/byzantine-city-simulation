@@ -69,17 +69,135 @@
 .gm-workspace .rs-correct { color: var(--forest); }
 .gm-workspace .rs-incorrect { color: var(--rust); }
 
-/* 게임 진행 중: 사이트 헤더·푸터와 바깥 카드 겹을 걷어내고 경계 없는 옅은 숲 톤 배경 위에 보드를 올린다 */
+/* 게임 시작·진행 중: 사이트 헤더·푸터와 바깥 카드 겹을 걷어내고 전체 화면으로 올린다 */
+.app-shell.game-shell:has(.gm-start) {
+  background: #3e4e2a;
+}
 .app-shell.game-shell:has(.gm-play) {
   background: linear-gradient(180deg, #d3dbc4 0%, #c4ceb1 100%);
 }
-.game-shell:has(.gm-play) > .site-header,
-.game-shell:has(.gm-play) > .app-footer {
+.game-shell:has(.gm-start, .gm-play) > .site-header,
+.game-shell:has(.gm-start, .gm-play) > .app-footer {
   display: none;
 }
-.game-shell:has(.gm-play) > .main-content {
+.game-shell:has(.gm-start, .gm-play) > .main-content {
   max-width: none;
   padding: 0;
+}
+
+/* 게임 시작 화면 (목업 start.html pencil-gaegu, 1440x900 세로 스크롤 없음) */
+.gm-workspace.gm-start {
+  position: relative;
+  width: 100%;
+  height: 100svh;
+  padding: 0;
+  border-radius: 0;
+  gap: 0;
+  background: #3e4e2a;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.gm-start-scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+.gm-start-scene text,
+.gm-start-scene tspan {
+  font-family: var(--gm-font);
+  fill: var(--ink);
+}
+.gm-start-scene .vb-cream { fill: var(--cream); }
+.gm-start-scene .vb-rust { fill: var(--rust); }
+.gm-start-scene .vb-muted { fill: var(--muted); }
+.gm-start-scene .vb-slash { fill: #625c53; }
+.gm-start-scene .vb-sign-title {
+  fill: var(--cream);
+  paint-order: stroke;
+  stroke: #4a3119;
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+.gm-start-scene .vb-clickable { cursor: pointer; }
+.gm-start-scene .vb-opt-item .opt-bg,
+.gm-start-scene .vb-opt-item .opt-stamp { opacity: 0; }
+.gm-start-scene .vb-opt-item.is-selected .opt-bg,
+.gm-start-scene .vb-opt-item.is-selected .opt-stamp { opacity: 1; }
+.gm-start-scene .vb-opt-item .opt-label,
+.gm-start-scene .vb-role-card .card-title {
+  fill: var(--ink-soft);
+  font-weight: 700;
+}
+.gm-start-scene .vb-opt-item.is-selected .opt-label,
+.gm-start-scene .vb-role-card.is-selected .card-title {
+  fill: var(--ink);
+  font-weight: 700;
+}
+.gm-start-scene .vb-role-card .card-paper {
+  fill: #ede0be;
+  stroke: #8a6a3e;
+  stroke-width: 2;
+}
+.gm-start-scene .vb-role-card.is-selected .card-paper {
+  fill: #f9f0d4;
+  stroke: #6b4a2a;
+  stroke-width: 2.6;
+}
+.gm-start-scene .vb-role-card .card-pin {
+  fill: #6b4a2a;
+  stroke: #3b2a1a;
+}
+.gm-start-scene .vb-role-card.is-selected .card-pin {
+  fill: #a8361f;
+  stroke: #4a1a10;
+}
+.gm-start-scene .vb-role-card .card-stamp { opacity: 0; }
+.gm-start-scene .vb-role-card.is-selected .card-stamp { opacity: 1; }
+.gm-start-scene .vb-role-card .card-desc {
+  fill: var(--ink);
+  font-weight: 400;
+}
+.gm-start-scene .vb-role-card.is-selected .card-desc {
+  fill: var(--ink);
+  font-weight: 700;
+}
+.gm-start-scene text:not(.card-desc):not(.vb-muted):not(.vb-rust):not(.vb-slash) {
+  filter: url(#vb-pencil);
+}
+.gm-start-scene .card-desc {
+  filter: url(#vb-pencil-sm);
+}
+.gm-start-scene .gs-enter.is-busy {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+.gm-start-scene .gs-exit:focus-visible,
+.gm-start-scene .gs-enter:focus-visible {
+  outline: 3px solid #ffd35a;
+  outline-offset: 4px;
+}
+.gm-start-scene .vb-opt-item:focus-visible,
+.gm-start-scene .vb-role-card:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 4px;
+}
+.gm-start-error {
+  position: absolute;
+  left: 50%;
+  bottom: 48px;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100% - 32px));
+  padding: 8px 16px;
+  border-radius: 6px;
+  background: var(--ui-background);
+  border: 2px solid var(--rust);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(27, 45, 24, 0.35);
 }
 
 .gm-workspace.gm-play {
