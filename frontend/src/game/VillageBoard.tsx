@@ -4,7 +4,7 @@ import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses } from './village'
-import type { House, Phase } from './village'
+import type { House, Phase, Preview } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
@@ -253,6 +253,9 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
   )
 }
 
+// 쪽지 하나로 바뀔 의심도 읽기용 문구. 예) "의심도 50에서 70, 재판 열림"
+const previewText = (p: Preview) => `의심도 ${p.from}에서 ${p.next}${p.trial ? ', 재판 열림' : ''}`
+
 function houseLabel(h: House) {
   const name = `${h.city}번 집`
   if (h.role === 'player') return `${name}, 나(마피아)`
@@ -271,7 +274,7 @@ function houseLabel(h: House) {
 
 // 집 하나. pick이 있으면 눌러서 쪽지를 여는 버튼이 된다 (명세 1번).
 // changed: 어제와 달라진 점 (힌트 바뀜, 새 점선). 어제 쪽지를 그대로 두었으니 여기만 다시 보면 된다.
-type Pick = { claim?: Claim; open: boolean; next: number | null; changed?: string[]; onOpen: () => void }
+type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
 
 const pressKey = (action: () => void) => (e: KeyboardEvent) => {
   if (e.key !== 'Enter' && e.key !== ' ') return
@@ -282,7 +285,7 @@ const pressKey = (action: () => void) => (e: KeyboardEvent) => {
 function HouseView({ h, pick }: { h: House; pick?: Pick }) {
   const { x, y } = h
   const label = pick
-    ? `${houseLabel(h)}${pick.changed ? `, 어제와 달라짐: ${pick.changed.join(', ')}` : ''}. 할 말 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}`
+    ? `${houseLabel(h)}${pick.changed ? `, 어제와 달라짐: ${pick.changed.join(', ')}` : ''}. 할 말 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
     : houseLabel(h)
   const mafia = h.role !== 'citizen'
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
@@ -343,9 +346,10 @@ function HouseView({ h, pick }: { h: House; pick?: Pick }) {
           <text x="58" y="5" fontSize="14" fontWeight="700" className={over ? 'vb-light' : undefined}>
             {h.suspicion}
           </text>
-          {pick?.next != null && pick.next !== h.suspicion && (
-            <text x="84" y="5" fontSize="13" fontWeight="700" className="vb-rust">
-              →{pick.next}
+          {pick?.preview && (pick.preview.next !== h.suspicion || pick.preview.trial) && (
+            <text x="84" y="5" fontSize="13" fontWeight="700" className={pick.preview.delta > 0 ? 'vb-rust' : 'vb-green'}>
+              →{pick.preview.next}
+              {pick.preview.trial && ' 재판'}
             </text>
           )}
         </g>
@@ -482,16 +486,16 @@ function Legend({ ring }: { ring: boolean }) {
   )
 }
 
-// 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 (명세 1번).
+// 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 (명세 1번). 예) 50 → 70, 재판 열림
 function NoteCard({
   h,
   claim,
-  delta,
+  preview,
   onClaim,
 }: {
   h: House
   claim?: Claim
-  delta: (c: Claim) => number | null
+  preview: (c: Claim) => Preview | null
   onClaim: (c: Claim) => void
 }) {
   const left = h.x < 450
@@ -500,14 +504,14 @@ function NoteCard({
   return (
     <g transform={`translate(${cx},${cy})`}>
       <g className={`vb-card${left ? ' from-left' : ' from-right'}`} role="group" aria-label={`${h.city}번 집에 할 말`}>
-        <rect x="4" y="5" width="168" height="96" rx="2" fill="#2a1a0c" opacity=".25" />
-        <rect width="168" height="96" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
+        <rect x="4" y="5" width="168" height="112" rx="2" fill="#2a1a0c" opacity=".25" />
+        <rect width="168" height="112" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
         <circle cx="10" cy="10" r="5" fill="#a8361f" stroke="#4a1a10" />
         <text x="22" y="24" fontSize="13.5" fontWeight="700">
           {h.city}번 집에 할 말
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
-          const d = delta(c)
+          const p = preview(c)
           return (
             <g key={c}>
               <g
@@ -515,7 +519,7 @@ function NoteCard({
                 role="button"
                 tabIndex={0}
                 aria-pressed={claim === c}
-                aria-label={`${decisions[c]}${d == null ? '' : `, 의심도 ${d > 0 ? '+' : ''}${d}`}`}
+                aria-label={`${decisions[c]}${p ? `, ${previewText(p)}` : ''}`}
                 onClick={() => onClaim(c)}
                 onKeyDown={pressKey(() => onClaim(c))}
               >
@@ -524,18 +528,17 @@ function NoteCard({
                   {decisions[c]}
                 </text>
               </g>
-              {d != null && (
-                <text
-                  x={47 + i * 74}
-                  y="85"
-                  fontSize="13"
-                  fontWeight="700"
-                  textAnchor="middle"
-                  className={d > 0 ? 'vb-rust' : d < 0 ? 'vb-green' : undefined}
-                  aria-hidden
-                >
-                  {d > 0 ? `+${d}` : d < 0 ? `−${-d}` : '±0'}
-                </text>
+              {p && (
+                <g fontWeight="700" textAnchor="middle" aria-hidden>
+                  <text x={47 + i * 74} y="85" fontSize="13" className={p.delta > 0 ? 'vb-rust' : 'vb-green'}>
+                    {p.from} → {p.next}
+                  </text>
+                  {p.trial && (
+                    <text x={47 + i * 74} y="102" fontSize="11.5" className="vb-rust">
+                      재판 열림
+                    </text>
+                  )}
+                </g>
               )}
             </g>
           )
@@ -679,7 +682,7 @@ export function VillageBoard({
               ? {
                   claim: picker.claims[h.city],
                   open: open === h.city,
-                  next: preview(h, picker.claims[h.city])?.next ?? null,
+                  preview: preview(h, picker.claims[h.city]),
                   changed: changed[h.city],
                   onOpen: () => setOpen(open === h.city ? null : h.city),
                 }
@@ -726,7 +729,7 @@ export function VillageBoard({
           key={opened.city}
           h={opened}
           claim={picker.claims[opened.city]}
-          delta={(c) => preview(opened, c)?.delta ?? null}
+          preview={(c) => preview(opened, c)}
           onClaim={(c) => picker.onClaim(opened.city, c)}
         />
       )}
