@@ -459,8 +459,8 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
       {notes.map((n, i) => (
         <g
           key={`${n.from}-${n.to}`}
-          className="vb-fly"
-          style={{ offsetPath: `path("${n.path}")`, animationDelay: `${Math.min(i * 30, 360)}ms` }} // 출발을 조금씩 엇갈리게
+          className={n.from === player ? 'vb-fly' : 'vb-fly is-other'} // 다른 주민끼리 오가는 쪽지는 흐리게
+          style={{ offsetPath: `path("${n.path}")`, animationDelay: `${Math.min(i * 20, 160)}ms` }} // 출발을 조금씩 엇갈리게
         >
           <use href={`#vb-note-${n.claim}`} transform={n.from === player ? undefined : 'scale(.6)'} />
         </g>

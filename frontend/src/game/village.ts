@@ -187,15 +187,15 @@ export type Step = { phase: Phase; ballots: number; ms: number }
 // 한 턴 결과를 보여 줄 단계 목록. 마지막 단계(day)가 최종 상태다.
 export function nightSteps(result: Pick<TurnResult, 'vote'>): Step[] {
   const steps: Step[] = [
-    { phase: 'night', ballots: 0, ms: 700 },
-    { phase: 'notes', ballots: 0, ms: 1300 },
-    { phase: 'flags', ballots: 0, ms: 1000 },
-    { phase: 'suspicion', ballots: 0, ms: 1300 },
+    { phase: 'night', ballots: 0, ms: 400 },
+    { phase: 'notes', ballots: 0, ms: 800 },
+    { phase: 'flags', ballots: 0, ms: 600 },
+    { phase: 'suspicion', ballots: 0, ms: 800 },
   ]
   if (result.vote) {
     const n = Object.keys(result.vote.ballots).length
-    for (let i = 1; i <= n; i++) steps.push({ phase: 'trial', ballots: i, ms: 800 })
-    steps.push({ phase: 'verdict', ballots: n, ms: 1300 })
+    for (let i = 1; i <= n; i++) steps.push({ phase: 'trial', ballots: i, ms: 450 })
+    steps.push({ phase: 'verdict', ballots: n, ms: 800 })
   }
   steps.push({ phase: 'day', ballots: Infinity, ms: 0 })
   return steps
