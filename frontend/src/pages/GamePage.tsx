@@ -21,7 +21,7 @@ import { GameResult } from '../game/GameResult'
 import { citizenScales, nightSteps, villageLines, visibleLines } from '../game/village'
 import './GamePage.css'
 
-// 의심도 게이지. 투표 열림 기준(60) 위치에 선을 긋는다.
+// 의심도 게이지. 재판 기준(60) 위치에 선을 긋는다.
 function Gauge({ value, label }: { value: number; label: string }) {
   return (
     <div className="gm-bar">
@@ -35,7 +35,7 @@ function TurnReport({ result }: { result: TurnResult }) {
   return (
     <section className="gm-panel" aria-label={`${result.turn}턴 결과`}>
       <h2>
-        {result.turn}턴 결과 · 시민 정확도 {percent(result.accuracy)}
+        {result.turn}턴 결과 · 주민 정확도 {percent(result.accuracy)}
       </h2>
       <div className="gm-citizens">
         {result.cities
@@ -43,7 +43,7 @@ function TurnReport({ result }: { result: TurnResult }) {
           .map((c) => (
             <article key={c.city} className="gm-citizen">
               <h3>
-                도시 {c.city} · 힌트 {c.hint ? truths[c.hint] : '—'} ·{' '}
+                주민 {c.city} · 힌트 {c.hint ? truths[c.hint] : '—'} ·{' '}
                 {c.decision ? decisions[c.decision] : '—'}{' '}
                 <span className={c.correct ? 'rs-correct' : 'rs-incorrect'}>
                   {c.correct ? '정답' : '오답'}
@@ -58,7 +58,7 @@ function TurnReport({ result }: { result: TurnResult }) {
                   </div>
                 ))
               ) : (
-                <p className="gm-muted">의심도 없음 (다수결 시민)</p>
+                <p className="gm-muted">의심도 없음 (다수결 주민)</p>
               )}
               {c.reason && <p className="gm-reason">{c.reason}</p>}
             </article>
@@ -69,7 +69,7 @@ function TurnReport({ result }: { result: TurnResult }) {
       <ul>
         {result.sharing.map((s) => (
           <li key={s.pair.join('-')}>
-            도시 {s.pair[0]} ↔ 도시 {s.pair[1]}:{' '}
+            주민 {s.pair[0]} ↔ 주민 {s.pair[1]}:{' '}
             {s.contradictions.length === 0
               ? '모순 없음'
               : s.contradictions
@@ -83,19 +83,19 @@ function TurnReport({ result }: { result: TurnResult }) {
           </li>
         ))}
       </ul>
-      <h3>고발 투표</h3>
+      <h3>재판</h3>
       {result.vote ? (
         <p>
           {Object.entries(result.vote.ballots)
             .map(([from, to]) => `${from}→${to}`)
             .join(', ')}{' '}
-          · 고발:{' '}
+          · 지목:{' '}
           {result.vote.accused === null
             ? '없음 (과반 미달)'
-            : `도시 ${result.vote.accused}${result.vote.caught ? ' (마피아 발각)' : ' (시민 오지목)'}`}
+            : `도시 ${result.vote.accused}${result.vote.caught ? ' (마피아 발각)' : ' (무고한 주민 처형)'}`}
         </p>
       ) : (
-        <p className="gm-muted">투표가 열리지 않았습니다.</p>
+        <p className="gm-muted">재판이 열리지 않았습니다.</p>
       )}
     </section>
   )
@@ -193,16 +193,16 @@ export function GamePage() {
       <section className="gm-panel">
         <ul className="gm-rules">
           <li>
-            목표: 나는 마피아. {TOTAL_TURNS}턴째에 시민 과반이 오답을
+            목표: 나는 마피아. {TOTAL_TURNS}턴째에 주민 과반이 오답을
             고르게 하면 승리, 전부 오답이면 완승.
           </li>
           <li>
-            의심도(나에 대한): 시민 힌트와 같은 말 {SUSPICION.agree}, 다른 말 +
-            {SUSPICION.disagree}, 공유 쌍인 두 시민에게 서로 다른 말을 하면 모순 +
+            의심도(나에 대한): 주민 힌트와 같은 말 {SUSPICION.agree}, 다른 말 +
+            {SUSPICION.disagree}, 공유 쌍인 두 주민에게 서로 다른 말을 하면 모순 +
             {SUSPICION.contradiction}.
           </li>
           <li>
-            패배: 누구든 의심도 {SUSPICION.threshold} 이상이면 고발 투표가 열리고 시민 과반이 나나
+            패배: 누구든 의심도 {SUSPICION.threshold} 이상이면 재판이 열리고 주민 과반이 나나
             동료를 지목하면 즉시 패배. {TOTAL_TURNS}턴에 과반 오답이 아니어도 패배.
           </li>
         </ul>
@@ -218,7 +218,7 @@ export function GamePage() {
             </Button>
           ))}
         </div>
-        <div className="gm-row" role="group" aria-label="시민 종류">
+        <div className="gm-row" role="group" aria-label="주민 종류">
           {(Object.keys(citizenTypes) as CitizenType[]).map((key) => (
             <Button
               key={key}
@@ -251,9 +251,9 @@ export function GamePage() {
               {TOTAL_TURNS}턴
             </h2>
             <p>
-              지난 턴 틀린 시민 {settled ? wrong : '—'}/{citizenCount} ({TOTAL_TURNS}턴에{' '}
+              지난 턴 틀린 주민 {settled ? wrong : '—'}/{citizenCount} ({TOTAL_TURNS}턴에{' '}
               {majority(citizenCount)}명 이상 필요)
-              {wary && ` · 나에 대한 최고 의심도 ${topSuspicion} / 투표 열림 기준 ${SUSPICION.threshold}`}
+              {wary && ` · 나에 대한 최고 의심도 ${topSuspicion} / 재판 기준 ${SUSPICION.threshold}`}
             </p>
             {wary && <Gauge value={topSuspicion} label="나에 대한 최고 의심도" />}
             <div className="vb-table">

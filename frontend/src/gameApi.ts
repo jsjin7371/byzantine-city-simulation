@@ -106,7 +106,7 @@ export const outcomeLabels: Record<Outcome, string> = {
   win: '승리',
   loss: '패배',
 }
-export const endReasonLabels = { caught: '고발 투표로 발각', turns_done: `${TOTAL_TURNS}턴 종료` }
+export const endReasonLabels = { caught: '재판으로 발각', turns_done: `${TOTAL_TURNS}턴 종료` }
 
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)

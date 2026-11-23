@@ -14,7 +14,7 @@ export function VillageLog({ lines, live = false, children }: { lines: Line[] | 
     <aside className="vl-talk" aria-label="마을 이야기">
       <h3>마을 이야기</h3>
       <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
-        {!lines && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았다. 집마다 할 말을 고르고 밤으로 넘긴다.</p>}
+        {!lines && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았다. 집마다 쪽지를 고르고 밤으로 넘긴다.</p>}
         {lines?.map((line, i) =>
           line.kind === 'when' ? (
             <p key={i} className="vl-when">
