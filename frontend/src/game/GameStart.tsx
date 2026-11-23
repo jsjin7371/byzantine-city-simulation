@@ -59,8 +59,8 @@ const ROLE_CARDS: RoleCardSpec[] = [
     tagClass: 'vb-rust',
     tagX: 683,
     tagSize: 17,
-    lines: ['내 말이 본 날씨와 다르거나 엇갈리면', '의심이 쌓여 광장 재판이 열려요.'],
-    ariaLabel: '눈치 주민 선택 (기본): 내 말이 본 날씨와 다르거나 엇갈리면 의심이 쌓여 광장 재판이 열려요.',
+    lines: ['본 날씨와 내 말이 다르거나 엇갈리면', '의심이 쌓여 광장 재판이 열려요.'],
+    ariaLabel: '눈치 주민 선택 (기본): 본 날씨와 내 말이 다르거나 엇갈리면 의심이 쌓여 광장 재판이 열려요.',
   },
   {
     key: 'ai',
@@ -743,8 +743,11 @@ export function GameStart({
                 className={selected ? 'vb-clickable vb-role-card is-selected' : 'vb-clickable vb-role-card'}
                 transform={`rotate(${card.rotate}, ${card.cx}, 509)`}
                 aria-hidden="true"
-                tabIndex={-1}
-                onClick={() => onCitizenType(card.key)}
+                onClick={() => {
+                  onCitizenType(card.key)
+                  const index = citizenKeys.indexOf(card.key)
+                  if (index >= 0) citizenRefs.current[index]?.focus()
+                }}
               >
                 <path className="card-paper" d={`M${card.x} 440 H${fold} L${right} 458 V578 H${card.x} Z`} filter="url(#vs-rough)" />
                 <rect x={card.x} y="440" width="286" height="138" filter="url(#vs-grain)" clipPath={`url(#${card.clip})`} />
