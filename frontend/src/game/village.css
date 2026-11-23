@@ -164,12 +164,7 @@
   fill: var(--ink);
   font-weight: 700;
 }
-.gm-start-scene text:not(.card-desc):not(.vb-muted):not(.vb-rust):not(.vb-slash) {
-  filter: url(#vb-pencil);
-}
-.gm-start-scene .card-desc {
-  filter: url(#vb-pencil-sm);
-}
+.gm-start-scene .gs-exit.is-busy,
 .gm-start-scene .gs-enter.is-busy {
   cursor: not-allowed;
   opacity: 0.65;
@@ -179,8 +174,7 @@
   outline: 3px solid #ffd35a;
   outline-offset: 4px;
 }
-.gm-start-scene .vb-opt-item:focus-visible,
-.gm-start-scene .vb-role-card:focus-visible {
+.gm-start-scene .vb-opt-item:focus-visible {
   outline: 3px solid var(--ink);
   outline-offset: 4px;
 }

@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import type { KeyboardEvent } from 'react'
 import { SUSPICION, TOTAL_TURNS, citizenTypes, difficulties } from '../gameApi'
 import type { CitizenType, Difficulty } from '../gameApi'
@@ -109,18 +110,26 @@ function onActivate(action: () => void) {
   }
 }
 
-function onRadioKey<T extends string>(keys: readonly T[], index: number, select: (val: T) => void) {
-  return (e: KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      select(keys[index])
-    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-      e.preventDefault()
-      select(keys[(index + 1) % keys.length])
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault()
-      select(keys[(index - 1 + keys.length) % keys.length])
-    }
+function onRadioKey<T extends string>(
+  e: KeyboardEvent,
+  keys: readonly T[],
+  index: number,
+  select: (val: T) => void,
+  nodes: (SVGGElement | null)[],
+) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault()
+    select(keys[index])
+  } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+    e.preventDefault()
+    const next = (index + 1) % keys.length
+    select(keys[next])
+    nodes[next]?.focus()
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    const next = (index - 1 + keys.length) % keys.length
+    select(keys[next])
+    nodes[next]?.focus()
   }
 }
 
@@ -426,6 +435,8 @@ export function GameStart({
 }) {
   const diffKeys = Object.keys(difficulties) as Difficulty[]
   const citizenKeys = Object.keys(citizenTypes) as CitizenType[]
+  const diffRefs = useRef<(SVGGElement | null)[]>([])
+  const citizenRefs = useRef<(SVGGElement | null)[]>([])
 
   return (
     <div className="gm-workspace gm-start">
@@ -441,7 +452,15 @@ export function GameStart({
         <StartBackdrop />
 
         {/* 왼쪽 위 "← 나가기" 나무 화살표 표지 */}
-        <a href="#/setup" className="vb-clickable gs-exit" aria-label="나가기">
+        <a
+          href="#/setup"
+          className={busy ? 'gs-exit is-busy' : 'vb-clickable gs-exit'}
+          aria-disabled={busy || undefined}
+          aria-label="나가기"
+          onClick={(e) => {
+            if (busy) e.preventDefault()
+          }}
+        >
           <rect x="154" y="18" width="9" height="68" fill="#5a3d22" stroke="#3b2a1a" strokeWidth="1.6" filter="url(#vs-rough)" />
           <path
             d="M50 26 H184 V64 H50 L28 45 Z"
@@ -452,7 +471,7 @@ export function GameStart({
           />
           <rect x="26" y="24" width="160" height="42" filter="url(#vs-grain)" clipPath="url(#vs-clip-exit-sign)" />
           <circle cx="160" cy="45" r="2.8" fill="#4a3119" />
-          <text x="100" y="52" fontSize="21" fontWeight="700" textAnchor="middle">
+          <text x="100" y="52" fontSize="21" fontWeight="700" textAnchor="middle" className="vb-pencil">
             ← 나가기
           </text>
         </a>
@@ -466,7 +485,7 @@ export function GameStart({
             fontWeight="700"
             letterSpacing="3"
             textAnchor="middle"
-            className="vb-sign-title"
+            className="vb-sign-title vb-pencil"
           >
             열다섯 밤의 거짓말
           </text>
@@ -508,7 +527,7 @@ export function GameStart({
             fontWeight="700"
             letterSpacing="1.5"
             textAnchor="middle"
-            className="vb-cream"
+            className="vb-cream vb-pencil"
           >
             AI 시민을 속여라
           </text>
@@ -526,7 +545,7 @@ export function GameStart({
           <rect x="366" y="194" width="708" height="56" filter="url(#vs-grain)" clipPath="url(#vs-clip-goal-note)" />
           <path d="M1056 194 V212 H1074" fill="#e4d2a6" stroke="#8a6a3e" strokeWidth="1.6" filter="url(#vs-rough)" />
           <circle cx="384" cy="210" r="5.5" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" filter="url(#vs-rough)" />
-          <text x="720" y="230" fontSize="23" fontWeight="700" textAnchor="middle">
+          <text x="720" y="230" fontSize="23" fontWeight="700" textAnchor="middle" className="vb-pencil">
             나는 마피아. {TOTAL_TURNS}일째 밤까지 주민 과반을 속여 틀린 결정을 내리게 하라.
           </text>
         </g>
@@ -558,7 +577,7 @@ export function GameStart({
             <circle cx="418" cy="284" r="2.8" fill="#4a3119" />
             <circle cx="418" cy="326" r="2.8" fill="#4a3119" />
 
-            <text x="444" y="313" fontSize="25" fontWeight="700">
+            <text x="444" y="313" fontSize="25" fontWeight="700" className="vb-pencil">
               난이도:
             </text>
 
@@ -568,12 +587,15 @@ export function GameStart({
               return (
                 <g key={key}>
                   <g
+                    ref={(el) => {
+                      diffRefs.current[i] = el
+                    }}
                     className={selected ? 'vb-clickable vb-opt-item is-selected' : 'vb-clickable vb-opt-item'}
                     role="radio"
                     aria-checked={selected}
-                    tabIndex={0}
+                    tabIndex={selected ? 0 : -1}
                     onClick={() => onDifficulty(key)}
-                    onKeyDown={onRadioKey(diffKeys, i, onDifficulty)}
+                    onKeyDown={(e) => onRadioKey(e, diffKeys, i, onDifficulty, diffRefs.current)}
                   >
                     <rect
                       className="opt-bg"
@@ -598,7 +620,7 @@ export function GameStart({
                       strokeWidth="3"
                       filter="url(#vs-rough)"
                     />
-                    <text className="opt-label" x={slot.cx} y="313" fontSize="24" textAnchor="middle">
+                    <text className="opt-label vb-pencil" x={slot.cx} y="313" fontSize="24" textAnchor="middle">
                       {difficulties[key].label}
                     </text>
                   </g>
@@ -633,22 +655,27 @@ export function GameStart({
             <circle cx="418" cy="366" r="2.8" fill="#4a3119" />
             <circle cx="418" cy="408" r="2.8" fill="#4a3119" />
 
-            <text x="444" y="395" fontSize="25" fontWeight="700">
+            <text x="444" y="395" fontSize="25" fontWeight="700" className="vb-pencil">
               주민:
             </text>
 
             {citizenKeys.map((key, i) => {
               const slot = CITIZEN_LAYOUT[key]
               const selected = citizenType === key
+              const card = ROLE_CARDS.find((c) => c.key === key)
               return (
                 <g key={key}>
                   <g
+                    ref={(el) => {
+                      citizenRefs.current[i] = el
+                    }}
                     className={selected ? 'vb-clickable vb-opt-item is-selected' : 'vb-clickable vb-opt-item'}
                     role="radio"
                     aria-checked={selected}
-                    tabIndex={0}
+                    aria-label={card?.ariaLabel}
+                    tabIndex={selected ? 0 : -1}
                     onClick={() => onCitizenType(key)}
-                    onKeyDown={onRadioKey(citizenKeys, i, onCitizenType)}
+                    onKeyDown={(e) => onRadioKey(e, citizenKeys, i, onCitizenType, citizenRefs.current)}
                   >
                     <rect
                       className="opt-bg"
@@ -673,7 +700,7 @@ export function GameStart({
                       strokeWidth="3"
                       filter="url(#vs-rough)"
                     />
-                    <text className="opt-label" x={slot.cx} y="395" fontSize="24" textAnchor="middle">
+                    <text className="opt-label vb-pencil" x={slot.cx} y="395" fontSize="24" textAnchor="middle">
                       {citizenTypes[key].label}
                     </text>
                   </g>
@@ -712,12 +739,9 @@ export function GameStart({
                 key={card.key}
                 className={selected ? 'vb-clickable vb-role-card is-selected' : 'vb-clickable vb-role-card'}
                 transform={`rotate(${card.rotate}, ${card.cx}, 509)`}
-                role="button"
-                tabIndex={0}
-                aria-pressed={selected}
-                aria-label={card.ariaLabel}
+                aria-hidden="true"
+                tabIndex={-1}
                 onClick={() => onCitizenType(card.key)}
-                onKeyDown={onActivate(() => onCitizenType(card.key))}
               >
                 <path className="card-paper" d={`M${card.x} 440 H${fold} L${right} 458 V578 H${card.x} Z`} filter="url(#vs-rough)" />
                 <rect x={card.x} y="440" width="286" height="138" filter="url(#vs-grain)" clipPath={`url(#${card.clip})`} />
@@ -725,7 +749,7 @@ export function GameStart({
                 <circle className="card-pin" cx={card.cx} cy="449" r="4.2" strokeWidth="1.3" filter="url(#vs-rough-sm)" />
 
                 <use href={card.icon} transform={`translate(${card.x + 31}, 476)`} />
-                <text className="card-title" x={card.x + 55} y="484" fontSize="25">
+                <text className="card-title vb-pencil" x={card.x + 55} y="484" fontSize="25">
                   {citizenTypes[card.key].label}
                 </text>
                 <text className={card.tagClass} x={card.tagX} y="483" fontSize={card.tagSize} fontWeight="700">
@@ -741,10 +765,10 @@ export function GameStart({
                   filter="url(#vs-rough-sm)"
                 />
 
-                <text className="card-desc" x={card.cx} y="527" fontSize="17.2" textAnchor="middle">
+                <text className="card-desc vb-pencil-sm" x={card.cx} y="527" fontSize="17.2" textAnchor="middle">
                   {card.lines[0]}
                 </text>
-                <text className="card-desc" x={card.cx} y="555" fontSize="17.2" textAnchor="middle">
+                <text className="card-desc vb-pencil-sm" x={card.cx} y="555" fontSize="17.2" textAnchor="middle">
                   {card.lines[1]}
                 </text>
 
@@ -760,7 +784,7 @@ export function GameStart({
         <g
           className={busy ? 'gs-enter is-busy' : 'vb-clickable gs-enter'}
           role="button"
-          tabIndex={busy ? -1 : 0}
+          tabIndex={0}
           aria-disabled={busy || undefined}
           aria-label="마을로 들어가기"
           onClick={() => {
@@ -807,7 +831,7 @@ export function GameStart({
             fontWeight="700"
             letterSpacing="1.5"
             textAnchor="middle"
-            className="vb-cream"
+            className="vb-cream vb-pencil"
           >
             마을로 들어가기
           </text>
