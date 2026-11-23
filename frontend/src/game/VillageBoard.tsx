@@ -143,9 +143,9 @@ function Ground() {
 
 // 맑은 하늘 해 주변 ✦ 반짝이 자리 [x, y, 크기 배율, 시작 어긋남(초)]
 const SKY_SPARKS = [
-  [702, 20, 0.9, 0],
-  [826, 24, 1, -0.8],
-  [812, 82, 0.75, -1.6],
+  [702, 28, 0.9, 0],
+  [826, 32, 1, -0.8],
+  [812, 90, 0.75, -1.6],
 ] as const
 
 // 하늘: 정답이 위험이면 태풍 구름, 안전이면 맑은 하늘
@@ -170,30 +170,21 @@ function Sky({ danger }: { danger: boolean }) {
             <ellipse cx="700" cy="62" rx="80" ry="20" />
             <ellipse cx="820" cy="66" rx="80" ry="20" />
           </g>
-          <path
-            className="vb-swirl"
-            d="M760 44 m0 -2 a4 4 0 1 1 4 4 a10 10 0 1 1 -10 -10 a17 17 0 0 1 17 17 a24 24 0 0 1 -24 24"
-            fill="none"
-            stroke="#eef2f2"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            aria-hidden
-          />
           <g className="vb-wind" stroke="#eef2f2" strokeWidth="2.5" fill="none" strokeLinecap="round" aria-hidden>
             <path d="M230 40 Q290 26 340 42 Q380 54 420 38" />
             <path d="M300 70 Q360 58 410 70 Q450 80 500 64 a10 10 0 1 0 -6 -14" />
             <path d="M180 78 Q220 68 260 78" />
           </g>
           <g stroke="#5f6f7b" strokeWidth="2" strokeLinecap="round" aria-hidden>
-            <path className="vb-rain" d="M640 84 l-8 16 M704 86 l-8 16 M768 86 l-8 16 M832 86 l-8 16" />
-            <path className="vb-rain is-b" d="M672 88 l-8 16 M736 90 l-8 16 M800 90 l-8 16" />
+            <path className="vb-rain" d="M640 76 l-6 12 M704 78 l-6 12 M768 78 l-6 12 M832 78 l-6 12" />
+            <path className="vb-rain is-b" d="M672 78 l-6 12 M736 80 l-6 12 M800 80 l-6 12" />
           </g>
         </>
       ) : (
         <>
-          <circle cx="760" cy="46" r="30" fill="#ffd35a" stroke="#c98f1e" strokeWidth="2.5" aria-hidden />
+          <circle cx="760" cy="54" r="30" fill="#ffd35a" stroke="#c98f1e" strokeWidth="2.5" aria-hidden />
           <g className="vb-sun-rays" stroke="#e0a72a" strokeWidth="3" strokeLinecap="round" aria-hidden>
-            <path d="M760 2 v8 M760 82 v8 M716 46 h8 M796 46 h8 M729 15 l6 6 M785 71 l6 6 M729 77 l6 -6 M785 21 l6 -6" />
+            <path d="M760 10 v8 M760 90 v8 M716 54 h8 M796 54 h8 M729 23 l6 6 M785 79 l6 6 M729 85 l6 -6 M785 29 l6 -6" />
           </g>
           {SKY_SPARKS.map(([x, y, s, delay]) => (
             <g key={`${x}-${y}`} transform={`translate(${x},${y}) scale(${s})`} aria-hidden>
