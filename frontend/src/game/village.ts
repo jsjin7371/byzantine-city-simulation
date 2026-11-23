@@ -253,27 +253,47 @@ export type Line = Said &
 const saw = { danger: '태풍', safe: '맑음' } as const
 const said = { evacuate: '대피', stay: '잔류' } as const
 
-// 저울 읽기용 문장 목록: 항목마다 짧은 한 줄 + 마지막 결론 한 줄.
-export function scaleText(scale: Scale, me: number): string[] {
+const AGREE_LINES = [
+  (w: string) => `그치, 나도 ${w}이라고 봤어`,
+  (w: string) => `맞아, 내 눈에도 ${w}으로 보였어`,
+  (w: string) => `같은 생각이네, 나도 ${w}으로 봤어`,
+] as const
+const DISAGREE_LINES = [
+  (w: string, me: number, c: string) => `음… 내가 본 건 ${w}인데, ${me}번은 ${c}래`,
+  (w: string, me: number, c: string) => `어라, 나는 ${w}이던데 ${me}번은 ${c}라니`,
+  (w: string, me: number, c: string) => `이상하네, 난 ${w}으로 봤는데 ${me}번은 ${c}라네`,
+] as const
+const WARN_LINES = [
+  (me: number) => `${me}번 좀 수상한데. 한 번만 더 그러면 재판이야`,
+  (me: number) => `${me}번 슬슬 의심스러워. 다음엔 바로 재판이야`,
+  (me: number) => `${me}번 영 수상쩍네. 또 이러면 재판 열어야겠어`,
+] as const
+const byCity = <T,>(city: number, items: readonly T[]) => items[(city - 1) % items.length]
+
+// 저울 읽기용 문장 목록: 숫자 없이 혼잣말로 항목마다 짧은 한 줄 + 마지막 결론 한 줄.
+export function scaleText(scale: Scale, me: number, memory: GameState['config']['memory'] = 'turn'): string[] {
   const lines = scale.parts.map((p) => {
     const abs = Math.abs(p.value)
     if (p.from === 'hint') {
-      if (p.value === 0) return '내가 기억하는 하늘은 반반 → 0'
-      const weather = p.value > 0 ? '태풍' : '맑음'
-      const side = p.value > 0 ? '대피' : '잔류'
-      return `내가 기억하는 하늘은 ${weather} → ${side} 쪽 ${abs}`
+      if (p.value === 0) return '지금까지 본 하늘은 반반이었어'
+      if (memory === 'turn' && abs === 100) return p.value > 0 ? '내가 본 하늘은 태풍이었어' : '내가 본 하늘은 맑았어'
+      return `지금까지 본 하늘은 ${p.value > 0 ? '태풍' : '맑음'} 쪽이 많았어`
     }
     const who = p.from === me ? `너(${me}번)` : `${p.from}번`
-    if (abs === 0) return `${who} 쪽지 → 전혀 안 믿어서 0`
+    if (abs === 0) return `${who} 쪽지는 하나도 안 믿겨`
+    const topic = p.from === me ? `너(${me}번)는` : `${p.from}번은`
     const side = p.value > 0 ? '대피' : '잔류'
-    const trust = abs === 100 ? '그대로 100 다 믿음' : abs >= 60 ? `조금 의심해서 ${abs}만 믿음` : `많이 의심해서 ${abs}만 믿음`
-    return `${who} 쪽지 "${side}" → ${trust}`
+    const trust = abs === 100 ? '믿을 만해' : abs >= 60 ? '조금 미심쩍어' : '많이 의심스러워'
+    return `${topic} ${side}래. ${trust}`
   })
   const choice = `${said[scale.decision]}하기로 했어`
+  const diff = Math.abs(scale.total)
   const verdict =
-    scale.total === 0
-      ? `양쪽 무게가 같아서 이번에 본 하늘대로 ${choice}`
-      : `${said[scale.decision]} 쪽이 ${Math.abs(scale.total)} 더 무거워서 ${choice}`
+    diff === 0
+      ? `양쪽이 똑같아서 이번에 본 하늘대로 ${choice}`
+      : diff >= 200
+        ? `${said[scale.decision]} 쪽이 훨씬 무거워서 ${choice}`
+        : `${said[scale.decision]} 쪽이 조금 더 무거워서 ${choice}`
   lines.push(verdict)
   return lines
 }
@@ -303,8 +323,8 @@ export function villageLines(
         kind: 'say',
         who: c.city,
         text: agrees(c.hint, mine.claim)
-          ? `그치, 나도 ${saw[c.hint]}이라고 봤어`
-          : `음… 내가 본 건 ${saw[c.hint]}인데, ${me}번은 ${said[mine.claim]}래`,
+          ? byCity(c.city, AGREE_LINES)(saw[c.hint])
+          : byCity(c.city, DISAGREE_LINES)(saw[c.hint], me, said[mine.claim]),
       })
   }
 
@@ -313,7 +333,15 @@ export function villageLines(
     const s = scales[c.city]
     if (!s) continue
     const text = `${said[s.decision]}하기로 했어`
-    lines.push({ phase: 'flags', kind: 'scale', who: c.city, text, detail: scaleText(s, me), scale: s, me })
+    lines.push({
+      phase: 'flags',
+      kind: 'scale',
+      who: c.city,
+      text,
+      detail: scaleText(s, me, state.config.memory),
+      scale: s,
+      me,
+    })
     if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번 마음을 돌림` })
   }
 
@@ -335,7 +363,7 @@ export function villageLines(
     if (!wary || !c.suspicion) continue
     const onMe = c.suspicion[me] ?? 0
     if (onMe >= 40 && onMe < 60)
-      lines.push({ phase: 'suspicion', kind: 'say', who: c.city, text: `${me}번 좀 수상한데. 한 번만 더 그러면 재판이야` })
+      lines.push({ phase: 'suspicion', kind: 'say', who: c.city, text: byCity(c.city, WARN_LINES)(me) })
     const [top, value] = Object.entries(c.suspicion).sort((x, y) => y[1] - x[1])[0] ?? []
     if (top && value > 0 && state.roles[top] === 'citizen')
       lines.push({ phase: 'suspicion', kind: 'event', text: `${c.city}번이 ${top}번을 의심하고 있다` })
