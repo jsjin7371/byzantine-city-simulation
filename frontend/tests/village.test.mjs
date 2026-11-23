@@ -145,58 +145,47 @@ test('village lines: contradiction, matching and mismatching words, trial warnin
   assert.deepEqual(lines[0], { phase: 'night', kind: 'when', text: '① 날씨 관측 (4일째, 1번과 4번이 만났다)' })
   assert.ok(lines.some((l) => l.phase === 'suspicion' && l.who === 1 && l.text === '잠깐, 3번이 나한텐 잔류라더니 4번한텐 대피라고 했대?'))
   assert.ok(texts(lines).includes('음… 내가 본 건 태풍인데, 3번은 잔류래'))
-  assert.ok(texts(lines).includes('그치, 나도 태풍이라고 봤어'))
+  assert.ok(texts(lines).includes('그래, 내가 본 하늘도 태풍이었어'))
   assert.ok(lines.some((l) => l.who === 1 && l.text === '3번 좀 수상한데. 한 번만 더 그러면 재판이야'))
   assert.ok(texts(lines).includes('4번이 1번을 의심하고 있다'))
   assert.ok(!texts(lines).includes('3번이 이상하다.')) // 눈치 시민은 reason 대신 템플릿
 })
 
-test('same situation gives different wording to different citizen numbers deterministically', () => {
-  const soloState = {
-    ...state,
-    player_city: 4,
-    roles: { 1: 'citizen', 2: 'citizen', 3: 'citizen', 4: 'player', 5: 'citizen' },
-  }
+test('same situation gives distinct wording to all 5 citizen numbers deterministically', () => {
+  const allCities = [1, 2, 3, 4, 5]
   const make = (claim, sus) =>
-    villageLines(soloState, {
-      turn: 2,
-      cities: [1, 2, 3].map((city) => ({
-        city,
-        role: 'citizen',
-        hint: 'danger',
-        received: { 4: msg(claim) },
-        decision: 'evacuate',
-        correct: true,
-        suspicion: { 4: sus },
-        reason: null,
-      })),
-      sharing: [],
-      vote: null,
-    })
+    villageLines(
+      { ...state, player_city: 4, roles: { 1: 'citizen', 2: 'citizen', 3: 'citizen', 4: 'player', 5: 'citizen' } },
+      {
+        turn: 2,
+        cities: allCities.map((city) => ({
+          city,
+          role: 'citizen',
+          hint: 'danger',
+          received: { 4: msg(claim) },
+          decision: 'evacuate',
+          correct: true,
+          suspicion: { 4: sus },
+          reason: null,
+        })),
+        sharing: [],
+        vote: null,
+      },
+    )
 
   const disagreed = make('stay', 40)
-  const note1 = disagreed.find((l) => l.phase === 'notes' && l.who === 1).text
-  const note2 = disagreed.find((l) => l.phase === 'notes' && l.who === 2).text
-  const note3 = disagreed.find((l) => l.phase === 'notes' && l.who === 3).text
-  assert.notEqual(note1, note2)
-  assert.notEqual(note2, note3)
-  assert.notEqual(note1, note3)
-  for (const t of [note1, note2, note3]) assert.ok(t.includes('태풍') && t.includes('4번') && t.includes('잔류'))
+  const notes = allCities.map((city) => disagreed.find((l) => l.phase === 'notes' && l.who === city).text)
+  assert.equal(new Set(notes).size, 5)
+  for (const t of notes) assert.ok(t.includes('태풍') && t.includes('4번') && t.includes('잔류'))
 
-  const warn1 = disagreed.find((l) => l.phase === 'suspicion' && l.who === 1).text
-  const warn2 = disagreed.find((l) => l.phase === 'suspicion' && l.who === 2).text
-  const warn3 = disagreed.find((l) => l.phase === 'suspicion' && l.who === 3).text
-  assert.notEqual(warn1, warn2)
-  assert.notEqual(warn2, warn3)
-  for (const t of [warn1, warn2, warn3]) assert.ok(t.includes('4번') && t.includes('재판'))
+  const warns = allCities.map((city) => disagreed.find((l) => l.phase === 'suspicion' && l.who === city).text)
+  assert.equal(new Set(warns).size, 5)
+  for (const t of warns) assert.ok(t.includes('4번') && t.includes('재판'))
 
   const agreed = make('evacuate', 0)
-  const ok1 = agreed.find((l) => l.phase === 'notes' && l.who === 1).text
-  const ok2 = agreed.find((l) => l.phase === 'notes' && l.who === 2).text
-  const ok3 = agreed.find((l) => l.phase === 'notes' && l.who === 3).text
-  assert.notEqual(ok1, ok2)
-  assert.notEqual(ok2, ok3)
-  for (const t of [ok1, ok2, ok3]) assert.ok(t.includes('태풍'))
+  const oks = allCities.map((city) => agreed.find((l) => l.phase === 'notes' && l.who === city).text)
+  assert.equal(new Set(oks).size, 5)
+  for (const t of oks) assert.ok(t.includes('태풍'))
 
   assert.deepEqual(make('stay', 40), disagreed)
 })

@@ -134,9 +134,6 @@ function Ground() {
         </g>
         {TREES.map(([x, y]) => <use key={`${x}-${y}`} href="#vb-tree" x={x} y={y} />)}
       </g>
-      <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-serif">
-        광장
-      </text>
     </g>
   )
 }
@@ -374,12 +371,12 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
               </text>
             </g>
           )}
-          {over && <rect x="53" y="-13" width="34" height="24" rx="3" fill="#a8361f" />}
-          <text x="58" y="6" fontSize="16" fontWeight="700" className={over ? 'vb-light' : undefined}>
+          {over && <rect x="53" y="-14" width="38" height="26" rx="3" fill="#a8361f" />}
+          <text x="58" y="6" fontSize="18" fontWeight="700" className={over ? 'vb-light' : undefined}>
             {h.suspicion}
           </text>
           {pick?.preview && (pick.preview.next !== h.suspicion || pick.preview.trial) && (
-            <text x="90" y="6" fontSize="15.5" fontWeight="700" className={worsens(pick.preview) ? 'vb-rust' : 'vb-green'}>
+            <text x="94" y="6" fontSize="17.5" fontWeight="700" className={worsens(pick.preview) ? 'vb-rust' : 'vb-green'}>
               →{pick.preview.next}
               {pick.preview.trial && ' 재판'}
             </text>
@@ -562,7 +559,7 @@ const SIGNS = ['1 불빛부터 본다', '2 집마다 쪽지', '3 점선 두 집�
 function Signs() {
   return (
     <g
-      fontSize="14"
+      fontSize="15.5"
       fontWeight="700"
       role="img"
       aria-label="첫날 안내: 1 창문 불빛부터 본다, 2 집마다 쪽지를 고른다, 3 점선으로 이어진 두 집에는 같은 말을 한다"
@@ -574,7 +571,7 @@ function Signs() {
       {SIGNS.map((t, i) => (
         <g key={t} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
-            d={`M10 ${304 + i * 38} H170 L182 ${319 + i * 38} L170 ${334 + i * 38} H10 Z`}
+            d={`M10 ${304 + i * 38} H188 L200 ${319 + i * 38} L188 ${334 + i * 38} H10 Z`}
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
@@ -699,6 +696,9 @@ export function VillageBoard({
           })}
         </g>
       )}
+      <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-plaza-label" aria-hidden>
+        광장
+      </text>
       {picker && turn === 0 && <Signs />}
       {houses.map((h) => (
         <HouseView
