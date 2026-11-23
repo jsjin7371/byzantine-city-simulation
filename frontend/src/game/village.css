@@ -105,6 +105,7 @@
 @media (prefers-reduced-motion: reduce) {
   .vb-card, .vb-knot, .vb-sign { animation-name: vb-fade; }
   .vb-opt:active { transform: none; }
+  .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
 }
 @keyframes vb-fade { from { opacity: 0; } }
 

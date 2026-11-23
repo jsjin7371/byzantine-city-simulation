@@ -363,9 +363,10 @@ function Trial({
   const votes = tally(Object.fromEntries(ballots))
   const stamp =
     vote.accused === null ? '과반 없음' : `${vote.accused}번 집 ${vote.caught ? '발각' : '오지목'}`
-  const label = `광장 재판: ${Object.entries(vote.ballots)
-    .map(([from, to]) => `${from}번이 ${to}번 지목`)
-    .join(', ')}. 결과 ${stamp}`
+  // 연출 중에는 지금까지 나온 지목만 읽어 준다
+  const label = `광장 재판: ${ballots.map(([from, to]) => `${from}번이 ${to}번 지목`).join(', ')}${
+    verdict ? `. 결과 ${stamp}` : ''
+  }`
   return (
     <g role="img" aria-label={label}>
       <title>{label}</title>
