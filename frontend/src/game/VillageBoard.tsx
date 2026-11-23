@@ -284,6 +284,8 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
     : base
   const mafia = h.role !== 'citizen'
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
+  // 쪽지 한 장만 더 어긋나면 재판: 막대가 약하게 두근거린다
+  const near = !over && h.suspicion != null && h.suspicion >= SUSPICION.threshold - SUSPICION.disagree
   return (
     <g
       className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}`}
@@ -334,7 +336,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       )}
       {h.lit != null && <use href={h.lit ? '#vb-win-on' : '#vb-win-off'} x={x - 18} y={y - 20} filter="url(#vb-rough)" />}
       {h.suspicion != null && (
-        <g transform={`translate(${x - 10},${y + 30})`} className={over ? 'vb-gauge is-over' : 'vb-gauge'}>
+        <g transform={`translate(${x - 10},${y + 30})`} className={over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}>
           <rect x="-50" y="-5" width="100" height="10" rx="5" fill="#5a3d22" />
           <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
           {/* 재판 기준 60 말뚝 */}
@@ -342,6 +344,14 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
             <path d={`M${-48 + 0.96 * SUSPICION.threshold} -12 V9`} />
             <path d={`M${-53 + 0.96 * SUSPICION.threshold} -13 H${-43 + 0.96 * SUSPICION.threshold}`} />
           </g>
+          {over && (
+            <g className="vb-alarm" aria-hidden>
+              <circle cx="-62" r="9" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" />
+              <text x="-62" y="5" fontSize="14" fontWeight="800" textAnchor="middle" className="vb-light">
+                !
+              </text>
+            </g>
+          )}
           {over && <rect x="52" y="-12" width="30" height="22" rx="3" fill="#a8361f" />}
           <text x="58" y="5" fontSize="14" fontWeight="700" className={over ? 'vb-light' : undefined}>
             {h.suspicion}

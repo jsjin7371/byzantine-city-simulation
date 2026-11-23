@@ -54,7 +54,12 @@
 .vb-badge.is-mafia { fill: var(--rust); stroke: #4a1a10; }
 .vb-house.is-far { opacity: .45; }
 
-.vb-gauge-fill { fill: #e0703f; }
+.vb-gauge-fill { fill: #e0703f; transform-box: fill-box; transform-origin: left center; transition: transform 600ms cubic-bezier(0.23, 1, 0.32, 1); animation: vb-grow 600ms cubic-bezier(0.23, 1, 0.32, 1) backwards; }
+@keyframes vb-grow { from { transform: scaleX(0); } }
+/* 재판 기준 바로 아래: 약하게 두근거림, 넘으면 "!" */
+.vb-gauge.is-near .vb-gauge-fill { animation: vb-grow 600ms cubic-bezier(0.23, 1, 0.32, 1) backwards, vb-near 1100ms ease-in-out 600ms infinite alternate; }
+@keyframes vb-near { to { opacity: .5; } }
+.vb-alarm { transform-box: fill-box; transform-origin: center; animation: vb-knot 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 .vb-gauge.is-over .vb-gauge-fill { fill: #c2452a; }
 .vb-post path { stroke: var(--rust); stroke-width: 3; }
 .vb-gauge.is-over .vb-post path { stroke: #2b1a0c; }
@@ -131,7 +136,8 @@
   .vb-fly { display: none; }
   .vb-opt:active { transform: none; }
   .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
-  .vl-beam, .vl-pan { animation: none; }
+  .vl-beam, .vl-pan, .vb-gauge-fill, .vb-gauge.is-near .vb-gauge-fill, .vb-alarm { animation: none; }
+  .vb-gauge-fill { transition: none; }
 }
 @keyframes vb-fade { from { opacity: 0; } }
 
@@ -185,9 +191,7 @@
 .gm-workspace [data-ui-button][aria-pressed='true'] { box-shadow: 0 2px 0 #1c2e18; }
 
 /* 밤 연출 (목업 A3): 밤빛 → 오솔길로 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
-.vb-gauge-fill { transform-box: fill-box; transform-origin: left center; }
 .vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 700ms ease both; }
-.vb-board.is-playing .vb-gauge-fill { transition: transform 900ms cubic-bezier(0.23, 1, 0.32, 1); }
 .vb-flag { transform-box: fill-box; transform-origin: left bottom; }
 .vb-board.is-playing .vb-flag { animation: vb-flip 420ms cubic-bezier(0.23, 1, 0.32, 1); }
 @keyframes vb-flip { from { transform: scaleX(.06); } }
