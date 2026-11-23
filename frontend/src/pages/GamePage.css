@@ -1,4 +1,4 @@
-.gm-workspace { display: flex; flex-direction: column; gap: 16px; }
+.gm-workspace { display: flex; flex-direction: column; }
 .gm-panel {
   display: flex;
   flex-direction: column;
@@ -11,12 +11,10 @@
 .gm-panel h2 { font-size: 18px; font-weight: 600; }
 .gm-panel h3 { font-size: 16px; font-weight: 600; }
 .gm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.gm-target { min-width: 160px; }
 .gm-muted { color: var(--ink-soft); font-size: 15px; }
 .gm-citizens { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
 .gm-citizen { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--border); border-radius: 6px; }
 .gm-gauge { display: grid; grid-template-columns: 64px 1fr 34px; align-items: center; gap: 8px; font-size: 15px; }
 .gm-reason { font-size: 15px; }
-.gm-workspace h1 { font-size: var(--page-title-size); font-weight: 620; letter-spacing: -.035em; }
 .gm-bar { position: relative; }
 .gm-line { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--color-error); }

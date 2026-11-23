@@ -36,7 +36,6 @@
   --stay: #d9a12e;
 
   --surface: var(--parch);
-  --background: #dfe3d2;
   --text: var(--ink);
   --accent: var(--ink);
   --muted: #656058;
@@ -49,16 +48,11 @@
   color-scheme: light;
   font-family: var(--gm-font);
   color: var(--ink);
-  background: var(--background);
-  padding: 20px;
-  border-radius: 8px;
 }
-.gm-workspace h1,
 .gm-workspace h2,
 .gm-workspace text,
 .gm-workspace tspan { font-family: var(--gm-font); }
 /* 연필 질감(정적 효과): 제목·라벨은 #vb-pencil, 작은 라벨은 #vb-pencil-sm. 긴 본문·포커스 가능 상자에는 적용하지 않는다. */
-.gm-workspace h1:not(.sr-only),
 .gm-workspace h2,
 .vl-talk h3,
 .gr-result h3,
@@ -88,9 +82,6 @@
   position: relative;
   width: 100%;
   height: 100svh;
-  padding: 0;
-  border-radius: 0;
-  gap: 0;
   background: #3e4e2a;
   overflow: hidden;
   display: flex;
@@ -105,7 +96,6 @@
 }
 .gm-start-scene text,
 .gm-start-scene tspan {
-  font-family: var(--gm-font);
   fill: var(--ink);
 }
 .gm-start-scene .vb-cream { fill: var(--cream); }
@@ -132,7 +122,6 @@
 .gm-start-scene .vb-opt-item.is-selected .opt-label,
 .gm-start-scene .vb-role-card.is-selected .card-title {
   fill: var(--ink);
-  font-weight: 700;
 }
 .gm-start-scene .vb-role-card .card-paper {
   fill: #ede0be;
@@ -159,7 +148,6 @@
   font-weight: 400;
 }
 .gm-start-scene .vb-role-card.is-selected .card-desc {
-  fill: var(--ink);
   font-weight: 700;
 }
 .gm-start-scene .gs-exit.is-busy,
@@ -190,13 +178,6 @@
   font-weight: 700;
   text-align: center;
   box-shadow: 0 4px 12px rgba(27, 45, 24, 0.35);
-}
-
-.gm-workspace.gm-play {
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  gap: 0;
 }
 
 .gm-stage {
@@ -356,8 +337,6 @@
   flex-direction: column;
   gap: 12px;
 }
-.vb-board text { font-family: var(--gm-font); }
-.vb-board .vb-serif { font-family: var(--gm-font); }
 .vb-board .vb-light { fill: #f3e7c6; }
 .vb-board .vb-dday { fill: #ffd35a; }
 .vb-board .vb-cal-num { fill: var(--ink-soft); }
@@ -737,7 +716,6 @@
 .vl-pager-day {
   min-width: 50px;
   text-align: center;
-  font-family: var(--gm-font);
   font-size: 16px;
   font-weight: 700;
   color: var(--ink);
@@ -754,10 +732,9 @@
   .vl-log { max-height: 360px; }
 }
 
-/* 선택 버튼: 고른 것은 채운 색, 안 고른 것은 테두리만 */
-.gm-workspace [data-ui-button] { font-size: 16px; font-weight: 700; }
-.gm-workspace [data-ui-button][data-variant='outline'] { border-color: var(--wood); background: transparent; color: var(--ink); }
-.gm-workspace [data-ui-button][aria-pressed='true'] { box-shadow: 0 2px 0 #1c2e18; }
+/* 게임 화면 버튼: 기본은 채운 색, outline 변형은 테두리만 */
+.gm-play [data-ui-button] { font-size: 16px; font-weight: 700; }
+.gm-play [data-ui-button][data-variant='outline'] { border-color: var(--wood); background: transparent; color: var(--ink); }
 
 /* 밤 연출 (목업 A3): 밤빛 → 오솔길로 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
 .vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 400ms ease both; }

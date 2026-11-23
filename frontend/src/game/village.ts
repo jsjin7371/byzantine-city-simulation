@@ -95,7 +95,7 @@ export function talkNotes(player: number, result: Pick<TurnResult, 'cities'>) {
 // 시민 마음속 저울 (A-1): engine/city/logic.py game_turn을 그대로 옮긴다. 1표 = 100.
 // 기억한 힌트마다 ±100 (대피 +, 잔류 −), 받은 쪽지마다 ±(100 − 보낸 집에 대한 새 의심도). 합 >0 대피, <0 잔류, 0이면 이번 힌트.
 // mine: 내(플레이어) 쪽지 몫. swayed: 그 몫을 빼면 결정이 반대였다 (= 내 쪽지가 마음을 흔들었다).
-export type Weight = { from: number | 'hint'; value: number }
+type Weight = { from: number | 'hint'; value: number }
 export type Scale = { parts: Weight[]; total: number; decision: Claim; mine: number | null; swayed: boolean }
 
 const vote = (hint: Truth) => (hint === 'danger' ? 100 : -100)
@@ -198,7 +198,7 @@ export const PHASE_LABEL: Record<Phase, string> = {
   day: '', // 낮에는 이름표를 숨긴다
 }
 
-export type Step = { phase: Phase; ballots: number; ms: number }
+type Step = { phase: Phase; ballots: number; ms: number }
 
 // 한 턴 결과를 보여 줄 단계 목록. 마지막 단계(day)가 최종 상태다.
 export function nightSteps(result: Pick<TurnResult, 'vote'>): Step[] {
@@ -395,7 +395,7 @@ export function villageLines(
 }
 
 export type ScaleLine = Extract<Line, { kind: 'scale' }>
-export type LogEntry =
+type LogEntry =
   | { kind: 'when'; text: string }
   | { kind: 'say'; who: number; text: string; scale?: ScaleLine }
   | { kind: 'scale'; scale: ScaleLine }
@@ -437,7 +437,7 @@ export function visibleLines(lines: Line[], step: Step) {
 }
 
 // 결과 화면 (명세 4번): 표를 펼치지 않아도 왜 이기고 졌는지.
-export type Summary = { headline: string; moments: string[]; lesson: string; peaks: (number | null)[] }
+type Summary = { headline: string; moments: string[]; lesson: string; peaks: (number | null)[] }
 
 export function gameSummary(
   state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'>,

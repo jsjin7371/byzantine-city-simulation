@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import type { KeyboardEvent } from 'react'
 import { TOTAL_TURNS, citizenTypes, difficulties } from '../gameApi'
 import type { CitizenType, Difficulty } from '../gameApi'
+import { onActivateKey } from '../lib/keyboard'
 
 const DIFF_LAYOUT: Record<Difficulty, { x: number; w: number; cx: number; rx: number }> = {
   easy: { x: 546, w: 112, cx: 602, rx: 44 },
@@ -101,14 +102,6 @@ const START_TRAILS = [
   'M720 470 Q510 448 312 426',
   'M720 470 Q940 450 1138 426',
 ]
-
-function onActivate(action: () => void) {
-  return (e: KeyboardEvent) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return
-    e.preventDefault()
-    action()
-  }
-}
 
 function onRadioKey<T extends string>(
   e: KeyboardEvent,
@@ -796,7 +789,7 @@ export function GameStart({
           onClick={() => {
             if (!busy) onStart()
           }}
-          onKeyDown={onActivate(() => {
+          onKeyDown={onActivateKey(() => {
             if (!busy) onStart()
           })}
         >

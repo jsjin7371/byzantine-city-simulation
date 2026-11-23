@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
+import { onActivateKey } from '../lib/keyboard'
 import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
 import type { House, Phase, Preview } from './village'
 import './village.css'
@@ -205,7 +205,7 @@ function Sky({ danger }: { danger: boolean }) {
           </g>
         </>
       )}
-      <text x="545" y="40" fontSize="18" fontWeight="700" textAnchor="end" className="vb-serif vb-pencil" aria-hidden>
+      <text x="545" y="40" fontSize="18" fontWeight="700" textAnchor="end" className="vb-pencil" aria-hidden>
         {danger ? '오늘 밤 진짜 날씨: 태풍' : '오늘 밤 진짜 날씨: 맑음'}
       </text>
       <text x="545" y="62" fontSize="14.5" textAnchor="end" aria-hidden>
@@ -255,7 +255,7 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
         <path d={`M${px - 11} 645 Q${px} 600 ${px + 11} 645 Z`} fill="#c0392b" stroke="#4a1a10" strokeWidth="2" />
         <circle cx={px} cy="614" r="8" fill="#c0392b" stroke="#4a1a10" strokeWidth="2" />
       </g>
-      <text x="30" y="650" fontSize="28" fontWeight="700" className="vb-serif vb-dday vb-pencil" aria-hidden>
+      <text x="30" y="650" fontSize="28" fontWeight="700" className="vb-dday vb-pencil" aria-hidden>
         D-{left}
       </text>
       <text x="852" y="642" fontSize="14" fontWeight="700" textAnchor="middle" className="vb-light" aria-hidden>
@@ -288,12 +288,6 @@ function houseLabel(h: House) {
 // changed: 어제와 달라진 점 (힌트 바뀜, 새 점선). 어제 쪽지를 그대로 두었으니 여기만 다시 보면 된다.
 type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
 
-const pressKey = (action: () => void) => (e: KeyboardEvent) => {
-  if (e.key !== 'Enter' && e.key !== ' ') return
-  e.preventDefault()
-  action()
-}
-
 // swayed: 내 쪽지가 없었다면 반대로 골랐을 시민 (작은 불꽃 한 번)
 function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolean }) {
   const { x, y } = h
@@ -309,7 +303,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
     <g
       className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}`}
       {...(pick
-        ? { role: 'button', tabIndex: 0, 'aria-expanded': pick.open, onClick: pick.onOpen, onKeyDown: pressKey(pick.onOpen) }
+        ? { role: 'button', tabIndex: 0, 'aria-expanded': pick.open, onClick: pick.onOpen, onKeyDown: onActivateKey(pick.onOpen) }
         : { role: 'img' })}
       data-city={h.city}
       aria-label={label}
@@ -333,7 +327,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       ) : (
         <g>
           <circle cx={x - 64} cy={y - 38} r="15" className={`vb-badge${mafia ? ' is-mafia' : ''}`} strokeWidth="2.5" />
-          <text x={x - 64} y={y - 32} fontSize="17" fontWeight="700" textAnchor="middle" className={`vb-serif vb-pencil${mafia ? ' vb-light' : ''}`}>
+          <text x={x - 64} y={y - 32} fontSize="17" fontWeight="700" textAnchor="middle" className={`vb-pencil${mafia ? ' vb-light' : ''}`}>
             {h.city}
           </text>
         </g>
@@ -441,7 +435,7 @@ function Trial({
             <path d={`M${px} ${py - 18} Q${cx} ${cy} ${ex} ${ey}`} fill="none" stroke="#7a2416" strokeWidth="2.6" strokeDasharray="7 5" markerEnd="url(#vb-arr)" />
             <g transform={`translate(${px},${py})`}>
               <use href="#vb-pawn" />
-              <text y="-5.5" fontSize="13" fontWeight="700" textAnchor="middle" className="vb-serif">
+              <text y="-5.5" fontSize="13" fontWeight="700" textAnchor="middle">
                 {from}
               </text>
             </g>
@@ -526,7 +520,7 @@ function NoteCard({
                 aria-pressed={claim === c}
                 aria-label={`${decisions[c]}${p ? `, ${previewText(p)}` : ''}`}
                 onClick={() => onClaim(c)}
-                onKeyDown={pressKey(() => onClaim(c))}
+                onKeyDown={onActivateKey(() => onClaim(c))}
               >
                 <rect x={14 + i * 82} y="34" width="74" height="36" rx="3" />
                 <text x={51 + i * 82} y="58" fontSize="17.5" fontWeight="700" textAnchor="middle">
@@ -586,14 +580,14 @@ function Signs() {
   )
 }
 
-export type NotePicker = {
+type NotePicker = {
   claims: Record<string, Claim>
   onClaim: (city: number, claim: Claim) => void
   ruled: boolean // 7.6 규칙 시민일 때만 의심도 미리보기
 }
 
 // 밤 연출 중인 단계. prev는 지난 턴 결과 (깃발·의심도가 바뀌기 전 모습).
-export type Stage = { phase: Phase; ballots: number; prev: TurnResult | null }
+type Stage = { phase: Phase; ballots: number; prev: TurnResult | null }
 
 // 숲속 마을 보드 (명세 2번). result가 없으면 1턴 전, 있으면 그 턴이 끝난 상태를 그린다.
 // picker가 있으면 집을 눌러 다음 턴에 할 말을 고른다 (명세 1번).
