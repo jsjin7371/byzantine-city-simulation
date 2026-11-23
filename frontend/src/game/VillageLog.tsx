@@ -87,21 +87,26 @@ export function VillageLog({
               </p>
             )
           }
-          if (entry.kind === 'say') {
-            const key = `${day ?? 0}-${entry.who}`
-            const isOpen = !!entry.scale && !!open[key]
+          if (entry.kind === 'say' || entry.kind === 'scale') {
+            const quiet = entry.kind === 'scale'
+            const who = quiet ? entry.scale.who : entry.who
+            const text = quiet ? entry.scale.text : entry.text
+            const scale = entry.scale
+            const key = `${day ?? 0}-${who}`
+            const isOpen = !!scale && !!open[key]
             const panelId = `vl-why-${key}`
             return (
               <article key={i} className={isOpen ? 'vl-entry is-open' : 'vl-entry'}>
                 <div className="vl-entry-row">
-                  <span className="vl-tok" aria-label={`${entry.who}번`}>
-                    {entry.who}
+                  <span className={quiet ? 'vl-tok is-quiet' : 'vl-tok'} aria-label={`${who}번`}>
+                    {who}
                   </span>
-                  <p className="vl-quote">{entry.text}</p>
-                  {entry.scale && (
+                  <p className="vl-quote">{text}</p>
+                  {scale && (
                     <button
                       type="button"
                       className="vl-why-btn"
+                      aria-label={`${who}번 주민 계산 보기`}
                       aria-expanded={isOpen}
                       aria-controls={panelId}
                       onClick={() => toggle(key)}
@@ -110,33 +115,7 @@ export function VillageLog({
                     </button>
                   )}
                 </div>
-                {isOpen && entry.scale && <WhyBox id={panelId} scale={entry.scale} />}
-              </article>
-            )
-          }
-          if (entry.kind === 'scale') {
-            const s = entry.scale
-            const key = `${day ?? 0}-${s.who}`
-            const isOpen = !!open[key]
-            const panelId = `vl-why-${key}`
-            return (
-              <article key={i} className={isOpen ? 'vl-entry is-open' : 'vl-entry'}>
-                <div className="vl-entry-row">
-                  <span className="vl-tok is-quiet" aria-label={`${s.who}번`}>
-                    {s.who}
-                  </span>
-                  <p className="vl-quote">{s.text}</p>
-                  <button
-                    type="button"
-                    className="vl-why-btn"
-                    aria-expanded={isOpen}
-                    aria-controls={panelId}
-                    onClick={() => toggle(key)}
-                  >
-                    왜?<span aria-hidden="true">{isOpen ? ' ▾' : ' ▸'}</span>
-                  </button>
-                </div>
-                {isOpen && <WhyBox id={panelId} scale={s} />}
+                {isOpen && scale && <WhyBox id={panelId} scale={scale} />}
               </article>
             )
           }

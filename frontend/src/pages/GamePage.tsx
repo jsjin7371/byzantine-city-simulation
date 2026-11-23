@@ -268,7 +268,7 @@ export function GamePage() {
   }
 
   return (
-    <div className={`gm-workspace gm-play${state.truth === 'safe' ? ' is-safe' : ''}`}>
+    <div className="gm-workspace gm-play">
       <div className="gm-stage">
         <section className="gm-board-zone" aria-label="마을 보드">
           <header className="gm-hud">

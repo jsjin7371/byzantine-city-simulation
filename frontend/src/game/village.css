@@ -30,24 +30,9 @@
 .gm-workspace .rs-correct { color: var(--forest); }
 .gm-workspace .rs-incorrect { color: var(--rust); }
 
-/* 게임 진행 중: 사이트 헤더·푸터와 바깥 카드 겹을 걷어내고 들판/숲 배경 위에 보드가 화면을 채운다 */
+/* 게임 진행 중: 사이트 헤더·푸터와 바깥 카드 겹을 걷어내고 경계 없는 옅은 숲 톤 배경 위에 보드를 올린다 */
 .app-shell.game-shell:has(.gm-play) {
-  --gm-sky: #bcc7ca;
-  --gm-sky-low: #c1cbcd;
-  background: linear-gradient(
-    180deg,
-    var(--gm-sky) 0%,
-    var(--gm-sky-low) 19.5%,
-    #93a85a 22.5%,
-    #89a055 62%,
-    #758d46 82.5%,
-    #664a2d 84.5%,
-    #513b24 100%
-  );
-}
-.app-shell.game-shell:has(.gm-play.is-safe) {
-  --gm-sky: #bcdbe6;
-  --gm-sky-low: #c6e0e9;
+  background: linear-gradient(180deg, #d3dbc4 0%, #c4ceb1 100%);
 }
 .game-shell:has(.gm-play) > .site-header,
 .game-shell:has(.gm-play) > .app-footer {
@@ -85,16 +70,18 @@
 
 .gm-hud {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  height: 40px;
+  gap: 8px 12px;
+  min-height: 40px;
   flex: none;
   margin-bottom: 8px;
 }
 .gm-hud-left,
 .gm-hud-right {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
@@ -404,6 +391,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 .vl-when { font-size: 13px; font-weight: 700; color: var(--wood); margin: 4px 0 2px; }
 .vl-entry {

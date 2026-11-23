@@ -278,15 +278,11 @@ test('scale text reads like the brief and swayed citizens get a "마음을 돌�
 
 test('fooledDots fills wrong citizens up to total and marks the majority threshold', () => {
   assert.deepEqual(fooledDots(2, 4), {
-    fooled: 2,
-    total: 4,
     need: 3,
     dots: [true, true, false, false],
     label: '속은 주민 2/4, 3명 필요',
   })
   assert.deepEqual(fooledDots(0, 3), {
-    fooled: 0,
-    total: 3,
     need: 2,
     dots: [false, false, false],
     label: '속은 주민 0/3, 2명 필요',
