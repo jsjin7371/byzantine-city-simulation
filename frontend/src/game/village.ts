@@ -10,11 +10,8 @@ const SLOTS = [
   { x: 670, y: 252, trail: [670, 262, 580, 330, 502, 338] },
   { x: 670, y: 477, trail: [670, 470, 570, 400, 502, 360] },
 ]
-// 위쪽 두 집(2, 3번 자리)은 광장을 거치지 않는 숲길로 바로 이어진다.
-export const TOP_ARC = 'M285 215 Q450 115 615 215'
-const TOP_ARC_BACK = 'M615 215 Q450 115 285 215'
-// 바닥에 깔리는 오솔길 6개 (집 5개 + 위쪽 숲길)
-export const TRAILS = [...SLOTS.map(({ trail: [a, b, c, d, e, f] }) => `M${a} ${b} Q${c} ${d} ${e} ${f}`), TOP_ARC]
+// 바닥에 깔리는 오솔길 5개 (집마다 광장으로 이어지는 길)
+export const TRAILS = SLOTS.map(({ trail: [a, b, c, d, e, f] }) => `M${a} ${b} Q${c} ${d} ${e} ${f}`)
 
 // 집 5채 자리: 내 집은 아래 가운데, 나머지는 내 다음 번호부터 시계방향 (양옆이 ring 이웃).
 export function houseSlots(player: number) {
@@ -24,10 +21,9 @@ export function houseSlots(player: number) {
 // 도시의 자리 번호 (0번이 내 집).
 const slotOf = (player: number, city: number) => (city - player + 5) % 5
 
-// a에서 b로 가는 오솔길. 위쪽 두 집은 숲길, 나머지는 광장을 지나간다.
+// a에서 b로 가는 오솔길. 모든 길은 광장을 지나간다.
 export function sharePath(player: number, a: number, b: number) {
   const [sa, sb] = [slotOf(player, a), slotOf(player, b)]
-  if (sa >= 2 && sa <= 3 && sb >= 2 && sb <= 3) return sa < sb ? TOP_ARC : TOP_ARC_BACK
   const [x0, y0, cx, cy, x1, y1] = SLOTS[sa].trail
   const [u0, v0, ux, uy, u1, v1] = SLOTS[sb].trail
   return `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1} L${u1} ${v1} Q${ux} ${uy} ${u0} ${v0}`
@@ -36,7 +32,6 @@ export function sharePath(player: number, a: number, b: number) {
 // 모순 매듭을 놓을 길 위 한가운데 점.
 export function pairMid(player: number, a: number, b: number): [number, number] {
   const path = sharePath(player, a, b)
-  if (path === TOP_ARC || path === TOP_ARC_BACK) return [450, 165]
   const n = path.match(/-?\d+/g)!.map(Number)
   return [(n[4] + n[6]) / 2, (n[5] + n[7]) / 2 - 30]
 }
