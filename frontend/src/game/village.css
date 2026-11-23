@@ -112,7 +112,8 @@
 @keyframes vb-sign { from { opacity: 0; transform: translateY(-14px); } }
 
 /* 밤 쪽지: 오솔길(offset-path)을 따라 1.2초 동안 날아가 사라진다 */
-.vb-fly { offset-rotate: 0deg; opacity: 0; animation: vb-fly 1200ms linear both; }
+.vb-fly { display: none; offset-rotate: 0deg; opacity: 0; animation: vb-fly 1200ms linear forwards; }
+@supports (offset-path: path("M0 0")) { .vb-fly { display: inline; } }
 @keyframes vb-fly {
   from { offset-distance: 0%; opacity: 1; }
   90% { opacity: 1; }
@@ -121,6 +122,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .vb-card, .vb-knot, .vb-sign { animation-name: vb-fade; }
+  .vb-fly { display: none; }
   .vb-opt:active { transform: none; }
   .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
 }
