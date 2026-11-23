@@ -12,6 +12,7 @@ const SLOTS = [
 ]
 // 위쪽 두 집(2, 3번 자리)은 광장을 거치지 않는 숲길로 바로 이어진다.
 export const TOP_ARC = 'M285 215 Q450 115 615 215'
+const TOP_ARC_BACK = 'M615 215 Q450 115 285 215'
 // 바닥에 깔리는 오솔길 6개 (집 5개 + 위쪽 숲길)
 export const TRAILS = [...SLOTS.map(({ trail: [a, b, c, d, e, f] }) => `M${a} ${b} Q${c} ${d} ${e} ${f}`), TOP_ARC]
 
@@ -23,10 +24,10 @@ export function houseSlots(player: number) {
 // 도시의 자리 번호 (0번이 내 집).
 const slotOf = (player: number, city: number) => (city - player + 5) % 5
 
-// 두 집 사이 오솔길. 위쪽 두 집은 숲길, 나머지는 광장을 지나간다. 자리 번호가 작은 집에서 출발한다.
+// a에서 b로 가는 오솔길. 위쪽 두 집은 숲길, 나머지는 광장을 지나간다.
 export function sharePath(player: number, a: number, b: number) {
-  const [sa, sb] = [slotOf(player, a), slotOf(player, b)].sort((p, q) => p - q)
-  if (sa === 2 && sb === 3) return TOP_ARC
+  const [sa, sb] = [slotOf(player, a), slotOf(player, b)]
+  if (sa >= 2 && sa <= 3 && sb >= 2 && sb <= 3) return sa < sb ? TOP_ARC : TOP_ARC_BACK
   const [x0, y0, cx, cy, x1, y1] = SLOTS[sa].trail
   const [u0, v0, ux, uy, u1, v1] = SLOTS[sb].trail
   return `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1} L${u1} ${v1} Q${ux} ${uy} ${u0} ${v0}`
@@ -35,7 +36,7 @@ export function sharePath(player: number, a: number, b: number) {
 // 모순 매듭을 놓을 길 위 한가운데 점.
 export function pairMid(player: number, a: number, b: number): [number, number] {
   const path = sharePath(player, a, b)
-  if (path === TOP_ARC) return [450, 165]
+  if (path === TOP_ARC || path === TOP_ARC_BACK) return [450, 165]
   const n = path.match(/-?\d+/g)!.map(Number)
   return [(n[4] + n[6]) / 2, (n[5] + n[7]) / 2 - 30]
 }
@@ -64,7 +65,7 @@ export function suspicionPreview(
   })
   const delta = (agrees(h.hint, claim) ? SUSPICION.agree : SUSPICION.disagree) + (contradiction ? SUSPICION.contradiction : 0)
   const next = Math.min(100, Math.max(0, from + delta))
-  return { from, next, delta, contradiction, trial: next >= SUSPICION.threshold }
+  return { from, next, trial: next >= SUSPICION.threshold }
 }
 export type Preview = NonNullable<ReturnType<typeof suspicionPreview>>
 
@@ -84,13 +85,12 @@ export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'n
 }
 
 // 밤에 오솔길을 따라 오가는 말: 받은 집마다 보낸 집에서 온 주장 (connection이 all이면 모든 집이 서로 보낸다).
-// back: 길이 받는 집 쪽에서 출발하므로 거꾸로 따라간다.
 export function talkNotes(player: number, result: Pick<TurnResult, 'cities'>) {
   return result.cities.flatMap((c) =>
     Object.entries(c.received ?? {}).flatMap(([from, msg]) => {
       const s = Number(from)
       if (!msg) return []
-      return [{ from: s, to: c.city, claim: msg.claim, path: sharePath(player, s, c.city), back: slotOf(player, s) > slotOf(player, c.city) }]
+      return [{ from: s, to: c.city, claim: msg.claim, path: sharePath(player, s, c.city) }]
     }),
   )
 }

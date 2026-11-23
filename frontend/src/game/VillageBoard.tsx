@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
@@ -88,15 +88,6 @@ function Defs() {
           <path d="M16 -11 V-5 H22" fill="none" className={`vb-cloth is-${claim}`} strokeWidth="1.3" />
           <text x="-2" y="5" fontSize="11.5" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
             {decisions[claim]}
-          </text>
-        </g>
-      ))}
-      {/* 다른 집이 보내는 주장 (작은 쪽지, 첫 글자) */}
-      {(['evacuate', 'stay'] as const).map((claim) => (
-        <g key={claim} id={`vb-chip-${claim}`}>
-          <rect x="-10" y="-8" width="20" height="16" rx="3" className={`vb-cloth is-${claim}`} strokeWidth="1.3" />
-          <text y="4" fontSize="10" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
-            {decisions[claim][0]}
           </text>
         </g>
       ))}
@@ -347,7 +338,7 @@ function HouseView({ h, pick }: { h: House; pick?: Pick }) {
             {h.suspicion}
           </text>
           {pick?.preview && (pick.preview.next !== h.suspicion || pick.preview.trial) && (
-            <text x="84" y="5" fontSize="13" fontWeight="700" className={pick.preview.delta > 0 ? 'vb-rust' : 'vb-green'}>
+            <text x="84" y="5" fontSize="13" fontWeight="700" className={pick.preview.next > pick.preview.from ? 'vb-rust' : 'vb-green'}>
               →{pick.preview.next}
               {pick.preview.trial && ' 재판'}
             </text>
@@ -443,25 +434,18 @@ function Trial({
 
 // 밤에 오솔길을 따라 각 집으로 가는 말: 내 쪽지(큰 쪽지)와 다른 집의 주장(작은 쪽지).
 function Talk({ result, player }: { result: TurnResult; player: number }) {
-  const ref = useRef<SVGGElement>(null)
-  // SMIL 시각은 문서가 열린 때 기준이라, 그려지는 순간 직접 출발시킨다 (출발 전에는 투명)
-  useLayoutEffect(() => {
-    ref.current?.querySelectorAll<SVGAnimationElement>('animate, animateMotion').forEach((a) => a.beginElement())
-  }, [])
   const notes = talkNotes(player, result).sort((a, b) => Number(a.from === player) - Number(b.from === player)) // 내 쪽지를 맨 위에
   return (
-    <g ref={ref} aria-hidden>
-      {notes.map((n, i) => {
-        const wait = Math.min(i * 0.025, 0.3) // 출발을 조금씩 엇갈리게
-        const [p0, p1] = n.back ? [1, 0] : [0, 1]
-        return (
-          <g key={`${n.from}-${n.to}`} opacity="0">
-            <use href={n.from === player ? `#vb-note-${n.claim}` : `#vb-chip-${n.claim}`} />
-            <animateMotion begin="indefinite" dur="1200ms" fill="freeze" path={n.path} calcMode="linear" keyPoints={`${p0};${p0};${p1}`} keyTimes={`0;${wait};1`} />
-            <animate attributeName="opacity" begin="indefinite" dur="1200ms" fill="freeze" values="0;1;1;0" keyTimes={`0;${wait};0.9;1`} />
-          </g>
-        )
-      })}
+    <g aria-hidden>
+      {notes.map((n, i) => (
+        <g
+          key={`${n.from}-${n.to}`}
+          className="vb-fly"
+          style={{ offsetPath: `path("${n.path}")`, animationDelay: `${Math.min(i * 30, 360)}ms` }} // 출발을 조금씩 엇갈리게
+        >
+          <use href={`#vb-note-${n.claim}`} transform={n.from === player ? undefined : 'scale(.6)'} />
+        </g>
+      ))}
     </g>
   )
 }
@@ -530,7 +514,7 @@ function NoteCard({
               </g>
               {p && (
                 <g fontWeight="700" textAnchor="middle" aria-hidden>
-                  <text x={47 + i * 74} y="85" fontSize="13" className={p.delta > 0 ? 'vb-rust' : 'vb-green'}>
+                  <text x={47 + i * 74} y="85" fontSize="13" className={p.next > p.from ? 'vb-rust' : 'vb-green'}>
                     {p.from} → {p.next}
                   </text>
                   {p.trial && (
