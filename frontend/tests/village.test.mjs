@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TOP_ARC, clashingPairs, gameSummary, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines,
+  TOP_ARC, changedHouses, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -74,6 +74,47 @@ test('a contradiction knot appears only when the two houses that meet hear diffe
   assert.deepEqual(clashingPairs([[1, 5]], { 1: 'stay', 5: 'stay' }), [])
   assert.deepEqual(pairMid(3, 5, 1), [450, 165])
   assert.deepEqual(pairMid(3, 4, 2), [450, 330])
+})
+
+test('suspicion preview matches engine game_turn (7.6): ±20, contradiction +20, clamp 0~100, trial at 60', () => {
+  // 기대값은 engine/city/logic.py game_turn(hint, {"3": claim}, shared, {"3": from})로 직접 돌려 얻은 값
+  const at = (suspicion, hint) => ({ city: 1, hint, suspicion })
+  const pairs = [[1, 4]]
+  assert.deepEqual(suspicionPreview(at(50, 'danger'), 'stay', [], {}), { from: 50, next: 70, delta: 20, contradiction: false, trial: true })
+  assert.deepEqual(suspicionPreview(at(30, 'danger'), 'evacuate', [], {}), { from: 30, next: 10, delta: -20, contradiction: false, trial: false })
+  assert.equal(suspicionPreview(at(10, 'safe'), 'stay', [], {}).next, 0)
+  assert.equal(suspicionPreview(at(null, 'safe'), 'evacuate', [], {}).next, 20) // 1턴 전은 0에서
+  assert.deepEqual(suspicionPreview(at(50, 'safe'), 'evacuate', pairs, { 4: 'stay' }), { from: 50, next: 90, delta: 40, contradiction: true, trial: true })
+  assert.equal(suspicionPreview(at(95, 'safe'), 'evacuate', pairs, { 4: 'evacuate' }).next, 100)
+  assert.equal(suspicionPreview(at(70, 'danger'), 'evacuate', pairs, { 4: 'stay' }).next, 70)
+  // 상대에게 말을 안 보냈거나(ring) 내가 없는 쌍의 모순은 더하지 않는다 (God은 자기 쌍만 shared로 넘긴다)
+  assert.equal(suspicionPreview(at(50, 'safe'), 'evacuate', pairs, {}).contradiction, false)
+  assert.equal(suspicionPreview(at(50, 'safe'), 'evacuate', [[4, 5]], { 4: 'stay', 5: 'evacuate' }).contradiction, false)
+  assert.equal(suspicionPreview(at(50, null), 'stay', [], {}), null)
+})
+
+test('changed houses: hint differs from today or newly on a dotted line, nothing else', () => {
+  const day = {
+    cities: [
+      { city: 1, hint: 'danger' }, { city: 2, hint: null }, { city: 4, hint: 'safe' }, { city: 5, hint: 'danger' },
+    ],
+    sharing: [{ pair: [1, 4], contradictions: [] }],
+    next_hints: { 1: 'safe', 4: 'safe', 5: 'danger' },
+    next_share_pairs: [[4, 5]],
+  }
+  assert.deepEqual(changedHouses(day), { 1: ['힌트 바뀜'], 5: ['새 점선'] })
+  assert.deepEqual(changedHouses({ ...day, next_hints: null, next_share_pairs: null }), {}) // 게임 종료
+})
+
+test('talk notes follow the trail from sender to receiver, reversed when the path starts at the receiver', () => {
+  const notes = talkNotes(3, {
+    cities: [
+      { city: 4, received: { 3: { claim: 'stay', note: '' }, 5: null, 1: { claim: 'evacuate', note: '' } } },
+      { city: 3, received: null },
+    ],
+  })
+  assert.deepEqual(notes.map(({ from, to, claim, back }) => [from, to, claim, back]), [[1, 4, 'evacuate', true], [3, 4, 'stay', false]])
+  assert.equal(notes[1].path, sharePath(3, 3, 4))
 })
 
 const msg = (claim) => ({ claim, note: '' })

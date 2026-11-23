@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
-import { SUSPICION, TOTAL_TURNS, previewSuspicion } from '../gameApi'
+import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
-import { TRAILS, clashingPairs, pairMid, reached, sharePath, stagedHouses, tally, villageHouses } from './village'
+import { TRAILS, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, tally, villageHouses } from './village'
 import type { House, Phase } from './village'
 import './village.css'
 
@@ -577,14 +577,8 @@ export function VillageBoard({
   const pairs = (night ? night.result.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
   const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집`).join(', ')
   const clashes = picker ? clashingPairs(pairs, picker.claims) : []
-  const preview = (h: House, claim?: Claim) => {
-    if (!picker?.ruled || !h.hint || !claim) return null
-    const others = pairs
-      .filter((p) => p.includes(h.city))
-      .map(([a, b]) => picker.claims[a === h.city ? b : a])
-      .filter(Boolean)
-    return previewSuspicion(h.suspicion ?? 0, h.hint, claim, others)
-  }
+  const preview = (h: House, claim?: Claim) =>
+    picker?.ruled && claim ? suspicionPreview(h, claim, pairs, picker.claims) : null
   const opened = picker ? houses.find((h) => h.city === open && h.reachable) : undefined
   return (
     <svg
