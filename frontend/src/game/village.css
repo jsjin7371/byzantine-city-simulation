@@ -110,10 +110,6 @@
   stroke-linejoin: round;
 }
 .gm-start-scene .vb-clickable { cursor: pointer; }
-.gm-start-scene .vb-opt-item .opt-bg,
-.gm-start-scene .vb-opt-item .opt-stamp { opacity: 0; }
-.gm-start-scene .vb-opt-item.is-selected .opt-bg,
-.gm-start-scene .vb-opt-item.is-selected .opt-stamp { opacity: 1; }
 .gm-start-scene .vb-opt-item .opt-label,
 .gm-start-scene .vb-role-card .card-title {
   fill: var(--ink-soft);
@@ -141,8 +137,6 @@
   fill: #a8361f;
   stroke: #4a1a10;
 }
-.gm-start-scene .vb-role-card .card-stamp { opacity: 0; }
-.gm-start-scene .vb-role-card.is-selected .card-stamp { opacity: 1; }
 .gm-start-scene .vb-role-card .card-desc {
   fill: var(--ink);
   font-weight: 400;

@@ -467,29 +467,35 @@ function OptionPlank<T extends string>({
               onClick={() => onChange(item.key)}
               onKeyDown={(e) => onRadioKey(e, keys, i, onChange, optionRefs.current)}
             >
-              <rect
-                className="opt-bg"
-                x={slot.x}
-                y="8"
-                width={slot.w}
-                height="50"
-                rx="3"
-                fill="#f6ebcd"
-                stroke="#8a6a3e"
-                strokeWidth="1.6"
-                filter="url(#vs-rough)"
-              />
-              <ellipse
-                className="opt-stamp"
-                cx={cx}
-                cy="33"
-                rx={item.rx}
-                ry="19"
-                fill="none"
-                stroke="#a8361f"
-                strokeWidth="3"
-                filter="url(#vs-rough)"
-              />
+              {selected ? (
+                <>
+                  <rect
+                    className="opt-bg"
+                    x={slot.x}
+                    y="8"
+                    width={slot.w}
+                    height="50"
+                    rx="3"
+                    fill="#f6ebcd"
+                    stroke="#8a6a3e"
+                    strokeWidth="1.6"
+                    filter="url(#vs-rough)"
+                  />
+                  <ellipse
+                    className="opt-stamp"
+                    cx={cx}
+                    cy="33"
+                    rx={item.rx}
+                    ry="19"
+                    fill="none"
+                    stroke="#a8361f"
+                    strokeWidth="3"
+                    filter="url(#vs-rough)"
+                  />
+                </>
+              ) : (
+                <rect x={slot.x} y="8" width={slot.w} height="50" fill="transparent" />
+              )}
               <text className="opt-label vb-pencil" x={cx} y="41" fontSize="24" textAnchor="middle">
                 {item.label}
               </text>
@@ -744,9 +750,11 @@ export function GameStart({
                   {card.lines[1]}
                 </text>
 
-                <g className="card-stamp" transform={`translate(${card.x + 246}, 474) rotate(${card.stampRotate})`} aria-hidden="true">
-                  <use href="#vs-red-stamp" />
-                </g>
+                {selected && (
+                  <g className="card-stamp" transform={`translate(${card.x + 246}, 474) rotate(${card.stampRotate})`} aria-hidden="true">
+                    <use href="#vs-red-stamp" />
+                  </g>
+                )}
               </g>
             )
           })}

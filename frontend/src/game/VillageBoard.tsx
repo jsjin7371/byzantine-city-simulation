@@ -9,6 +9,8 @@ import type { House, Phase, Preview } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
+const STAMP = { minW: 136, charW: 13, padX: 28, y: PLAZA.y + 54, h: 32 }
+const CELL_W = 38
 const TREES = [
   [60, 150], [112, 178], [40, 455], [82, 505], [44, 560], [850, 150], [806, 182], [860, 300], [818, 346], [866, 400],
   [852, 515], [812, 560], [350, 556], [314, 582], [760, 566], [520, 230], [380, 232], [140, 130], [772, 128], [128, 560],
@@ -83,7 +85,7 @@ function Ground() {
           <ellipse cx="670" cy="245" rx="80" ry="46" />
           <ellipse cx="230" cy="470" rx="80" ry="46" />
           <ellipse cx="670" cy="470" rx="80" ry="46" />
-          <ellipse cx="450" cy="528" rx="62" ry="34" />
+          <ellipse cx={PLAZA.x} cy="528" rx="62" ry="34" />
         </g>
         <ellipse cx={PLAZA.x} cy={PLAZA.y} rx="72" ry="50" fill="#c8b38a" stroke="#8b7754" strokeWidth="2" />
         <g fill="#9f9886" stroke="#5f5a4c" strokeWidth="1.5">
@@ -176,7 +178,7 @@ function Sky({ danger }: { danger: boolean }) {
 function Calendar({ turn, over }: { turn: number; over: boolean }) {
   const day = over ? turn : Math.min(turn + 1, TOTAL_TURNS)
   const left = TOTAL_TURNS - turn
-  const px = cellX(day) + 19
+  const px = cellX(day) + CELL_W / 2
   return (
     <g role="img" aria-label={`달력: 결정의 날 D-${left}, ${day}/${TOTAL_TURNS}일`}>
       <rect x="0" y="598" width="900" height="62" fill="#7a5530" />
@@ -190,8 +192,8 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
             key={d}
             x={cellX(d)}
             y="610"
-            width="38"
-            height="38"
+            width={CELL_W}
+            height={CELL_W}
             rx="4"
             fill={d === TOTAL_TURNS ? '#8fa0a8' : d <= turn ? '#b99662' : '#ecd9aa'}
           />
@@ -202,7 +204,7 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
         {Array.from({ length: TOTAL_TURNS - 1 }, (_, i) => i + 1)
           .filter((d) => d !== day)
           .map((d) => (
-            <text key={d} x={cellX(d) + 19} y="642">
+            <text key={d} x={cellX(d) + CELL_W / 2} y="642">
               {d}
             </text>
           ))}
@@ -256,6 +258,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
   // 어긋난 쪽지 한 장이면 재판: 막대가 약하게 두근거린다
   const near = !over && h.suspicion != null && h.suspicion >= SUSPICION.threshold - SUSPICION.disagree
+  const postX = -48 + 0.96 * SUSPICION.threshold
   return (
     <g
       className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}`}
@@ -311,8 +314,8 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
           <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
           {/* 재판 기준 60 말뚝 */}
           <g className="vb-post">
-            <path d={`M${-48 + 0.96 * SUSPICION.threshold} -12 V9`} />
-            <path d={`M${-53 + 0.96 * SUSPICION.threshold} -13 H${-43 + 0.96 * SUSPICION.threshold}`} />
+            <path d={`M${postX} -12 V9`} />
+            <path d={`M${postX - 5} -13 H${postX + 5}`} />
           </g>
           {over && (
             <g className="vb-knot" aria-hidden>
@@ -365,8 +368,8 @@ function Trial({
   const votes = tally(Object.fromEntries(ballots))
   const stamp =
     vote.accused === null ? '과반 없음' : `${vote.accused}번 집 ${vote.caught ? '발각' : '무고한 주민 지목'}`
-  const stampW = Math.max(136, stamp.length * 13 + 28)
-  const stampX = 450 - stampW / 2
+  const stampW = Math.max(STAMP.minW, stamp.length * STAMP.charW + STAMP.padX)
+  const stampX = PLAZA.x - stampW / 2
   // 연출 중에는 지금까지 나온 지목만 읽어 준다
   const label = `광장 재판: ${ballots.map(([from, to]) => `${from}번이 ${to}번 지목`).join(', ')}${
     verdict ? `. 결과 ${stamp}` : ''
@@ -412,12 +415,12 @@ function Trial({
       })}
       {verdict && (
         <g className={vote.caught ? 'vb-stamp is-caught' : 'vb-stamp'}>
-          <rect x={stampX} y="399" width={stampW} height="32" rx="3" strokeWidth="2.5" />
-          <rect x={stampX + 4} y="403" width={stampW - 8} height="24" rx="2" fill="none" strokeWidth="1" />
-          <text x="450" y="420" fontSize="15.5" fontWeight="700" textAnchor="middle">
+          <rect x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" strokeWidth="2.5" />
+          <rect x={stampX + 4} y={STAMP.y + 4} width={stampW - 8} height={STAMP.h - 8} rx="2" fill="none" strokeWidth="1" />
+          <text x={PLAZA.x} y={STAMP.y + 21} fontSize="15.5" fontWeight="700" textAnchor="middle">
             {stamp}
           </text>
-          <rect className="vb-stamp-ink" x={stampX} y="399" width={stampW} height="32" rx="3" aria-hidden />
+          <rect className="vb-stamp-ink" x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" aria-hidden />
         </g>
       )}
     </g>
@@ -454,7 +457,7 @@ function NoteCard({
   preview: (c: Claim) => Preview | null
   onClaim: (c: Claim) => void
 }) {
-  const left = h.x < 450
+  const left = h.x < PLAZA.x
   const cx = left ? h.x + 100 : h.x - 284
   const cy = h.y < 300 ? h.y - 54 : h.y - 77
   return (
@@ -533,6 +536,21 @@ function Signs() {
           </text>
         </g>
       ))}
+    </g>
+  )
+}
+
+function ContradictionKnot({ x, y, label, text, title }: { x: number; y: number; label: string; text: string; title?: boolean }) {
+  return (
+    <g role="img" aria-label={label}>
+      {title && <title>{label}</title>}
+      <g className="vb-knot">
+        <use href="#vb-knot" x={x} y={y} />
+      </g>
+      <rect x={x - 54} y={y - 52} width="108" height="25" rx="4" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
+      <text x={x} y={y - 34} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-rust">
+        {text}
+      </text>
     </g>
   )
 }
@@ -672,35 +690,22 @@ export function VillageBoard({
       {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
       {caught.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
-        return (
-          <g key={`${a}-${b}`} role="img" aria-label={`모순 발견: ${a}번 집과 ${b}번 집`}>
-            <g className="vb-knot">
-              <use href="#vb-knot" x={mx} y={my} />
-            </g>
-            <rect x={mx - 54} y={my - 52} width="108" height="25" rx="4" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
-            <text x={mx} y={my - 34} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-rust">
-              모순 발견
-            </text>
-          </g>
-        )
+        return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={`모순 발견: ${a}번 집과 ${b}번 집`} text="모순 발견" />
       })}
       {result?.vote && at('trial') && (
         <Trial vote={result.vote} houses={houses} shown={night?.ballots} verdict={at('verdict')} />
       )}
       {clashes.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
-        const label = `모순 위험: ${a}번 집과 ${b}번 집에 다른 말`
         return (
-          <g key={`${a}-${b}`} role="img" aria-label={label}>
-            <title>{label}</title>
-            <g className="vb-knot">
-              <use href="#vb-knot" x={mx} y={my} />
-            </g>
-            <rect x={mx - 54} y={my - 52} width="108" height="25" rx="4" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
-            <text x={mx} y={my - 34} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-rust">
-              모순 +{SUSPICION.contradiction}
-            </text>
-          </g>
+          <ContradictionKnot
+            key={`${a}-${b}`}
+            x={mx}
+            y={my}
+            label={`모순 위험: ${a}번 집과 ${b}번 집에 다른 말`}
+            text={`모순 +${SUSPICION.contradiction}`}
+            title
+          />
         )
       })}
       {opened && picker && (

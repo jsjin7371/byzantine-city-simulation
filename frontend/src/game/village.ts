@@ -31,9 +31,9 @@ export function sharePath(player: number, a: number, b: number) {
 
 // 모순 매듭을 놓을 길 위 한가운데 점.
 export function pairMid(player: number, a: number, b: number): [number, number] {
-  const path = sharePath(player, a, b)
-  const n = path.match(/-?\d+/g)!.map(Number)
-  return [(n[4] + n[6]) / 2, (n[5] + n[7]) / 2 - 30]
+  const ta = SLOTS[slotOf(player, a)].trail
+  const tb = SLOTS[slotOf(player, b)].trail
+  return [(ta[4] + tb[4]) / 2, (ta[5] + tb[5]) / 2 - 30]
 }
 
 // 오늘 밤 만나는 두 집에 서로 다른 말을 고른 쌍 (모순 경고).
@@ -368,7 +368,7 @@ export function villageLines(
   for (const c of citizens) {
     if (!wary || !c.suspicion) continue
     const onMe = c.suspicion[me] ?? 0
-    if (onMe >= 40 && onMe < 60)
+    if (onMe >= SUSPICION.threshold - SUSPICION.disagree && onMe < SUSPICION.threshold)
       lines.push({ phase: 'suspicion', kind: 'say', who: c.city, text: byCity(c.city, WARN_LINES)(me) })
     const [top, value] = Object.entries(c.suspicion).sort((x, y) => y[1] - x[1])[0] ?? []
     if (top && value > 0 && state.roles[top] === 'citizen')
