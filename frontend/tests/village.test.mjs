@@ -269,7 +269,7 @@ test('citizen scale counts remembered past hints (recent: last turn, full: all) 
 test('scale text reads in plain sentences and swayed citizens get a "마음을 돌림" line at the flags phase', () => {
   const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
   assert.deepEqual(scaleText(scale, 1), [
-    '내가 본 하늘은 태풍 → 대피 쪽 100',
+    '내가 기억하는 하늘은 태풍 → 대피 쪽 100',
     '2번 쪽지 "대피" → 조금 의심해서 80만 믿음',
     '4번 쪽지 "대피" → 그대로 100 다 믿음',
     '너(1번) 쪽지 "잔류" → 많이 의심해서 40만 믿음',
@@ -277,14 +277,27 @@ test('scale text reads in plain sentences and swayed citizens get a "마음을 �
   ])
   const tie = { parts: [{ from: 'hint', value: 0 }, { from: 1, value: 0 }], total: 0, decision: 'evacuate', mine: 0, swayed: false }
   assert.deepEqual(scaleText(tie, 1), [
-    '기억한 하늘은 반반 → 0',
+    '내가 기억하는 하늘은 반반 → 0',
     '너(1번) 쪽지 → 전혀 안 믿어서 0',
-    '양쪽 무게가 같아서 내가 본 하늘대로 대피하기로 했어',
+    '양쪽 무게가 같아서 이번에 본 하늘대로 대피하기로 했어',
   ])
   const remembered = { parts: [{ from: 'hint', value: -200 }], total: -200, decision: 'stay', mine: null, swayed: false }
   assert.deepEqual(scaleText(remembered, 1), [
-    '기억한 하늘은 맑음 → 잔류 쪽 200',
+    '내가 기억하는 하늘은 맑음 → 잔류 쪽 200',
     '잔류 쪽이 200 더 무거워서 잔류하기로 했어',
+  ])
+  const net = citizenScales(
+    { player_city: 1, config: { ...config, memory: 'full' } },
+    [
+      turnOf([{ city: 2, hint: 'danger', decision: null, received: {}, suspicion: null }]),
+      turnOf([{ city: 2, hint: 'safe', decision: null, received: {}, suspicion: null }]),
+      turnOf([{ city: 2, hint: 'danger', decision: null, received: {}, suspicion: null }]),
+    ],
+    2,
+  )[2]
+  assert.deepEqual(scaleText(net, 1), [
+    '내가 기억하는 하늘은 태풍 → 대피 쪽 100',
+    '대피 쪽이 100 더 무거워서 대피하기로 했어',
   ])
   const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
   const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')

@@ -258,11 +258,10 @@ export function scaleText(scale: Scale, me: number): string[] {
   const lines = scale.parts.map((p) => {
     const abs = Math.abs(p.value)
     if (p.from === 'hint') {
-      if (p.value === 0) return '기억한 하늘은 반반 → 0'
+      if (p.value === 0) return '내가 기억하는 하늘은 반반 → 0'
       const weather = p.value > 0 ? '태풍' : '맑음'
       const side = p.value > 0 ? '대피' : '잔류'
-      const head = abs === 100 ? '내가 본 하늘은' : '기억한 하늘은'
-      return `${head} ${weather} → ${side} 쪽 ${abs}`
+      return `내가 기억하는 하늘은 ${weather} → ${side} 쪽 ${abs}`
     }
     const who = p.from === me ? `너(${me}번)` : `${p.from}번`
     if (abs === 0) return `${who} 쪽지 → 전혀 안 믿어서 0`
@@ -273,7 +272,7 @@ export function scaleText(scale: Scale, me: number): string[] {
   const choice = `${said[scale.decision]}하기로 했어`
   const verdict =
     scale.total === 0
-      ? `양쪽 무게가 같아서 내가 본 하늘대로 ${choice}`
+      ? `양쪽 무게가 같아서 이번에 본 하늘대로 ${choice}`
       : `${said[scale.decision]} 쪽이 ${Math.abs(scale.total)} 더 무거워서 ${choice}`
   lines.push(verdict)
   return lines

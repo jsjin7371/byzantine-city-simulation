@@ -5,7 +5,7 @@ import type { Line, Scale, ScaleLine } from './village'
 
 // 작은 양팔 저울: 왼쪽 접시 대피(+), 오른쪽 접시 잔류(−). 몫마다 블록 하나, 합만큼 기운다.
 // 블록 색: 내 관측 초록, 이웃 쪽지 갈색, 내 쪽지 붉은색.
-function Balance({ scale, me, label }: { scale: Scale; me: number; label: string }) {
+function Balance({ scale, me }: { scale: Scale; me: number }) {
   // 대피 쪽이 무거우면 왼쪽이 내려간다. 작은 차이도 보이게 제곱근으로, 최대 15도
   const tilt = -Math.sign(scale.total) * Math.min(1, Math.sqrt(Math.abs(scale.total) / 300)) * 15
   const drop = 42 * Math.sin((tilt * Math.PI) / 180)
@@ -26,8 +26,7 @@ function Balance({ scale, me, label }: { scale: Scale; me: number; label: string
     )
   }
   return (
-    <svg className="vl-balance" viewBox="0 0 120 62" width="84" height="44" role="img" aria-label={label}>
-      <title>{label}</title>
+    <svg className="vl-balance" viewBox="0 0 120 62" width="84" height="44" aria-hidden="true">
       <path d="M60 24 V56 M48 58 H72" className="vl-post" />
       <path d="M18 24 H102" className="vl-beam" style={{ '--tilt': `${tilt}deg` } as CSSProperties} />
       {pan(1)}
@@ -39,16 +38,16 @@ function Balance({ scale, me, label }: { scale: Scale; me: number; label: string
 
 function WhyBox({ id, scale }: { id: string; scale: ScaleLine }) {
   const reasons = scale.detail.slice(0, -1)
-  const verdict = scale.detail.at(-1)
+  const verdict = scale.detail[scale.detail.length - 1]
   return (
     <div id={id} className="vl-why-box">
-      <Balance scale={scale.scale} me={scale.me} label={`${scale.who}번 저울: ${verdict ?? scale.text}`} />
+      <Balance scale={scale.scale} me={scale.me} />
       <ul className="vl-why-list">
         {reasons.map((line, i) => (
           <li key={i}>{line}</li>
         ))}
       </ul>
-      {verdict && <p className="vl-why-verdict">{verdict}</p>}
+      <p className="vl-why-verdict">{verdict}</p>
     </div>
   )
 }
