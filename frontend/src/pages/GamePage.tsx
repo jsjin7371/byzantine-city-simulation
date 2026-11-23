@@ -306,6 +306,32 @@ export function GamePage() {
           </div>
         </section>
         <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} day={shown?.turn} live={playing}>
+          {shown && !playing && (
+            <div className="vl-pager" aria-label="지난 밤 넘겨보기">
+              <span className="vl-pager-label">지난 밤 넘겨보기</span>
+              <div className="vl-pager-ctrl">
+                <button
+                  type="button"
+                  className="vl-pager-btn"
+                  aria-label="이전 밤"
+                  disabled={shown.turn <= 1}
+                  onClick={() => setViewed(shown.turn - 1)}
+                >
+                  ‹
+                </button>
+                <span className="vl-pager-day">{shown.turn}일째</span>
+                <button
+                  type="button"
+                  className="vl-pager-btn"
+                  aria-label="다음 밤"
+                  disabled={shown.turn >= history.length}
+                  onClick={() => setViewed(shown.turn + 1 >= history.length ? 0 : shown.turn + 1)}
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+          )}
           {playing ? (
             <Button variant="outline" onClick={() => setStep(null)}>
               건너뛰기 (Esc)
@@ -320,30 +346,16 @@ export function GamePage() {
         </VillageLog>
       </div>
 
-      {(state.game_over || history.length > 1 || shown) && !playing && (
+      {state.game_over && !playing && (
         <div className="gm-below">
-          {state.game_over && <GameResult state={state} history={history} />}
-          {history.length > 1 && (
-            <div className="gm-row" role="group" aria-label="턴 다시 보기">
-              {history.map((t) => (
-                <Button
-                  key={t.turn}
-                  size="sm"
-                  variant={shown?.turn === t.turn ? 'default' : 'outline'}
-                  aria-pressed={shown?.turn === t.turn}
-                  onClick={() => setViewed(t.turn)}
-                >
-                  {t.turn}턴
-                </Button>
-              ))}
-            </div>
-          )}
-          {shown && (
-            <details className="gm-details">
-              <summary>{shown.turn}턴 자세한 표</summary>
-              <TurnReport result={shown} />
-            </details>
-          )}
+          <GameResult state={state} history={history}>
+            {shown && (
+              <details className="gm-details">
+                <summary>{shown.turn}턴 자세한 표</summary>
+                <TurnReport result={shown} />
+              </details>
+            )}
+          </GameResult>
         </div>
       )}
     </div>

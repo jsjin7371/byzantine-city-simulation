@@ -147,7 +147,7 @@ export function VillageLog({
           )
         })}
       </div>
-      {children}
+      {children && <div className="vl-foot">{children}</div>}
     </aside>
   )
 }
