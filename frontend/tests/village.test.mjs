@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
+  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, fooledDots, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -75,6 +75,7 @@ test('a contradiction knot appears only when the two houses that meet hear diffe
   assert.deepEqual(clashingPairs([[1, 5]], { 1: 'stay', 5: 'stay' }), [])
   assert.deepEqual(pairMid(3, 5, 1), [450, 308])
   assert.deepEqual(pairMid(3, 4, 2), [450, 330])
+  assert.deepEqual(pairMid(3, 4, 5), [398, 319])
 })
 
 test('suspicion preview matches engine game_turn (7.6): ±20, contradiction +20, clamp 0~100, trial at 60', () => {
@@ -145,10 +146,49 @@ test('village lines: contradiction, matching and mismatching words, trial warnin
   assert.deepEqual(lines[0], { phase: 'night', kind: 'when', text: '① 날씨 관측 (4일째, 1번과 4번이 만났다)' })
   assert.ok(lines.some((l) => l.phase === 'suspicion' && l.who === 1 && l.text === '잠깐, 3번이 나한텐 잔류라더니 4번한텐 대피라고 했대?'))
   assert.ok(texts(lines).includes('음… 내가 본 건 태풍인데, 3번은 잔류래'))
-  assert.ok(texts(lines).includes('그치, 나도 태풍이라고 봤어'))
+  assert.ok(texts(lines).includes('그래, 내가 본 하늘도 태풍이었어'))
   assert.ok(lines.some((l) => l.who === 1 && l.text === '3번 좀 수상한데. 한 번만 더 그러면 재판이야'))
   assert.ok(texts(lines).includes('4번이 1번을 의심하고 있다'))
   assert.ok(!texts(lines).includes('3번이 이상하다.')) // 눈치 시민은 reason 대신 템플릿
+})
+
+test('same situation gives distinct wording to all 5 citizen numbers deterministically', () => {
+  const allCities = [1, 2, 3, 4, 5]
+  const make = (claim, sus) =>
+    villageLines(
+      { ...state, player_city: 4, roles: { 1: 'citizen', 2: 'citizen', 3: 'citizen', 4: 'player', 5: 'citizen' } },
+      {
+        turn: 2,
+        cities: allCities.map((city) => ({
+          city,
+          role: 'citizen',
+          hint: 'danger',
+          received: { 4: msg(claim) },
+          decision: 'evacuate',
+          correct: true,
+          suspicion: { 4: sus },
+          reason: null,
+        })),
+        sharing: [],
+        vote: null,
+      },
+    )
+
+  const disagreed = make('stay', 40)
+  const notes = allCities.map((city) => disagreed.find((l) => l.phase === 'notes' && l.who === city).text)
+  assert.equal(new Set(notes).size, 5)
+  for (const t of notes) assert.ok(t.includes('태풍') && t.includes('4번') && t.includes('잔류'))
+
+  const warns = allCities.map((city) => disagreed.find((l) => l.phase === 'suspicion' && l.who === city).text)
+  assert.equal(new Set(warns).size, 5)
+  for (const t of warns) assert.ok(t.includes('4번') && t.includes('재판'))
+
+  const agreed = make('evacuate', 0)
+  const oks = allCities.map((city) => agreed.find((l) => l.phase === 'notes' && l.who === city).text)
+  assert.equal(new Set(oks).size, 5)
+  for (const t of oks) assert.ok(t.includes('태풍'))
+
+  assert.deepEqual(make('stay', 40), disagreed)
 })
 
 test('majority citizens have no suspicion lines and ai citizens speak their reason', () => {
@@ -266,12 +306,76 @@ test('citizen scale counts remembered past hints (recent: last turn, full: all) 
   assert.deepEqual(citizenScales({ player_city: 1, config: { ...config, citizen_type: 'ai' } }, history, 2), {})
 })
 
-test('scale text reads like the brief and swayed citizens get a "마음을 돌림" line at the flags phase', () => {
+test('scale text reads in plain sentences without numbers and swayed citizens get a "마음을 돌림" line at the flags phase', () => {
   const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
-  assert.equal(scaleText(scale, 1), '내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → 합 +240, 대피')
+  assert.deepEqual(scaleText(scale, 1, 'turn'), [
+    '내가 본 하늘은 태풍이었어',
+    '2번은 대피래. 조금 미심쩍어',
+    '4번은 대피래. 믿을 만해',
+    '너(1번)는 잔류래. 많이 의심스러워',
+    '대피 쪽이 훨씬 무거워서 대피하기로 했어',
+  ])
+  const clear = { parts: [{ from: 'hint', value: -100 }], total: -100, decision: 'stay', mine: null, swayed: false }
+  assert.deepEqual(scaleText(clear, 1, 'turn'), [
+    '내가 본 하늘은 맑았어',
+    '잔류 쪽이 조금 더 무거워서 잔류하기로 했어',
+  ])
+  const tie = { parts: [{ from: 'hint', value: 0 }, { from: 1, value: 0 }], total: 0, decision: 'evacuate', mine: 0, swayed: false }
+  assert.deepEqual(scaleText(tie, 1, 'turn'), [
+    '지금까지 본 하늘은 반반이었어',
+    '너(1번) 쪽지는 하나도 안 믿겨',
+    '양쪽이 똑같아서 이번에 본 하늘대로 대피하기로 했어',
+  ])
+  const remembered = { parts: [{ from: 'hint', value: -200 }], total: -200, decision: 'stay', mine: null, swayed: false }
+  assert.deepEqual(scaleText(remembered, 1, 'turn'), [
+    '지금까지 본 하늘은 맑음 쪽이 많았어',
+    '잔류 쪽이 훨씬 무거워서 잔류하기로 했어',
+  ])
+  const net = citizenScales(
+    { player_city: 1, config: { ...config, memory: 'full' } },
+    [
+      turnOf([{ city: 2, hint: 'danger', decision: null, received: {}, suspicion: null }]),
+      turnOf([{ city: 2, hint: 'safe', decision: null, received: {}, suspicion: null }]),
+      turnOf([{ city: 2, hint: 'danger', decision: null, received: {}, suspicion: null }]),
+    ],
+    2,
+  )[2]
+  assert.deepEqual(scaleText(net, 1, 'full'), [
+    '지금까지 본 하늘은 태풍 쪽이 많았어',
+    '대피 쪽이 조금 더 무거워서 대피하기로 했어',
+  ])
   const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
   const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
-  assert.equal(line.text, '대피 +240')
-  assert.equal(line.detail, scaleText(scale, 3))
+  assert.equal(line.text, '대피하기로 했어')
+  assert.deepEqual(line.detail, scaleText(scale, 3, state.config.memory))
   assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번 마음을 돌림' && l.phase === 'flags'))
+})
+
+test('fooledDots fills wrong citizens up to total and marks the majority threshold', () => {
+  assert.deepEqual(fooledDots(2, 4), {
+    need: 3,
+    dots: [true, true, false, false],
+    label: '속은 주민 2/4, 3명 필요',
+  })
+  assert.deepEqual(fooledDots(0, 3), {
+    need: 2,
+    dots: [false, false, false],
+    label: '속은 주민 0/3, 2명 필요',
+  })
+  assert.deepEqual(fooledDots(5, 4).dots, [true, true, true, true])
+})
+
+test('pairLogScales attaches each citizen scale only to their notes quote and keeps unpaired scales', () => {
+  const s1 = { parts: [{ from: 'hint', value: 100 }], total: 100, decision: 'evacuate', mine: null, swayed: false }
+  const s5 = { parts: [{ from: 'hint', value: -100 }], total: -100, decision: 'stay', mine: null, swayed: false }
+  const lines = villageLines(state, { ...turn, vote: { ballots: { 1: 3 }, accused: null, caught: false } }, { 1: s1, 5: s5 })
+  // city 5 is not in turn.cities, add a standalone scale for city 5 directly to test ring/unpaired case
+  lines.push({ phase: 'flags', kind: 'scale', who: 5, text: '잔류하기로 했어', detail: scaleText(s5, 3, state.config.memory), scale: s5, me: 3 })
+  const entries = pairLogScales(lines)
+  const city1Says = entries.filter((e) => e.kind === 'say' && e.who === 1)
+  assert.equal(city1Says.length, 4) // notes, contradiction, trial warning, trial ballot
+  assert.equal(city1Says.filter((e) => e.scale).length, 1) // attached only to notes quote
+  assert.equal(city1Says[0].scale?.who, 1)
+  assert.equal(entries.some((e) => e.kind === 'scale' && e.scale.who === 1), false)
+  assert.equal(entries.some((e) => e.kind === 'scale' && e.scale.who === 5), true)
 })

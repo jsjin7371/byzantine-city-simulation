@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
+import { onActivateKey } from '../lib/keyboard'
+import { SharedVillageDefs } from './SharedVillageDefs'
 import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
 import type { House, Phase, Preview } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
+const STAMP = { minW: 136, charW: 13, padX: 28, y: PLAZA.y + 54, h: 32 }
+const CELL_W = 38
 const TREES = [
   [60, 150], [112, 178], [40, 455], [82, 505], [44, 560], [850, 150], [806, 182], [860, 300], [818, 346], [866, 400],
   [852, 515], [812, 560], [350, 556], [314, 582], [760, 566], [520, 230], [380, 232], [140, 130], [772, 128], [128, 560],
@@ -21,74 +24,30 @@ const cellX = (day: number) => 150 + 44 * (day - 1)
 function Defs() {
   return (
     <defs>
-      <filter id="vb-rough" x="-15%" y="-15%" width="130%" height="130%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves={2} seed={7} result="n" />
-        <feDisplacementMap in="SourceGraphic" in2="n" scale={4} xChannelSelector="R" yChannelSelector="G" />
-      </filter>
-      <filter id="vb-mottle" x="0" y="0" width="100%" height="100%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves={3} seed={11} />
-        <feColorMatrix values="0 0 0 0 .17  0 0 0 0 .29  0 0 0 0 .1  1.5 0 0 0 -.6" />
-      </filter>
-      <filter id="vb-grain" x="0" y="0" width="100%" height="100%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves={2} seed={3} />
-        <feColorMatrix values="0 0 0 0 .25  0 0 0 0 .18  0 0 0 0 .08  .5 0 0 0 -.2" />
-      </filter>
-      <radialGradient id="vb-lamp">
-        <stop offset="0" stopColor="#ffe27a" stopOpacity=".95" />
-        <stop offset="1" stopColor="#ffd35a" stopOpacity="0" />
-      </radialGradient>
+      <SharedVillageDefs prefix="vb" />
       <marker id="vb-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 Z" fill="#7a2416" />
       </marker>
-      <g id="vb-tree">
-        <ellipse cx="3" cy="16" rx="20" ry="6" fill="#2a3d1d" opacity=".35" />
-        <circle r="19" fill="#2f4a28" />
-        <circle cx="-7" cy="-6" r="10" fill="#46652f" />
-        <circle cx="6" cy="-9" r="6" fill="#5e8040" />
-      </g>
-      <g id="vb-hut">
-        <ellipse cx="2" cy="4" rx="50" ry="9" fill="#3a2a14" opacity=".28" />
-        <path d="M-35 2 L-35 -32 L35 -32 L35 2 Z" fill="#e8cf9c" stroke="#3b2a1a" strokeWidth="2.2" />
-        <path d="M-6 2 V-16 Q0 -23 6 -16 V2 Z" fill="#6b4a2a" stroke="#3b2a1a" strokeWidth="1.5" />
-        <path d="M-46 -28 Q-26 -66 0 -70 Q26 -66 46 -28 Q0 -36 -46 -28 Z" fill="#b5763d" stroke="#3b2a1a" strokeWidth="2.2" />
-        <path d="M-30 -36 L-18 -58 M-14 -34 L-6 -64 M2 -34 L6 -65 M16 -35 L20 -60 M30 -34 L32 -48" stroke="#7e4d22" strokeWidth="1.6" fill="none" />
-      </g>
-      {/* 마피아 집: 어두운 지붕 */}
-      <g id="vb-hut-dark">
-        <ellipse cx="2" cy="4" rx="50" ry="9" fill="#3a2a14" opacity=".28" />
-        <path d="M-35 2 L-35 -32 L35 -32 L35 2 Z" fill="#cdbb98" stroke="#3b2a1a" strokeWidth="2.4" />
-        <path d="M-46 -28 Q-26 -66 0 -70 Q26 -66 46 -28 Q0 -36 -46 -28 Z" fill="#4e3f35" stroke="#2a1f17" strokeWidth="2.4" />
-        <rect x="-8" y="-24" width="16" height="13" fill="#3e352c" stroke="#3b2a1a" strokeWidth="2" />
-      </g>
       {(['evacuate', 'stay'] as const).map((claim) => (
         <g key={claim} id={`vb-flag-${claim}`}>
           <g filter="url(#vb-rough)">
-            <line x1="0" y1="0" x2="0" y2="-52" stroke="#3b2a1a" strokeWidth="2.5" />
+            <line x1="0" y1="0" x2="0" y2="-53" stroke="#3b2a1a" strokeWidth="2.5" />
             <path
-              d="M0 -52 Q14 -57 24 -51 Q34 -45 44 -50 L44 -30 Q34 -25 24 -31 Q14 -37 0 -32 Z"
+              d="M0 -53 Q15 -58 26 -52 Q37 -46 48 -51 L48 -29 Q37 -24 26 -30 Q15 -36 0 -31 Z"
               className={`vb-cloth is-${claim}`}
               strokeWidth="1.5"
             />
           </g>
-          <text x="22" y="-36" fontSize="11" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
+          <text x="24" y="-36" fontSize="13.5" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
             {decisions[claim]}
           </text>
         </g>
       ))}
-      <g id="vb-win-on">
-        <circle r="22" fill="url(#vb-lamp)" />
-        <rect x="-8" y="-7" width="16" height="14" fill="#ffd35a" stroke="#3b2a1a" strokeWidth="2" />
-        <path d="M0 -7 V7 M-8 0 H8" stroke="#3b2a1a" strokeWidth="1.3" />
-      </g>
-      <g id="vb-win-off">
-        <rect x="-8" y="-7" width="16" height="14" fill="#3e352c" stroke="#3b2a1a" strokeWidth="2" />
-        <path d="M0 -7 V7 M-8 0 H8" stroke="#6b5d4b" strokeWidth="1.3" />
-      </g>
       {(['evacuate', 'stay'] as const).map((claim) => (
         <g key={claim} id={`vb-note-${claim}`}>
-          <path d="M-22 -11 H16 L22 -5 V11 H-22 Z" className={`vb-cloth is-${claim}`} strokeWidth="1.6" />
-          <path d="M16 -11 V-5 H22" fill="none" className={`vb-cloth is-${claim}`} strokeWidth="1.3" />
-          <text x="-2" y="5" fontSize="11.5" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
+          <path d="M-24 -12 H18 L24 -6 V12 H-24 Z" className={`vb-cloth is-${claim}`} strokeWidth="1.6" />
+          <path d="M18 -12 V-6 H24" fill="none" className={`vb-cloth is-${claim}`} strokeWidth="1.3" />
+          <text x="-2" y="5.5" fontSize="14" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
             {decisions[claim]}
           </text>
         </g>
@@ -126,7 +85,7 @@ function Ground() {
           <ellipse cx="670" cy="245" rx="80" ry="46" />
           <ellipse cx="230" cy="470" rx="80" ry="46" />
           <ellipse cx="670" cy="470" rx="80" ry="46" />
-          <ellipse cx="450" cy="528" rx="62" ry="34" />
+          <ellipse cx={PLAZA.x} cy="528" rx="62" ry="34" />
         </g>
         <ellipse cx={PLAZA.x} cy={PLAZA.y} rx="72" ry="50" fill="#c8b38a" stroke="#8b7754" strokeWidth="2" />
         <g fill="#9f9886" stroke="#5f5a4c" strokeWidth="1.5">
@@ -134,9 +93,6 @@ function Ground() {
         </g>
         {TREES.map(([x, y]) => <use key={`${x}-${y}`} href="#vb-tree" x={x} y={y} />)}
       </g>
-      <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-serif">
-        광장
-      </text>
     </g>
   )
 }
@@ -208,10 +164,10 @@ function Sky({ danger }: { danger: boolean }) {
           </g>
         </>
       )}
-      <text x="545" y="40" fontSize="18" fontWeight="700" textAnchor="end" className="vb-serif" aria-hidden>
+      <text x="545" y="40" fontSize="18" fontWeight="700" textAnchor="end" className="vb-pencil" aria-hidden>
         {danger ? '오늘 밤 진짜 날씨: 태풍' : '오늘 밤 진짜 날씨: 맑음'}
       </text>
-      <text x="545" y="60" fontSize="12" textAnchor="end" aria-hidden>
+      <text x="545" y="62" fontSize="14.5" textAnchor="end" aria-hidden>
         {danger ? '주민은 대피해야 산다' : '주민은 집에 있어야 산다'}
       </text>
     </g>
@@ -222,12 +178,12 @@ function Sky({ danger }: { danger: boolean }) {
 function Calendar({ turn, over }: { turn: number; over: boolean }) {
   const day = over ? turn : Math.min(turn + 1, TOTAL_TURNS)
   const left = TOTAL_TURNS - turn
-  const px = cellX(day) + 19
+  const px = cellX(day) + CELL_W / 2
   return (
     <g role="img" aria-label={`달력: 결정의 날 D-${left}, ${day}/${TOTAL_TURNS}일`}>
       <rect x="0" y="598" width="900" height="62" fill="#7a5530" />
       <rect x="0" y="598" width="900" height="62" filter="url(#vb-grain)" />
-      <text x="34" y="622" fontSize="12" fontWeight="700" className="vb-light">
+      <text x="30" y="620" fontSize="14" fontWeight="700" className="vb-light">
         결정의 날
       </text>
       <g filter="url(#vb-rough)" stroke="#4a3119" strokeWidth="1.5">
@@ -236,19 +192,19 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
             key={d}
             x={cellX(d)}
             y="610"
-            width="38"
-            height="38"
+            width={CELL_W}
+            height={CELL_W}
             rx="4"
             fill={d === TOTAL_TURNS ? '#8fa0a8' : d <= turn ? '#b99662' : '#ecd9aa'}
           />
         ))}
         <path d="M785 629 m0 -1 a3 3 0 1 1 3 3 a7 7 0 1 1 -7 -7 a11 11 0 0 1 11 11" fill="none" stroke="#2c3d4f" strokeWidth="2.4" strokeLinecap="round" />
       </g>
-      <g fontSize="10" textAnchor="middle" className="vb-cal-num" aria-hidden>
+      <g fontSize="13.5" fontWeight="700" textAnchor="middle" className="vb-cal-num" aria-hidden>
         {Array.from({ length: TOTAL_TURNS - 1 }, (_, i) => i + 1)
           .filter((d) => d !== day)
           .map((d) => (
-            <text key={d} x={cellX(d) + 19} y="643">
+            <text key={d} x={cellX(d) + CELL_W / 2} y="642">
               {d}
             </text>
           ))}
@@ -258,10 +214,10 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
         <path d={`M${px - 11} 645 Q${px} 600 ${px + 11} 645 Z`} fill="#c0392b" stroke="#4a1a10" strokeWidth="2" />
         <circle cx={px} cy="614" r="8" fill="#c0392b" stroke="#4a1a10" strokeWidth="2" />
       </g>
-      <text x="30" y="650" fontSize="28" fontWeight="700" className="vb-serif vb-dday" aria-hidden>
+      <text x="30" y="650" fontSize="28" fontWeight="700" className="vb-dday vb-pencil" aria-hidden>
         D-{left}
       </text>
-      <text x="842" y="642" fontSize="11" className="vb-light" aria-hidden>
+      <text x="852" y="642" fontSize="14" fontWeight="700" textAnchor="middle" className="vb-light" aria-hidden>
         {day}/{TOTAL_TURNS}일
       </text>
     </g>
@@ -291,12 +247,6 @@ function houseLabel(h: House) {
 // changed: 어제와 달라진 점 (힌트 바뀜, 새 점선). 어제 쪽지를 그대로 두었으니 여기만 다시 보면 된다.
 type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
 
-const pressKey = (action: () => void) => (e: KeyboardEvent) => {
-  if (e.key !== 'Enter' && e.key !== ' ') return
-  e.preventDefault()
-  action()
-}
-
 // swayed: 내 쪽지가 없었다면 반대로 골랐을 시민 (작은 불꽃 한 번)
 function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolean }) {
   const { x, y } = h
@@ -308,11 +258,12 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
   // 어긋난 쪽지 한 장이면 재판: 막대가 약하게 두근거린다
   const near = !over && h.suspicion != null && h.suspicion >= SUSPICION.threshold - SUSPICION.disagree
+  const postX = -48 + 0.96 * SUSPICION.threshold
   return (
     <g
       className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}`}
       {...(pick
-        ? { role: 'button', tabIndex: 0, 'aria-expanded': pick.open, onClick: pick.onOpen, onKeyDown: pressKey(pick.onOpen) }
+        ? { role: 'button', tabIndex: 0, 'aria-expanded': pick.open, onClick: pick.onOpen, onKeyDown: onActivateKey(pick.onOpen) }
         : { role: 'img' })}
       data-city={h.city}
       aria-label={label}
@@ -329,20 +280,20 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       {h.role === 'player' ? (
         <g>
           <circle cx={x - 52} cy={y - 28} r="15" className="vb-badge is-mafia" strokeWidth="2.5" />
-          <text x={x - 52} y={y - 22} fontSize="14" fontWeight="700" textAnchor="middle" className="vb-light">
+          <text x={x - 52} y={y - 22} fontSize="15.5" fontWeight="700" textAnchor="middle" className="vb-light">
             나
           </text>
         </g>
       ) : (
         <g>
           <circle cx={x - 64} cy={y - 38} r="15" className={`vb-badge${mafia ? ' is-mafia' : ''}`} strokeWidth="2.5" />
-          <text x={x - 64} y={y - 32} fontSize="17" fontWeight="700" textAnchor="middle" className={`vb-serif${mafia ? ' vb-light' : ''}`}>
+          <text x={x - 64} y={y - 32} fontSize="17" fontWeight="700" textAnchor="middle" className={`vb-pencil${mafia ? ' vb-light' : ''}`}>
             {h.city}
           </text>
         </g>
       )}
       {mafia && (
-        <text x={x} y={y + 34} fontSize="12" fontWeight="700" textAnchor="middle">
+        <text x={x} y={y + 36} fontSize="14.5" fontWeight="700" textAnchor="middle">
           {h.city}번 집{h.role === 'colleague' && ' · 동료'}
         </text>
       )}
@@ -358,28 +309,28 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       )}
       {h.lit != null && <use href={h.lit ? '#vb-win-on' : '#vb-win-off'} x={x - 18} y={y - 20} filter="url(#vb-rough)" />}
       {h.suspicion != null && (
-        <g transform={`translate(${x - 10},${y + 30})`} className={over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}>
+        <g transform={`translate(${x - 20},${y + 30})`} className={over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}>
           <rect x="-50" y="-5" width="100" height="10" rx="5" fill="#5a3d22" />
           <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
           {/* 재판 기준 60 말뚝 */}
           <g className="vb-post">
-            <path d={`M${-48 + 0.96 * SUSPICION.threshold} -12 V9`} />
-            <path d={`M${-53 + 0.96 * SUSPICION.threshold} -13 H${-43 + 0.96 * SUSPICION.threshold}`} />
+            <path d={`M${postX} -12 V9`} />
+            <path d={`M${postX - 5} -13 H${postX + 5}`} />
           </g>
           {over && (
             <g className="vb-knot" aria-hidden>
-              <circle cx="-62" r="9" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" />
-              <text x="-62" y="5" fontSize="14" fontWeight="800" textAnchor="middle" className="vb-light">
+              <circle cx="-62" r="10" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" />
+              <text x="-62" y="5.5" fontSize="15" fontWeight="800" textAnchor="middle" className="vb-light">
                 !
               </text>
             </g>
           )}
-          {over && <rect x="52" y="-12" width="30" height="22" rx="3" fill="#a8361f" />}
-          <text x="58" y="5" fontSize="14" fontWeight="700" className={over ? 'vb-light' : undefined}>
+          {over && <rect x="53" y="-14" width="32" height="26" rx="3" fill="#a8361f" />}
+          <text x="56" y="6" fontSize="18" fontWeight="700" className={over ? 'vb-light' : undefined}>
             {h.suspicion}
           </text>
           {pick?.preview && (pick.preview.next !== h.suspicion || pick.preview.trial) && (
-            <text x="84" y="5" fontSize="13" fontWeight="700" className={worsens(pick.preview) ? 'vb-rust' : 'vb-green'}>
+            <text x="88" y="6" fontSize="17.5" fontWeight="700" className={worsens(pick.preview) ? 'vb-rust' : 'vb-green'}>
               →{pick.preview.next}
               {pick.preview.trial && ' 재판'}
             </text>
@@ -388,9 +339,9 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       )}
       {pick?.claim && <use href={`#vb-note-${pick.claim}`} x={x + 70} y={y - 30} />}
       {pick?.changed && (
-        <g className="vb-new" transform={`translate(${x - 10},${y + 52})`} aria-hidden>
-          <rect x="-82" y="-10" width="164" height="20" rx="10" />
-          <text y="4" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-light">
+        <g className="vb-new" transform={`translate(${x - 10},${y + 54})`} aria-hidden>
+          <rect x="-92" y="-11.5" width="184" height="23" rx="11.5" />
+          <text y="4.5" fontSize="13.5" fontWeight="700" textAnchor="middle" className="vb-light">
             변동: {pick.changed.join('·')}
           </text>
         </g>
@@ -417,6 +368,8 @@ function Trial({
   const votes = tally(Object.fromEntries(ballots))
   const stamp =
     vote.accused === null ? '과반 없음' : `${vote.accused}번 집 ${vote.caught ? '발각' : '무고한 주민 지목'}`
+  const stampW = Math.max(STAMP.minW, stamp.length * STAMP.charW + STAMP.padX)
+  const stampX = PLAZA.x - stampW / 2
   // 연출 중에는 지금까지 나온 지목만 읽어 준다
   const label = `광장 재판: ${ballots.map(([from, to]) => `${from}번이 ${to}번 지목`).join(', ')}${
     verdict ? `. 결과 ${stamp}` : ''
@@ -442,7 +395,7 @@ function Trial({
             <path d={`M${px} ${py - 18} Q${cx} ${cy} ${ex} ${ey}`} fill="none" stroke="#7a2416" strokeWidth="2.6" strokeDasharray="7 5" markerEnd="url(#vb-arr)" />
             <g transform={`translate(${px},${py})`}>
               <use href="#vb-pawn" />
-              <text y="-6" fontSize="11" fontWeight="700" textAnchor="middle" className="vb-serif">
+              <text y="-5.5" fontSize="13" fontWeight="700" textAnchor="middle">
                 {from}
               </text>
             </g>
@@ -452,9 +405,9 @@ function Trial({
       {Object.entries(votes).map(([city, n]) => {
         const t = at(Number(city))
         return (
-          <g key={city} transform={`translate(${t.x + (t.x > PLAZA.x ? 68 : -102)},${t.y - 14})`} fontSize="12" fontWeight="700">
-            <rect width="34" height="18" rx="3" fill="#7a2416" />
-            <text x="17" y="13" textAnchor="middle" className="vb-light">
+          <g key={city} transform={`translate(${t.x + (t.x > PLAZA.x ? 68 : -108)},${t.y - 14})`} fontSize="14" fontWeight="700">
+            <rect width="40" height="22" rx="3" fill="#7a2416" />
+            <text x="20" y="15.5" textAnchor="middle" className="vb-light">
               {n}표
             </text>
           </g>
@@ -462,12 +415,12 @@ function Trial({
       })}
       {verdict && (
         <g className={vote.caught ? 'vb-stamp is-caught' : 'vb-stamp'}>
-          <rect x="390" y="400" width="120" height="30" rx="3" strokeWidth="2.5" />
-          <rect x="394" y="404" width="112" height="22" rx="2" fill="none" strokeWidth="1" />
-          <text x="450" y="420" fontSize="14" fontWeight="700" textAnchor="middle">
+          <rect x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" strokeWidth="2.5" />
+          <rect x={stampX + 4} y={STAMP.y + 4} width={stampW - 8} height={STAMP.h - 8} rx="2" fill="none" strokeWidth="1" />
+          <text x={PLAZA.x} y={STAMP.y + 21} fontSize="15.5" fontWeight="700" textAnchor="middle">
             {stamp}
           </text>
-          <rect className="vb-stamp-ink" x="390" y="400" width="120" height="30" rx="3" aria-hidden />
+          <rect className="vb-stamp-ink" x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" aria-hidden />
         </g>
       )}
     </g>
@@ -492,25 +445,6 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
   )
 }
 
-// 길 범례: 갈색 길은 모두에게 말하기, 노란 점선은 쪽지 맞춰 보기 (선 모양도 달라 색만으로 구분하지 않는다).
-function Legend({ ring }: { ring: boolean }) {
-  const label = `범례: 갈색 길은 쪽지 오솔길, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 쪽지를 보낸다. 노란 점선은 오늘 밤 쪽지 대조, 두 주민이 받은 쪽지를 서로 맞춰 본다`
-  return (
-    <g role="img" aria-label={label}>
-      <title>{label}</title>
-      <rect x="12" y="10" width="236" height="52" rx="4" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" opacity=".95" />
-      <path d="M22 26 H52" stroke="#9c7442" strokeWidth="9" strokeLinecap="round" />
-      <path d="M22 26 H52" stroke="#c9a068" strokeWidth="5" strokeLinecap="round" />
-      <path d="M22 47 H52" stroke="#3b2a1a" strokeWidth="7" opacity=".35" />
-      <path d="M22 47 H52" stroke="#ffd35a" strokeWidth="4" strokeDasharray="6 4" />
-      <g fontSize="12" fontWeight="700" aria-hidden>
-        <text x="62" y="30">갈색 길: 쪽지 오솔길</text>
-        <text x="62" y="51">노란 점선: 쪽지 대조</text>
-      </g>
-    </g>
-  )
-}
-
 // 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 (명세 1번). 예) 50 → 70, 재판 열림
 function NoteCard({
   h,
@@ -523,16 +457,16 @@ function NoteCard({
   preview: (c: Claim) => Preview | null
   onClaim: (c: Claim) => void
 }) {
-  const left = h.x < 450
-  const cx = left ? h.x + 100 : h.x - 268
+  const left = h.x < PLAZA.x
+  const cx = left ? h.x + 100 : h.x - 284
   const cy = h.y < 300 ? h.y - 54 : h.y - 77
   return (
     <g transform={`translate(${cx},${cy})`}>
       <g className={`vb-card${left ? ' from-left' : ' from-right'}`} role="group" aria-label={`${h.city}번 집에 쪽지`}>
-        <rect x="4" y="5" width="168" height="112" rx="2" fill="#2a1a0c" opacity=".25" />
-        <rect width="168" height="112" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
+        <rect x="4" y="5" width="184" height="122" rx="2" fill="#2a1a0c" opacity=".25" />
+        <rect width="184" height="122" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
         <circle cx="10" cy="10" r="5" fill="#a8361f" stroke="#4a1a10" />
-        <text x="22" y="24" fontSize="13.5" fontWeight="700">
+        <text x="22" y="25" fontSize="15.5" fontWeight="700">
           {h.city}번 집에 쪽지
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
@@ -546,20 +480,20 @@ function NoteCard({
                 aria-pressed={claim === c}
                 aria-label={`${decisions[c]}${p ? `, ${previewText(p)}` : ''}`}
                 onClick={() => onClaim(c)}
-                onKeyDown={pressKey(() => onClaim(c))}
+                onKeyDown={onActivateKey(() => onClaim(c))}
               >
-                <rect x={14 + i * 74} y="32" width="66" height="34" rx="3" />
-                <text x={47 + i * 74} y="55" fontSize="16" fontWeight="700" textAnchor="middle">
+                <rect x={14 + i * 82} y="34" width="74" height="36" rx="3" />
+                <text x={51 + i * 82} y="58" fontSize="17.5" fontWeight="700" textAnchor="middle">
                   {decisions[c]}
                 </text>
               </g>
               {p && (
                 <g fontWeight="700" textAnchor="middle" aria-hidden>
-                  <text x={47 + i * 74} y="85" fontSize="13" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
+                  <text x={51 + i * 82} y="91" fontSize="15" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
                     {p.from} → {p.next}
                   </text>
                   {p.trial && (
-                    <text x={47 + i * 74} y="102" fontSize="11.5" className="vb-rust">
+                    <text x={51 + i * 82} y="110" fontSize="13.5" className="vb-rust">
                       재판 열림
                     </text>
                   )}
@@ -579,25 +513,25 @@ const SIGNS = ['1 불빛부터 본다', '2 집마다 쪽지', '3 점선 두 집�
 function Signs() {
   return (
     <g
-      fontSize="12"
+      fontSize="15.5"
       fontWeight="700"
       role="img"
       aria-label="첫날 안내: 1 창문 불빛부터 본다, 2 집마다 쪽지를 고른다, 3 점선으로 이어진 두 집에는 같은 말을 한다"
     >
-      <rect x="84" y="296" width="9" height="124" fill="#5a3d22" filter="url(#vb-rough)" />
-      <text x="22" y="292" className="vb-sign-title">
+      <rect x="88" y="296" width="9" height="128" fill="#5a3d22" filter="url(#vb-rough)" />
+      <text x="18" y="292" className="vb-sign-title">
         첫날 안내
       </text>
       {SIGNS.map((t, i) => (
         <g key={t} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
-            d={`M14 ${304 + i * 36} H160 L172 ${318 + i * 36} L160 ${332 + i * 36} H14 Z`}
+            d={`M10 ${304 + i * 38} H188 L200 ${319 + i * 38} L188 ${334 + i * 38} H10 Z`}
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
             filter="url(#vb-rough)"
           />
-          <text x="22" y={323 + i * 36}>
+          <text x="18" y={324 + i * 38}>
             {t}
           </text>
         </g>
@@ -606,14 +540,29 @@ function Signs() {
   )
 }
 
-export type NotePicker = {
+function ContradictionKnot({ x, y, label, text, title }: { x: number; y: number; label: string; text: string; title?: boolean }) {
+  return (
+    <g role="img" aria-label={label}>
+      {title && <title>{label}</title>}
+      <g className="vb-knot">
+        <use href="#vb-knot" x={x} y={y} />
+      </g>
+      <rect x={x - 54} y={y - 52} width="108" height="25" rx="4" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
+      <text x={x} y={y - 34} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-rust">
+        {text}
+      </text>
+    </g>
+  )
+}
+
+type NotePicker = {
   claims: Record<string, Claim>
   onClaim: (city: number, claim: Claim) => void
   ruled: boolean // 7.6 규칙 시민일 때만 의심도 미리보기
 }
 
 // 밤 연출 중인 단계. prev는 지난 턴 결과 (깃발·의심도가 바뀌기 전 모습).
-export type Stage = { phase: Phase; ballots: number; prev: TurnResult | null }
+type Stage = { phase: Phase; ballots: number; prev: TurnResult | null }
 
 // 숲속 마을 보드 (명세 2번). result가 없으면 1턴 전, 있으면 그 턴이 끝난 상태를 그린다.
 // picker가 있으면 집을 눌러 다음 턴에 할 말을 고른다 (명세 1번).
@@ -683,13 +632,12 @@ export function VillageBoard({
       <Ground />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <Sky danger={state.truth === 'danger'} />
-      <Legend ring={state.config.connection === 'ring'} />
       {night && <rect className="vb-night" width="900" height="598" />}
       {night && (
-        // 단계 이름표: 범례 아래 왼쪽. key로 단계마다 다시 페이드. 스크린리더는 마을 이야기(live)가 읽는다
+        // 단계 이름표: 하늘 왼쪽. key로 단계마다 다시 페이드. 스크린리더는 마을 이야기(live)가 읽는다
         <g key={night.phase} className="vb-phase" aria-hidden>
-          <rect x="12" y="70" width={28 + PHASE_LABEL[night.phase].length * 14} height="28" rx="14" fill="#2b1a0c" opacity=".85" />
-          <text x="26" y="89" fontSize="15" fontWeight="700" className="vb-light">
+          <rect x="12" y="16" width={28 + PHASE_LABEL[night.phase].length * 14} height="28" rx="14" fill="#2b1a0c" opacity=".85" />
+          <text x="26" y="35" fontSize="15" fontWeight="700" className="vb-light">
             {PHASE_LABEL[night.phase]}
           </text>
         </g>
@@ -707,8 +655,8 @@ export function VillageBoard({
                 <path d={d} className="vb-share-line" fill="none" stroke="#ffd35a" strokeWidth="5" strokeDasharray="11 9" strokeLinecap="round" />
                 {/* 점선 이름표: 이 두 집은 오늘 밤 내가 준 쪽지를 서로 맞춰 본다 */}
                 <g className="vb-share-tag" aria-hidden>
-                  <rect x={mx - 74} y={my - 78} width="148" height="22" rx="11" strokeWidth="1.5" />
-                  <text x={mx} y={my - 62} fontSize="12" fontWeight="700" textAnchor="middle">
+                  <rect x={mx - 82} y={my - 80} width="164" height="25" rx="12.5" strokeWidth="1.5" />
+                  <text x={mx} y={my - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
                     오늘 밤 쪽지 대조
                   </text>
                 </g>
@@ -717,6 +665,9 @@ export function VillageBoard({
           })}
         </g>
       )}
+      <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-plaza-label" aria-hidden>
+        광장
+      </text>
       {picker && turn === 0 && <Signs />}
       {houses.map((h) => (
         <HouseView
@@ -739,35 +690,22 @@ export function VillageBoard({
       {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
       {caught.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
-        return (
-          <g key={`${a}-${b}`} role="img" aria-label={`모순 발견: ${a}번 집과 ${b}번 집`}>
-            <g className="vb-knot">
-              <use href="#vb-knot" x={mx} y={my} />
-            </g>
-            <rect x={mx - 50} y={my - 50} width="100" height="22" rx="3" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
-            <text x={mx} y={my - 34} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-rust">
-              모순 발견
-            </text>
-          </g>
-        )
+        return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={`모순 발견: ${a}번 집과 ${b}번 집`} text="모순 발견" />
       })}
       {result?.vote && at('trial') && (
         <Trial vote={result.vote} houses={houses} shown={night?.ballots} verdict={at('verdict')} />
       )}
       {clashes.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
-        const label = `모순 위험: ${a}번 집과 ${b}번 집에 다른 말`
         return (
-          <g key={`${a}-${b}`} role="img" aria-label={label}>
-            <title>{label}</title>
-            <g className="vb-knot">
-              <use href="#vb-knot" x={mx} y={my} />
-            </g>
-            <rect x={mx - 50} y={my - 50} width="100" height="22" rx="3" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
-            <text x={mx} y={my - 34} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-rust">
-              모순 +{SUSPICION.contradiction}
-            </text>
-          </g>
+          <ContradictionKnot
+            key={`${a}-${b}`}
+            x={mx}
+            y={my}
+            label={`모순 위험: ${a}번 집과 ${b}번 집에 다른 말`}
+            text={`모순 +${SUSPICION.contradiction}`}
+            title
+          />
         )
       })}
       {opened && picker && (

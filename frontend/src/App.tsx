@@ -30,7 +30,7 @@ function App() {
   }, [page])
 
   return (
-    <div className={`app-shell ${page === 'setup' ? 'setup-shell' : ''}`}>
+    <div className={`app-shell ${page}-shell`}>
       <button className="skip-link" onClick={() => document.getElementById('main-content')?.focus()}>
         본문으로 이동
       </button>

@@ -1,12 +1,11 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { Line, Scale } from './village'
-
-const signed = (v: number) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
+import { pairLogScales } from './village'
+import type { Line, Scale, ScaleLine } from './village'
 
 // 작은 양팔 저울: 왼쪽 접시 대피(+), 오른쪽 접시 잔류(−). 몫마다 블록 하나, 합만큼 기운다.
 // 블록 색: 내 관측 초록, 이웃 쪽지 갈색, 내 쪽지 붉은색.
-function Balance({ scale, me, label }: { scale: Scale; me: number; label: string }) {
+function Balance({ scale, me }: { scale: Scale; me: number }) {
   // 대피 쪽이 무거우면 왼쪽이 내려간다. 작은 차이도 보이게 제곱근으로, 최대 15도
   const tilt = -Math.sign(scale.total) * Math.min(1, Math.sqrt(Math.abs(scale.total) / 300)) * 15
   const drop = 42 * Math.sin((tilt * Math.PI) / 180)
@@ -27,8 +26,7 @@ function Balance({ scale, me, label }: { scale: Scale; me: number; label: string
     )
   }
   return (
-    <svg className="vl-balance" viewBox="0 0 120 62" width="96" height="50" role="img" aria-label={label}>
-      <title>{label}</title>
+    <svg className="vl-balance" viewBox="0 0 120 62" width="84" height="44" aria-hidden="true">
       <path d="M60 24 V56 M48 58 H72" className="vl-post" />
       <path d="M18 24 H102" className="vl-beam" style={{ '--tilt': `${tilt}deg` } as CSSProperties} />
       {pan(1)}
@@ -38,50 +36,104 @@ function Balance({ scale, me, label }: { scale: Scale; me: number; label: string
   )
 }
 
-// 마을 이야기 (명세 3번). 턴 결과에서 만든 대사를 양피지에 적는다.
+function WhyBox({ id, scale }: { id: string; scale: ScaleLine }) {
+  const reasons = scale.detail.slice(0, -1)
+  const verdict = scale.detail[scale.detail.length - 1]
+  return (
+    <div id={id} className="vl-why-box">
+      <Balance scale={scale.scale} me={scale.me} />
+      <ul className="vl-why-list">
+        {reasons.map((line, i) => (
+          <li key={i}>{line}</li>
+        ))}
+      </ul>
+      <p className="vl-why-verdict">{verdict}</p>
+    </div>
+  )
+}
+
+// 마을 이야기 (명세 3번). 턴 결과에서 만든 대사를 일기장에 적고, 속마음·저울은 줄 오른쪽 토글 뒤에 접는다.
 // live: 밤 연출 중. 새 줄이 한 줄씩 나타나고 맨 아래로 따라간다.
-export function VillageLog({ lines, live = false, children }: { lines: Line[] | null; live?: boolean; children?: ReactNode }) {
+export function VillageLog({
+  lines,
+  day,
+  live = false,
+  children,
+}: {
+  lines: Line[] | null
+  day?: number
+  live?: boolean
+  children?: ReactNode
+}) {
   const log = useRef<HTMLDivElement>(null)
-  const count = lines?.length ?? 0
+  const [open, setOpen] = useState<Record<string, boolean>>({})
+  const entries = lines ? pairLogScales(lines) : null
+  const count = entries?.length ?? 0
   useEffect(() => {
     if (live && log.current) log.current.scrollTop = log.current.scrollHeight
   }, [live, count])
+
+  const toggle = (key: string) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }))
+
   return (
     <aside className="vl-talk" aria-label="마을 이야기">
-      <h3>마을 이야기</h3>
-      <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
-        {!lines && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았다. 집마다 쪽지를 고르고 밤으로 넘긴다.</p>}
-        {lines?.map((line, i) =>
-          line.kind === 'when' ? (
-            <p key={i} className="vl-when">
-              {line.text}
-            </p>
-          ) : line.kind === 'say' ? (
-            <p key={i} className="vl-line">
-              <span className="vl-tok" aria-label={`${line.who}번`}>
-                {line.who}
-              </span>
-              <span>{line.text}</span>
-            </p>
-          ) : line.kind === 'scale' ? (
-            <p key={i} className="vl-line vl-scale">
-              <span className="vl-tok" aria-label={`${line.who}번 저울`}>
-                {line.who}
-              </span>
-              <Balance scale={line.scale} me={line.me} label={`${line.who}번 저울: ${line.detail}`} />
-              <span aria-hidden>
-                {line.text}
-                {line.scale.mine != null && <span className="vl-mine"> · 내 쪽지 {signed(line.scale.mine)}</span>}
-              </span>
-            </p>
-          ) : (
-            <p key={i} className={line.good ? 'vl-event is-good' : 'vl-event'}>
-              {line.text}
-            </p>
-          ),
-        )}
+      <div className="vl-head">
+        <h2>마을 이야기</h2>
+        {day != null && <span className="vl-day">{day}일째 밤</span>}
       </div>
-      {children}
+      <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
+        {!entries && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았다. 집마다 쪽지를 고르고 밤으로 넘긴다.</p>}
+        {entries?.map((entry, i) => {
+          if (entry.kind === 'when') {
+            return (
+              <p key={i} className="vl-when">
+                {entry.text}
+              </p>
+            )
+          }
+          if (entry.kind === 'say' || entry.kind === 'scale') {
+            const quiet = entry.kind === 'scale'
+            const who = quiet ? entry.scale.who : entry.who
+            const text = quiet ? entry.scale.text : entry.text
+            const scale = entry.scale
+            const key = `${day ?? 0}-${who}`
+            const isOpen = !!scale && !!open[key]
+            const panelId = `vl-why-${key}`
+            return (
+              <article key={i} className={isOpen ? 'vl-entry is-open' : 'vl-entry'}>
+                <div className="vl-entry-row">
+                  <span className={quiet ? 'vl-tok is-quiet' : 'vl-tok'}>
+                    <span className="sr-only">{who}번</span>
+                    <span aria-hidden="true">{who}</span>
+                  </span>
+                  <p className="vl-quote">{text}</p>
+                  {scale && (
+                    <button
+                      type="button"
+                      className="vl-why-btn"
+                      aria-label={`${who}번 주민 생각 보기`}
+                      aria-expanded={isOpen}
+                      aria-controls={isOpen ? panelId : undefined}
+                      onClick={() => toggle(key)}
+                    >
+                      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                        <path d="M6 3.5 L10.5 8 L6 12.5" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                {isOpen && scale && <WhyBox id={panelId} scale={scale} />}
+              </article>
+            )
+          }
+          return (
+            <p key={i} className={entry.good ? 'vl-event is-good' : 'vl-event'}>
+              {entry.text}
+            </p>
+          )
+        })}
+      </div>
+      {children && <div className="vl-foot">{children}</div>}
     </aside>
   )
 }

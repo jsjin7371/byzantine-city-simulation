@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { percent } from '../components/results/resultLabels'
 import { SUSPICION, endReasonLabels, outcomeLabels } from '../gameApi'
 import type { GameState, TurnResult } from '../gameApi'
@@ -24,7 +25,7 @@ function Peaks({ peaks }: { peaks: (number | null)[] }) {
 }
 
 // 결과 화면 (명세 4번): 표를 펼치지 않아도 왜 이기고 졌는지 보인다.
-export function GameResult({ state, history }: { state: GameState; history: TurnResult[] }) {
+export function GameResult({ state, history, children }: { state: GameState; history: TurnResult[]; children?: ReactNode }) {
   const s = gameSummary(state, history)
   const won = state.outcome !== 'loss'
   return (
@@ -50,6 +51,7 @@ export function GameResult({ state, history }: { state: GameState; history: Turn
           <Peaks peaks={s.peaks} />
         </>
       )}
+      {children}
     </section>
   )
 }

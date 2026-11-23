@@ -31,9 +31,9 @@ export function sharePath(player: number, a: number, b: number) {
 
 // 모순 매듭을 놓을 길 위 한가운데 점.
 export function pairMid(player: number, a: number, b: number): [number, number] {
-  const path = sharePath(player, a, b)
-  const n = path.match(/-?\d+/g)!.map(Number)
-  return [(n[4] + n[6]) / 2, (n[5] + n[7]) / 2 - 30]
+  const ta = SLOTS[slotOf(player, a)].trail
+  const tb = SLOTS[slotOf(player, b)].trail
+  return [(ta[4] + tb[4]) / 2, (ta[5] + tb[5]) / 2 - 30]
 }
 
 // 오늘 밤 만나는 두 집에 서로 다른 말을 고른 쌍 (모순 경고).
@@ -95,7 +95,7 @@ export function talkNotes(player: number, result: Pick<TurnResult, 'cities'>) {
 // 시민 마음속 저울 (A-1): engine/city/logic.py game_turn을 그대로 옮긴다. 1표 = 100.
 // 기억한 힌트마다 ±100 (대피 +, 잔류 −), 받은 쪽지마다 ±(100 − 보낸 집에 대한 새 의심도). 합 >0 대피, <0 잔류, 0이면 이번 힌트.
 // mine: 내(플레이어) 쪽지 몫. swayed: 그 몫을 빼면 결정이 반대였다 (= 내 쪽지가 마음을 흔들었다).
-export type Weight = { from: number | 'hint'; value: number }
+type Weight = { from: number | 'hint'; value: number }
 export type Scale = { parts: Weight[]; total: number; decision: Claim; mine: number | null; swayed: boolean }
 
 const vote = (hint: Truth) => (hint === 'danger' ? 100 : -100)
@@ -165,6 +165,17 @@ export function villageHouses(
   })
 }
 
+// HUD "속은 주민 ●●○|○" 계산: 시민 수만큼 점, 속은(틀린) 시민 수만큼 채움, 과반(need) 눈금 위치.
+export function fooledDots(wrong: number, total: number) {
+  const need = majority(total)
+  const fooled = Math.max(0, Math.min(wrong, total))
+  return {
+    need,
+    dots: Array.from({ length: total }, (_, i) => i < fooled),
+    label: `속은 주민 ${fooled}/${total}, ${need}명 필요`,
+  }
+}
+
 // 투표에서 도시별 받은 표 수.
 export function tally(ballots: Record<string, number>) {
   const votes: Record<number, number> = {}
@@ -187,7 +198,7 @@ export const PHASE_LABEL: Record<Phase, string> = {
   day: '', // 낮에는 이름표를 숨긴다
 }
 
-export type Step = { phase: Phase; ballots: number; ms: number }
+type Step = { phase: Phase; ballots: number; ms: number }
 
 // 한 턴 결과를 보여 줄 단계 목록. 마지막 단계(day)가 최종 상태다.
 export function nightSteps(result: Pick<TurnResult, 'vote'>): Step[] {
@@ -235,21 +246,62 @@ export type Line = Said &
   (
     | { kind: 'when'; text: string }
     | { kind: 'say'; who: number; text: string }
-    | { kind: 'scale'; who: number; text: string; detail: string; scale: Scale; me: number } // text: 짧은 결론, detail: 몫별 숫자
+    | { kind: 'scale'; who: number; text: string; detail: string[]; scale: Scale; me: number } // text: 짧은 결론, detail: 생각 줄 목록
     | { kind: 'event'; text: string; good?: boolean }
   )
 
 const saw = { danger: '태풍', safe: '맑음' } as const
 const said = { evacuate: '대피', stay: '잔류' } as const
-const signed = (v: number) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
 
-// 저울 읽기용 한 줄. 예) "내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → 합 +240, 대피"
-export function scaleText(scale: Scale, me: number) {
-  const parts = scale.parts.map((p) =>
-    `${p.from === 'hint' ? '내 관측' : p.from === me ? `너(${me}번)` : `${p.from}번`} ${signed(p.value)}`,
-  )
-  const tie = scale.total === 0 ? ' (동점이라 내 관측대로)' : ''
-  return `${parts.join(' · ')} → 합 ${signed(scale.total)}, ${said[scale.decision]}${tie}`
+const AGREE_LINES = [
+  (w: string) => `그치, 나도 ${w}이라고 봤어`,
+  (w: string) => `맞아, 내 눈에도 ${w}으로 보였어`,
+  (w: string) => `같은 생각이네, 나도 ${w}으로 봤어`,
+  (w: string) => `그래, 내가 본 하늘도 ${w}이었어`,
+  (w: string) => `역시, 나도 똑같이 ${w}으로 봤네`,
+]
+const DISAGREE_LINES = [
+  (w: string, me: number, c: string) => `음… 내가 본 건 ${w}인데, ${me}번은 ${c}래`,
+  (w: string, me: number, c: string) => `어라, 나는 ${w}이던데 ${me}번은 ${c}라니`,
+  (w: string, me: number, c: string) => `이상하네, 난 ${w}으로 봤는데 ${me}번은 ${c}라네`,
+  (w: string, me: number, c: string) => `글쎄, 내 눈엔 ${w}인데 ${me}번은 ${c}라고 하네`,
+  (w: string, me: number, c: string) => `뭐지, 분명 ${w}으로 봤는데 ${me}번은 ${c}라잖아`,
+]
+const WARN_LINES = [
+  (me: number) => `${me}번 좀 수상한데. 한 번만 더 그러면 재판이야`,
+  (me: number) => `${me}번 슬슬 의심스러워. 다음엔 바로 재판이야`,
+  (me: number) => `${me}번 영 수상쩍네. 또 이러면 재판 열어야겠어`,
+  (me: number) => `${me}번 자꾸 미심쩍네. 또 엇나가면 재판 열 거야`,
+  (me: number) => `${me}번 점점 못 믿겠어. 다음엔 재판에 넘겨야겠어`,
+]
+const byCity = <T,>(city: number, items: readonly T[]) => items[(city - 1) % items.length]
+
+// 저울 읽기용 문장 목록: 숫자 없이 혼잣말로 항목마다 짧은 한 줄 + 마지막 결론 한 줄.
+export function scaleText(scale: Scale, me: number, memory: GameState['config']['memory']): string[] {
+  const lines = scale.parts.map((p) => {
+    const abs = Math.abs(p.value)
+    if (p.from === 'hint') {
+      if (p.value === 0) return '지금까지 본 하늘은 반반이었어'
+      if (memory === 'turn' && abs === 100) return p.value > 0 ? '내가 본 하늘은 태풍이었어' : '내가 본 하늘은 맑았어'
+      return `지금까지 본 하늘은 ${p.value > 0 ? '태풍' : '맑음'} 쪽이 많았어`
+    }
+    const who = p.from === me ? `너(${me}번)` : `${p.from}번`
+    if (abs === 0) return `${who} 쪽지는 하나도 안 믿겨`
+    const topic = p.from === me ? `너(${me}번)는` : `${p.from}번은`
+    const side = p.value > 0 ? '대피' : '잔류'
+    const trust = abs === 100 ? '믿을 만해' : abs >= 60 ? '조금 미심쩍어' : '많이 의심스러워'
+    return `${topic} ${side}래. ${trust}`
+  })
+  const choice = `${said[scale.decision]}하기로 했어`
+  const diff = Math.abs(scale.total)
+  const verdict =
+    diff === 0
+      ? `양쪽이 똑같아서 이번에 본 하늘대로 ${choice}`
+      : diff >= 200
+        ? `${said[scale.decision]} 쪽이 훨씬 무거워서 ${choice}`
+        : `${said[scale.decision]} 쪽이 조금 더 무거워서 ${choice}`
+  lines.push(verdict)
+  return lines
 }
 
 // scales: 그 턴의 시민 저울 (citizenScales). 있으면 결정 단계에 저울과 "설득 성공"을 적는다.
@@ -277,8 +329,8 @@ export function villageLines(
         kind: 'say',
         who: c.city,
         text: agrees(c.hint, mine.claim)
-          ? `그치, 나도 ${saw[c.hint]}이라고 봤어`
-          : `음… 내가 본 건 ${saw[c.hint]}인데, ${me}번은 ${said[mine.claim]}래`,
+          ? byCity(c.city, AGREE_LINES)(saw[c.hint])
+          : byCity(c.city, DISAGREE_LINES)(saw[c.hint], me, said[mine.claim]),
       })
   }
 
@@ -286,8 +338,16 @@ export function villageLines(
   for (const c of citizens) {
     const s = scales[c.city]
     if (!s) continue
-    const text = `${said[s.decision]} ${signed(s.total)}`
-    lines.push({ phase: 'flags', kind: 'scale', who: c.city, text, detail: scaleText(s, me), scale: s, me })
+    const text = `${said[s.decision]}하기로 했어`
+    lines.push({
+      phase: 'flags',
+      kind: 'scale',
+      who: c.city,
+      text,
+      detail: scaleText(s, me, state.config.memory),
+      scale: s,
+      me,
+    })
     if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번 마음을 돌림` })
   }
 
@@ -308,8 +368,8 @@ export function villageLines(
   for (const c of citizens) {
     if (!wary || !c.suspicion) continue
     const onMe = c.suspicion[me] ?? 0
-    if (onMe >= 40 && onMe < 60)
-      lines.push({ phase: 'suspicion', kind: 'say', who: c.city, text: `${me}번 좀 수상한데. 한 번만 더 그러면 재판이야` })
+    if (onMe >= SUSPICION.threshold - SUSPICION.disagree && onMe < SUSPICION.threshold)
+      lines.push({ phase: 'suspicion', kind: 'say', who: c.city, text: byCity(c.city, WARN_LINES)(me) })
     const [top, value] = Object.entries(c.suspicion).sort((x, y) => y[1] - x[1])[0] ?? []
     if (top && value > 0 && state.roles[top] === 'citizen')
       lines.push({ phase: 'suspicion', kind: 'event', text: `${c.city}번이 ${top}번을 의심하고 있다` })
@@ -334,6 +394,38 @@ export function villageLines(
   return lines
 }
 
+export type ScaleLine = Extract<Line, { kind: 'scale' }>
+type LogEntry =
+  | { kind: 'when'; text: string }
+  | { kind: 'say'; who: number; text: string; scale?: ScaleLine }
+  | { kind: 'scale'; scale: ScaleLine }
+  | { kind: 'event'; text: string; good?: boolean }
+
+// 일기장 표시용으로 주민 말(notes 단계)과 그 주민의 저울(scale)을 짝짓는다.
+// suspicion·trial 대사에는 붙이지 않고, 짝이 없는 저울(예: ring 이웃 밖)만 단독 행으로 남긴다.
+export function pairLogScales(lines: Line[]): LogEntry[] {
+  const scalesByCity = new Map<number, ScaleLine>()
+  for (const line of lines) {
+    if (line.kind === 'scale') scalesByCity.set(line.who, line)
+  }
+  const attached = new Set<number>()
+  const entries: LogEntry[] = []
+  for (const line of lines) {
+    if (line.kind === 'when') {
+      entries.push({ kind: 'when', text: line.text })
+    } else if (line.kind === 'say') {
+      const scale = line.phase === 'notes' && !attached.has(line.who) ? scalesByCity.get(line.who) : undefined
+      if (scale) attached.add(line.who)
+      entries.push(scale ? { kind: 'say', who: line.who, text: line.text, scale } : { kind: 'say', who: line.who, text: line.text })
+    } else if (line.kind === 'scale') {
+      if (!attached.has(line.who)) entries.push({ kind: 'scale', scale: line })
+    } else {
+      entries.push({ kind: 'event', text: line.text, good: line.good })
+    }
+  }
+  return entries
+}
+
 // 그 단계까지 나온 대사. 재판 지목은 한 명씩.
 export function visibleLines(lines: Line[], step: Step) {
   let ballots = 0
@@ -345,7 +437,7 @@ export function visibleLines(lines: Line[], step: Step) {
 }
 
 // 결과 화면 (명세 4번): 표를 펼치지 않아도 왜 이기고 졌는지.
-export type Summary = { headline: string; moments: string[]; lesson: string; peaks: (number | null)[] }
+type Summary = { headline: string; moments: string[]; lesson: string; peaks: (number | null)[] }
 
 export function gameSummary(
   state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'>,
