@@ -181,21 +181,31 @@ export function tally(ballots: Record<string, number>) {
 export type Phase = 'night' | 'notes' | 'flags' | 'suspicion' | 'trial' | 'verdict' | 'day'
 const PHASES: Phase[] = ['night', 'notes', 'flags', 'suspicion', 'trial', 'verdict', 'day']
 export const reached = (phase: Phase, at: Phase) => PHASES.indexOf(phase) >= PHASES.indexOf(at)
+// 단계 이름표 (보드 위쪽 + 마을 이야기 제목). 문구는 여기서만 바꾼다.
+export const PHASE_LABEL: Record<Phase, string> = {
+  night: '① 날씨 관측',
+  notes: '② 쪽지 전달',
+  flags: '③ 주민 결정',
+  suspicion: '④ 의심 변화',
+  trial: '⑤ 광장 재판',
+  verdict: '⑥ 재판 결과',
+  day: '', // 낮에는 이름표를 숨긴다
+}
 
 export type Step = { phase: Phase; ballots: number; ms: number }
 
 // 한 턴 결과를 보여 줄 단계 목록. 마지막 단계(day)가 최종 상태다.
 export function nightSteps(result: Pick<TurnResult, 'vote'>): Step[] {
   const steps: Step[] = [
-    { phase: 'night', ballots: 0, ms: 400 },
-    { phase: 'notes', ballots: 0, ms: 800 },
-    { phase: 'flags', ballots: 0, ms: 600 },
-    { phase: 'suspicion', ballots: 0, ms: 800 },
+    { phase: 'night', ballots: 0, ms: 700 },
+    { phase: 'notes', ballots: 0, ms: 1100 },
+    { phase: 'flags', ballots: 0, ms: 900 },
+    { phase: 'suspicion', ballots: 0, ms: 1100 },
   ]
   if (result.vote) {
     const n = Object.keys(result.vote.ballots).length
     for (let i = 1; i <= n; i++) steps.push({ phase: 'trial', ballots: i, ms: 450 })
-    steps.push({ phase: 'verdict', ballots: n, ms: 800 })
+    steps.push({ phase: 'verdict', ballots: n, ms: 1100 })
   }
   steps.push({ phase: 'day', ballots: Infinity, ms: 0 })
   return steps
@@ -258,7 +268,7 @@ export function villageLines(
   const ai = state.config.citizen_type === 'ai'
   const met = result.sharing.map((s) => `${s.pair[0]}번과 ${s.pair[1]}번`).join(', ')
   const lines: Line[] = [
-    { phase: 'night', kind: 'when', text: `${result.turn}일째 밤${met ? `, ${met}이 만났다` : ''}` },
+    { phase: 'night', kind: 'when', text: `${PHASE_LABEL.night} (${result.turn}일째${met ? `, ${met}이 만났다` : ''})` },
   ]
   const citizens = result.cities.filter((c) => c.role === 'citizen')
 
@@ -311,7 +321,7 @@ export function villageLines(
   }
 
   if (result.vote) {
-    lines.push({ phase: 'trial', kind: 'when', text: '광장 재판' })
+    lines.push({ phase: 'trial', kind: 'when', text: PHASE_LABEL.trial })
     for (const [from, to] of Object.entries(result.vote.ballots))
       lines.push({ phase: 'trial', kind: 'say', who: Number(from), text: `나는 ${to}번을 지목한다` })
     const a = result.vote.accused

@@ -3,7 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
-import { TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
+import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
 import type { House, Phase, Preview } from './village'
 import './village.css'
 
@@ -662,6 +662,15 @@ export function VillageBoard({
       <Sky danger={state.truth === 'danger'} />
       <Legend ring={state.config.connection === 'ring'} />
       {night && <rect className="vb-night" width="900" height="598" />}
+      {night && (
+        // 단계 이름표: 범례 아래 왼쪽 (하늘 문구·쪽지 대조 표와 안 겹친다). key로 단계마다 다시 페이드
+        <g key={night.phase} className="vb-phase" aria-live="polite">
+          <rect x="12" y="70" width={28 + PHASE_LABEL[night.phase].length * 14} height="28" rx="14" fill="#2b1a0c" opacity=".85" />
+          <text x="26" y="89" fontSize="15" fontWeight="700" className="vb-light">
+            {PHASE_LABEL[night.phase]}
+          </text>
+        </g>
+      )}
       {pairs.length > 0 && (
         <g className="vb-share" role="img" aria-label={`오늘 밤 쪽지 대조: ${pairLabel}`}>
           <title>{`오늘 밤 쪽지 대조: ${pairLabel}`}</title>

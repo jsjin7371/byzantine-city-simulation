@@ -141,7 +141,7 @@ const texts = (lines) => lines.map((l) => l.text)
 
 test('village lines: contradiction, matching and mismatching words, trial warning, suspicion between villagers', () => {
   const lines = villageLines(state, turn)
-  assert.deepEqual(lines[0], { phase: 'night', kind: 'when', text: '4일째 밤, 1번과 4번이 만났다' })
+  assert.deepEqual(lines[0], { phase: 'night', kind: 'when', text: '① 날씨 관측 (4일째, 1번과 4번이 만났다)' })
   assert.ok(lines.some((l) => l.phase === 'suspicion' && l.who === 1 && l.text === '잠깐, 3번이 나한텐 잔류라더니 4번한텐 대피라고 했대?'))
   assert.ok(texts(lines).includes('음… 내가 본 건 태풍인데, 3번은 잔류래'))
   assert.ok(texts(lines).includes('그치, 나도 태풍이라고 봤어'))
@@ -173,12 +173,13 @@ test('night steps: night, notes, flags, suspicion, then one step per ballot and 
   assert.deepEqual(steps.map((s) => s.phase), ['night', 'notes', 'flags', 'suspicion', 'trial', 'trial', 'trial', 'verdict', 'day'])
   assert.deepEqual(steps.filter((s) => s.phase === 'trial').map((s) => s.ballots), [1, 2, 3])
   assert.equal(steps.at(-1).ms, 0)
+  assert.equal(nightSteps({ vote: null }).reduce((t, s) => t + s.ms, 0), 3800)
 })
 
 test('visible lines follow the step: words in phase order, accusations one at a time', () => {
   const lines = villageLines(state, { ...turn, vote: { ballots: { 1: 3, 4: 1 }, accused: null, caught: false } })
   const steps = nightSteps({ vote: { ballots: { 1: 3, 4: 1 } } })
-  assert.deepEqual(texts(visibleLines(lines, steps[0])), ['4일째 밤, 1번과 4번이 만났다'])
+  assert.deepEqual(texts(visibleLines(lines, steps[0])), ['① 날씨 관측 (4일째, 1번과 4번이 만났다)'])
   assert.ok(!texts(visibleLines(lines, steps[1])).some((t) => t.startsWith('잠깐')))
   assert.ok(texts(visibleLines(lines, steps[3])).some((t) => t.startsWith('잠깐')))
   const firstBallot = texts(visibleLines(lines, steps[4]))
