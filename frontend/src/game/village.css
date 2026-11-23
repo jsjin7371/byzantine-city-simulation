@@ -54,7 +54,11 @@
 .vb-badge.is-mafia { fill: var(--rust); stroke: #4a1a10; }
 .vb-house.is-far { opacity: .45; }
 
-.vb-gauge-fill { fill: #e0703f; }
+.vb-gauge-fill { fill: #e0703f; transform-box: fill-box; transform-origin: left center; transition: transform 600ms cubic-bezier(0.23, 1, 0.32, 1); animation: vb-grow 600ms cubic-bezier(0.23, 1, 0.32, 1) backwards; }
+@keyframes vb-grow { from { transform: scaleX(0); } }
+/* 재판 기준 바로 아래: 약하게 두근거림, 넘으면 "!" */
+.vb-gauge.is-near .vb-gauge-fill { animation: vb-grow 600ms cubic-bezier(0.23, 1, 0.32, 1) backwards, vb-near 1100ms ease-in-out 600ms infinite alternate; }
+@keyframes vb-near { to { opacity: .5; } }
 .vb-gauge.is-over .vb-gauge-fill { fill: #c2452a; }
 .vb-post path { stroke: var(--rust); stroke-width: 3; }
 .vb-gauge.is-over .vb-post path { stroke: #2b1a0c; }
@@ -111,8 +115,9 @@
 .vb-sign { animation: vb-sign 380ms cubic-bezier(0.34, 1.3, 0.64, 1) both; }
 @keyframes vb-sign { from { opacity: 0; transform: translateY(-14px); } }
 
-/* 밤 쪽지: 오솔길(offset-path)을 따라 1.2초 동안 날아가 사라진다 */
-.vb-fly { display: none; offset-rotate: 0deg; opacity: 0; animation: vb-fly 1200ms linear forwards; }
+/* 밤 쪽지: 오솔길(offset-path)을 따라 0.6초 동안 날아가 사라진다. 내 쪽지가 아닌 것은 흐리게 */
+.vb-fly { display: none; offset-rotate: 0deg; opacity: 0; animation: vb-fly 600ms linear forwards; }
+.vb-fly.is-other use { opacity: .35; }
 @supports (offset-path: path("M0 0")) { .vb-fly { display: inline; } }
 @keyframes vb-fly {
   from { offset-distance: 0%; opacity: 1; }
@@ -125,12 +130,18 @@
 .vb-spark > path { transform-box: fill-box; transform-origin: center; animation: vb-spark 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 @keyframes vb-spark { from { opacity: 0; transform: scale(.3) rotate(-45deg); } }
 
+/* 밤 연출 단계 이름표: 단계가 바뀔 때 짧게 페이드 */
+.vb-phase { animation: vb-fade 200ms ease both; }
+
 @media (prefers-reduced-motion: reduce) {
+  .vb-phase { animation: none; }
   .vb-card, .vb-knot, .vb-sign { animation-name: vb-fade; }
   .vb-spark > path { animation: none; }
   .vb-fly { display: none; }
   .vb-opt:active { transform: none; }
   .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
+  .vl-beam, .vl-pan, .vb-gauge-fill, .vb-gauge.is-near .vb-gauge-fill { animation: none; }
+  .vb-gauge-fill { transition: none; }
 }
 @keyframes vb-fade { from { opacity: 0; } }
 
@@ -157,6 +168,21 @@
 .vl-event.is-good { color: var(--forest); }
 .vl-scale { font-size: 12.5px; color: var(--muted); }
 .vl-scale .vl-tok { background: transparent; border-style: dashed; }
+.vl-scale { align-items: center; }
+.vl-mine { color: var(--rust); font-weight: 700; white-space: nowrap; }
+/* 기울어지는 저울: 수평에서 합만큼 기운다 */
+.vl-balance { flex: none; overflow: visible; }
+.vl-post, .vl-beam, .vl-pan path { fill: none; stroke: var(--wood); stroke-width: 2; stroke-linecap: round; }
+.vl-beam { stroke-width: 3; transform-box: view-box; transform-origin: 60px 24px; transform: rotate(var(--tilt)); }
+.vl-pan { transform: translateY(var(--drop)); }
+.vl-beam, .vl-pan { animation: vl-tip 700ms cubic-bezier(0.34, 1.3, 0.64, 1) 150ms backwards; }
+@keyframes vl-tip { from { transform: none; } }
+.vl-pan .vl-plate { fill: #c99a5b; stroke-width: 1.5; }
+.vl-pivot { fill: var(--wood); }
+.vl-pan rect { stroke: #3b2a1a; stroke-width: .8; }
+.vl-pan .is-hint { fill: #6f8f3e; }
+.vl-pan .is-note { fill: #d9bb7c; }
+.vl-pan .is-mine { fill: var(--rust); }
 .vl-talk [data-ui-button] { margin-top: 10px; width: 100%; }
 @media (max-width: 1100px) {
   .vb-table { flex-direction: column; }
@@ -169,9 +195,7 @@
 .gm-workspace [data-ui-button][aria-pressed='true'] { box-shadow: 0 2px 0 #1c2e18; }
 
 /* 밤 연출 (목업 A3): 밤빛 → 오솔길로 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
-.vb-gauge-fill { transform-box: fill-box; transform-origin: left center; }
-.vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 700ms ease both; }
-.vb-board.is-playing .vb-gauge-fill { transition: transform 900ms cubic-bezier(0.23, 1, 0.32, 1); }
+.vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 400ms ease both; }
 .vb-flag { transform-box: fill-box; transform-origin: left bottom; }
 .vb-board.is-playing .vb-flag { animation: vb-flip 420ms cubic-bezier(0.23, 1, 0.32, 1); }
 @keyframes vb-flip { from { transform: scaleX(.06); } }

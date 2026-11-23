@@ -3,7 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
-import { TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
+import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
 import type { House, Phase, Preview } from './village'
 import './village.css'
 
@@ -202,11 +202,11 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
   const left = TOTAL_TURNS - turn
   const px = cellX(day) + 19
   return (
-    <g role="img" aria-label={`달력: 마지막 결정까지 D-${left}, ${day}/${TOTAL_TURNS}일`}>
+    <g role="img" aria-label={`달력: 결정의 날 D-${left}, ${day}/${TOTAL_TURNS}일`}>
       <rect x="0" y="598" width="900" height="62" fill="#7a5530" />
       <rect x="0" y="598" width="900" height="62" filter="url(#vb-grain)" />
       <text x="34" y="622" fontSize="12" fontWeight="700" className="vb-light">
-        마지막 결정까지
+        결정의 날
       </text>
       <g filter="url(#vb-rough)" stroke="#4a3119" strokeWidth="1.5">
         {Array.from({ length: TOTAL_TURNS }, (_, i) => i + 1).map((d) => (
@@ -284,6 +284,8 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
     : base
   const mafia = h.role !== 'citizen'
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
+  // 어긋난 쪽지 한 장이면 재판: 막대가 약하게 두근거린다
+  const near = !over && h.suspicion != null && h.suspicion >= SUSPICION.threshold - SUSPICION.disagree
   return (
     <g
       className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}`}
@@ -334,7 +336,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       )}
       {h.lit != null && <use href={h.lit ? '#vb-win-on' : '#vb-win-off'} x={x - 18} y={y - 20} filter="url(#vb-rough)" />}
       {h.suspicion != null && (
-        <g transform={`translate(${x - 10},${y + 30})`} className={over ? 'vb-gauge is-over' : 'vb-gauge'}>
+        <g transform={`translate(${x - 10},${y + 30})`} className={over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}>
           <rect x="-50" y="-5" width="100" height="10" rx="5" fill="#5a3d22" />
           <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
           {/* 재판 기준 60 말뚝 */}
@@ -342,6 +344,14 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
             <path d={`M${-48 + 0.96 * SUSPICION.threshold} -12 V9`} />
             <path d={`M${-53 + 0.96 * SUSPICION.threshold} -13 H${-43 + 0.96 * SUSPICION.threshold}`} />
           </g>
+          {over && (
+            <g className="vb-knot" aria-hidden>
+              <circle cx="-62" r="9" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" />
+              <text x="-62" y="5" fontSize="14" fontWeight="800" textAnchor="middle" className="vb-light">
+                !
+              </text>
+            </g>
+          )}
           {over && <rect x="52" y="-12" width="30" height="22" rx="3" fill="#a8361f" />}
           <text x="58" y="5" fontSize="14" fontWeight="700" className={over ? 'vb-light' : undefined}>
             {h.suspicion}
@@ -449,8 +459,8 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
       {notes.map((n, i) => (
         <g
           key={`${n.from}-${n.to}`}
-          className="vb-fly"
-          style={{ offsetPath: `path("${n.path}")`, animationDelay: `${Math.min(i * 30, 360)}ms` }} // 출발을 조금씩 엇갈리게
+          className={n.from === player ? 'vb-fly' : 'vb-fly is-other'} // 다른 주민끼리 오가는 쪽지는 흐리게
+          style={{ offsetPath: `path("${n.path}")`, animationDelay: `${Math.min(i * 20, 160)}ms` }} // 출발을 조금씩 엇갈리게
         >
           <use href={`#vb-note-${n.claim}`} transform={n.from === player ? undefined : 'scale(.6)'} />
         </g>
@@ -461,7 +471,7 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
 
 // 길 범례: 갈색 길은 모두에게 말하기, 노란 점선은 쪽지 맞춰 보기 (선 모양도 달라 색만으로 구분하지 않는다).
 function Legend({ ring }: { ring: boolean }) {
-  const label = `범례: 갈색 길은 주민 대화 길, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 쪽지를 보낸다. 노란 점선은 오늘 밤 쪽지 대조, 두 주민이 받은 쪽지를 서로 맞춰 본다`
+  const label = `범례: 갈색 길은 쪽지 오솔길, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 쪽지를 보낸다. 노란 점선은 오늘 밤 쪽지 대조, 두 주민이 받은 쪽지를 서로 맞춰 본다`
   return (
     <g role="img" aria-label={label}>
       <title>{label}</title>
@@ -471,7 +481,7 @@ function Legend({ ring }: { ring: boolean }) {
       <path d="M22 47 H52" stroke="#3b2a1a" strokeWidth="7" opacity=".35" />
       <path d="M22 47 H52" stroke="#ffd35a" strokeWidth="4" strokeDasharray="6 4" />
       <g fontSize="12" fontWeight="700" aria-hidden>
-        <text x="62" y="30">갈색 길: 주민 대화 길</text>
+        <text x="62" y="30">갈색 길: 쪽지 오솔길</text>
         <text x="62" y="51">노란 점선: 쪽지 대조</text>
       </g>
     </g>
@@ -652,6 +662,15 @@ export function VillageBoard({
       <Sky danger={state.truth === 'danger'} />
       <Legend ring={state.config.connection === 'ring'} />
       {night && <rect className="vb-night" width="900" height="598" />}
+      {night && (
+        // 단계 이름표: 범례 아래 왼쪽. key로 단계마다 다시 페이드. 스크린리더는 마을 이야기(live)가 읽는다
+        <g key={night.phase} className="vb-phase" aria-hidden>
+          <rect x="12" y="70" width={28 + PHASE_LABEL[night.phase].length * 14} height="28" rx="14" fill="#2b1a0c" opacity=".85" />
+          <text x="26" y="89" fontSize="15" fontWeight="700" className="vb-light">
+            {PHASE_LABEL[night.phase]}
+          </text>
+        </g>
+      )}
       {pairs.length > 0 && (
         <g className="vb-share" role="img" aria-label={`오늘 밤 쪽지 대조: ${pairLabel}`}>
           <title>{`오늘 밤 쪽지 대조: ${pairLabel}`}</title>
