@@ -247,7 +247,7 @@ export function scaleText(scale: Scale, me: number) {
   return `${parts.join(' · ')} → 합 ${signed(scale.total)}, ${said[scale.decision]}${tie}`
 }
 
-// scales: 그 턴의 시민 저울 (citizenScales). 있으면 결정 단계에 저울과 "흔들었다"를 적는다.
+// scales: 그 턴의 시민 저울 (citizenScales). 있으면 결정 단계에 저울과 "설득 성공"을 적는다.
 export function villageLines(
   state: Pick<GameState, 'player_city' | 'roles' | 'config'>,
   result: Pick<TurnResult, 'turn' | 'cities' | 'sharing' | 'vote'>,
@@ -282,7 +282,7 @@ export function villageLines(
     const s = scales[c.city]
     if (!s) continue
     lines.push({ phase: 'flags', kind: 'scale', who: c.city, text: scaleText(s, me) })
-    if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번 주민을 흔들었다` })
+    if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번 설득 성공` })
   }
 
   // 모순 발견: 만난 두 주민이 내가 한 말을 맞춰 봤다
