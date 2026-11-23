@@ -3,7 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
-import { TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses } from './village'
+import { TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
 import type { House, Phase, Preview } from './village'
 import './village.css'
 
@@ -338,7 +338,7 @@ function HouseView({ h, pick }: { h: House; pick?: Pick }) {
             {h.suspicion}
           </text>
           {pick?.preview && (pick.preview.next !== h.suspicion || pick.preview.trial) && (
-            <text x="84" y="5" fontSize="13" fontWeight="700" className={pick.preview.next > pick.preview.from ? 'vb-rust' : 'vb-green'}>
+            <text x="84" y="5" fontSize="13" fontWeight="700" className={worsens(pick.preview) ? 'vb-rust' : 'vb-green'}>
               →{pick.preview.next}
               {pick.preview.trial && ' 재판'}
             </text>
@@ -514,7 +514,7 @@ function NoteCard({
               </g>
               {p && (
                 <g fontWeight="700" textAnchor="middle" aria-hidden>
-                  <text x={47 + i * 74} y="85" fontSize="13" className={p.next > p.from ? 'vb-rust' : 'vb-green'}>
+                  <text x={47 + i * 74} y="85" fontSize="13" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
                     {p.from} → {p.next}
                   </text>
                   {p.trial && (

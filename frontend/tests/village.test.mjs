@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TOP_ARC, changedHouses, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines,
+  TOP_ARC, changedHouses, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -91,6 +91,10 @@ test('suspicion preview matches engine game_turn (7.6): ±20, contradiction +20,
   assert.equal(suspicionPreview(at(50, 'safe'), 'evacuate', pairs, {}).next, 70)
   assert.equal(suspicionPreview(at(50, 'safe'), 'evacuate', [[4, 5]], { 4: 'stay', 5: 'evacuate' }).next, 70)
   assert.equal(suspicionPreview(at(50, null), 'stay', [], {}), null)
+  // 미리보기 색: 100→100 불리는 나쁨, 0→0 유리는 안전
+  assert.equal(worsens(suspicionPreview(at(100, 'danger'), 'stay', [], {})), true)
+  assert.equal(worsens(suspicionPreview(at(0, 'safe'), 'stay', [], {})), false)
+  assert.equal(worsens(suspicionPreview(at(30, 'danger'), 'evacuate', [], {})), false)
 })
 
 test('changed houses: hint differs from today or newly on a dotted line, nothing else', () => {

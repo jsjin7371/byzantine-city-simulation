@@ -68,6 +68,8 @@ export function suspicionPreview(
   return { from, next, trial: next >= SUSPICION.threshold }
 }
 export type Preview = NonNullable<ReturnType<typeof suspicionPreview>>
+// 불리한 말은 항상 +20 이상이라 next>=from이고 next>0 (100→100도 불리). 유리한 말은 next<from이거나 0→0.
+export const worsens = (p: Pick<Preview, 'from' | 'next'>) => p.next >= p.from && p.next > 0
 
 // 어제와 달라진 집 (쪽지를 다시 볼 곳): 다음 힌트가 이번 턴과 바뀌었거나 새로 점선에 들어온 시민. 첫날은 없다.
 export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'next_hints' | 'next_share_pairs'>) {
