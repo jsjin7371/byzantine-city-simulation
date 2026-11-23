@@ -663,8 +663,8 @@ export function VillageBoard({
       <Legend ring={state.config.connection === 'ring'} />
       {night && <rect className="vb-night" width="900" height="598" />}
       {night && (
-        // 단계 이름표: 범례 아래 왼쪽 (하늘 문구·쪽지 대조 표와 안 겹친다). key로 단계마다 다시 페이드
-        <g key={night.phase} className="vb-phase" aria-live="polite">
+        // 단계 이름표: 범례 아래 왼쪽. key로 단계마다 다시 페이드. 스크린리더는 마을 이야기(live)가 읽는다
+        <g key={night.phase} className="vb-phase" aria-hidden>
           <rect x="12" y="70" width={28 + PHASE_LABEL[night.phase].length * 14} height="28" rx="14" fill="#2b1a0c" opacity=".85" />
           <text x="26" y="89" fontSize="15" fontWeight="700" className="vb-light">
             {PHASE_LABEL[night.phase]}
