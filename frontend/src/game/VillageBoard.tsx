@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, KeyboardEvent } from 'react'
+import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
-import { SUSPICION, TOTAL_TURNS, previewSuspicion } from '../gameApi'
+import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
-import { TRAILS, clashingPairs, pairMid, reached, sharePath, stagedHouses, tally, villageHouses } from './village'
-import type { House, Phase } from './village'
+import { TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
+import type { House, Phase, Preview } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
@@ -244,6 +244,9 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
   )
 }
 
+// 쪽지 하나로 바뀔 의심도 읽기용 문구. 예) "의심도 50에서 70, 재판 열림"
+const previewText = (p: Preview) => `의심도 ${p.from}에서 ${p.next}${p.trial ? ', 재판 열림' : ''}`
+
 function houseLabel(h: House) {
   const name = `${h.city}번 집`
   if (h.role === 'player') return `${name}, 나(마피아)`
@@ -261,7 +264,8 @@ function houseLabel(h: House) {
 }
 
 // 집 하나. pick이 있으면 눌러서 쪽지를 여는 버튼이 된다 (명세 1번).
-type Pick = { claim?: Claim; open: boolean; next: number | null; onOpen: () => void }
+// changed: 어제와 달라진 점 (힌트 바뀜, 새 점선). 어제 쪽지를 그대로 두었으니 여기만 다시 보면 된다.
+type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
 
 const pressKey = (action: () => void) => (e: KeyboardEvent) => {
   if (e.key !== 'Enter' && e.key !== ' ') return
@@ -272,7 +276,7 @@ const pressKey = (action: () => void) => (e: KeyboardEvent) => {
 function HouseView({ h, pick }: { h: House; pick?: Pick }) {
   const { x, y } = h
   const label = pick
-    ? `${houseLabel(h)}. 할 말 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}`
+    ? `${houseLabel(h)}${pick.changed ? `, 어제와 달라짐: ${pick.changed.join(', ')}` : ''}. 할 말 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
     : houseLabel(h)
   const mafia = h.role !== 'citizen'
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
@@ -333,14 +337,23 @@ function HouseView({ h, pick }: { h: House; pick?: Pick }) {
           <text x="58" y="5" fontSize="14" fontWeight="700" className={over ? 'vb-light' : undefined}>
             {h.suspicion}
           </text>
-          {pick?.next != null && pick.next !== h.suspicion && (
-            <text x="84" y="5" fontSize="13" fontWeight="700" className="vb-rust">
-              →{pick.next}
+          {pick?.preview && (pick.preview.next !== h.suspicion || pick.preview.trial) && (
+            <text x="84" y="5" fontSize="13" fontWeight="700" className={worsens(pick.preview) ? 'vb-rust' : 'vb-green'}>
+              →{pick.preview.next}
+              {pick.preview.trial && ' 재판'}
             </text>
           )}
         </g>
       )}
       {pick?.claim && <use href={`#vb-note-${pick.claim}`} x={x + 70} y={y - 30} />}
+      {pick?.changed && (
+        <g className="vb-new" transform={`translate(${x - 10},${y + 52})`} aria-hidden>
+          <rect x="-82" y="-10" width="164" height="20" rx="10" />
+          <text y="4" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-light">
+            어제와 달라짐: {pick.changed.join('·')}
+          </text>
+        </g>
+      )}
     </g>
   )
 }
@@ -419,35 +432,54 @@ function Trial({
   )
 }
 
-// 밤에 내 집에서 각 집으로 날아가는 쪽지 (보낸 말 그대로).
-function Notes({ result, houses }: { result: TurnResult; houses: House[] }) {
-  const me = houses[0]
+// 밤에 오솔길을 따라 각 집으로 가는 말: 내 쪽지(큰 쪽지)와 다른 집의 주장(작은 쪽지).
+function Talk({ result, player }: { result: TurnResult; player: number }) {
+  const notes = talkNotes(player, result).sort((a, b) => Number(a.from === player) - Number(b.from === player)) // 내 쪽지를 맨 위에
   return (
     <g aria-hidden>
-      {houses.slice(1).map((h, i) => {
-        const claim = result.cities.find((c) => c.city === h.city)?.received?.[me.city]?.claim
-        if (!claim) return null
-        const style = { '--dx': `${h.x + 70 - me.x}px`, '--dy': `${h.y - 30 - me.y}px`, animationDelay: `${i * 120}ms` }
-        return (
-          <g key={h.city} className="vb-fly" style={style as CSSProperties}>
-            <use href={`#vb-note-${claim}`} x={me.x} y={me.y} />
-          </g>
-        )
-      })}
+      {notes.map((n, i) => (
+        <g
+          key={`${n.from}-${n.to}`}
+          className="vb-fly"
+          style={{ offsetPath: `path("${n.path}")`, animationDelay: `${Math.min(i * 30, 360)}ms` }} // 출발을 조금씩 엇갈리게
+        >
+          <use href={`#vb-note-${n.claim}`} transform={n.from === player ? undefined : 'scale(.6)'} />
+        </g>
+      ))}
     </g>
   )
 }
 
-// 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 (명세 1번).
+// 길 범례: 갈색 길은 모두에게 말하기, 노란 점선은 쪽지 맞춰 보기 (선 모양도 달라 색만으로 구분하지 않는다).
+function Legend({ ring }: { ring: boolean }) {
+  const talk = ring ? '양옆 집에게 말하기' : '모두에게 말하기'
+  const label = `범례: 갈색 길은 ${talk}, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 주장을 보낸다. 노란 점선은 오늘 밤 쪽지 맞춰 보기, 두 시민이 받은 쪽지를 서로 맞춰 본다`
+  return (
+    <g role="img" aria-label={label}>
+      <title>{label}</title>
+      <rect x="12" y="10" width="236" height="52" rx="4" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" opacity=".95" />
+      <path d="M22 26 H52" stroke="#9c7442" strokeWidth="9" strokeLinecap="round" />
+      <path d="M22 26 H52" stroke="#c9a068" strokeWidth="5" strokeLinecap="round" />
+      <path d="M22 47 H52" stroke="#3b2a1a" strokeWidth="7" opacity=".35" />
+      <path d="M22 47 H52" stroke="#ffd35a" strokeWidth="4" strokeDasharray="6 4" />
+      <g fontSize="12" fontWeight="700" aria-hidden>
+        <text x="62" y="30">갈색 길: {talk}</text>
+        <text x="62" y="51">노란 점선: 오늘 밤 쪽지 맞춰 보기</text>
+      </g>
+    </g>
+  )
+}
+
+// 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 (명세 1번). 예) 50 → 70, 재판 열림
 function NoteCard({
   h,
   claim,
-  delta,
+  preview,
   onClaim,
 }: {
   h: House
   claim?: Claim
-  delta: (c: Claim) => number | null
+  preview: (c: Claim) => Preview | null
   onClaim: (c: Claim) => void
 }) {
   const left = h.x < 450
@@ -456,14 +488,14 @@ function NoteCard({
   return (
     <g transform={`translate(${cx},${cy})`}>
       <g className={`vb-card${left ? ' from-left' : ' from-right'}`} role="group" aria-label={`${h.city}번 집에 할 말`}>
-        <rect x="4" y="5" width="168" height="96" rx="2" fill="#2a1a0c" opacity=".25" />
-        <rect width="168" height="96" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
+        <rect x="4" y="5" width="168" height="112" rx="2" fill="#2a1a0c" opacity=".25" />
+        <rect width="168" height="112" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
         <circle cx="10" cy="10" r="5" fill="#a8361f" stroke="#4a1a10" />
         <text x="22" y="24" fontSize="13.5" fontWeight="700">
           {h.city}번 집에 할 말
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
-          const d = delta(c)
+          const p = preview(c)
           return (
             <g key={c}>
               <g
@@ -471,7 +503,7 @@ function NoteCard({
                 role="button"
                 tabIndex={0}
                 aria-pressed={claim === c}
-                aria-label={`${decisions[c]}${d == null ? '' : `, 의심도 ${d > 0 ? '+' : ''}${d}`}`}
+                aria-label={`${decisions[c]}${p ? `, ${previewText(p)}` : ''}`}
                 onClick={() => onClaim(c)}
                 onKeyDown={pressKey(() => onClaim(c))}
               >
@@ -480,18 +512,17 @@ function NoteCard({
                   {decisions[c]}
                 </text>
               </g>
-              {d != null && (
-                <text
-                  x={47 + i * 74}
-                  y="85"
-                  fontSize="13"
-                  fontWeight="700"
-                  textAnchor="middle"
-                  className={d > 0 ? 'vb-rust' : d < 0 ? 'vb-green' : undefined}
-                  aria-hidden
-                >
-                  {d > 0 ? `+${d}` : d < 0 ? `−${-d}` : '±0'}
-                </text>
+              {p && (
+                <g fontWeight="700" textAnchor="middle" aria-hidden>
+                  <text x={47 + i * 74} y="85" fontSize="13" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
+                    {p.from} → {p.next}
+                  </text>
+                  {p.trial && (
+                    <text x={47 + i * 74} y="102" fontSize="11.5" className="vb-rust">
+                      재판 열림
+                    </text>
+                  )}
+                </g>
               )}
             </g>
           )
@@ -570,21 +601,31 @@ export function VillageBoard({
       last.current = null
     }
   }, [open])
+  // 선택창과 집 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
+  useEffect(() => {
+    if (open == null) return
+    const close = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.vb-card, .vb-house')) setOpen(null)
+    }
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [open])
   const night = result && stage && stage.phase !== 'day' ? { ...stage, result } : null
   const at = (p: Phase) => !night || reached(night.phase, p)
   const turn = night ? night.result.turn - 1 : (result?.turn ?? state.turn)
   const houses = night ? stagedHouses(state, night.prev, night.result, night.phase) : villageHouses(state, result)
   const pairs = (night ? night.result.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
-  const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집`).join(', ')
   const clashes = picker ? clashingPairs(pairs, picker.claims) : []
-  const preview = (h: House, claim?: Claim) => {
-    if (!picker?.ruled || !h.hint || !claim) return null
-    const others = pairs
-      .filter((p) => p.includes(h.city))
-      .map(([a, b]) => picker.claims[a === h.city ? b : a])
-      .filter(Boolean)
-    return previewSuspicion(h.suspicion ?? 0, h.hint, claim, others)
-  }
+  // 연출 중 모순이 들킨 쌍 (내가 두 집에 다른 말을 했다)
+  const caught =
+    night && at('suspicion')
+      ? night.result.sharing.filter((s) => s.contradictions.some((c) => c.city === state.player_city)).map((s) => s.pair)
+      : []
+  const red = (a: number, b: number) => [...clashes, ...caught].some(([x, y]) => x === a && y === b)
+  const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집${red(a, b) ? '(모순)' : ''}`).join(', ')
+  const preview = (h: House, claim?: Claim) =>
+    picker?.ruled && claim ? suspicionPreview(h, claim, pairs, picker.claims) : null
+  const changed = picker && result ? changedHouses(result) : {}
   const opened = picker ? houses.find((h) => h.city === open && h.reachable) : undefined
   return (
     <svg
@@ -599,17 +640,26 @@ export function VillageBoard({
       <Ground />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <Sky danger={state.truth === 'danger'} />
+      <Legend ring={state.config.connection === 'ring'} />
       {night && <rect className="vb-night" width="900" height="598" />}
       {pairs.length > 0 && (
-        <g className="vb-share" role="img" aria-label={`${night ? '오늘 밤' : '다음 턴에'} 만나는 집: ${pairLabel}`}>
-          <title>{`${night ? '오늘 밤' : '다음 턴에'} 만나는 집: ${pairLabel}`}</title>
+        <g className="vb-share" role="img" aria-label={`오늘 밤 쪽지 맞춰 보기: ${pairLabel}`}>
+          <title>{`오늘 밤 쪽지 맞춰 보기: ${pairLabel}`}</title>
           {pairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
+            const [mx, my] = pairMid(state.player_city, a, b)
             return (
-              <g key={`${a}-${b}`}>
+              <g key={`${a}-${b}`} className={red(a, b) ? 'is-clash' : undefined}>
                 <path d={d} className="vb-share-glow" />
                 <path d={d} fill="none" stroke="#3b2a1a" strokeWidth="9" strokeLinecap="round" opacity=".35" />
-                <path d={d} fill="none" stroke="#ffd35a" strokeWidth="5" strokeDasharray="11 9" strokeLinecap="round" />
+                <path d={d} className="vb-share-line" fill="none" stroke="#ffd35a" strokeWidth="5" strokeDasharray="11 9" strokeLinecap="round" />
+                {/* 점선 이름표: 이 두 집은 오늘 밤 내가 준 쪽지를 서로 맞춰 본다 */}
+                <g className="vb-share-tag" aria-hidden>
+                  <rect x={mx - 74} y={my - 78} width="148" height="22" rx="11" strokeWidth="1.5" />
+                  <text x={mx} y={my - 62} fontSize="12" fontWeight="700" textAnchor="middle">
+                    오늘 밤 쪽지 맞춰 보기
+                  </text>
+                </g>
               </g>
             )
           })}
@@ -625,32 +675,29 @@ export function VillageBoard({
               ? {
                   claim: picker.claims[h.city],
                   open: open === h.city,
-                  next: preview(h, picker.claims[h.city])?.next ?? null,
+                  preview: preview(h, picker.claims[h.city]),
+                  changed: changed[h.city],
                   onOpen: () => setOpen(open === h.city ? null : h.city),
                 }
               : undefined
           }
         />
       ))}
-      {night && at('notes') && <Notes result={night.result} houses={houses} />}
-      {night &&
-        at('suspicion') &&
-        night.result.sharing
-          .filter((s) => s.contradictions.some((c) => c.city === state.player_city))
-          .map(({ pair: [a, b] }) => {
-            const [mx, my] = pairMid(state.player_city, a, b)
-            return (
-              <g key={`${a}-${b}`} role="img" aria-label={`모순 발견: ${a}번 집과 ${b}번 집`}>
-                <g className="vb-knot">
-                  <use href="#vb-knot" x={mx} y={my} />
-                </g>
-                <rect x={mx - 50} y={my - 50} width="100" height="22" rx="3" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
-                <text x={mx} y={my - 34} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-rust">
-                  모순 발견
-                </text>
-              </g>
-            )
-          })}
+      {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
+      {caught.map(([a, b]) => {
+        const [mx, my] = pairMid(state.player_city, a, b)
+        return (
+          <g key={`${a}-${b}`} role="img" aria-label={`모순 발견: ${a}번 집과 ${b}번 집`}>
+            <g className="vb-knot">
+              <use href="#vb-knot" x={mx} y={my} />
+            </g>
+            <rect x={mx - 50} y={my - 50} width="100" height="22" rx="3" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
+            <text x={mx} y={my - 34} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-rust">
+              모순 발견
+            </text>
+          </g>
+        )
+      })}
       {result?.vote && at('trial') && (
         <Trial vote={result.vote} houses={houses} shown={night?.ballots} verdict={at('verdict')} />
       )}
@@ -675,7 +722,7 @@ export function VillageBoard({
           key={opened.city}
           h={opened}
           claim={picker.claims[opened.city]}
-          delta={(c) => preview(opened, c)?.delta ?? null}
+          preview={(c) => preview(opened, c)}
           onClaim={(c) => picker.onClaim(opened.city, c)}
         />
       )}

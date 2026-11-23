@@ -67,16 +67,6 @@ export const SUSPICION = { agree: -20, disagree: 20, contradiction: 20, threshol
 // 시민 과반 (4명이면 3, 3명이면 2). 15턴에 이만큼 오답이면 승리.
 export const majority = (citizens: number) => Math.floor(citizens / 2) + 1
 
-// 내가 고른 말이 이 시민의 나에 대한 의심도를 어떻게 바꿀지. partnerClaims: 다음 턴 공유 쌍 상대에게 내가 하는 말.
-// 상대에게 다른 말을 하면 모순으로 +20 (여러 쌍이어도 한 번).
-export function previewSuspicion(current: number, hint: Truth, claim: Claim, partnerClaims: Claim[] = []) {
-  const agrees = (hint === 'danger') === (claim === 'evacuate')
-  const contradiction = partnerClaims.some((c) => c !== claim)
-  const delta = (agrees ? SUSPICION.agree : SUSPICION.disagree) + (contradiction ? SUSPICION.contradiction : 0)
-  return { delta, next: Math.min(100, Math.max(0, current + delta)), contradiction }
-}
-
-
 // 7.2 난이도 표. 나머지 값은 백엔드 기본값을 쓴다.
 export const difficulties = {
   easy: { label: '쉬움', mafia_count: 1, sensor_error: 0.48, citizen_type: 'wary' },

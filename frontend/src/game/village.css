@@ -60,6 +60,12 @@
 .vb-gauge.is-over .vb-post path { stroke: #2b1a0c; }
 
 .vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
+.vb-share-tag rect { fill: #f6ebcd; stroke: #b8861f; }
+/* 두 집에 다른 쪽지: 점선이 붉게 (모순 +20 매듭과 함께 보여 색만으로 구분하지 않는다) */
+.vb-share .is-clash .vb-share-line { stroke: var(--rust); }
+.vb-share .is-clash .vb-share-glow { stroke: #e0703f; }
+.vb-share .is-clash .vb-share-tag rect { stroke: var(--rust); }
+.vb-share .is-clash .vb-share-tag text { fill: var(--rust); }
 
 .vb-stamp rect { stroke: var(--rust); }
 .vb-stamp rect:first-child { fill: #f6ebcd; }
@@ -95,6 +101,9 @@
 .vb-opt.is-stay.is-sel text { fill: var(--ink); }
 .vb-opt:focus-visible rect { stroke: var(--ink); stroke-width: 3; }
 
+.vb-new rect { fill: var(--forest); stroke: #f6ebcd; stroke-width: 1.5; }
+.vb-new { animation: vb-fade 300ms ease both; }
+
 .vb-knot { transform-box: fill-box; transform-origin: center; animation: vb-knot 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes vb-knot { from { opacity: 0; transform: scale(.6); } }
 
@@ -102,8 +111,18 @@
 .vb-sign { animation: vb-sign 380ms cubic-bezier(0.34, 1.3, 0.64, 1) both; }
 @keyframes vb-sign { from { opacity: 0; transform: translateY(-14px); } }
 
+/* 밤 쪽지: 오솔길(offset-path)을 따라 1.2초 동안 날아가 사라진다 */
+.vb-fly { display: none; offset-rotate: 0deg; opacity: 0; animation: vb-fly 1200ms linear forwards; }
+@supports (offset-path: path("M0 0")) { .vb-fly { display: inline; } }
+@keyframes vb-fly {
+  from { offset-distance: 0%; opacity: 1; }
+  90% { opacity: 1; }
+  to { offset-distance: 100%; opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vb-card, .vb-knot, .vb-sign { animation-name: vb-fade; }
+  .vb-fly { display: none; }
   .vb-opt:active { transform: none; }
   .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
 }
@@ -140,11 +159,9 @@
 .gm-workspace [data-ui-button][data-variant='outline'] { border-color: var(--wood); background: transparent; color: var(--ink); }
 .gm-workspace [data-ui-button][aria-pressed='true'] { box-shadow: 0 2px 0 #1c2e18; }
 
-/* 밤 연출 (목업 A3): 밤빛 → 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
+/* 밤 연출 (목업 A3): 밤빛 → 오솔길로 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
 .vb-gauge-fill { transform-box: fill-box; transform-origin: left center; }
 .vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 700ms ease both; }
-.vb-fly { transform: translate(var(--dx), var(--dy)); animation: vb-fly 1000ms cubic-bezier(0.23, 1, 0.32, 1) both; }
-@keyframes vb-fly { from { transform: none; opacity: 0; } 15% { opacity: 1; } }
 .vb-board.is-playing .vb-gauge-fill { transition: transform 900ms cubic-bezier(0.23, 1, 0.32, 1); }
 .vb-flag { transform-box: fill-box; transform-origin: left bottom; }
 .vb-board.is-playing .vb-flag { animation: vb-flip 420ms cubic-bezier(0.23, 1, 0.32, 1); }

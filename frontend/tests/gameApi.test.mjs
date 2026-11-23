@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { claimTargets, defaultClaims, createGame, getGame, playTurn, previewSuspicion, majority } from '../src/gameApi.ts'
+import { claimTargets, defaultClaims, createGame, getGame, playTurn, majority } from '../src/gameApi.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
 const state = {
@@ -46,12 +46,7 @@ test('playTurn wraps claims in message objects and rejects a different turn', as
   await assert.rejects(playTurn(7, 2, {}), /응답 형식/)
 })
 
-test('previewSuspicion follows the 7.6 rule', () => {
-  assert.deepEqual(previewSuspicion(30, 'danger', 'evacuate'), { delta: -20, next: 10, contradiction: false })
-  assert.deepEqual(previewSuspicion(55, 'danger', 'stay'), { delta: 20, next: 75, contradiction: false })
-  assert.deepEqual(previewSuspicion(10, 'safe', 'stay'), { delta: -20, next: 0, contradiction: false })
-  assert.deepEqual(previewSuspicion(50, 'safe', 'evacuate', ['stay', 'stay']), { delta: 40, next: 90, contradiction: true })
-  assert.deepEqual(previewSuspicion(95, 'safe', 'evacuate', ['evacuate']), { delta: 20, next: 100, contradiction: false })
+test('majority is more than half of the citizens', () => {
   assert.equal(majority(4), 3)
   assert.equal(majority(3), 2)
 })

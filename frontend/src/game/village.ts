@@ -12,6 +12,7 @@ const SLOTS = [
 ]
 // 위쪽 두 집(2, 3번 자리)은 광장을 거치지 않는 숲길로 바로 이어진다.
 export const TOP_ARC = 'M285 215 Q450 115 615 215'
+const TOP_ARC_BACK = 'M615 215 Q450 115 285 215'
 // 바닥에 깔리는 오솔길 6개 (집 5개 + 위쪽 숲길)
 export const TRAILS = [...SLOTS.map(({ trail: [a, b, c, d, e, f] }) => `M${a} ${b} Q${c} ${d} ${e} ${f}`), TOP_ARC]
 
@@ -20,11 +21,13 @@ export function houseSlots(player: number) {
   return [0, 1, 2, 3, 4].map((i) => ({ city: ((player - 1 + i) % 5) + 1, slot: i, ...SLOTS[i] }))
 }
 
-// 두 집 사이 오솔길. 위쪽 두 집은 숲길, 나머지는 광장을 지나간다.
+// 도시의 자리 번호 (0번이 내 집).
+const slotOf = (player: number, city: number) => (city - player + 5) % 5
+
+// a에서 b로 가는 오솔길. 위쪽 두 집은 숲길, 나머지는 광장을 지나간다.
 export function sharePath(player: number, a: number, b: number) {
-  const slot = (c: number) => (c - player + 5) % 5
-  const [sa, sb] = [slot(a), slot(b)].sort((p, q) => p - q)
-  if (sa === 2 && sb === 3) return TOP_ARC
+  const [sa, sb] = [slotOf(player, a), slotOf(player, b)]
+  if (sa >= 2 && sa <= 3 && sb >= 2 && sb <= 3) return sa < sb ? TOP_ARC : TOP_ARC_BACK
   const [x0, y0, cx, cy, x1, y1] = SLOTS[sa].trail
   const [u0, v0, ux, uy, u1, v1] = SLOTS[sb].trail
   return `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1} L${u1} ${v1} Q${ux} ${uy} ${u0} ${v0}`
@@ -33,7 +36,7 @@ export function sharePath(player: number, a: number, b: number) {
 // 모순 매듭을 놓을 길 위 한가운데 점.
 export function pairMid(player: number, a: number, b: number): [number, number] {
   const path = sharePath(player, a, b)
-  if (path === TOP_ARC) return [450, 165]
+  if (path === TOP_ARC || path === TOP_ARC_BACK) return [450, 165]
   const n = path.match(/-?\d+/g)!.map(Number)
   return [(n[4] + n[6]) / 2, (n[5] + n[7]) / 2 - 30]
 }
@@ -41,6 +44,57 @@ export function pairMid(player: number, a: number, b: number): [number, number] 
 // 오늘 밤 만나는 두 집에 서로 다른 말을 고른 쌍 (모순 경고).
 export function clashingPairs(pairs: [number, number][], claims: Record<string, Claim>) {
   return pairs.filter(([a, b]) => claims[a] && claims[b] && claims[a] !== claims[b])
+}
+
+const agrees = (hint: Truth, claim: Claim) => (hint === 'danger') === (claim === 'evacuate')
+
+// 쪽지 하나로 그 시민의 나에 대한 의심도가 어떻게 바뀔지 (7.6, engine/city/logic.py game_turn과 같은 규칙).
+// 자기 힌트와 같은 말 −20, 다른 말 +20, 오늘 밤 쪽지를 맞춰 보는 상대에게 다른 말을 했으면 추가 +20 (쌍이 여럿이어도 한 번).
+// 0~100으로 자르고, 60 이상이면 재판이 열린다. 게임은 memory "turn"이라 자기 힌트 = 이번 턴 힌트, 1턴 전 의심도는 0.
+export function suspicionPreview(
+  h: Pick<House, 'city' | 'hint' | 'suspicion'>,
+  claim: Claim,
+  pairs: [number, number][],
+  claims: Record<string, Claim>,
+) {
+  if (!h.hint) return null
+  const from = h.suspicion ?? 0
+  const contradiction = pairs.some(([a, b]) => {
+    const other = a === h.city ? b : b === h.city ? a : null
+    return other != null && claims[other] != null && claims[other] !== claim
+  })
+  const delta = (agrees(h.hint, claim) ? SUSPICION.agree : SUSPICION.disagree) + (contradiction ? SUSPICION.contradiction : 0)
+  const next = Math.min(100, Math.max(0, from + delta))
+  return { from, next, trial: next >= SUSPICION.threshold }
+}
+export type Preview = NonNullable<ReturnType<typeof suspicionPreview>>
+// 불리한 말은 항상 +20 이상이라 next>=from이고 next>0 (100→100도 불리). 유리한 말은 next<from이거나 0→0.
+export const worsens = (p: Pick<Preview, 'from' | 'next'>) => p.next >= p.from && p.next > 0
+
+// 어제와 달라진 집 (쪽지를 다시 볼 곳): 다음 힌트가 이번 턴과 바뀌었거나 새로 점선에 들어온 시민. 첫날은 없다.
+export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'next_hints' | 'next_share_pairs'>) {
+  const met = new Set(result.sharing.flatMap((s) => s.pair))
+  const changes: Record<number, string[]> = {}
+  for (const c of result.cities) {
+    const next = result.next_hints?.[c.city]
+    const why = [
+      c.hint && next && c.hint !== next ? '힌트 바뀜' : null,
+      !met.has(c.city) && result.next_share_pairs?.some((p) => p.includes(c.city)) ? '새 점선' : null,
+    ].filter((w) => w != null)
+    if (why.length) changes[c.city] = why
+  }
+  return changes
+}
+
+// 밤에 오솔길을 따라 오가는 말: 받은 집마다 보낸 집에서 온 주장 (connection이 all이면 모든 집이 서로 보낸다).
+export function talkNotes(player: number, result: Pick<TurnResult, 'cities'>) {
+  return result.cities.flatMap((c) =>
+    Object.entries(c.received ?? {}).flatMap(([from, msg]) => {
+      const s = Number(from)
+      if (!msg) return []
+      return [{ from: s, to: c.city, claim: msg.claim, path: sharePath(player, s, c.city) }]
+    }),
+  )
 }
 
 export type House = {
@@ -144,7 +198,6 @@ export type Line = Said &
 
 const saw = { danger: '태풍', safe: '맑음' } as const
 const said = { evacuate: '대피', stay: '잔류' } as const
-const agrees = (hint: Truth, claim: Claim) => (hint === 'danger') === (claim === 'evacuate')
 
 export function villageLines(
   state: Pick<GameState, 'player_city' | 'roles' | 'config'>,
