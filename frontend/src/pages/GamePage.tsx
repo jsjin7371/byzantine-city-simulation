@@ -43,7 +43,7 @@ function TurnReport({ result }: { result: TurnResult }) {
           .map((c) => (
             <article key={c.city} className="gm-citizen">
               <h3>
-                주민 {c.city} · 힌트 {c.hint ? truths[c.hint] : '—'} ·{' '}
+                주민 {c.city} · 관측 {c.hint ? truths[c.hint] : '—'} ·{' '}
                 {c.decision ? decisions[c.decision] : '—'}{' '}
                 <span className={c.correct ? 'rs-correct' : 'rs-incorrect'}>
                   {c.correct ? '정답' : '오답'}
@@ -52,8 +52,8 @@ function TurnReport({ result }: { result: TurnResult }) {
               {c.suspicion ? (
                 Object.entries(c.suspicion).map(([target, value]) => (
                   <div key={target} className="gm-gauge">
-                    <span>도시 {target}</span>
-                    <Gauge value={value} label={`도시 ${target} 의심도`} />
+                    <span>{target}번 집</span>
+                    <Gauge value={value} label={`${target}번 집 의심도`} />
                     <span>{value}</span>
                   </div>
                 ))
@@ -75,7 +75,7 @@ function TurnReport({ result }: { result: TurnResult }) {
               : s.contradictions
                   .map(
                     (x) =>
-                      `도시 ${x.city} 모순 (${Object.entries(x.told)
+                      `${x.city}번 집 모순 (${Object.entries(x.told)
                         .map(([to, m]) => `${to}번에게 ${decisions[m.claim]}`)
                         .join(', ')})`,
                   )
@@ -92,7 +92,7 @@ function TurnReport({ result }: { result: TurnResult }) {
           · 지목:{' '}
           {result.vote.accused === null
             ? '없음 (과반 미달)'
-            : `도시 ${result.vote.accused}${result.vote.caught ? ' (마피아 발각)' : ' (무고한 주민 처형)'}`}
+            : `${result.vote.accused}번 집${result.vote.caught ? ' (마피아 발각)' : ' (무고한 주민 지목)'}`}
         </p>
       ) : (
         <p className="gm-muted">재판이 열리지 않았습니다.</p>
@@ -197,7 +197,7 @@ export function GamePage() {
             고르게 하면 승리, 전부 오답이면 완승.
           </li>
           <li>
-            의심도(나에 대한): 주민 힌트와 같은 말 {SUSPICION.agree}, 다른 말 +
+            의심도(나에 대한): 주민 관측과 같은 말 {SUSPICION.agree}, 다른 말 +
             {SUSPICION.disagree}, 공유 쌍인 두 주민에게 서로 다른 말을 하면 모순 +
             {SUSPICION.contradiction}.
           </li>
@@ -247,7 +247,7 @@ export function GamePage() {
         <>
           <section className="gm-panel">
             <h2>
-              정답 {truths[state.truth]} · 나는 도시 {state.player_city} · {state.turn}/
+              정답 {truths[state.truth]} · 나는 {state.player_city}번 집 · {state.turn}/
               {TOTAL_TURNS}턴
             </h2>
             <p>
