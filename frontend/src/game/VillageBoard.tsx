@@ -62,12 +62,14 @@ function Defs() {
       </g>
       {(['evacuate', 'stay'] as const).map((claim) => (
         <g key={claim} id={`vb-flag-${claim}`}>
-          <line x1="0" y1="0" x2="0" y2="-52" stroke="#3b2a1a" strokeWidth="2.5" />
-          <path
-            d="M0 -52 Q14 -57 24 -51 Q34 -45 44 -50 L44 -30 Q34 -25 24 -31 Q14 -37 0 -32 Z"
-            className={`vb-cloth is-${claim}`}
-            strokeWidth="1.5"
-          />
+          <g filter="url(#vb-rough)">
+            <line x1="0" y1="0" x2="0" y2="-52" stroke="#3b2a1a" strokeWidth="2.5" />
+            <path
+              d="M0 -52 Q14 -57 24 -51 Q34 -45 44 -50 L44 -30 Q34 -25 24 -31 Q14 -37 0 -32 Z"
+              className={`vb-cloth is-${claim}`}
+              strokeWidth="1.5"
+            />
+          </g>
           <text x="22" y="-36" fontSize="11" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
             {decisions[claim]}
           </text>
@@ -142,7 +144,7 @@ function Ground() {
 // 하늘: 정답이 위험이면 태풍 구름, 안전이면 맑은 하늘
 function Sky({ danger }: { danger: boolean }) {
   return (
-    <g role="img" aria-label={danger ? '하늘: 태풍이 온다, 대피가 정답' : '하늘: 태풍이 비켜 간다, 잔류가 정답'}>
+    <g role="img" aria-label={danger ? '하늘: 오늘 밤 진짜 날씨는 태풍, 주민은 대피해야 산다' : '하늘: 오늘 밤 진짜 날씨는 맑음, 주민은 집에 있어야 산다'}>
       <g filter="url(#vb-rough)">
         <path
           d="M0 0 H900 V96 Q850 112 800 98 Q740 118 680 100 Q610 120 540 102 Q470 118 400 100 Q330 116 260 99 Q190 114 120 98 Q60 112 0 98 Z"
@@ -185,10 +187,10 @@ function Sky({ danger }: { danger: boolean }) {
         )}
       </g>
       <text x="545" y="40" fontSize="18" fontWeight="700" textAnchor="end" className="vb-serif" aria-hidden>
-        {danger ? '태풍이 온다' : '태풍이 비켜 간다'}
+        {danger ? '오늘 밤 진짜 날씨: 태풍' : '오늘 밤 진짜 날씨: 맑음'}
       </text>
       <text x="545" y="60" fontSize="12" textAnchor="end" aria-hidden>
-        {danger ? '대피가 정답' : '잔류가 정답'}
+        {danger ? '주민은 대피해야 산다' : '주민은 집에 있어야 산다'}
       </text>
     </g>
   )
@@ -322,7 +324,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       )}
       {h.flag && (
         <g key={h.flag} className="vb-flag" transform={`translate(${x + 28},${y - 62})`}>
-          <use href={`#vb-flag-${h.flag}`} filter="url(#vb-rough)" />
+          <use href={`#vb-flag-${h.flag}`} />
         </g>
       )}
       {swayed && (
