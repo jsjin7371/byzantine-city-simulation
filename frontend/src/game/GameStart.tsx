@@ -1,20 +1,21 @@
 import { useRef } from 'react'
-import type { KeyboardEvent } from 'react'
+import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { TOTAL_TURNS, citizenTypes, difficulties } from '../gameApi'
 import type { CitizenType, Difficulty } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
+import { SharedVillageDefs } from './SharedVillageDefs'
 
-const DIFF_LAYOUT: Record<Difficulty, { x: number; w: number; cx: number; rx: number }> = {
-  easy: { x: 546, w: 112, cx: 602, rx: 44 },
-  normal: { x: 698, w: 112, cx: 754, rx: 44 },
-  hard: { x: 850, w: 120, cx: 910, rx: 48 },
-}
+const OPTION_SLOTS = [
+  { x: 546, w: 112 },
+  { x: 698, w: 112 },
+  { x: 850, w: 120 },
+] as const
 
-const CITIZEN_LAYOUT: Record<CitizenType, { x: number; w: number; cx: number; rx: number }> = {
-  majority: { x: 546, w: 112, cx: 602, rx: 46 },
-  wary: { x: 698, w: 112, cx: 754, rx: 44 },
-  ai: { x: 850, w: 120, cx: 910, rx: 42 },
-}
+const DIFF_RX: Record<Difficulty, number> = { easy: 44, normal: 44, hard: 48 }
+const CITIZEN_RX: Record<CitizenType, number> = { majority: 46, wary: 44, ai: 42 }
+
+const PLANK_PATH = 'M404 0 H1004 L1036 33 L1004 66 H404 Z'
+const roleCardPath = (x: number) => `M${x} 440 H${x + 268} L${x + 286} 458 V578 H${x} Z`
 
 type RoleCardSpec = {
   key: CitizenType
@@ -103,6 +104,14 @@ const START_TRAILS = [
   'M720 470 Q940 450 1138 426',
 ]
 
+const START_HUTS: { x: number; y: number; s: number; rx: number; ry: number; win?: 'on' | 'off' }[] = [
+  { x: 298, y: 422, s: 0.86, rx: 56, ry: 20, win: 'off' },
+  { x: 148, y: 516, s: 1.06, rx: 70, ry: 25, win: 'on' },
+  { x: 1142, y: 422, s: 0.9, rx: 58, ry: 20 },
+  { x: 1276, y: 596, s: 1.16, rx: 76, ry: 28, win: 'on' },
+  { x: 212, y: 712, s: 1.18, rx: 76, ry: 28, win: 'on' },
+]
+
 function onRadioKey<T extends string>(
   e: KeyboardEvent,
   keys: readonly T[],
@@ -129,55 +138,11 @@ function onRadioKey<T extends string>(
 function StartDefs() {
   return (
     <defs>
-      <filter id="vs-rough" x="-15%" y="-15%" width="130%" height="130%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves={2} seed={7} result="n" />
-        <feDisplacementMap in="SourceGraphic" in2="n" scale={4} xChannelSelector="R" yChannelSelector="G" />
-      </filter>
+      <SharedVillageDefs prefix="vs" />
       <filter id="vs-rough-sm" x="-20%" y="-20%" width="140%" height="140%">
         <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves={2} seed={9} result="n" />
         <feDisplacementMap in="SourceGraphic" in2="n" scale={2.2} xChannelSelector="R" yChannelSelector="G" />
       </filter>
-      <filter id="vs-mottle" x="0" y="0" width="100%" height="100%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.02" numOctaves={3} seed={11} />
-        <feColorMatrix values="0 0 0 0 .17  0 0 0 0 .29  0 0 0 0 .1  1.5 0 0 0 -.6" />
-      </filter>
-      <filter id="vs-grain" x="0" y="0" width="100%" height="100%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves={2} seed={3} />
-        <feColorMatrix values="0 0 0 0 .25  0 0 0 0 .18  0 0 0 0 .08  .5 0 0 0 -.2" />
-      </filter>
-      <radialGradient id="vs-lamp">
-        <stop offset="0" stopColor="#ffe27a" stopOpacity=".95" />
-        <stop offset="1" stopColor="#ffd35a" stopOpacity="0" />
-      </radialGradient>
-
-      <g id="vs-tree">
-        <ellipse cx="3" cy="16" rx="20" ry="6" fill="#2a3d1d" opacity=".35" />
-        <circle r="19" fill="#2f4a28" />
-        <circle cx="-7" cy="-6" r="10" fill="#46652f" />
-        <circle cx="6" cy="-9" r="6" fill="#5e8040" />
-      </g>
-      <g id="vs-hut">
-        <ellipse cx="2" cy="4" rx="50" ry="9" fill="#3a2a14" opacity=".28" />
-        <path d="M-35 2 L-35 -32 L35 -32 L35 2 Z" fill="#e8cf9c" stroke="#3b2a1a" strokeWidth="2.2" />
-        <path d="M-6 2 V-16 Q0 -23 6 -16 V2 Z" fill="#6b4a2a" stroke="#3b2a1a" strokeWidth="1.5" />
-        <path d="M-46 -28 Q-26 -66 0 -70 Q26 -66 46 -28 Q0 -36 -46 -28 Z" fill="#b5763d" stroke="#3b2a1a" strokeWidth="2.2" />
-        <path d="M-30 -36 L-18 -58 M-14 -34 L-6 -64 M2 -34 L6 -65 M16 -35 L20 -60 M30 -34 L32 -48" stroke="#7e4d22" strokeWidth="1.6" fill="none" />
-      </g>
-      <g id="vs-hut-dark">
-        <ellipse cx="2" cy="4" rx="50" ry="9" fill="#3a2a14" opacity=".28" />
-        <path d="M-35 2 L-35 -32 L35 -32 L35 2 Z" fill="#cdbb98" stroke="#3b2a1a" strokeWidth="2.4" />
-        <path d="M-46 -28 Q-26 -66 0 -70 Q26 -66 46 -28 Q0 -36 -46 -28 Z" fill="#4e3f35" stroke="#2a1f17" strokeWidth="2.4" />
-        <rect x="-8" y="-24" width="16" height="13" fill="#3e352c" stroke="#3b2a1a" strokeWidth="2" />
-      </g>
-      <g id="vs-win-on">
-        <circle r="22" fill="url(#vs-lamp)" />
-        <rect x="-8" y="-7" width="16" height="14" fill="#ffd35a" stroke="#3b2a1a" strokeWidth="2" />
-        <path d="M0 -7 V7 M-8 0 H8" stroke="#3b2a1a" strokeWidth="1.3" />
-      </g>
-      <g id="vs-win-off">
-        <rect x="-8" y="-7" width="16" height="14" fill="#3e352c" stroke="#3b2a1a" strokeWidth="2" />
-        <path d="M0 -7 V7 M-8 0 H8" stroke="#6b5d4b" strokeWidth="1.3" />
-      </g>
       <path
         id="vs-spark-star"
         d="M0 -8 L2.2 -2.2 L8 0 L2.2 2.2 L0 8 L-2.2 2.2 L-8 0 L-2.2 -2.2 Z"
@@ -243,21 +208,14 @@ function StartDefs() {
       <clipPath id="vs-clip-goal-note">
         <path d="M366 190 H1056 L1074 208 V258 H366 Z" />
       </clipPath>
-      <clipPath id="vs-clip-plank-1">
-        <path d="M404 272 H1004 L1036 305 L1004 338 H404 Z" />
+      <clipPath id="vs-clip-plank">
+        <path d={PLANK_PATH} />
       </clipPath>
-      <clipPath id="vs-clip-plank-2">
-        <path d="M404 354 H1004 L1036 387 L1004 420 H404 Z" />
-      </clipPath>
-      <clipPath id="vs-clip-role-1">
-        <path d="M277 440 H545 L563 458 V578 H277 Z" />
-      </clipPath>
-      <clipPath id="vs-clip-role-2">
-        <path d="M577 440 H845 L863 458 V578 H577 Z" />
-      </clipPath>
-      <clipPath id="vs-clip-role-3">
-        <path d="M877 440 H1145 L1163 458 V578 H877 Z" />
-      </clipPath>
+      {ROLE_CARDS.map((card) => (
+        <clipPath key={card.clip} id={card.clip}>
+          <path d={roleCardPath(card.x)} />
+        </clipPath>
+      ))}
       <clipPath id="vs-clip-enter-btn">
         <rect x="530" y="610" width="380" height="72" rx="4" />
       </clipPath>
@@ -367,11 +325,9 @@ function StartBackdrop() {
       </g>
 
       <g filter="url(#vs-rough)" fill="#d4b678" stroke="#9e7f48" strokeWidth="2">
-        <ellipse cx="298" cy="422" rx="56" ry="20" />
-        <ellipse cx="148" cy="516" rx="70" ry="25" />
-        <ellipse cx="1142" cy="422" rx="58" ry="20" />
-        <ellipse cx="1276" cy="596" rx="76" ry="28" />
-        <ellipse cx="212" cy="712" rx="76" ry="28" />
+        {START_HUTS.map(({ x, y, rx, ry }) => (
+          <ellipse key={`${x}-${y}`} cx={x} cy={y} rx={rx} ry={ry} />
+        ))}
       </g>
 
       <g filter="url(#vs-rough)">
@@ -380,31 +336,180 @@ function StartBackdrop() {
         ))}
       </g>
 
-      <g transform="translate(298, 422) scale(0.86)" filter="url(#vs-rough)">
-        <use href="#vs-hut" />
-        <use href="#vs-win-off" x="-18" y="-20" />
-      </g>
-      <g transform="translate(148, 516) scale(1.06)" filter="url(#vs-rough)">
-        <use href="#vs-hut" />
-        <use href="#vs-win-on" x="-18" y="-20" />
-      </g>
-      <g transform="translate(1142, 422) scale(0.9)" filter="url(#vs-rough)">
-        <use href="#vs-hut-dark" />
-      </g>
-      <g transform="translate(1276, 596) scale(1.16)" filter="url(#vs-rough)">
-        <use href="#vs-hut" />
-        <use href="#vs-win-on" x="-18" y="-20" />
-      </g>
-      <g transform="translate(212, 712) scale(1.18)" filter="url(#vs-rough)">
-        <use href="#vs-hut" />
-        <use href="#vs-win-on" x="-18" y="-20" />
-      </g>
+      {START_HUTS.map(({ x, y, s, win }) => (
+        <g key={`${x}-${y}`} transform={`translate(${x}, ${y}) scale(${s})`} filter="url(#vs-rough)">
+          <use href={win ? '#vs-hut' : '#vs-hut-dark'} />
+          {win && <use href={`#vs-win-${win}`} x="-18" y="-20" />}
+        </g>
+      ))}
 
       <g filter="url(#vs-rough)">
         {FRONT_TREES.map(([x, y, s]) => (
           <use key={`${x}-${y}`} href="#vs-tree" transform={`translate(${x}, ${y}) scale(${s})`} />
         ))}
       </g>
+    </g>
+  )
+}
+
+function WoodPlank({
+  x,
+  y,
+  width,
+  height,
+  fill,
+  stroke,
+  strokeWidth,
+  clipId,
+  inset,
+  innerStroke,
+  innerStrokeWidth,
+  innerOpacity,
+  nailFill,
+  nailStrokeWidth,
+  nailRadius,
+  nailX,
+  nailY,
+  children,
+}: {
+  x: number
+  y: number
+  width: number
+  height: number
+  fill: string
+  stroke: string
+  strokeWidth: number
+  clipId: string
+  inset: [number, number]
+  innerStroke: string
+  innerStrokeWidth: number
+  innerOpacity: number
+  nailFill: string
+  nailStrokeWidth: number
+  nailRadius: number
+  nailX: number
+  nailY: [number, number]
+  children?: ReactNode
+}) {
+  const [ix, iy] = inset
+  const [nyTop, nyBot] = nailY
+  return (
+    <>
+      <rect x={x} y={y} width={width} height={height} rx="4" fill={fill} stroke={stroke} strokeWidth={strokeWidth} filter="url(#vs-rough)" />
+      <rect x={x} y={y} width={width} height={height} filter="url(#vs-grain)" clipPath={`url(#${clipId})`} />
+      <g filter="url(#vs-rough)" fill="none">
+        <rect x={x + ix} y={y + iy} width={width - ix * 2} height={height - iy * 2} rx="2" stroke={innerStroke} strokeWidth={innerStrokeWidth} opacity={innerOpacity} />
+        {children}
+      </g>
+      <g fill={nailFill} stroke={innerStroke} strokeWidth={nailStrokeWidth}>
+        <circle cx={x + nailX} cy={y + nyTop} r={nailRadius} />
+        <circle cx={x + width - nailX} cy={y + nyTop} r={nailRadius} />
+        <circle cx={x + nailX} cy={y + height - nyBot} r={nailRadius} />
+        <circle cx={x + width - nailX} cy={y + height - nyBot} r={nailRadius} />
+      </g>
+    </>
+  )
+}
+
+type OptionItem<T extends string> = {
+  key: T
+  label: string
+  rx: number
+  ariaLabel?: string
+}
+
+function OptionPlank<T extends string>({
+  y,
+  rotate,
+  ariaLabel,
+  label,
+  items,
+  value,
+  onChange,
+  optionRefs,
+}: {
+  y: number
+  rotate: number
+  ariaLabel: string
+  label: string
+  items: readonly OptionItem<T>[]
+  value: T
+  onChange: (val: T) => void
+  optionRefs: RefObject<(SVGGElement | null)[]>
+}) {
+  const keys = items.map((item) => item.key)
+  return (
+    <g transform={`translate(0, ${y}) rotate(${rotate}, 720, 33)`} role="radiogroup" aria-label={ariaLabel}>
+      <path d={PLANK_PATH} fill="#c99a5b" stroke="#4a3119" strokeWidth="2.4" filter="url(#vs-rough)" />
+      <rect x="404" y="0" width="632" height="66" filter="url(#vs-grain)" clipPath="url(#vs-clip-plank)" />
+      <circle cx="418" cy="12" r="2.8" fill="#4a3119" />
+      <circle cx="418" cy="54" r="2.8" fill="#4a3119" />
+
+      <text x="444" y="41" fontSize="25" fontWeight="700" className="vb-pencil">
+        {label}
+      </text>
+
+      {items.map((item, i) => {
+        const slot = OPTION_SLOTS[i]
+        const cx = slot.x + slot.w / 2
+        const selected = value === item.key
+        return (
+          <g key={item.key}>
+            <g
+              ref={(el) => {
+                optionRefs.current[i] = el
+              }}
+              className={selected ? 'vb-clickable vb-opt-item is-selected' : 'vb-clickable vb-opt-item'}
+              role="radio"
+              aria-checked={selected}
+              aria-label={item.ariaLabel}
+              tabIndex={selected ? 0 : -1}
+              onClick={() => onChange(item.key)}
+              onKeyDown={(e) => onRadioKey(e, keys, i, onChange, optionRefs.current)}
+            >
+              <rect
+                className="opt-bg"
+                x={slot.x}
+                y="8"
+                width={slot.w}
+                height="50"
+                rx="3"
+                fill="#f6ebcd"
+                stroke="#8a6a3e"
+                strokeWidth="1.6"
+                filter="url(#vs-rough)"
+              />
+              <ellipse
+                className="opt-stamp"
+                cx={cx}
+                cy="33"
+                rx={item.rx}
+                ry="19"
+                fill="none"
+                stroke="#a8361f"
+                strokeWidth="3"
+                filter="url(#vs-rough)"
+              />
+              <text className="opt-label vb-pencil" x={cx} y="41" fontSize="24" textAnchor="middle">
+                {item.label}
+              </text>
+            </g>
+            {i < items.length - 1 && (
+              <text
+                x={i === 0 ? 678 : 830}
+                y="40"
+                fontSize="22"
+                fontWeight="700"
+                textAnchor="middle"
+                className="vb-slash"
+                aria-hidden="true"
+              >
+                /
+              </text>
+            )}
+          </g>
+        )
+      })}
     </g>
   )
 }
@@ -430,6 +535,13 @@ export function GameStart({
   const citizenKeys = Object.keys(citizenTypes) as CitizenType[]
   const diffRefs = useRef<(SVGGElement | null)[]>([])
   const citizenRefs = useRef<(SVGGElement | null)[]>([])
+  const diffItems = diffKeys.map((key) => ({ key, label: difficulties[key].label, rx: DIFF_RX[key] }))
+  const citizenItems = citizenKeys.map((key) => ({
+    key,
+    label: citizenTypes[key].label,
+    rx: CITIZEN_RX[key],
+    ariaLabel: ROLE_CARDS.find((c) => c.key === key)?.ariaLabel,
+  }))
 
   return (
     <div className="gm-workspace gm-start">
@@ -488,30 +600,28 @@ export function GameStart({
             <rect x="930" y="168" width="14" height="38" />
           </g>
 
-          <rect
-            x="424"
-            y="80"
-            width="592"
-            height="96"
-            rx="4"
+          <WoodPlank
+            x={424}
+            y={80}
+            width={592}
+            height={96}
             fill="#7a5530"
             stroke="#4a3119"
-            strokeWidth="3.5"
-            filter="url(#vs-rough)"
-          />
-          <rect x="424" y="80" width="592" height="96" filter="url(#vs-grain)" clipPath="url(#vs-clip-title-plank)" />
-
-          <g filter="url(#vs-rough)" fill="none">
-            <rect x="435" y="90" width="570" height="76" rx="2" stroke="#c99a5b" strokeWidth="1.5" opacity="0.65" />
+            strokeWidth={3.5}
+            clipId="vs-clip-title-plank"
+            inset={[11, 10]}
+            innerStroke="#c99a5b"
+            innerStrokeWidth={1.5}
+            innerOpacity={0.65}
+            nailFill="#3b2a1a"
+            nailStrokeWidth={1.2}
+            nailRadius={3.8}
+            nailX={24}
+            nailY={[20, 18]}
+          >
             <path d="M446 108 Q590 104 740 109 Q880 112 994 106" stroke="#5a3d22" strokeWidth="1.3" opacity="0.45" />
             <path d="M448 154 Q610 158 790 152 Q910 150 992 155" stroke="#5a3d22" strokeWidth="1.3" opacity="0.45" />
-          </g>
-          <g fill="#3b2a1a" stroke="#c99a5b" strokeWidth="1.2">
-            <circle cx="448" cy="100" r="3.8" />
-            <circle cx="992" cy="100" r="3.8" />
-            <circle cx="448" cy="158" r="3.8" />
-            <circle cx="992" cy="158" r="3.8" />
-          </g>
+          </WoodPlank>
 
           <text
             x="720"
@@ -560,163 +670,26 @@ export function GameStart({
             filter="url(#vs-rough)"
           />
 
-          {/* 첫 번째 화살표 판자: 난이도 */}
-          <g transform="rotate(-0.5, 720, 305)" role="radiogroup" aria-label="난이도">
-            <path
-              d="M404 272 H1004 L1036 305 L1004 338 H404 Z"
-              fill="#c99a5b"
-              stroke="#4a3119"
-              strokeWidth="2.4"
-              filter="url(#vs-rough)"
-            />
-            <rect x="404" y="272" width="632" height="66" filter="url(#vs-grain)" clipPath="url(#vs-clip-plank-1)" />
-            <circle cx="418" cy="284" r="2.8" fill="#4a3119" />
-            <circle cx="418" cy="326" r="2.8" fill="#4a3119" />
-
-            <text x="444" y="313" fontSize="25" fontWeight="700" className="vb-pencil">
-              난이도:
-            </text>
-
-            {diffKeys.map((key, i) => {
-              const slot = DIFF_LAYOUT[key]
-              const selected = difficulty === key
-              return (
-                <g key={key}>
-                  <g
-                    ref={(el) => {
-                      diffRefs.current[i] = el
-                    }}
-                    className={selected ? 'vb-clickable vb-opt-item is-selected' : 'vb-clickable vb-opt-item'}
-                    role="radio"
-                    aria-checked={selected}
-                    tabIndex={selected ? 0 : -1}
-                    onClick={() => onDifficulty(key)}
-                    onKeyDown={(e) => onRadioKey(e, diffKeys, i, onDifficulty, diffRefs.current)}
-                  >
-                    <rect
-                      className="opt-bg"
-                      x={slot.x}
-                      y="280"
-                      width={slot.w}
-                      height="50"
-                      rx="3"
-                      fill="#f6ebcd"
-                      stroke="#8a6a3e"
-                      strokeWidth="1.6"
-                      filter="url(#vs-rough)"
-                    />
-                    <ellipse
-                      className="opt-stamp"
-                      cx={slot.cx}
-                      cy="305"
-                      rx={slot.rx}
-                      ry="19"
-                      fill="none"
-                      stroke="#a8361f"
-                      strokeWidth="3"
-                      filter="url(#vs-rough)"
-                    />
-                    <text className="opt-label vb-pencil" x={slot.cx} y="313" fontSize="24" textAnchor="middle">
-                      {difficulties[key].label}
-                    </text>
-                  </g>
-                  {i < diffKeys.length - 1 && (
-                    <text
-                      x={i === 0 ? 678 : 830}
-                      y="312"
-                      fontSize="22"
-                      fontWeight="700"
-                      textAnchor="middle"
-                      className="vb-slash"
-                      aria-hidden="true"
-                    >
-                      /
-                    </text>
-                  )}
-                </g>
-              )
-            })}
-          </g>
-
-          {/* 두 번째 화살표 판자: 주민 */}
-          <g transform="rotate(0.4, 720, 387)" role="radiogroup" aria-label="주민 종류">
-            <path
-              d="M404 354 H1004 L1036 387 L1004 420 H404 Z"
-              fill="#c99a5b"
-              stroke="#4a3119"
-              strokeWidth="2.4"
-              filter="url(#vs-rough)"
-            />
-            <rect x="404" y="354" width="632" height="66" filter="url(#vs-grain)" clipPath="url(#vs-clip-plank-2)" />
-            <circle cx="418" cy="366" r="2.8" fill="#4a3119" />
-            <circle cx="418" cy="408" r="2.8" fill="#4a3119" />
-
-            <text x="444" y="395" fontSize="25" fontWeight="700" className="vb-pencil">
-              주민:
-            </text>
-
-            {citizenKeys.map((key, i) => {
-              const slot = CITIZEN_LAYOUT[key]
-              const selected = citizenType === key
-              const card = ROLE_CARDS.find((c) => c.key === key)
-              return (
-                <g key={key}>
-                  <g
-                    ref={(el) => {
-                      citizenRefs.current[i] = el
-                    }}
-                    className={selected ? 'vb-clickable vb-opt-item is-selected' : 'vb-clickable vb-opt-item'}
-                    role="radio"
-                    aria-checked={selected}
-                    aria-label={card?.ariaLabel}
-                    tabIndex={selected ? 0 : -1}
-                    onClick={() => onCitizenType(key)}
-                    onKeyDown={(e) => onRadioKey(e, citizenKeys, i, onCitizenType, citizenRefs.current)}
-                  >
-                    <rect
-                      className="opt-bg"
-                      x={slot.x}
-                      y="362"
-                      width={slot.w}
-                      height="50"
-                      rx="3"
-                      fill="#f6ebcd"
-                      stroke="#8a6a3e"
-                      strokeWidth="1.6"
-                      filter="url(#vs-rough)"
-                    />
-                    <ellipse
-                      className="opt-stamp"
-                      cx={slot.cx}
-                      cy="387"
-                      rx={slot.rx}
-                      ry="19"
-                      fill="none"
-                      stroke="#a8361f"
-                      strokeWidth="3"
-                      filter="url(#vs-rough)"
-                    />
-                    <text className="opt-label vb-pencil" x={slot.cx} y="395" fontSize="24" textAnchor="middle">
-                      {citizenTypes[key].label}
-                    </text>
-                  </g>
-                  {i < citizenKeys.length - 1 && (
-                    <text
-                      x={i === 0 ? 678 : 830}
-                      y="394"
-                      fontSize="22"
-                      fontWeight="700"
-                      textAnchor="middle"
-                      className="vb-slash"
-                      aria-hidden="true"
-                    >
-                      /
-                    </text>
-                  )}
-                </g>
-              )
-            })}
-          </g>
+          <OptionPlank
+            y={272}
+            rotate={-0.5}
+            ariaLabel="난이도"
+            label="난이도:"
+            items={diffItems}
+            value={difficulty}
+            onChange={onDifficulty}
+            optionRefs={diffRefs}
+          />
+          <OptionPlank
+            y={354}
+            rotate={0.4}
+            ariaLabel="주민 종류"
+            label="주민:"
+            items={citizenItems}
+            value={citizenType}
+            onChange={onCitizenType}
+            optionRefs={citizenRefs}
+          />
 
           {/* 표지판과 아래 쪽지 3장을 잇는 작은 끈 */}
           <g stroke="#5a3d22" strokeWidth="2" strokeDasharray="3 3" opacity="0.75" filter="url(#vs-rough-sm)" aria-hidden="true">
@@ -742,7 +715,7 @@ export function GameStart({
                   if (index >= 0) citizenRefs.current[index]?.focus()
                 }}
               >
-                <path className="card-paper" d={`M${card.x} 440 H${fold} L${right} 458 V578 H${card.x} Z`} filter="url(#vs-rough)" />
+                <path className="card-paper" d={roleCardPath(card.x)} filter="url(#vs-rough)" />
                 <rect x={card.x} y="440" width="286" height="138" filter="url(#vs-grain)" clipPath={`url(#${card.clip})`} />
                 <path d={`M${fold} 440 V458 H${right}`} fill="#dfcca0" stroke="#8a6a3e" strokeWidth="1.5" filter="url(#vs-rough)" />
                 <circle className="card-pin" cx={card.cx} cy="449" r="4.2" strokeWidth="1.3" filter="url(#vs-rough-sm)" />
@@ -793,36 +766,25 @@ export function GameStart({
             if (!busy) onStart()
           })}
         >
-          <rect
-            x="530"
-            y="610"
-            width="380"
-            height="72"
-            rx="4"
+          <WoodPlank
+            x={530}
+            y={610}
+            width={380}
+            height={72}
             fill="#2f4a2a"
             stroke="#1b2d18"
-            strokeWidth="3.2"
-            filter="url(#vs-rough)"
+            strokeWidth={3.2}
+            clipId="vs-clip-enter-btn"
+            inset={[10, 9]}
+            innerStroke="#c9b485"
+            innerStrokeWidth={1.6}
+            innerOpacity={0.78}
+            nailFill="#1b2d18"
+            nailStrokeWidth={1.1}
+            nailRadius={3}
+            nailX={20}
+            nailY={[19, 19]}
           />
-          <rect x="530" y="610" width="380" height="72" filter="url(#vs-grain)" clipPath="url(#vs-clip-enter-btn)" />
-          <rect
-            x="540"
-            y="619"
-            width="360"
-            height="54"
-            rx="2"
-            fill="none"
-            stroke="#c9b485"
-            strokeWidth="1.6"
-            opacity="0.78"
-            filter="url(#vs-rough)"
-          />
-          <g fill="#1b2d18" stroke="#c9b485" strokeWidth="1.1">
-            <circle cx="550" cy="629" r="3" />
-            <circle cx="890" cy="629" r="3" />
-            <circle cx="550" cy="663" r="3" />
-            <circle cx="890" cy="663" r="3" />
-          </g>
           <text
             x="720"
             y="656"
