@@ -467,6 +467,7 @@ function Trial({
           <text x="450" y="420" fontSize="14" fontWeight="700" textAnchor="middle">
             {stamp}
           </text>
+          <rect className="vb-stamp-ink" x="390" y="400" width="120" height="30" rx="3" aria-hidden />
         </g>
       )}
     </g>

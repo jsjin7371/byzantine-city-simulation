@@ -238,9 +238,34 @@
 .vb-board.is-playing .vb-flag { animation: vb-flip 420ms cubic-bezier(0.23, 1, 0.32, 1); }
 @keyframes vb-flip { from { transform: scaleX(.06); } }
 .vb-board.is-playing .vb-ballot { animation: vb-fade 300ms cubic-bezier(0.23, 1, 0.32, 1); }
-.vb-stamp { transform-box: fill-box; transform-origin: center; }
-.vb-board.is-playing .vb-stamp { animation: vb-stamp 260ms cubic-bezier(0.23, 1, 0.32, 1); }
-@keyframes vb-stamp { from { opacity: 0; transform: rotate(-7deg) scale(1.6); } }
+/* 재판 결과 도장: 떠 있다가 가속해 쾅 찍히고(-4deg) 잉크 테가 번지며 보드가 살짝 흔들린다 */
+.vb-stamp { transform-box: fill-box; transform-origin: center; transform: rotate(-4deg); }
+.vb-board.is-playing .vb-stamp { animation: vb-stamp 450ms both; }
+@keyframes vb-stamp {
+  0% { opacity: 0; transform: rotate(-9deg) scale(1.7); animation-timing-function: cubic-bezier(0.55, 0.05, 0.85, 0.15); }
+  18% { opacity: 1; }
+  60% { opacity: 1; transform: rotate(-4deg) scale(.92); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+  82% { transform: rotate(-4deg) scale(1.03); animation-timing-function: ease-out; }
+  100% { opacity: 1; transform: rotate(-4deg) scale(1); }
+}
+.vb-stamp-ink { fill: none; stroke-width: 3; opacity: 0; pointer-events: none; transform-box: fill-box; transform-origin: center; }
+.vb-board.is-playing .vb-stamp-ink { animation: vb-stamp-ink 360ms cubic-bezier(0.22, 1, 0.36, 1) 270ms forwards; }
+@keyframes vb-stamp-ink {
+  0% { opacity: .55; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.25); }
+}
+.vb-board.is-playing:has(.vb-stamp) { animation: vb-shake 200ms ease-out 270ms 1; }
+@keyframes vb-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-1.5px, 3px); }
+  50% { transform: translate(2px, -1.5px); }
+  78% { transform: translate(-1px, 1px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vb-board.is-playing .vb-stamp,
+  .vb-board.is-playing .vb-stamp-ink,
+  .vb-board.is-playing:has(.vb-stamp) { animation: none; }
+}
 .vl-log.is-live > * { animation: vl-in 240ms cubic-bezier(0.23, 1, 0.32, 1) both; }
 @keyframes vl-in { from { opacity: 0; transform: translateY(4px); } }
 
