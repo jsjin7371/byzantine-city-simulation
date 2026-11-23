@@ -75,6 +75,7 @@ test('a contradiction knot appears only when the two houses that meet hear diffe
   assert.deepEqual(clashingPairs([[1, 5]], { 1: 'stay', 5: 'stay' }), [])
   assert.deepEqual(pairMid(3, 5, 1), [450, 308])
   assert.deepEqual(pairMid(3, 4, 2), [450, 330])
+  assert.deepEqual(pairMid(3, 4, 5), [398, 319])
 })
 
 test('suspicion preview matches engine game_turn (7.6): ±20, contradiction +20, clamp 0~100, trial at 60', () => {

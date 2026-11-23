@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import type { KeyboardEvent, ReactNode, RefObject } from 'react'
+import type { KeyboardEvent, RefObject } from 'react'
 import { TOTAL_TURNS, citizenTypes, difficulties } from '../gameApi'
 import type { CitizenType, Difficulty } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
@@ -352,65 +352,6 @@ function StartBackdrop() {
   )
 }
 
-function WoodPlank({
-  x,
-  y,
-  width,
-  height,
-  fill,
-  stroke,
-  strokeWidth,
-  clipId,
-  inset,
-  innerStroke,
-  innerStrokeWidth,
-  innerOpacity,
-  nailFill,
-  nailStrokeWidth,
-  nailRadius,
-  nailX,
-  nailY,
-  children,
-}: {
-  x: number
-  y: number
-  width: number
-  height: number
-  fill: string
-  stroke: string
-  strokeWidth: number
-  clipId: string
-  inset: [number, number]
-  innerStroke: string
-  innerStrokeWidth: number
-  innerOpacity: number
-  nailFill: string
-  nailStrokeWidth: number
-  nailRadius: number
-  nailX: number
-  nailY: [number, number]
-  children?: ReactNode
-}) {
-  const [ix, iy] = inset
-  const [nyTop, nyBot] = nailY
-  return (
-    <>
-      <rect x={x} y={y} width={width} height={height} rx="4" fill={fill} stroke={stroke} strokeWidth={strokeWidth} filter="url(#vs-rough)" />
-      <rect x={x} y={y} width={width} height={height} filter="url(#vs-grain)" clipPath={`url(#${clipId})`} />
-      <g filter="url(#vs-rough)" fill="none">
-        <rect x={x + ix} y={y + iy} width={width - ix * 2} height={height - iy * 2} rx="2" stroke={innerStroke} strokeWidth={innerStrokeWidth} opacity={innerOpacity} />
-        {children}
-      </g>
-      <g fill={nailFill} stroke={innerStroke} strokeWidth={nailStrokeWidth}>
-        <circle cx={x + nailX} cy={y + nyTop} r={nailRadius} />
-        <circle cx={x + width - nailX} cy={y + nyTop} r={nailRadius} />
-        <circle cx={x + nailX} cy={y + height - nyBot} r={nailRadius} />
-        <circle cx={x + width - nailX} cy={y + height - nyBot} r={nailRadius} />
-      </g>
-    </>
-  )
-}
-
 type OptionItem<T extends string> = {
   key: T
   label: string
@@ -470,7 +411,6 @@ function OptionPlank<T extends string>({
               {selected ? (
                 <>
                   <rect
-                    className="opt-bg"
                     x={slot.x}
                     y="8"
                     width={slot.w}
@@ -482,7 +422,6 @@ function OptionPlank<T extends string>({
                     filter="url(#vs-rough)"
                   />
                   <ellipse
-                    className="opt-stamp"
                     cx={cx}
                     cy="33"
                     rx={item.rx}
@@ -606,28 +545,30 @@ export function GameStart({
             <rect x="930" y="168" width="14" height="38" />
           </g>
 
-          <WoodPlank
-            x={424}
-            y={80}
-            width={592}
-            height={96}
+          <rect
+            x="424"
+            y="80"
+            width="592"
+            height="96"
+            rx="4"
             fill="#7a5530"
             stroke="#4a3119"
-            strokeWidth={3.5}
-            clipId="vs-clip-title-plank"
-            inset={[11, 10]}
-            innerStroke="#c99a5b"
-            innerStrokeWidth={1.5}
-            innerOpacity={0.65}
-            nailFill="#3b2a1a"
-            nailStrokeWidth={1.2}
-            nailRadius={3.8}
-            nailX={24}
-            nailY={[20, 18]}
-          >
+            strokeWidth="3.5"
+            filter="url(#vs-rough)"
+          />
+          <rect x="424" y="80" width="592" height="96" filter="url(#vs-grain)" clipPath="url(#vs-clip-title-plank)" />
+
+          <g filter="url(#vs-rough)" fill="none">
+            <rect x="435" y="90" width="570" height="76" rx="2" stroke="#c99a5b" strokeWidth="1.5" opacity="0.65" />
             <path d="M446 108 Q590 104 740 109 Q880 112 994 106" stroke="#5a3d22" strokeWidth="1.3" opacity="0.45" />
             <path d="M448 154 Q610 158 790 152 Q910 150 992 155" stroke="#5a3d22" strokeWidth="1.3" opacity="0.45" />
-          </WoodPlank>
+          </g>
+          <g fill="#3b2a1a" stroke="#c99a5b" strokeWidth="1.2">
+            <circle cx="448" cy="100" r="3.8" />
+            <circle cx="992" cy="100" r="3.8" />
+            <circle cx="448" cy="158" r="3.8" />
+            <circle cx="992" cy="158" r="3.8" />
+          </g>
 
           <text
             x="720"
@@ -751,7 +692,7 @@ export function GameStart({
                 </text>
 
                 {selected && (
-                  <g className="card-stamp" transform={`translate(${card.x + 246}, 474) rotate(${card.stampRotate})`} aria-hidden="true">
+                  <g transform={`translate(${card.x + 246}, 474) rotate(${card.stampRotate})`} aria-hidden="true">
                     <use href="#vs-red-stamp" />
                   </g>
                 )}
@@ -774,25 +715,36 @@ export function GameStart({
             if (!busy) onStart()
           })}
         >
-          <WoodPlank
-            x={530}
-            y={610}
-            width={380}
-            height={72}
+          <rect
+            x="530"
+            y="610"
+            width="380"
+            height="72"
+            rx="4"
             fill="#2f4a2a"
             stroke="#1b2d18"
-            strokeWidth={3.2}
-            clipId="vs-clip-enter-btn"
-            inset={[10, 9]}
-            innerStroke="#c9b485"
-            innerStrokeWidth={1.6}
-            innerOpacity={0.78}
-            nailFill="#1b2d18"
-            nailStrokeWidth={1.1}
-            nailRadius={3}
-            nailX={20}
-            nailY={[19, 19]}
+            strokeWidth="3.2"
+            filter="url(#vs-rough)"
           />
+          <rect x="530" y="610" width="380" height="72" filter="url(#vs-grain)" clipPath="url(#vs-clip-enter-btn)" />
+          <rect
+            x="540"
+            y="619"
+            width="360"
+            height="54"
+            rx="2"
+            fill="none"
+            stroke="#c9b485"
+            strokeWidth="1.6"
+            opacity="0.78"
+            filter="url(#vs-rough)"
+          />
+          <g fill="#1b2d18" stroke="#c9b485" strokeWidth="1.1">
+            <circle cx="550" cy="629" r="3" />
+            <circle cx="890" cy="629" r="3" />
+            <circle cx="550" cy="663" r="3" />
+            <circle cx="890" cy="663" r="3" />
+          </g>
           <text
             x="720"
             y="656"
