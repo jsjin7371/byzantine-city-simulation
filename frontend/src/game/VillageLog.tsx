@@ -7,7 +7,8 @@ const signed = (v: number) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
 // 작은 양팔 저울: 왼쪽 접시 대피(+), 오른쪽 접시 잔류(−). 몫마다 블록 하나, 합만큼 기운다.
 // 블록 색: 내 관측 초록, 이웃 쪽지 갈색, 내 쪽지 붉은색.
 function Balance({ scale, me, label }: { scale: Scale; me: number; label: string }) {
-  const tilt = -Math.max(-1, Math.min(1, scale.total / 200)) * 14 // 대피 쪽이 무거우면 왼쪽이 내려간다
+  // 대피 쪽이 무거우면 왼쪽이 내려간다. 작은 차이도 보이게 제곱근으로, 최대 15도
+  const tilt = -Math.sign(scale.total) * Math.min(1, Math.sqrt(Math.abs(scale.total) / 300)) * 15
   const drop = 42 * Math.sin((tilt * Math.PI) / 180)
   const pan = (side: 1 | -1) => {
     const parts = scale.parts.filter((p) => p.value * side > 0)

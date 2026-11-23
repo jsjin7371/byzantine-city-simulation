@@ -166,7 +166,7 @@
 .vl-scale { font-size: 12.5px; color: var(--muted); }
 .vl-scale .vl-tok { background: transparent; border-style: dashed; }
 .vl-scale { align-items: center; }
-.vl-mine { color: var(--rust); font-weight: 700; }
+.vl-mine { color: var(--rust); font-weight: 700; white-space: nowrap; }
 /* 기울어지는 저울: 수평에서 합만큼 기운다 */
 .vl-balance { flex: none; overflow: visible; }
 .vl-post, .vl-beam, .vl-pan path { fill: none; stroke: var(--wood); stroke-width: 2; stroke-linecap: round; }
