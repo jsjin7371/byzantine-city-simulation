@@ -62,12 +62,14 @@ function Defs() {
       </g>
       {(['evacuate', 'stay'] as const).map((claim) => (
         <g key={claim} id={`vb-flag-${claim}`}>
-          <line x1="0" y1="0" x2="0" y2="-52" stroke="#3b2a1a" strokeWidth="2.5" />
-          <path
-            d="M0 -52 Q14 -57 24 -51 Q34 -45 44 -50 L44 -30 Q34 -25 24 -31 Q14 -37 0 -32 Z"
-            className={`vb-cloth is-${claim}`}
-            strokeWidth="1.5"
-          />
+          <g filter="url(#vb-rough)">
+            <line x1="0" y1="0" x2="0" y2="-52" stroke="#3b2a1a" strokeWidth="2.5" />
+            <path
+              d="M0 -52 Q14 -57 24 -51 Q34 -45 44 -50 L44 -30 Q34 -25 24 -31 Q14 -37 0 -32 Z"
+              className={`vb-cloth is-${claim}`}
+              strokeWidth="1.5"
+            />
+          </g>
           <text x="22" y="-36" fontSize="11" fontWeight="700" textAnchor="middle" className={`vb-cloth-text is-${claim}`}>
             {decisions[claim]}
           </text>
@@ -322,7 +324,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       )}
       {h.flag && (
         <g key={h.flag} className="vb-flag" transform={`translate(${x + 28},${y - 62})`}>
-          <use href={`#vb-flag-${h.flag}`} filter="url(#vb-rough)" />
+          <use href={`#vb-flag-${h.flag}`} />
         </g>
       )}
       {swayed && (
