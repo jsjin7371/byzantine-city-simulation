@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, fooledDots, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
+  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, fooledDots, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -292,4 +292,19 @@ test('fooledDots fills wrong citizens up to total and marks the majority thresho
     label: '속은 주민 0/3, 2명 필요',
   })
   assert.deepEqual(fooledDots(5, 4).dots, [true, true, true, true])
+})
+
+test('pairLogScales attaches each citizen scale only to their notes quote and keeps unpaired scales', () => {
+  const s1 = { parts: [{ from: 'hint', value: 100 }], total: 100, decision: 'evacuate', mine: null, swayed: false }
+  const s5 = { parts: [{ from: 'hint', value: -100 }], total: -100, decision: 'stay', mine: null, swayed: false }
+  const lines = villageLines(state, { ...turn, vote: { ballots: { 1: 3 }, accused: null, caught: false } }, { 1: s1, 5: s5 })
+  // city 5 is not in turn.cities, add a standalone scale for city 5 directly to test ring/unpaired case
+  lines.push({ phase: 'flags', kind: 'scale', who: 5, text: '잔류 −100', detail: scaleText(s5, 3), scale: s5, me: 3 })
+  const entries = pairLogScales(lines)
+  const city1Says = entries.filter((e) => e.kind === 'say' && e.who === 1)
+  assert.equal(city1Says.length, 4) // notes, contradiction, trial warning, trial ballot
+  assert.equal(city1Says.filter((e) => e.scale).length, 1) // attached only to notes quote
+  assert.equal(city1Says[0].scale?.who, 1)
+  assert.equal(entries.some((e) => e.kind === 'scale' && e.scale.who === 1), false)
+  assert.equal(entries.some((e) => e.kind === 'scale' && e.scale.who === 5), true)
 })

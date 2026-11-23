@@ -305,7 +305,7 @@ export function GamePage() {
             />
           </div>
         </section>
-        <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} live={playing}>
+        <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} day={shown?.turn} live={playing}>
           {playing ? (
             <Button variant="outline" onClick={() => setStep(null)}>
               건너뛰기 (Esc)

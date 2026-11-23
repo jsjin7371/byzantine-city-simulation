@@ -376,18 +376,112 @@
     -3px 0 14px rgba(38, 25, 11, 0.22),
     0 6px 20px rgba(38, 25, 11, 0.25);
 }
-.vl-talk h3 { font: 700 21px/1.2 "Batang", "Gungsuh", serif; margin: 0 0 2px; }
-.vl-log { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
-.vl-when { font-size: 13px; font-weight: 700; color: var(--wood); margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 2px dotted #b4976a; }
-.vl-line { display: flex; gap: 9px; align-items: flex-start; margin: 7px 0; font-size: 14px; line-height: 1.45; }
+.vl-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 2px dotted #b4976a;
+  margin-bottom: 10px;
+}
+.vl-talk h3 { font: 700 21px/1.2 "Batang", "Gungsuh", serif; margin: 0; }
+.vl-day {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--wood);
+  background: var(--ui-background);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+.vl-log {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.vl-when { font-size: 13px; font-weight: 700; color: var(--wood); margin: 4px 0 2px; }
+.vl-entry {
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: rgba(246, 235, 205, 0.56);
+  border: 1px solid rgba(195, 168, 120, 0.65);
+}
+.vl-entry.is-open {
+  background: var(--ui-background);
+  border-color: var(--wood);
+  box-shadow: 0 2px 6px rgba(59, 42, 26, 0.08);
+}
+.vl-entry-row {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.vl-quote { flex: 1; min-width: 0; margin: 0; }
 .vl-tok { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #d9a95f; border: 2px solid var(--wood); font: 700 14px/22px "Batang", serif; text-align: center; }
-.vl-event { margin: 8px 0; font-size: 13.5px; font-weight: 700; color: var(--rust); line-height: 1.4; }
-.vl-event.is-quiet { color: var(--ink); font-weight: 600; }
-.vl-event.is-good { color: var(--forest); }
-.vl-scale { font-size: 12.5px; color: var(--muted); }
-.vl-scale .vl-tok { background: transparent; border-style: dashed; }
-.vl-scale { align-items: center; }
-.vl-mine { color: var(--rust); font-weight: 700; white-space: nowrap; }
+.vl-tok.is-quiet { background: transparent; border-style: dashed; }
+.vl-why-btn {
+  flex: none;
+  appearance: none;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: rgba(239, 224, 185, 0.78);
+  color: var(--wood);
+}
+.vl-entry.is-open .vl-why-btn {
+  background: var(--wood);
+  border-color: #4a3119;
+  color: var(--ui-background);
+}
+.vl-why-box {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1.5px dotted var(--border);
+}
+.vl-why-scale {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.vl-why-calc {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.vl-event {
+  margin: 2px 0;
+  padding: 7px 10px;
+  border-left: 3px solid var(--rust);
+  background: rgba(168, 54, 31, 0.07);
+  border-radius: 0 5px 5px 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--rust);
+  line-height: 1.4;
+}
+.vl-event.is-quiet {
+  border-left-color: var(--border);
+  background: rgba(246, 235, 205, 0.55);
+  color: var(--ink);
+  font-weight: 600;
+}
+.vl-event.is-good {
+  border-left-color: var(--forest);
+  background: rgba(47, 74, 40, 0.08);
+  color: var(--forest);
+}
 /* 기울어지는 저울: 수평에서 합만큼 기운다 */
 .vl-balance { flex: none; overflow: visible; }
 .vl-post, .vl-beam, .vl-pan path { fill: none; stroke: var(--wood); stroke-width: 2; stroke-linecap: round; }

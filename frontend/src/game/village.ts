@@ -355,6 +355,38 @@ export function villageLines(
   return lines
 }
 
+export type ScaleLine = Extract<Line, { kind: 'scale' }>
+export type LogEntry =
+  | { kind: 'when'; text: string }
+  | { kind: 'say'; who: number; text: string; scale?: ScaleLine }
+  | { kind: 'scale'; scale: ScaleLine }
+  | { kind: 'event'; text: string; good?: boolean }
+
+// 일기장 표시용으로 주민 말(notes 단계)과 그 주민의 저울(scale)을 짝짓는다.
+// suspicion·trial 대사에는 붙이지 않고, 짝이 없는 저울(예: ring 이웃 밖)만 단독 행으로 남긴다.
+export function pairLogScales(lines: Line[]): LogEntry[] {
+  const scalesByCity = new Map<number, ScaleLine>()
+  for (const line of lines) {
+    if (line.kind === 'scale') scalesByCity.set(line.who, line)
+  }
+  const attached = new Set<number>()
+  const entries: LogEntry[] = []
+  for (const line of lines) {
+    if (line.kind === 'when') {
+      entries.push({ kind: 'when', text: line.text })
+    } else if (line.kind === 'say') {
+      const scale = line.phase === 'notes' && !attached.has(line.who) ? scalesByCity.get(line.who) : undefined
+      if (scale) attached.add(line.who)
+      entries.push(scale ? { kind: 'say', who: line.who, text: line.text, scale } : { kind: 'say', who: line.who, text: line.text })
+    } else if (line.kind === 'scale') {
+      if (!attached.has(line.who)) entries.push({ kind: 'scale', scale: line })
+    } else {
+      entries.push({ kind: 'event', text: line.text, good: line.good })
+    }
+  }
+  return entries
+}
+
 // 그 단계까지 나온 대사. 재판 지목은 한 명씩.
 export function visibleLines(lines: Line[], step: Step) {
   let ballots = 0
