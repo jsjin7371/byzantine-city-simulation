@@ -60,6 +60,12 @@
 .vb-gauge.is-over .vb-post path { stroke: #2b1a0c; }
 
 .vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
+.vb-share-tag rect { fill: #f6ebcd; stroke: #b8861f; }
+/* 두 집에 다른 쪽지: 점선이 붉게 (모순 +20 매듭과 함께 보여 색만으로 구분하지 않는다) */
+.vb-share .is-clash .vb-share-line { stroke: var(--rust); }
+.vb-share .is-clash .vb-share-glow { stroke: #e0703f; }
+.vb-share .is-clash .vb-share-tag rect { stroke: var(--rust); }
+.vb-share .is-clash .vb-share-tag text { fill: var(--rust); }
 
 .vb-stamp rect { stroke: var(--rust); }
 .vb-stamp rect:first-child { fill: #f6ebcd; }

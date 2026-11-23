@@ -575,8 +575,14 @@ export function VillageBoard({
   const turn = night ? night.result.turn - 1 : (result?.turn ?? state.turn)
   const houses = night ? stagedHouses(state, night.prev, night.result, night.phase) : villageHouses(state, result)
   const pairs = (night ? night.result.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
-  const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집`).join(', ')
   const clashes = picker ? clashingPairs(pairs, picker.claims) : []
+  // 연출 중 모순이 들킨 쌍 (내가 두 집에 다른 말을 했다)
+  const caught =
+    night && at('suspicion')
+      ? night.result.sharing.filter((s) => s.contradictions.some((c) => c.city === state.player_city)).map((s) => s.pair)
+      : []
+  const red = (a: number, b: number) => [...clashes, ...caught].some(([x, y]) => x === a && y === b)
+  const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집${red(a, b) ? '(모순)' : ''}`).join(', ')
   const preview = (h: House, claim?: Claim) =>
     picker?.ruled && claim ? suspicionPreview(h, claim, pairs, picker.claims) : null
   const opened = picker ? houses.find((h) => h.city === open && h.reachable) : undefined
@@ -595,15 +601,23 @@ export function VillageBoard({
       <Sky danger={state.truth === 'danger'} />
       {night && <rect className="vb-night" width="900" height="598" />}
       {pairs.length > 0 && (
-        <g className="vb-share" role="img" aria-label={`${night ? '오늘 밤' : '다음 턴에'} 만나는 집: ${pairLabel}`}>
-          <title>{`${night ? '오늘 밤' : '다음 턴에'} 만나는 집: ${pairLabel}`}</title>
+        <g className="vb-share" role="img" aria-label={`오늘 밤 쪽지 맞춰 보기: ${pairLabel}`}>
+          <title>{`오늘 밤 쪽지 맞춰 보기: ${pairLabel}`}</title>
           {pairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
+            const [mx, my] = pairMid(state.player_city, a, b)
             return (
-              <g key={`${a}-${b}`}>
+              <g key={`${a}-${b}`} className={red(a, b) ? 'is-clash' : undefined}>
                 <path d={d} className="vb-share-glow" />
                 <path d={d} fill="none" stroke="#3b2a1a" strokeWidth="9" strokeLinecap="round" opacity=".35" />
-                <path d={d} fill="none" stroke="#ffd35a" strokeWidth="5" strokeDasharray="11 9" strokeLinecap="round" />
+                <path d={d} className="vb-share-line" fill="none" stroke="#ffd35a" strokeWidth="5" strokeDasharray="11 9" strokeLinecap="round" />
+                {/* 점선 이름표: 이 두 집은 오늘 밤 내가 준 쪽지를 서로 맞춰 본다 */}
+                <g className="vb-share-tag" aria-hidden>
+                  <rect x={mx - 74} y={my - 78} width="148" height="22" rx="11" strokeWidth="1.5" />
+                  <text x={mx} y={my - 62} fontSize="12" fontWeight="700" textAnchor="middle">
+                    오늘 밤 쪽지 맞춰 보기
+                  </text>
+                </g>
               </g>
             )
           })}
@@ -627,24 +641,20 @@ export function VillageBoard({
         />
       ))}
       {night && at('notes') && <Notes result={night.result} houses={houses} />}
-      {night &&
-        at('suspicion') &&
-        night.result.sharing
-          .filter((s) => s.contradictions.some((c) => c.city === state.player_city))
-          .map(({ pair: [a, b] }) => {
-            const [mx, my] = pairMid(state.player_city, a, b)
-            return (
-              <g key={`${a}-${b}`} role="img" aria-label={`모순 발견: ${a}번 집과 ${b}번 집`}>
-                <g className="vb-knot">
-                  <use href="#vb-knot" x={mx} y={my} />
-                </g>
-                <rect x={mx - 50} y={my - 50} width="100" height="22" rx="3" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
-                <text x={mx} y={my - 34} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-rust">
-                  모순 발견
-                </text>
-              </g>
-            )
-          })}
+      {caught.map(([a, b]) => {
+        const [mx, my] = pairMid(state.player_city, a, b)
+        return (
+          <g key={`${a}-${b}`} role="img" aria-label={`모순 발견: ${a}번 집과 ${b}번 집`}>
+            <g className="vb-knot">
+              <use href="#vb-knot" x={mx} y={my} />
+            </g>
+            <rect x={mx - 50} y={my - 50} width="100" height="22" rx="3" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
+            <text x={mx} y={my - 34} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-rust">
+              모순 발견
+            </text>
+          </g>
+        )
+      })}
       {result?.vote && at('trial') && (
         <Trial vote={result.vote} houses={houses} shown={night?.ballots} verdict={at('verdict')} />
       )}
