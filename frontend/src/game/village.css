@@ -133,6 +133,47 @@
 /* 밤 연출 단계 이름표: 단계가 바뀔 때 짧게 페이드 */
 .vb-phase { animation: vb-fade 200ms ease both; }
 
+/* 하늘 날씨 애니메이션 (동화풍: 느리고 통통 튀는 움직임) */
+.vb-cloud { animation: vb-cloud 5.2s ease-in-out infinite alternate; }
+.vb-cloud.is-slow { animation-duration: 7.4s; }
+.vb-cloud.is-b { animation-delay: -2.6s; }
+@keyframes vb-cloud {
+  from { transform: translate(-3px, 1px); }
+  to { transform: translate(3px, -2px); }
+}
+.vb-swirl { transform-box: fill-box; transform-origin: center; animation: vb-swirl 4.2s ease-in-out infinite alternate; }
+@keyframes vb-swirl {
+  from { transform: rotate(-8deg) scale(.96); }
+  to { transform: rotate(8deg) scale(1.04); }
+}
+.vb-wind path { animation: vb-wind 3.2s ease-in-out infinite alternate; }
+.vb-wind path:nth-child(2) { animation-delay: -1.1s; }
+.vb-wind path:nth-child(3) { animation-delay: -2.2s; }
+@keyframes vb-wind {
+  from { transform: translate(-9px, 1.5px); }
+  to { transform: translate(3px, -1.5px); }
+}
+.vb-rain { animation: vb-rain 1.4s linear infinite; }
+.vb-rain.is-b { animation-delay: -0.7s; }
+@keyframes vb-rain {
+  0% { opacity: 0; transform: translate(5px, -10px); }
+  20% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-2px, 4px); }
+}
+.vb-sun-spin { transform-box: view-box; transform-origin: 760px 46px; animation: vb-sun-spin 32s linear infinite; }
+@keyframes vb-sun-spin { to { transform: rotate(360deg); } }
+.vb-sun-rays { transform-box: view-box; transform-origin: 760px 46px; animation: vb-sun-rays 2.8s ease-in-out infinite alternate; }
+@keyframes vb-sun-rays {
+  from { transform: scale(.93); }
+  to { transform: scale(1.03); }
+}
+.vb-twinkle { transform-box: fill-box; transform-origin: center; animation: vb-twinkle 2.4s ease-in-out infinite; }
+@keyframes vb-twinkle {
+  0%, 100% { opacity: .25; transform: scale(.55); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .vb-phase { animation: none; }
   .vb-card, .vb-knot, .vb-sign { animation-name: vb-fade; }
@@ -142,6 +183,7 @@
   .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
   .vl-beam, .vl-pan, .vb-gauge-fill, .vb-gauge.is-near .vb-gauge-fill { animation: none; }
   .vb-gauge-fill { transition: none; }
+  .vb-cloud, .vb-swirl, .vb-wind path, .vb-rain, .vb-sun-spin, .vb-sun-rays, .vb-twinkle { animation: none; }
 }
 @keyframes vb-fade { from { opacity: 0; } }
 
