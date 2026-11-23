@@ -54,7 +54,7 @@ test('after a turn houses show decisions, suspicion of me and next hints', () =>
   assert.equal(byCity[1].suspicion, 60)
   assert.equal(byCity[1].lit, false)
   assert.equal(byCity[4].suspicion, 20)
-  assert.equal(byCity[5].suspicion, null) // 다수결 시민
+  assert.equal(byCity[5].suspicion, null) // 다수결 주민
   assert.equal(byCity[2].role, 'colleague')
   assert.equal(villageHouses(state, { ...result, next_hints: null })[0].lit, null) // 게임 종료
 })
@@ -106,7 +106,7 @@ test('changed houses: hint differs from today or newly on a dotted line, nothing
     next_hints: { 1: 'safe', 4: 'safe', 5: 'danger' },
     next_share_pairs: [[4, 5]],
   }
-  assert.deepEqual(changedHouses(day), { 1: ['힌트 바뀜'], 5: ['새 점선'] })
+  assert.deepEqual(changedHouses(day), { 1: ['관측 바뀜'], 5: ['쪽지 대조'] })
   assert.deepEqual(changedHouses({ ...day, next_hints: null, next_share_pairs: null }), {}) // 게임 종료
 })
 
@@ -163,7 +163,7 @@ test('trial lines: one accusation per voter, then the verdict', () => {
   assert.ok(lines.some((l) => l.who === 1 && l.text === '나는 3번을 지목한다'))
   assert.ok(lines.some((l) => l.who === 4 && l.text === '나는 1번을 지목한다'))
   assert.equal(lines.at(-1).text, '과반이 모이지 않아 아무도 지목되지 않았다')
-  assert.equal(vote(1, false).at(-1).text, '1번이 지목됐지만 마을 사람이었다. 게임은 계속된다')
+  assert.equal(vote(1, false).at(-1).text, '1번이 지목됐지만 무고한 주민이었다. 게임은 계속된다')
   assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 사기꾼이 들켰다')
 })
 
@@ -264,10 +264,10 @@ test('citizen scale counts remembered past hints (recent: last turn, full: all) 
   assert.deepEqual(citizenScales({ player_city: 1, config: { ...config, citizen_type: 'ai' } }, history, 2), {})
 })
 
-test('scale text reads like the brief and swayed citizens get a "설득 성공" line at the flags phase', () => {
+test('scale text reads like the brief and swayed citizens get a "마음을 돌림" line at the flags phase', () => {
   const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
   assert.equal(scaleText(scale, 1), '내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → 합 +240, 대피')
   const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
   assert.ok(lines.some((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags'))
-  assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번 설득 성공' && l.phase === 'flags'))
+  assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번 마음을 돌림' && l.phase === 'flags'))
 })

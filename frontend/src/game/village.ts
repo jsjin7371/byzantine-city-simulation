@@ -78,8 +78,8 @@ export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'n
   for (const c of result.cities) {
     const next = result.next_hints?.[c.city]
     const why = [
-      c.hint && next && c.hint !== next ? '힌트 바뀜' : null,
-      !met.has(c.city) && result.next_share_pairs?.some((p) => p.includes(c.city)) ? '새 점선' : null,
+      c.hint && next && c.hint !== next ? '관측 바뀜' : null,
+      !met.has(c.city) && result.next_share_pairs?.some((p) => p.includes(c.city)) ? '쪽지 대조' : null,
     ].filter((w) => w != null)
     if (why.length) changes[c.city] = why
   }
@@ -282,7 +282,7 @@ export function villageLines(
     const s = scales[c.city]
     if (!s) continue
     lines.push({ phase: 'flags', kind: 'scale', who: c.city, text: scaleText(s, me) })
-    if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번 설득 성공` })
+    if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번 마음을 돌림` })
   }
 
   // 모순 발견: 만난 두 주민이 내가 한 말을 맞춰 봤다
@@ -322,7 +322,7 @@ export function villageLines(
           ? '과반이 모이지 않아 아무도 지목되지 않았다'
           : result.vote.caught
             ? `${a}번이 지목됐다. 사기꾼이 들켰다`
-            : `${a}번이 지목됐지만 마을 사람이었다. 게임은 계속된다`,
+            : `${a}번이 지목됐지만 무고한 주민이었다. 게임은 계속된다`,
     })
   }
   return lines

@@ -202,11 +202,11 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
   const left = TOTAL_TURNS - turn
   const px = cellX(day) + 19
   return (
-    <g role="img" aria-label={`달력: 태풍까지 D-${left}, ${day}/${TOTAL_TURNS}일`}>
+    <g role="img" aria-label={`달력: 마지막 결정까지 D-${left}, ${day}/${TOTAL_TURNS}일`}>
       <rect x="0" y="598" width="900" height="62" fill="#7a5530" />
       <rect x="0" y="598" width="900" height="62" filter="url(#vb-grain)" />
       <text x="34" y="622" fontSize="12" fontWeight="700" className="vb-light">
-        태풍까지
+        마지막 결정까지
       </text>
       <g filter="url(#vb-rough)" stroke="#4a3119" strokeWidth="1.5">
         {Array.from({ length: TOTAL_TURNS }, (_, i) => i + 1).map((d) => (
@@ -254,7 +254,7 @@ function houseLabel(h: House) {
   if (h.role === 'player') return `${name}, 나(마피아)`
   if (h.role === 'colleague') return `${name}, 동료 마피아`
   return [
-    `${name}, 시민`,
+    `${name}, 주민`,
     h.flag ? `지난 결정 ${decisions[h.flag]}` : '아직 결정 없음',
     h.lit != null && `다음 관측 ${h.lit ? '맞음(불 켜짐)' : '틀림(불 꺼짐)'}`,
     h.suspicion != null &&
@@ -280,7 +280,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
   const { x, y } = h
   const base = `${houseLabel(h)}${swayed ? ', 내 쪽지에 마음이 바뀜' : ''}`
   const label = pick
-    ? `${base}${pick.changed ? `, 어제와 달라짐: ${pick.changed.join(', ')}` : ''}. 할 말 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
+    ? `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
     : base
   const mafia = h.role !== 'citizen'
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
@@ -359,7 +359,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
         <g className="vb-new" transform={`translate(${x - 10},${y + 52})`} aria-hidden>
           <rect x="-82" y="-10" width="164" height="20" rx="10" />
           <text y="4" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-light">
-            어제와 달라짐: {pick.changed.join('·')}
+            변동: {pick.changed.join('·')}
           </text>
         </g>
       )}
@@ -384,7 +384,7 @@ function Trial({
   const ballots = Object.entries(vote.ballots).slice(0, shown)
   const votes = tally(Object.fromEntries(ballots))
   const stamp =
-    vote.accused === null ? '과반 없음' : `${vote.accused}번 집 ${vote.caught ? '발각' : '오지목'}`
+    vote.accused === null ? '과반 없음' : `${vote.accused}번 집 ${vote.caught ? '발각' : '무고한 주민 지목'}`
   // 연출 중에는 지금까지 나온 지목만 읽어 준다
   const label = `광장 재판: ${ballots.map(([from, to]) => `${from}번이 ${to}번 지목`).join(', ')}${
     verdict ? `. 결과 ${stamp}` : ''
@@ -461,8 +461,7 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
 
 // 길 범례: 갈색 길은 모두에게 말하기, 노란 점선은 쪽지 맞춰 보기 (선 모양도 달라 색만으로 구분하지 않는다).
 function Legend({ ring }: { ring: boolean }) {
-  const talk = ring ? '양옆 집에게 말하기' : '모두에게 말하기'
-  const label = `범례: 갈색 길은 ${talk}, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 주장을 보낸다. 노란 점선은 오늘 밤 쪽지 맞춰 보기, 두 시민이 받은 쪽지를 서로 맞춰 본다`
+  const label = `범례: 갈색 길은 주민 대화 길, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 쪽지를 보낸다. 노란 점선은 오늘 밤 쪽지 대조, 두 주민이 받은 쪽지를 서로 맞춰 본다`
   return (
     <g role="img" aria-label={label}>
       <title>{label}</title>
@@ -472,8 +471,8 @@ function Legend({ ring }: { ring: boolean }) {
       <path d="M22 47 H52" stroke="#3b2a1a" strokeWidth="7" opacity=".35" />
       <path d="M22 47 H52" stroke="#ffd35a" strokeWidth="4" strokeDasharray="6 4" />
       <g fontSize="12" fontWeight="700" aria-hidden>
-        <text x="62" y="30">갈색 길: {talk}</text>
-        <text x="62" y="51">노란 점선: 오늘 밤 쪽지 맞춰 보기</text>
+        <text x="62" y="30">갈색 길: 주민 대화 길</text>
+        <text x="62" y="51">노란 점선: 쪽지 대조</text>
       </g>
     </g>
   )
@@ -496,12 +495,12 @@ function NoteCard({
   const cy = h.y < 300 ? h.y - 54 : h.y - 77
   return (
     <g transform={`translate(${cx},${cy})`}>
-      <g className={`vb-card${left ? ' from-left' : ' from-right'}`} role="group" aria-label={`${h.city}번 집에 할 말`}>
+      <g className={`vb-card${left ? ' from-left' : ' from-right'}`} role="group" aria-label={`${h.city}번 집에 쪽지`}>
         <rect x="4" y="5" width="168" height="112" rx="2" fill="#2a1a0c" opacity=".25" />
         <rect width="168" height="112" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
         <circle cx="10" cy="10" r="5" fill="#a8361f" stroke="#4a1a10" />
         <text x="22" y="24" fontSize="13.5" fontWeight="700">
-          {h.city}번 집에 할 말
+          {h.city}번 집에 쪽지
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
           const p = preview(c)
@@ -550,7 +549,7 @@ function Signs() {
       fontSize="12"
       fontWeight="700"
       role="img"
-      aria-label="첫날 안내: 1 창문 불빛부터 본다, 2 집마다 할 말을 고른다, 3 점선으로 이어진 두 집에는 같은 말을 한다"
+      aria-label="첫날 안내: 1 창문 불빛부터 본다, 2 집마다 쪽지를 고른다, 3 점선으로 이어진 두 집에는 같은 말을 한다"
     >
       <rect x="84" y="296" width="9" height="124" fill="#5a3d22" filter="url(#vb-rough)" />
       <text x="22" y="292" className="vb-sign-title">
@@ -654,8 +653,8 @@ export function VillageBoard({
       <Legend ring={state.config.connection === 'ring'} />
       {night && <rect className="vb-night" width="900" height="598" />}
       {pairs.length > 0 && (
-        <g className="vb-share" role="img" aria-label={`오늘 밤 쪽지 맞춰 보기: ${pairLabel}`}>
-          <title>{`오늘 밤 쪽지 맞춰 보기: ${pairLabel}`}</title>
+        <g className="vb-share" role="img" aria-label={`오늘 밤 쪽지 대조: ${pairLabel}`}>
+          <title>{`오늘 밤 쪽지 대조: ${pairLabel}`}</title>
           {pairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
             const [mx, my] = pairMid(state.player_city, a, b)
@@ -668,7 +667,7 @@ export function VillageBoard({
                 <g className="vb-share-tag" aria-hidden>
                   <rect x={mx - 74} y={my - 78} width="148" height="22" rx="11" strokeWidth="1.5" />
                   <text x={mx} y={my - 62} fontSize="12" fontWeight="700" textAnchor="middle">
-                    오늘 밤 쪽지 맞춰 보기
+                    오늘 밤 쪽지 대조
                   </text>
                 </g>
               </g>
