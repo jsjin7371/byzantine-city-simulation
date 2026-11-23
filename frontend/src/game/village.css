@@ -1,0 +1,168 @@
+/* 게임 화면 전용 밝은 숲 톤 (목업 A3). .gm-workspace 안에서만 변수를 바꿔 다른 화면 다크 테마는 그대로 둔다. */
+.gm-workspace {
+  --ink: #3b2a1a;
+  --wood: #6b4a2a;
+  --parch: #efe0b9;
+  --forest: #2f4a28;
+  --rust: #a8361f;
+  --leave: #35598a;
+  --stay: #d9a12e;
+
+  --surface: var(--parch);
+  --background: #dfe3d2;
+  --text: var(--ink);
+  --muted: #6b5338;
+  --border: #c3a878;
+  --color-error: var(--rust);
+  --color-success: var(--forest);
+  --ui-background: #f6ebcd;
+  --ui-foreground: var(--ink);
+  --ui-primary: var(--forest);
+  color-scheme: light;
+  color: var(--ink);
+  background: var(--background);
+  padding: 20px;
+  border-radius: 8px;
+}
+.gm-workspace h1,
+.gm-workspace h2 { font-family: "Batang", "Gungsuh", serif; }
+.gm-workspace .rs-correct { color: var(--forest); }
+.gm-workspace .rs-incorrect { color: var(--rust); }
+
+.vb-board {
+  display: block;
+  width: 100%;
+  max-width: 900px;
+  height: auto;
+  border: 12px solid var(--wood);
+  border-radius: 6px;
+  box-shadow: 0 4px 0 #4a3119;
+  fill: var(--ink);
+}
+.vb-board text { font-family: "Pretendard", "Malgun Gothic", sans-serif; }
+.vb-board .vb-serif { font-family: "Batang", "Gungsuh", serif; }
+.vb-board .vb-light { fill: #f3e7c6; }
+.vb-board .vb-dday { fill: #ffd35a; }
+.vb-board .vb-cal-num { fill: #4a3119; }
+
+.vb-cloth.is-evacuate { fill: var(--leave); stroke: #1f3554; }
+.vb-cloth.is-stay { fill: var(--stay); stroke: #7a5512; }
+.vb-cloth-text.is-evacuate { fill: #f3e7c6; }
+.vb-cloth-text.is-stay { fill: var(--ink); }
+
+.vb-badge { fill: #d9a95f; stroke: var(--wood); }
+.vb-badge.is-mafia { fill: var(--rust); stroke: #4a1a10; }
+.vb-house.is-far { opacity: .45; }
+
+.vb-gauge-fill { fill: #e0703f; }
+.vb-gauge.is-over .vb-gauge-fill { fill: #c2452a; }
+.vb-post path { stroke: var(--rust); stroke-width: 3; }
+.vb-gauge.is-over .vb-post path { stroke: #2b1a0c; }
+
+.vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
+
+.vb-stamp rect { stroke: var(--rust); }
+.vb-stamp rect:first-child { fill: #f6ebcd; }
+.vb-stamp text { fill: var(--rust); }
+.vb-stamp.is-caught rect:first-child { fill: var(--rust); }
+.vb-stamp.is-caught text { fill: #f6ebcd; }
+
+/* 쪽지 고르기 (명세 1번) */
+.vb-board .vb-rust { fill: var(--rust); }
+.vb-board .vb-green { fill: var(--forest); }
+.vb-house[role='button'] { cursor: pointer; outline: none; }
+.vb-hl { fill: #ffd35a; opacity: 0; transition: opacity 150ms ease; }
+@media (hover: hover) and (pointer: fine) { .vb-house[role='button']:hover .vb-hl { opacity: .35; } }
+.vb-house.is-open .vb-hl, .vb-house:focus-visible .vb-hl { opacity: .6; }
+.vb-house:focus-visible .vb-hl { stroke: var(--ink); stroke-width: 2; }
+
+.vb-card { transform-box: fill-box; animation: vb-pop 200ms cubic-bezier(0.23, 1, 0.32, 1); }
+.vb-card.from-left { transform-origin: left center; }
+.vb-card.from-right { transform-origin: right center; }
+@keyframes vb-pop { from { opacity: 0; transform: scale(.9); } }
+
+.vb-opt { cursor: pointer; outline: none; transform-box: fill-box; transform-origin: center; transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1); }
+.vb-opt:active { transform: scale(.95); }
+.vb-opt rect { stroke-width: 2; transition: fill 160ms ease; }
+.vb-opt text { transition: fill 160ms ease; }
+.vb-opt.is-evacuate rect { stroke: #1f3554; fill: rgb(53 89 138 / 0); }
+.vb-opt.is-evacuate text { fill: var(--leave); }
+.vb-opt.is-evacuate.is-sel rect { fill: var(--leave); }
+.vb-opt.is-evacuate.is-sel text { fill: #f3e7c6; }
+.vb-opt.is-stay rect { stroke: #b8861f; fill: rgb(217 161 46 / 0); }
+.vb-opt.is-stay text { fill: #8a6418; }
+.vb-opt.is-stay.is-sel rect { fill: var(--stay); stroke: #7a5512; }
+.vb-opt.is-stay.is-sel text { fill: var(--ink); }
+.vb-opt:focus-visible rect { stroke: var(--ink); stroke-width: 3; }
+
+.vb-knot { transform-box: fill-box; transform-origin: center; animation: vb-knot 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes vb-knot { from { opacity: 0; transform: scale(.6); } }
+
+.vb-board .vb-sign-title { fill: #f6ebcd; paint-order: stroke; stroke: var(--forest); stroke-width: 3px; }
+.vb-sign { animation: vb-sign 380ms cubic-bezier(0.34, 1.3, 0.64, 1) both; }
+@keyframes vb-sign { from { opacity: 0; transform: translateY(-14px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .vb-card, .vb-knot, .vb-sign { animation-name: vb-fade; }
+  .vb-opt:active { transform: none; }
+  .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
+}
+@keyframes vb-fade { from { opacity: 0; } }
+
+/* 보드와 마을 이야기 (명세 3번) */
+.vb-table { display: flex; gap: 12px; align-items: stretch; }
+.vb-table .vb-board { flex: 1 1 auto; min-width: 0; }
+.vl-talk {
+  flex: 0 0 296px;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 16px 14px;
+  border: 12px solid var(--wood);
+  border-radius: 6px;
+  box-shadow: 0 4px 0 #4a3119;
+  background: var(--parch);
+}
+.vl-talk h3 { font: 700 19px/1.2 "Batang", "Gungsuh", serif; margin: 0 0 2px; }
+.vl-log { flex: 1; min-height: 0; max-height: 560px; overflow-y: auto; }
+.vl-when { font-size: 13px; font-weight: 700; color: var(--wood); margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 2px dotted #b4976a; }
+.vl-line { display: flex; gap: 9px; align-items: flex-start; margin: 7px 0; font-size: 14px; line-height: 1.45; }
+.vl-tok { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #d9a95f; border: 2px solid var(--wood); font: 700 14px/22px "Batang", serif; text-align: center; }
+.vl-event { margin: 8px 0; font-size: 13.5px; font-weight: 700; color: var(--rust); line-height: 1.4; }
+.vl-event.is-quiet { color: var(--ink); font-weight: 600; }
+.vl-talk [data-ui-button] { margin-top: 10px; width: 100%; }
+@media (max-width: 1100px) {
+  .vb-table { flex-direction: column; }
+  .vl-talk { flex-basis: auto; }
+  .vl-log { max-height: 320px; }
+}
+
+/* 선택 버튼: 고른 것은 채운 색, 안 고른 것은 테두리만 */
+.gm-workspace [data-ui-button][data-variant='outline'] { border-color: var(--wood); background: transparent; color: var(--ink); }
+.gm-workspace [data-ui-button][aria-pressed='true'] { box-shadow: 0 2px 0 #1c2e18; }
+
+/* 밤 연출 (목업 A3): 밤빛 → 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
+.vb-gauge-fill { transform-box: fill-box; transform-origin: left center; }
+.vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 700ms ease both; }
+.vb-fly { transform: translate(var(--dx), var(--dy)); animation: vb-fly 1000ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+@keyframes vb-fly { from { transform: none; opacity: 0; } 15% { opacity: 1; } }
+.vb-board.is-playing .vb-gauge-fill { transition: transform 900ms cubic-bezier(0.23, 1, 0.32, 1); }
+.vb-flag { transform-box: fill-box; transform-origin: left bottom; }
+.vb-board.is-playing .vb-flag { animation: vb-flip 420ms cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes vb-flip { from { transform: scaleX(.06); } }
+.vb-board.is-playing .vb-ballot { animation: vb-fade 300ms cubic-bezier(0.23, 1, 0.32, 1); }
+.vb-stamp { transform-box: fill-box; transform-origin: center; }
+.vb-board.is-playing .vb-stamp { animation: vb-stamp 260ms cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes vb-stamp { from { opacity: 0; transform: rotate(-7deg) scale(1.6); } }
+.vl-log.is-live > * { animation: vl-in 240ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+@keyframes vl-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* 결과 화면 (명세 4번) */
+.gr-result h2 { font-size: 22px; margin-bottom: 4px; }
+.gr-result h3 { font: 700 16px/1.3 "Batang", "Gungsuh", serif; margin: 16px 0 6px; }
+.gr-result ul { margin: 0; padding-left: 20px; line-height: 1.6; }
+.gr-peaks { display: block; height: 130px; width: auto; max-width: 100%; }
+.gr-peaks rect { fill: #8aa04c; stroke: var(--ink); stroke-width: 1.2; }
+.gr-peaks rect.is-over { fill: var(--rust); }
+.gr-peaks text { font-size: 11px; fill: var(--ink); }
+.gr-line { stroke: var(--rust); stroke-width: 2; stroke-dasharray: 8 5; }
+.gm-details summary { cursor: pointer; font-weight: 700; margin: 12px 0; }
