@@ -230,15 +230,28 @@ export type Line = Said &
   (
     | { kind: 'when'; text: string }
     | { kind: 'say'; who: number; text: string }
+    | { kind: 'scale'; who: number; text: string }
     | { kind: 'event'; text: string }
   )
 
 const saw = { danger: '태풍', safe: '맑음' } as const
 const said = { evacuate: '대피', stay: '잔류' } as const
+const signed = (v: number) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
 
+// 저울 읽기용 한 줄. 예) "내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → 합 +240, 대피"
+export function scaleText(scale: Scale, me: number) {
+  const parts = scale.parts.map((p) =>
+    `${p.from === 'hint' ? '내 관측' : p.from === me ? `너(${me}번)` : `${p.from}번`} ${signed(p.value)}`,
+  )
+  const tie = scale.total === 0 ? ' (동점이라 내 관측대로)' : ''
+  return `${parts.join(' · ')} → 합 ${signed(scale.total)}, ${said[scale.decision]}${tie}`
+}
+
+// scales: 그 턴의 시민 저울 (citizenScales). 있으면 결정 단계에 저울을 적는다.
 export function villageLines(
   state: Pick<GameState, 'player_city' | 'roles' | 'config'>,
   result: Pick<TurnResult, 'turn' | 'cities' | 'sharing' | 'vote'>,
+  scales: Record<number, Scale> = {},
 ): Line[] {
   const me = state.player_city
   const wary = state.config.citizen_type !== 'majority'
@@ -262,6 +275,13 @@ export function villageLines(
           ? `그치, 나도 ${saw[c.hint]}이라고 봤어`
           : `음… 내가 본 건 ${saw[c.hint]}인데, ${me}번은 ${said[mine.claim]}래`,
       })
+  }
+
+  // 마음속 저울: 그 주민이 왜 그렇게 골랐나
+  for (const c of citizens) {
+    const s = scales[c.city]
+    if (!s) continue
+    lines.push({ phase: 'flags', kind: 'scale', who: c.city, text: scaleText(s, me) })
   }
 
   // 모순 발견: 만난 두 주민이 내가 한 말을 맞춰 봤다

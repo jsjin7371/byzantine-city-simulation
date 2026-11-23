@@ -27,6 +27,13 @@ export function VillageLog({ lines, live = false, children }: { lines: Line[] | 
               </span>
               <span>{line.text}</span>
             </p>
+          ) : line.kind === 'scale' ? (
+            <p key={i} className="vl-line vl-scale">
+              <span className="vl-tok" aria-label={`${line.who}번 저울`}>
+                {line.who}
+              </span>
+              <span>{line.text}</span>
+            </p>
           ) : (
             <p key={i} className="vl-event">
               {line.text}
