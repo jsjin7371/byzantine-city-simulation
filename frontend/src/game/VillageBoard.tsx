@@ -617,6 +617,15 @@ export function VillageBoard({
       last.current = null
     }
   }, [open])
+  // 선택창과 집 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
+  useEffect(() => {
+    if (open == null) return
+    const close = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.vb-card, .vb-house')) setOpen(null)
+    }
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [open])
   const night = result && stage && stage.phase !== 'day' ? { ...stage, result } : null
   const at = (p: Phase) => !night || reached(night.phase, p)
   const turn = night ? night.result.turn - 1 : (result?.turn ?? state.turn)
