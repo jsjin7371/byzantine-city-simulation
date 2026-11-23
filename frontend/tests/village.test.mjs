@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
+  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, fooledDots, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -274,4 +274,22 @@ test('scale text reads like the brief and swayed citizens get a "마음을 돌�
   assert.equal(line.text, '대피 +240')
   assert.equal(line.detail, scaleText(scale, 3))
   assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번 마음을 돌림' && l.phase === 'flags'))
+})
+
+test('fooledDots fills wrong citizens up to total and marks the majority threshold', () => {
+  assert.deepEqual(fooledDots(2, 4), {
+    fooled: 2,
+    total: 4,
+    need: 3,
+    dots: [true, true, false, false],
+    label: '속은 주민 2/4, 3명 필요',
+  })
+  assert.deepEqual(fooledDots(0, 3), {
+    fooled: 0,
+    total: 3,
+    need: 2,
+    dots: [false, false, false],
+    label: '속은 주민 0/3, 2명 필요',
+  })
+  assert.deepEqual(fooledDots(5, 4).dots, [true, true, true, true])
 })

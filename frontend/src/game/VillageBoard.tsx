@@ -492,25 +492,6 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
   )
 }
 
-// 길 범례: 갈색 길은 모두에게 말하기, 노란 점선은 쪽지 맞춰 보기 (선 모양도 달라 색만으로 구분하지 않는다).
-function Legend({ ring }: { ring: boolean }) {
-  const label = `범례: 갈색 길은 쪽지 오솔길, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 쪽지를 보낸다. 노란 점선은 오늘 밤 쪽지 대조, 두 주민이 받은 쪽지를 서로 맞춰 본다`
-  return (
-    <g role="img" aria-label={label}>
-      <title>{label}</title>
-      <rect x="12" y="10" width="236" height="52" rx="4" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" opacity=".95" />
-      <path d="M22 26 H52" stroke="#9c7442" strokeWidth="9" strokeLinecap="round" />
-      <path d="M22 26 H52" stroke="#c9a068" strokeWidth="5" strokeLinecap="round" />
-      <path d="M22 47 H52" stroke="#3b2a1a" strokeWidth="7" opacity=".35" />
-      <path d="M22 47 H52" stroke="#ffd35a" strokeWidth="4" strokeDasharray="6 4" />
-      <g fontSize="12" fontWeight="700" aria-hidden>
-        <text x="62" y="30">갈색 길: 쪽지 오솔길</text>
-        <text x="62" y="51">노란 점선: 쪽지 대조</text>
-      </g>
-    </g>
-  )
-}
-
 // 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 (명세 1번). 예) 50 → 70, 재판 열림
 function NoteCard({
   h,
@@ -683,13 +664,12 @@ export function VillageBoard({
       <Ground />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <Sky danger={state.truth === 'danger'} />
-      <Legend ring={state.config.connection === 'ring'} />
       {night && <rect className="vb-night" width="900" height="598" />}
       {night && (
-        // 단계 이름표: 범례 아래 왼쪽. key로 단계마다 다시 페이드. 스크린리더는 마을 이야기(live)가 읽는다
+        // 단계 이름표: 하늘 왼쪽. key로 단계마다 다시 페이드. 스크린리더는 마을 이야기(live)가 읽는다
         <g key={night.phase} className="vb-phase" aria-hidden>
-          <rect x="12" y="70" width={28 + PHASE_LABEL[night.phase].length * 14} height="28" rx="14" fill="#2b1a0c" opacity=".85" />
-          <text x="26" y="89" fontSize="15" fontWeight="700" className="vb-light">
+          <rect x="12" y="16" width={28 + PHASE_LABEL[night.phase].length * 14} height="28" rx="14" fill="#2b1a0c" opacity=".85" />
+          <text x="26" y="35" fontSize="15" fontWeight="700" className="vb-light">
             {PHASE_LABEL[night.phase]}
           </text>
         </g>

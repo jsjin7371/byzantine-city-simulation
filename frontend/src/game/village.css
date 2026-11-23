@@ -29,15 +29,192 @@
 .gm-workspace .rs-correct { color: var(--forest); }
 .gm-workspace .rs-incorrect { color: var(--rust); }
 
+/* 게임 진행 중: 사이트 헤더·푸터와 바깥 카드 겹을 걷어내고 들판/숲 배경 위에 보드가 화면을 채운다 */
+.app-shell.game-shell:has(.gm-play) {
+  --gm-sky: #bcc7ca;
+  --gm-sky-low: #c1cbcd;
+  background: linear-gradient(
+    180deg,
+    var(--gm-sky) 0%,
+    var(--gm-sky-low) 19.5%,
+    #93a85a 22.5%,
+    #89a055 62%,
+    #758d46 82.5%,
+    #664a2d 84.5%,
+    #513b24 100%
+  );
+}
+.app-shell.game-shell:has(.gm-play.is-safe) {
+  --gm-sky: #bcdbe6;
+  --gm-sky-low: #c6e0e9;
+}
+.game-shell:has(.gm-play) > .site-header,
+.game-shell:has(.gm-play) > .app-footer {
+  display: none;
+}
+.game-shell:has(.gm-play) > .main-content {
+  max-width: none;
+  padding: 0;
+}
+
+.gm-workspace.gm-play {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  gap: 0;
+}
+
+.gm-stage {
+  width: 100%;
+  max-width: 1440px;
+  height: 100svh;
+  margin: 0 auto;
+  padding: 14px 18px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 18px;
+}
+
+.gm-board-zone {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.gm-hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 40px;
+  flex: none;
+  margin-bottom: 8px;
+}
+.gm-hud-left,
+.gm-hud-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gm-exit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1.5px solid rgba(107, 74, 42, 0.55);
+  background: rgba(246, 235, 205, 0.9);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgba(74, 49, 25, 0.2);
+}
+.gm-exit:hover:not(:disabled) { background: var(--ui-background); }
+
+.gm-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 13px 5px 7px;
+  border-radius: 999px;
+  background: rgba(246, 235, 205, 0.94);
+  border: 1.5px solid var(--rust);
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: 0 2px 0 rgba(74, 26, 16, 0.22);
+}
+.gm-me-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--rust);
+  color: var(--ui-background);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.gm-role-sub { color: var(--rust); }
+
+.gm-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(246, 235, 205, 0.94);
+  border: 1.5px solid rgba(107, 74, 42, 0.55);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  box-shadow: 0 2px 0 rgba(74, 49, 25, 0.2);
+}
+.gm-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.gm-dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid var(--wood);
+  background: transparent;
+}
+.gm-dot.is-fooled {
+  background: var(--forest);
+  border-color: #1c2e18;
+}
+.gm-dots-sep {
+  width: 2px;
+  height: 16px;
+  background: var(--rust);
+  border-radius: 1px;
+  margin: 0 1px;
+  opacity: .8;
+}
+
+.gm-error {
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--ui-background);
+  border: 1px solid var(--rust);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.gm-board-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .vb-board {
   display: block;
-  width: 100%;
-  max-width: 900px;
+  width: min(100%, calc((100svh - 76px) * 900 / 660));
+  max-height: 100%;
   height: auto;
-  border: 12px solid var(--wood);
-  border-radius: 6px;
-  box-shadow: 0 4px 0 #4a3119;
+  aspect-ratio: 900 / 660;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(34, 24, 12, 0.28);
   fill: var(--ink);
+}
+
+.gm-below {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .vb-board text { font-family: "Pretendard", "Malgun Gothic", sans-serif; }
 .vb-board .vb-serif { font-family: "Batang", "Gungsuh", serif; }
@@ -183,21 +360,24 @@
 }
 @keyframes vb-fade { from { opacity: 0; } }
 
-/* 보드와 마을 이야기 (명세 3번) */
-.vb-table { display: flex; gap: 12px; align-items: stretch; }
-.vb-table .vb-board { flex: 1 1 auto; min-width: 0; }
+/* 오른쪽 종이 일기장 (마을 이야기) */
 .vl-talk {
-  flex: 0 0 296px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 16px 16px 14px;
-  border: 12px solid var(--wood);
-  border-radius: 6px;
-  box-shadow: 0 4px 0 #4a3119;
-  background: var(--parch);
+  padding: 18px 18px 16px 20px;
+  background:
+    linear-gradient(90deg, rgba(107, 74, 42, 0.16) 0px, rgba(107, 74, 42, 0.04) 10px, transparent 22px),
+    var(--parch);
+  border: 2px solid var(--wood);
+  border-left: 5px solid var(--wood);
+  border-radius: 4px 10px 10px 4px;
+  box-shadow:
+    -3px 0 14px rgba(38, 25, 11, 0.22),
+    0 6px 20px rgba(38, 25, 11, 0.25);
 }
-.vl-talk h3 { font: 700 19px/1.2 "Batang", "Gungsuh", serif; margin: 0 0 2px; }
-.vl-log { flex: 1; min-height: 0; max-height: 560px; overflow-y: auto; }
+.vl-talk h3 { font: 700 21px/1.2 "Batang", "Gungsuh", serif; margin: 0 0 2px; }
+.vl-log { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .vl-when { font-size: 13px; font-weight: 700; color: var(--wood); margin: 14px 0 6px; padding-bottom: 3px; border-bottom: 2px dotted #b4976a; }
 .vl-line { display: flex; gap: 9px; align-items: flex-start; margin: 7px 0; font-size: 14px; line-height: 1.45; }
 .vl-tok { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #d9a95f; border: 2px solid var(--wood); font: 700 14px/22px "Batang", serif; text-align: center; }
@@ -223,9 +403,15 @@
 .vl-pan .is-mine { fill: var(--rust); }
 .vl-talk [data-ui-button] { margin-top: 10px; width: 100%; }
 @media (max-width: 1100px) {
-  .vb-table { flex-direction: column; }
-  .vl-talk { flex-basis: auto; }
-  .vl-log { max-height: 320px; }
+  .gm-stage {
+    height: auto;
+    grid-template-columns: 1fr;
+  }
+  .vb-board {
+    width: 100%;
+    max-height: none;
+  }
+  .vl-log { max-height: 360px; }
 }
 
 /* 선택 버튼: 고른 것은 채운 색, 안 고른 것은 테두리만 */

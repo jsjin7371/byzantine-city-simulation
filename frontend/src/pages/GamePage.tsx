@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Progress } from '../components/ui/progress'
 import { decisions, percent, truths } from '../components/results/resultLabels'
@@ -11,14 +11,13 @@ import {
   defaultClaims,
   difficulties,
   getGame,
-  majority,
   playTurn,
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
 import { VillageBoard } from '../game/VillageBoard'
 import { VillageLog } from '../game/VillageLog'
 import { GameResult } from '../game/GameResult'
-import { citizenScales, nightSteps, villageLines, visibleLines } from '../game/village'
+import { citizenScales, fooledDots, nightSteps, villageLines, visibleLines } from '../game/village'
 import './GamePage.css'
 
 // 의심도 게이지. 재판 기준(60) 위치에 선을 긋는다.
@@ -172,6 +171,15 @@ export function GamePage() {
       if (turn.game_over) setState(await getGame(state.game_id))
     }, '턴을 진행하지 못했습니다.')
 
+  const exit = () => {
+    setState(null)
+    setHistory([])
+    setViewed(0)
+    setStep(null)
+    setClaims({})
+    setError('')
+  }
+
   const playing = step != null && result != null
   const shown = playing ? result : (history[viewed - 1] ?? result)
   const latest = state != null && !state.game_over && shown === result && !playing // 할 말은 마지막 턴에서만 고른다
@@ -179,114 +187,143 @@ export function GamePage() {
   const lines = shown && state ? villageLines(state, shown, scales) : null
   const settled = playing ? (history.at(-2) ?? null) : result // 연출 중에는 지난 턴 숫자
   const citizens = settled?.cities.filter((c) => c.role === 'citizen') ?? []
-  const me = state ? String(state.player_city) : ''
-  const topSuspicion = Math.max(0, ...citizens.map((c) => c.suspicion?.[me] ?? 0))
   const citizenCount = state
     ? Object.values(state.roles).filter((r) => r === 'citizen').length
     : 0
   const wrong = citizens.filter((c) => c.correct === false).length
-  const wary = state?.config.citizen_type !== 'majority' // 의심도가 있는 시민
+  const fooled = fooledDots(settled ? wrong : 0, citizenCount)
   const ruled = state?.config.citizen_type === 'wary' // 7.6 규칙을 따르는 시민만 예상을 보인다
-  return (
-    <div className="gm-workspace">
-      <h1>AI 시민을 속여라</h1>
-      <section className="gm-panel">
-        <ul className="gm-rules">
-          <li>
-            목표: 나는 마피아. {TOTAL_TURNS}턴째에 주민 과반이 오답을
-            고르게 하면 승리, 전부 오답이면 완승.
-          </li>
-          <li>
-            의심도(나에 대한): 주민 관측과 같은 말 {SUSPICION.agree}, 다른 말 +
-            {SUSPICION.disagree}, 공유 쌍인 두 주민에게 서로 다른 말을 하면 모순 +
-            {SUSPICION.contradiction}.
-          </li>
-          <li>
-            패배: 누구든 의심도 {SUSPICION.threshold} 이상이면 재판이 열리고 주민 과반이 나나
-            동료를 지목하면 즉시 패배. {TOTAL_TURNS}턴에 과반 오답이 아니어도 패배.
-          </li>
-        </ul>
-        <div className="gm-row" role="group" aria-label="난이도">
-          {(Object.keys(difficulties) as Difficulty[]).map((key) => (
-            <Button
-              key={key}
-              variant={difficulty === key ? 'default' : 'outline'}
-              aria-pressed={difficulty === key}
-              onClick={() => setDifficulty(key)}
-            >
-              {difficulties[key].label}
-            </Button>
-          ))}
-        </div>
-        <div className="gm-row" role="group" aria-label="주민 종류">
-          {(Object.keys(citizenTypes) as CitizenType[]).map((key) => (
-            <Button
-              key={key}
-              variant={citizenType === key ? 'default' : 'outline'}
-              aria-pressed={citizenType === key}
-              onClick={() => setCitizenType(key)}
-            >
-              {citizenTypes[key].label}
-            </Button>
-          ))}
-        </div>
-        <p className="gm-muted">{citizenTypes[citizenType].hint}</p>
-        <div className="gm-row">
-          <Button onClick={start} disabled={busy}>
-            {state ? '새 게임' : '게임 시작'}
-          </Button>
-        </div>
-        {error && (
-          <p role="alert" className="rs-incorrect">
-            {error}
-          </p>
-        )}
-      </section>
 
-      {state && (
-        <>
-          <section className="gm-panel">
-            <h2>
-              정답 {truths[state.truth]} · 나는 {state.player_city}번 집 · {state.turn}/
-              {TOTAL_TURNS}턴
-            </h2>
-            <p>
-              지난 턴 틀린 주민 {settled ? wrong : '—'}/{citizenCount} ({TOTAL_TURNS}턴에{' '}
-              {majority(citizenCount)}명 이상 필요)
-              {wary && ` · 나에 대한 최고 의심도 ${topSuspicion} / 재판 기준 ${SUSPICION.threshold}`}
+  if (!state) {
+    return (
+      <div className="gm-workspace">
+        <h1>AI 시민을 속여라</h1>
+        <section className="gm-panel">
+          <ul className="gm-rules">
+            <li>
+              목표: 나는 마피아. {TOTAL_TURNS}턴째에 주민 과반이 오답을
+              고르게 하면 승리, 전부 오답이면 완승.
+            </li>
+            <li>
+              의심도(나에 대한): 주민 관측과 같은 말 {SUSPICION.agree}, 다른 말 +
+              {SUSPICION.disagree}, 공유 쌍인 두 주민에게 서로 다른 말을 하면 모순 +
+              {SUSPICION.contradiction}.
+            </li>
+            <li>
+              패배: 누구든 의심도 {SUSPICION.threshold} 이상이면 재판이 열리고 주민 과반이 나나
+              동료를 지목하면 즉시 패배. {TOTAL_TURNS}턴에 과반 오답이 아니어도 패배.
+            </li>
+          </ul>
+          <div className="gm-row" role="group" aria-label="난이도">
+            {(Object.keys(difficulties) as Difficulty[]).map((key) => (
+              <Button
+                key={key}
+                variant={difficulty === key ? 'default' : 'outline'}
+                aria-pressed={difficulty === key}
+                onClick={() => setDifficulty(key)}
+              >
+                {difficulties[key].label}
+              </Button>
+            ))}
+          </div>
+          <div className="gm-row" role="group" aria-label="주민 종류">
+            {(Object.keys(citizenTypes) as CitizenType[]).map((key) => (
+              <Button
+                key={key}
+                variant={citizenType === key ? 'default' : 'outline'}
+                aria-pressed={citizenType === key}
+                onClick={() => setCitizenType(key)}
+              >
+                {citizenTypes[key].label}
+              </Button>
+            ))}
+          </div>
+          <p className="gm-muted">{citizenTypes[citizenType].hint}</p>
+          <div className="gm-row">
+            <Button onClick={start} disabled={busy}>
+              게임 시작
+            </Button>
+          </div>
+          {error && (
+            <p role="alert" className="rs-incorrect">
+              {error}
             </p>
-            {wary && <Gauge value={topSuspicion} label="나에 대한 최고 의심도" />}
-            <div className="vb-table">
-              <VillageBoard
-                state={state}
-                result={shown}
-                swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
-                stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
-                picker={
-                  latest
-                    ? { claims, ruled, onClaim: (city, claim) => setClaims({ ...claims, [city]: claim }) }
-                    : undefined
-                }
-              />
-              <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} live={playing}>
-                {playing ? (
-                  <Button variant="outline" onClick={() => setStep(null)}>
-                    건너뛰기 (Esc)
-                  </Button>
-                ) : (
-                  !state.game_over && (
-                    <Button onClick={submit} disabled={busy || !latest}>
-                      {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
-                    </Button>
-                  )
-                )}
-              </VillageLog>
+          )}
+        </section>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`gm-workspace gm-play${state.truth === 'safe' ? ' is-safe' : ''}`}>
+      <div className="gm-stage">
+        <section className="gm-board-zone" aria-label="마을 보드">
+          <header className="gm-hud">
+            <div className="gm-hud-left">
+              <button type="button" className="gm-exit" onClick={exit} disabled={busy}>
+                ← 나가기
+              </button>
+              <div className="gm-role">
+                <span className="gm-me-dot" aria-hidden="true">
+                  나
+                </span>
+                <span>
+                  나는 {state.player_city}번 집 <span className="gm-role-sub">(마피아)</span>
+                </span>
+              </div>
             </div>
-          </section>
+            <div className="gm-hud-right">
+              <div className="gm-progress" aria-label={fooled.label}>
+                <span>속은 주민</span>
+                <span className="gm-dots" aria-hidden="true">
+                  {fooled.dots.map((filled, i) => (
+                    <Fragment key={i}>
+                      {i === fooled.need && <span className="gm-dots-sep" />}
+                      <span className={filled ? 'gm-dot is-fooled' : 'gm-dot'} />
+                    </Fragment>
+                  ))}
+                </span>
+              </div>
+            </div>
+          </header>
+          {error && (
+            <p role="alert" className="rs-incorrect gm-error">
+              {error}
+            </p>
+          )}
+          <div className="gm-board-frame">
+            <VillageBoard
+              state={state}
+              result={shown}
+              swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
+              stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
+              picker={
+                latest
+                  ? { claims, ruled, onClaim: (city, claim) => setClaims({ ...claims, [city]: claim }) }
+                  : undefined
+              }
+            />
+          </div>
+        </section>
+        <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} live={playing}>
+          {playing ? (
+            <Button variant="outline" onClick={() => setStep(null)}>
+              건너뛰기 (Esc)
+            </Button>
+          ) : (
+            !state.game_over && (
+              <Button onClick={submit} disabled={busy || !latest}>
+                {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
+              </Button>
+            )
+          )}
+        </VillageLog>
+      </div>
 
-          {state.game_over && !playing && <GameResult state={state} history={history} />}
-
-          {history.length > 1 && !playing && (
+      {(state.game_over || history.length > 1 || shown) && !playing && (
+        <div className="gm-below">
+          {state.game_over && <GameResult state={state} history={history} />}
+          {history.length > 1 && (
             <div className="gm-row" role="group" aria-label="턴 다시 보기">
               {history.map((t) => (
                 <Button
@@ -301,13 +338,13 @@ export function GamePage() {
               ))}
             </div>
           )}
-          {shown && !playing && (
+          {shown && (
             <details className="gm-details">
               <summary>{shown.turn}턴 자세한 표</summary>
               <TurnReport result={shown} />
             </details>
           )}
-        </>
+        </div>
       )}
     </div>
   )

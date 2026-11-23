@@ -165,6 +165,27 @@ export function villageHouses(
   })
 }
 
+export type FooledDots = {
+  fooled: number
+  total: number
+  need: number
+  dots: boolean[]
+  label: string
+}
+
+// HUD "속은 주민 ●●○|○" 계산: 시민 수만큼 점, 속은(틀린) 시민 수만큼 채움, 과반(need) 눈금 위치.
+export function fooledDots(wrong: number, total: number): FooledDots {
+  const need = majority(total)
+  const fooled = Math.max(0, Math.min(wrong, total))
+  return {
+    fooled,
+    total,
+    need,
+    dots: Array.from({ length: total }, (_, i) => i < fooled),
+    label: `속은 주민 ${fooled}/${total}, ${need}명 필요`,
+  }
+}
+
 // 투표에서 도시별 받은 표 수.
 export function tally(ballots: Record<string, number>) {
   const votes: Record<number, number> = {}
