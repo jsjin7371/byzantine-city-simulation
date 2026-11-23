@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TOP_ARC, changedHouses, citizenScales, scaleText, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
+  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -32,9 +32,10 @@ test('my house is bottom centre and the rest go clockwise from the next number',
   assert.equal(topRight.y, topLeft.y)
 })
 
-test('share paths use the forest arc between the top houses, else go through the plaza', () => {
-  assert.equal(sharePath(3, 5, 1), TOP_ARC)
-  assert.equal(sharePath(3, 1, 5), 'M615 215 Q450 115 285 215') // 반대 방향
+test('all share paths go through the plaza from sender to receiver', () => {
+  assert.equal(TRAILS.length, 5)
+  assert.match(sharePath(3, 5, 1), /^M230 262 Q.* L502 338 Q.* 670 262$/)
+  assert.match(sharePath(3, 1, 5), /^M670 262 Q.* L398 338 Q.* 230 262$/) // 반대 방향
   assert.match(sharePath(3, 4, 2), /^M230 470 Q.* L502 360 Q.* 670 470$/)
   assert.match(sharePath(3, 2, 4), /^M670 470 Q.* L398 360 Q.* 230 470$/) // 보내는 집에서 출발
 })
@@ -72,7 +73,7 @@ test('tally counts ballots per accused city', () => {
 test('a contradiction knot appears only when the two houses that meet hear different words', () => {
   assert.deepEqual(clashingPairs([[1, 5], [4, 5]], { 1: 'stay', 4: 'evacuate', 5: 'evacuate' }), [[1, 5]])
   assert.deepEqual(clashingPairs([[1, 5]], { 1: 'stay', 5: 'stay' }), [])
-  assert.deepEqual(pairMid(3, 5, 1), [450, 165])
+  assert.deepEqual(pairMid(3, 5, 1), [450, 308])
   assert.deepEqual(pairMid(3, 4, 2), [450, 330])
 })
 

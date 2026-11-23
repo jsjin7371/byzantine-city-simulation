@@ -141,51 +141,73 @@ function Ground() {
   )
 }
 
+// 맑은 하늘 해 주변 ✦ 반짝이 자리 [x, y, 크기 배율, 시작 어긋남(초)]
+const SKY_SPARKS = [
+  [702, 28, 0.9, 0],
+  [826, 32, 1, -0.8],
+  [812, 90, 0.75, -1.6],
+] as const
+
 // 하늘: 정답이 위험이면 태풍 구름, 안전이면 맑은 하늘
 function Sky({ danger }: { danger: boolean }) {
   return (
     <g role="img" aria-label={danger ? '하늘: 오늘 밤 진짜 날씨는 태풍, 주민은 대피해야 산다' : '하늘: 오늘 밤 진짜 날씨는 맑음, 주민은 집에 있어야 산다'}>
-      <g filter="url(#vb-rough)">
+      <g filter="url(#vb-rough)" aria-hidden>
         <path
           d="M0 0 H900 V96 Q850 112 800 98 Q740 118 680 100 Q610 120 540 102 Q470 118 400 100 Q330 116 260 99 Q190 114 120 98 Q60 112 0 98 Z"
           fill={danger ? '#c4ced2' : '#bcdbe6'}
         />
-        {danger ? (
-          <>
-            <g fill="#7d8c96">
-              <ellipse cx="640" cy="44" rx="70" ry="30" />
-              <ellipse cx="710" cy="34" rx="62" ry="30" />
-              <ellipse cx="790" cy="46" rx="74" ry="32" />
-              <ellipse cx="860" cy="30" rx="60" ry="30" />
-            </g>
-            <g fill="#5f6f7b">
-              <ellipse cx="700" cy="62" rx="80" ry="20" />
-              <ellipse cx="820" cy="66" rx="80" ry="20" />
-            </g>
-            <path d="M760 44 m0 -2 a4 4 0 1 1 4 4 a10 10 0 1 1 -10 -10 a17 17 0 0 1 17 17 a24 24 0 0 1 -24 24" fill="none" stroke="#eef2f2" strokeWidth="3.5" strokeLinecap="round" />
-            <g stroke="#eef2f2" strokeWidth="2.5" fill="none" strokeLinecap="round">
-              <path d="M230 40 Q290 26 340 42 Q380 54 420 38" />
-              <path d="M300 70 Q360 58 410 70 Q450 80 500 64 a10 10 0 1 0 -6 -14" />
-              <path d="M180 78 Q220 68 260 78" />
-            </g>
-            <g stroke="#5f6f7b" strokeWidth="2" strokeLinecap="round">
-              <path d="M640 84 l-8 16 M672 88 l-8 16 M704 86 l-8 16 M736 90 l-8 16 M768 86 l-8 16 M800 90 l-8 16 M832 86 l-8 16" />
-            </g>
-          </>
-        ) : (
-          <>
-            <circle cx="760" cy="46" r="30" fill="#ffd35a" stroke="#c98f1e" strokeWidth="2.5" />
-            <g stroke="#e0a72a" strokeWidth="3" strokeLinecap="round">
-              <path d="M760 2 v8 M760 82 v8 M716 46 h8 M796 46 h8 M729 15 l6 6 M785 71 l6 6 M729 77 l6 -6 M785 21 l6 -6" />
-            </g>
-            <g fill="#f4f8f8">
-              <ellipse cx="640" cy="60" rx="46" ry="16" />
-              <ellipse cx="672" cy="50" rx="30" ry="16" />
-              <ellipse cx="860" cy="62" rx="40" ry="14" />
-            </g>
-          </>
-        )}
       </g>
+      {danger ? (
+        <>
+          <g className="vb-cloud" fill="#7d8c96" aria-hidden>
+            <ellipse cx="640" cy="44" rx="70" ry="30" />
+            <ellipse cx="710" cy="34" rx="62" ry="30" />
+            <ellipse cx="790" cy="46" rx="74" ry="32" />
+            <ellipse cx="860" cy="30" rx="60" ry="30" />
+          </g>
+          <g className="vb-cloud is-b" fill="#5f6f7b" aria-hidden>
+            <ellipse cx="700" cy="62" rx="80" ry="20" />
+            <ellipse cx="820" cy="66" rx="80" ry="20" />
+          </g>
+          <g className="vb-wind" stroke="#eef2f2" strokeWidth="2.5" fill="none" strokeLinecap="round" aria-hidden>
+            <path d="M230 40 Q290 26 340 42 Q380 54 420 38" />
+            <path d="M300 70 Q360 58 410 70 Q450 80 500 64 a10 10 0 1 0 -6 -14" />
+            <path d="M180 78 Q220 68 260 78" />
+          </g>
+          <g stroke="#5f6f7b" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            <path className="vb-rain" d="M640 76 l-6 12 M704 78 l-6 12 M768 78 l-6 12 M832 78 l-6 12" />
+            <path className="vb-rain is-b" d="M672 78 l-6 12 M736 80 l-6 12 M800 80 l-6 12" />
+          </g>
+        </>
+      ) : (
+        <>
+          <circle cx="760" cy="54" r="30" fill="#ffd35a" stroke="#c98f1e" strokeWidth="2.5" aria-hidden />
+          <g className="vb-sun-rays" stroke="#e0a72a" strokeWidth="3" strokeLinecap="round" aria-hidden>
+            <path d="M760 10 v8 M760 90 v8 M716 54 h8 M796 54 h8 M729 23 l6 6 M785 79 l6 6 M729 85 l6 -6 M785 29 l6 -6" />
+          </g>
+          {SKY_SPARKS.map(([x, y, s, delay]) => (
+            <g key={`${x}-${y}`} transform={`translate(${x},${y}) scale(${s})`} aria-hidden>
+              <path
+                className="vb-twinkle"
+                style={{ animationDelay: `${delay}s` }}
+                d="M0 -8 L2.2 -2.2 L8 0 L2.2 2.2 L0 8 L-2.2 2.2 L-8 0 L-2.2 -2.2 Z"
+                fill="#ffd35a"
+                stroke="#e0a72a"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
+            </g>
+          ))}
+          <g className="vb-cloud is-slow" fill="#f4f8f8" aria-hidden>
+            <ellipse cx="640" cy="60" rx="46" ry="16" />
+            <ellipse cx="672" cy="50" rx="30" ry="16" />
+          </g>
+          <g className="vb-cloud is-slow is-b" fill="#f4f8f8" aria-hidden>
+            <ellipse cx="860" cy="62" rx="40" ry="14" />
+          </g>
+        </>
+      )}
       <text x="545" y="40" fontSize="18" fontWeight="700" textAnchor="end" className="vb-serif" aria-hidden>
         {danger ? '오늘 밤 진짜 날씨: 태풍' : '오늘 밤 진짜 날씨: 맑음'}
       </text>
@@ -445,6 +467,7 @@ function Trial({
           <text x="450" y="420" fontSize="14" fontWeight="700" textAnchor="middle">
             {stamp}
           </text>
+          <rect className="vb-stamp-ink" x="390" y="400" width="120" height="30" rx="3" aria-hidden />
         </g>
       )}
     </g>
