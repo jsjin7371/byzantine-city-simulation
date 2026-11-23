@@ -54,7 +54,6 @@
 .gm-workspace tspan { font-family: var(--gm-font); }
 /* 연필 질감(정적 효과): 제목·라벨은 #vb-pencil, 작은 라벨은 #vb-pencil-sm. 긴 본문·포커스 가능 상자에는 적용하지 않는다. */
 .gm-workspace h2,
-.vl-talk h3,
 .gr-result h3,
 .vb-pencil { filter: url(#vb-pencil); }
 .vb-pencil-sm { filter: url(#vb-pencil-sm); }
@@ -499,7 +498,7 @@
   border-bottom: 2px dotted #b4976a;
   margin-bottom: 10px;
 }
-.vl-talk h3 { font: 700 21px/1.2 var(--gm-font); margin: 0; }
+.vl-talk h2 { font: 700 21px/1.2 var(--gm-font); margin: 0; }
 .vl-day {
   flex: none;
   font-size: 15px;

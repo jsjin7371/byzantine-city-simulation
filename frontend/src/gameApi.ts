@@ -76,10 +76,10 @@ export const difficulties = {
 export type Difficulty = keyof typeof difficulties
 
 export type CitizenType = GameConfig['citizen_type']
-export const citizenTypes: Record<CitizenType, { label: string; hint: string }> = {
-  majority: { label: '다수결', hint: '의심하지 않음' },
-  wary: { label: '눈치', hint: '자기 관측과 어긋나는 말을 덜 믿음' },
-  ai: { label: 'AI', hint: 'LLM 판단, 키가 없으면 눈치 규칙과 같게 동작' },
+export const citizenTypes: Record<CitizenType, { label: string }> = {
+  majority: { label: '다수결' },
+  wary: { label: '눈치' },
+  ai: { label: 'AI' },
 }
 
 // 플레이어가 주장을 보내야 하는 시민: 플레이어와 이웃인 시민 전부 (7.8 claims 키).

@@ -136,6 +136,15 @@ export function GamePage() {
   const [error, setError] = useState('')
   const [step, setStep] = useState<number | null>(null) // 밤 연출 중인 단계. null이면 최종 상태
   const resultRef = useRef<HTMLDivElement>(null)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const inGame = state !== null
+  const prevInGame = useRef(inGame)
+  useEffect(() => {
+    if (prevInGame.current !== inGame) {
+      prevInGame.current = inGame
+      headingRef.current?.focus({ preventScroll: true })
+    }
+  }, [inGame])
 
   const result = history.at(-1) ?? null
   const steps = useMemo(() => (result ? nightSteps(result) : []), [result])
@@ -236,13 +245,16 @@ export function GamePage() {
           citizenType={citizenType}
           busy={busy}
           error={error}
+          headingRef={headingRef}
           onDifficulty={setDifficulty}
           onCitizenType={setCitizenType}
           onStart={start}
         />
       ) : (
         <div className="gm-workspace gm-play">
-          <h1 className="sr-only">AI 시민을 속여라</h1>
+          <h1 ref={headingRef} tabIndex={-1} className="sr-only">
+            AI 시민을 속여라
+          </h1>
           <div className="gm-stage">
             <section className="gm-board-zone" aria-label="마을 보드">
               <header className="gm-hud">

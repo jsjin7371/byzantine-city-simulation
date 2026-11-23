@@ -464,6 +464,7 @@ export function GameStart({
   citizenType,
   busy,
   error,
+  headingRef,
   onDifficulty,
   onCitizenType,
   onStart,
@@ -472,6 +473,7 @@ export function GameStart({
   citizenType: CitizenType
   busy: boolean
   error: string
+  headingRef?: RefObject<HTMLHeadingElement | null>
   onDifficulty: (value: Difficulty) => void
   onCitizenType: (value: CitizenType) => void
   onStart: () => void
@@ -490,7 +492,9 @@ export function GameStart({
 
   return (
     <div className="gm-workspace gm-start">
-      <h1 className="sr-only">AI 시민을 속여라</h1>
+      <h1 ref={headingRef} tabIndex={-1} className="sr-only">
+        AI 시민을 속여라
+      </h1>
       <svg
         className="gm-start-scene"
         viewBox="0 0 1440 900"
@@ -584,7 +588,7 @@ export function GameStart({
         </g>
 
         {/* 목표 종이 쪽지 */}
-        <g aria-label={`목표: 마피아로 숨어 ${TOTAL_TURNS}일째 밤에 주민 반 넘게 틀린 결정을 내리게 해요. 재판에 걸리면 바로 져요.`}>
+        <g>
           <path
             d="M366 190 H1056 L1074 208 V258 H366 Z"
             fill="#f6ebcd"

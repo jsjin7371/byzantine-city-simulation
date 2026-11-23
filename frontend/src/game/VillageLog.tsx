@@ -78,7 +78,7 @@ export function VillageLog({
   return (
     <aside className="vl-talk" aria-label="마을 이야기">
       <div className="vl-head">
-        <h3>마을 이야기</h3>
+        <h2>마을 이야기</h2>
         {day != null && <span className="vl-day">{day}일째 밤</span>}
       </div>
       <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
@@ -102,8 +102,9 @@ export function VillageLog({
             return (
               <article key={i} className={isOpen ? 'vl-entry is-open' : 'vl-entry'}>
                 <div className="vl-entry-row">
-                  <span className={quiet ? 'vl-tok is-quiet' : 'vl-tok'} aria-label={`${who}번`}>
-                    {who}
+                  <span className={quiet ? 'vl-tok is-quiet' : 'vl-tok'}>
+                    <span className="sr-only">{who}번</span>
+                    <span aria-hidden="true">{who}</span>
                   </span>
                   <p className="vl-quote">{text}</p>
                   {scale && (
@@ -112,7 +113,7 @@ export function VillageLog({
                       className="vl-why-btn"
                       aria-label={`${who}번 주민 생각 보기`}
                       aria-expanded={isOpen}
-                      aria-controls={panelId}
+                      aria-controls={isOpen ? panelId : undefined}
                       onClick={() => toggle(key)}
                     >
                       <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
