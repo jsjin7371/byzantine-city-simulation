@@ -284,7 +284,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
     : base
   const mafia = h.role !== 'citizen'
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
-  // 쪽지 한 장만 더 어긋나면 재판: 막대가 약하게 두근거린다
+  // 어긋난 쪽지 한 장이면 재판: 막대가 약하게 두근거린다
   const near = !over && h.suspicion != null && h.suspicion >= SUSPICION.threshold - SUSPICION.disagree
   return (
     <g
@@ -345,7 +345,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
             <path d={`M${-53 + 0.96 * SUSPICION.threshold} -13 H${-43 + 0.96 * SUSPICION.threshold}`} />
           </g>
           {over && (
-            <g className="vb-alarm" aria-hidden>
+            <g className="vb-knot" aria-hidden>
               <circle cx="-62" r="9" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" />
               <text x="-62" y="5" fontSize="14" fontWeight="800" textAnchor="middle" className="vb-light">
                 !
