@@ -202,11 +202,11 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
   const left = TOTAL_TURNS - turn
   const px = cellX(day) + 19
   return (
-    <g role="img" aria-label={`달력: 마지막 결정까지 D-${left}, ${day}/${TOTAL_TURNS}일`}>
+    <g role="img" aria-label={`달력: 결정의 날 D-${left}, ${day}/${TOTAL_TURNS}일`}>
       <rect x="0" y="598" width="900" height="62" fill="#7a5530" />
       <rect x="0" y="598" width="900" height="62" filter="url(#vb-grain)" />
       <text x="34" y="622" fontSize="12" fontWeight="700" className="vb-light">
-        마지막 결정까지
+        결정의 날
       </text>
       <g filter="url(#vb-rough)" stroke="#4a3119" strokeWidth="1.5">
         {Array.from({ length: TOTAL_TURNS }, (_, i) => i + 1).map((d) => (
@@ -471,7 +471,7 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
 
 // 길 범례: 갈색 길은 모두에게 말하기, 노란 점선은 쪽지 맞춰 보기 (선 모양도 달라 색만으로 구분하지 않는다).
 function Legend({ ring }: { ring: boolean }) {
-  const label = `범례: 갈색 길은 주민 대화 길, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 쪽지를 보낸다. 노란 점선은 오늘 밤 쪽지 대조, 두 주민이 받은 쪽지를 서로 맞춰 본다`
+  const label = `범례: 갈색 길은 쪽지 오솔길, 매일 밤 ${ring ? '양옆 집끼리' : '모든 집이 서로'} 쪽지를 보낸다. 노란 점선은 오늘 밤 쪽지 대조, 두 주민이 받은 쪽지를 서로 맞춰 본다`
   return (
     <g role="img" aria-label={label}>
       <title>{label}</title>
@@ -481,7 +481,7 @@ function Legend({ ring }: { ring: boolean }) {
       <path d="M22 47 H52" stroke="#3b2a1a" strokeWidth="7" opacity=".35" />
       <path d="M22 47 H52" stroke="#ffd35a" strokeWidth="4" strokeDasharray="6 4" />
       <g fontSize="12" fontWeight="700" aria-hidden>
-        <text x="62" y="30">갈색 길: 주민 대화 길</text>
+        <text x="62" y="30">갈색 길: 쪽지 오솔길</text>
         <text x="62" y="51">노란 점선: 쪽지 대조</text>
       </g>
     </g>
