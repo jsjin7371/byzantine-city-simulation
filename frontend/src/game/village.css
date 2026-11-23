@@ -101,6 +101,9 @@
 .vb-opt.is-stay.is-sel text { fill: var(--ink); }
 .vb-opt:focus-visible rect { stroke: var(--ink); stroke-width: 3; }
 
+.vb-new rect { fill: var(--forest); stroke: #f6ebcd; stroke-width: 1.5; }
+.vb-new { animation: vb-fade 300ms ease both; }
+
 .vb-knot { transform-box: fill-box; transform-origin: center; animation: vb-knot 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes vb-knot { from { opacity: 0; transform: scale(.6); } }
 

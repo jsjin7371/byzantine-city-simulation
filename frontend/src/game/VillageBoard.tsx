@@ -3,7 +3,7 @@ import type { KeyboardEvent } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
-import { TRAILS, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses } from './village'
+import { TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses } from './village'
 import type { House, Phase } from './village'
 import './village.css'
 
@@ -270,7 +270,8 @@ function houseLabel(h: House) {
 }
 
 // 집 하나. pick이 있으면 눌러서 쪽지를 여는 버튼이 된다 (명세 1번).
-type Pick = { claim?: Claim; open: boolean; next: number | null; onOpen: () => void }
+// changed: 어제와 달라진 점 (힌트 바뀜, 새 점선). 어제 쪽지를 그대로 두었으니 여기만 다시 보면 된다.
+type Pick = { claim?: Claim; open: boolean; next: number | null; changed?: string[]; onOpen: () => void }
 
 const pressKey = (action: () => void) => (e: KeyboardEvent) => {
   if (e.key !== 'Enter' && e.key !== ' ') return
@@ -281,7 +282,7 @@ const pressKey = (action: () => void) => (e: KeyboardEvent) => {
 function HouseView({ h, pick }: { h: House; pick?: Pick }) {
   const { x, y } = h
   const label = pick
-    ? `${houseLabel(h)}. 할 말 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}`
+    ? `${houseLabel(h)}${pick.changed ? `, 어제와 달라짐: ${pick.changed.join(', ')}` : ''}. 할 말 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}`
     : houseLabel(h)
   const mafia = h.role !== 'citizen'
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
@@ -350,6 +351,14 @@ function HouseView({ h, pick }: { h: House; pick?: Pick }) {
         </g>
       )}
       {pick?.claim && <use href={`#vb-note-${pick.claim}`} x={x + 70} y={y - 30} />}
+      {pick?.changed && (
+        <g className="vb-new" transform={`translate(${x - 10},${y + 52})`} aria-hidden>
+          <rect x="-82" y="-10" width="164" height="20" rx="10" />
+          <text y="4" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-light">
+            어제와 달라짐: {pick.changed.join('·')}
+          </text>
+        </g>
+      )}
     </g>
   )
 }
@@ -620,6 +629,7 @@ export function VillageBoard({
   const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집${red(a, b) ? '(모순)' : ''}`).join(', ')
   const preview = (h: House, claim?: Claim) =>
     picker?.ruled && claim ? suspicionPreview(h, claim, pairs, picker.claims) : null
+  const changed = picker && result ? changedHouses(result) : {}
   const opened = picker ? houses.find((h) => h.city === open && h.reachable) : undefined
   return (
     <svg
@@ -670,6 +680,7 @@ export function VillageBoard({
                   claim: picker.claims[h.city],
                   open: open === h.city,
                   next: preview(h, picker.claims[h.city])?.next ?? null,
+                  changed: changed[h.city],
                   onOpen: () => setOpen(open === h.city ? null : h.city),
                 }
               : undefined
