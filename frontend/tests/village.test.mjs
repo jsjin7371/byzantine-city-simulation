@@ -266,13 +266,30 @@ test('citizen scale counts remembered past hints (recent: last turn, full: all) 
   assert.deepEqual(citizenScales({ player_city: 1, config: { ...config, citizen_type: 'ai' } }, history, 2), {})
 })
 
-test('scale text reads like the brief and swayed citizens get a "마음을 돌림" line at the flags phase', () => {
+test('scale text reads in plain sentences and swayed citizens get a "마음을 돌림" line at the flags phase', () => {
   const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
-  assert.equal(scaleText(scale, 1), '내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → 합 +240, 대피')
+  assert.deepEqual(scaleText(scale, 1), [
+    '내가 본 하늘은 태풍 → 대피 쪽 100',
+    '2번 쪽지 "대피" → 조금 의심해서 80만 믿음',
+    '4번 쪽지 "대피" → 그대로 100 다 믿음',
+    '너(1번) 쪽지 "잔류" → 많이 의심해서 40만 믿음',
+    '대피 쪽이 240 더 무거워서 대피하기로 했어',
+  ])
+  const tie = { parts: [{ from: 'hint', value: 0 }, { from: 1, value: 0 }], total: 0, decision: 'evacuate', mine: 0, swayed: false }
+  assert.deepEqual(scaleText(tie, 1), [
+    '기억한 하늘은 반반 → 0',
+    '너(1번) 쪽지 → 전혀 안 믿어서 0',
+    '양쪽 무게가 같아서 내가 본 하늘대로 대피하기로 했어',
+  ])
+  const remembered = { parts: [{ from: 'hint', value: -200 }], total: -200, decision: 'stay', mine: null, swayed: false }
+  assert.deepEqual(scaleText(remembered, 1), [
+    '기억한 하늘은 맑음 → 잔류 쪽 200',
+    '잔류 쪽이 200 더 무거워서 잔류하기로 했어',
+  ])
   const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
   const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
-  assert.equal(line.text, '대피 +240')
-  assert.equal(line.detail, scaleText(scale, 3))
+  assert.equal(line.text, '대피하기로 했어')
+  assert.deepEqual(line.detail, scaleText(scale, 3))
   assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번 마음을 돌림' && l.phase === 'flags'))
 })
 
@@ -295,7 +312,7 @@ test('pairLogScales attaches each citizen scale only to their notes quote and ke
   const s5 = { parts: [{ from: 'hint', value: -100 }], total: -100, decision: 'stay', mine: null, swayed: false }
   const lines = villageLines(state, { ...turn, vote: { ballots: { 1: 3 }, accused: null, caught: false } }, { 1: s1, 5: s5 })
   // city 5 is not in turn.cities, add a standalone scale for city 5 directly to test ring/unpaired case
-  lines.push({ phase: 'flags', kind: 'scale', who: 5, text: '잔류 −100', detail: scaleText(s5, 3), scale: s5, me: 3 })
+  lines.push({ phase: 'flags', kind: 'scale', who: 5, text: '잔류하기로 했어', detail: scaleText(s5, 3), scale: s5, me: 3 })
   const entries = pairLogScales(lines)
   const city1Says = entries.filter((e) => e.kind === 'say' && e.who === 1)
   assert.equal(city1Says.length, 4) // notes, contradiction, trial warning, trial ballot

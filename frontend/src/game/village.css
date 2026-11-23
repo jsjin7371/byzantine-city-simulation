@@ -341,7 +341,7 @@
   .vb-spark > path { animation: none; }
   .vb-fly { display: none; }
   .vb-opt:active { transform: none; }
-  .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
+  .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text, .vl-why-btn, .vl-why-btn svg { transition: none; }
   .vl-beam, .vl-pan, .vb-gauge-fill, .vb-gauge.is-near .vb-gauge-fill, .vb-gauge.is-over .vb-gauge-fill, .vb-gauge.is-over .vb-knot { animation: none; }
   .vb-gauge-fill { transition: none; }
   .vb-cloud, .vb-wind path, .vb-rain, .vb-sun-rays, .vb-twinkle { animation: none; }
@@ -419,36 +419,88 @@
 .vl-why-btn {
   flex: none;
   appearance: none;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
   border: 1px solid var(--border);
   background: rgba(239, 224, 185, 0.78);
   color: var(--wood);
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+.vl-why-btn:hover {
+  background: var(--parch);
+  border-color: var(--wood);
+  color: var(--ink);
+}
+.vl-why-btn:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.vl-why-btn svg {
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 160ms ease;
 }
 .vl-entry.is-open .vl-why-btn {
   background: var(--wood);
   border-color: #4a3119;
   color: var(--ui-background);
 }
+.vl-entry.is-open .vl-why-btn svg {
+  transform: rotate(90deg);
+}
 .vl-why-box {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1.5px dotted var(--border);
-}
-.vl-why-scale {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  gap: 6px;
 }
-.vl-why-calc {
-  flex: 1;
-  min-width: 0;
+.vl-why-box .vl-balance {
+  align-self: center;
+}
+.vl-why-list {
   margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   font-size: 12.5px;
   line-height: 1.45;
   color: var(--muted);
+}
+.vl-why-list li {
+  padding-left: 11px;
+  text-indent: -11px;
+}
+.vl-why-list li::before {
+  content: '· ';
+  color: var(--wood);
+  font-weight: 700;
+}
+.vl-why-verdict {
+  margin: 2px 0 0;
+  padding-left: 15px;
+  text-indent: -15px;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--ink);
+}
+.vl-why-verdict::before {
+  content: '→ ';
+  color: var(--wood);
 }
 .vl-event {
   margin: 2px 0;

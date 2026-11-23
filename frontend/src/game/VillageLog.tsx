@@ -38,17 +38,22 @@ function Balance({ scale, me, label }: { scale: Scale; me: number; label: string
 }
 
 function WhyBox({ id, scale }: { id: string; scale: ScaleLine }) {
+  const reasons = scale.detail.slice(0, -1)
+  const verdict = scale.detail.at(-1)
   return (
     <div id={id} className="vl-why-box">
-      <div className="vl-why-scale">
-        <Balance scale={scale.scale} me={scale.me} label={`${scale.who}번 저울: ${scale.text}`} />
-        <p className="vl-why-calc">{scale.detail}</p>
-      </div>
+      <Balance scale={scale.scale} me={scale.me} label={`${scale.who}번 저울: ${verdict ?? scale.text}`} />
+      <ul className="vl-why-list">
+        {reasons.map((line, i) => (
+          <li key={i}>{line}</li>
+        ))}
+      </ul>
+      {verdict && <p className="vl-why-verdict">{verdict}</p>}
     </div>
   )
 }
 
-// 마을 이야기 (명세 3번). 턴 결과에서 만든 대사를 일기장에 적고, 계산식·저울은 "왜?" 뒤에 접는다.
+// 마을 이야기 (명세 3번). 턴 결과에서 만든 대사를 일기장에 적고, 속마음·저울은 줄 오른쪽 토글 뒤에 접는다.
 // live: 밤 연출 중. 새 줄이 한 줄씩 나타나고 맨 아래로 따라간다.
 export function VillageLog({
   lines,
@@ -106,12 +111,14 @@ export function VillageLog({
                     <button
                       type="button"
                       className="vl-why-btn"
-                      aria-label={`${who}번 주민 계산 보기`}
+                      aria-label={`${who}번 주민 생각 보기`}
                       aria-expanded={isOpen}
                       aria-controls={panelId}
                       onClick={() => toggle(key)}
                     >
-                      왜?<span aria-hidden="true">{isOpen ? ' ▾' : ' ▸'}</span>
+                      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                        <path d="M6 3.5 L10.5 8 L6 12.5" />
+                      </svg>
                     </button>
                   )}
                 </div>

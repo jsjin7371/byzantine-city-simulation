@@ -246,21 +246,37 @@ export type Line = Said &
   (
     | { kind: 'when'; text: string }
     | { kind: 'say'; who: number; text: string }
-    | { kind: 'scale'; who: number; text: string; detail: string; scale: Scale; me: number } // text: 짧은 결론, detail: 몫별 숫자
+    | { kind: 'scale'; who: number; text: string; detail: string[]; scale: Scale; me: number } // text: 짧은 결론, detail: 생각 줄 목록
     | { kind: 'event'; text: string; good?: boolean }
   )
 
 const saw = { danger: '태풍', safe: '맑음' } as const
 const said = { evacuate: '대피', stay: '잔류' } as const
-const signed = (v: number) => (v > 0 ? `+${v}` : v < 0 ? `−${-v}` : '0')
 
-// 저울 읽기용 한 줄. 예) "내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → 합 +240, 대피"
-export function scaleText(scale: Scale, me: number) {
-  const parts = scale.parts.map((p) =>
-    `${p.from === 'hint' ? '내 관측' : p.from === me ? `너(${me}번)` : `${p.from}번`} ${signed(p.value)}`,
-  )
-  const tie = scale.total === 0 ? ' (동점이라 내 관측대로)' : ''
-  return `${parts.join(' · ')} → 합 ${signed(scale.total)}, ${said[scale.decision]}${tie}`
+// 저울 읽기용 문장 목록: 항목마다 짧은 한 줄 + 마지막 결론 한 줄.
+export function scaleText(scale: Scale, me: number): string[] {
+  const lines = scale.parts.map((p) => {
+    const abs = Math.abs(p.value)
+    if (p.from === 'hint') {
+      if (p.value === 0) return '기억한 하늘은 반반 → 0'
+      const weather = p.value > 0 ? '태풍' : '맑음'
+      const side = p.value > 0 ? '대피' : '잔류'
+      const head = abs === 100 ? '내가 본 하늘은' : '기억한 하늘은'
+      return `${head} ${weather} → ${side} 쪽 ${abs}`
+    }
+    const who = p.from === me ? `너(${me}번)` : `${p.from}번`
+    if (abs === 0) return `${who} 쪽지 → 전혀 안 믿어서 0`
+    const side = p.value > 0 ? '대피' : '잔류'
+    const trust = abs === 100 ? '그대로 100 다 믿음' : abs >= 60 ? `조금 의심해서 ${abs}만 믿음` : `많이 의심해서 ${abs}만 믿음`
+    return `${who} 쪽지 "${side}" → ${trust}`
+  })
+  const choice = `${said[scale.decision]}하기로 했어`
+  const verdict =
+    scale.total === 0
+      ? `양쪽 무게가 같아서 내가 본 하늘대로 ${choice}`
+      : `${said[scale.decision]} 쪽이 ${Math.abs(scale.total)} 더 무거워서 ${choice}`
+  lines.push(verdict)
+  return lines
 }
 
 // scales: 그 턴의 시민 저울 (citizenScales). 있으면 결정 단계에 저울과 "설득 성공"을 적는다.
@@ -297,7 +313,7 @@ export function villageLines(
   for (const c of citizens) {
     const s = scales[c.city]
     if (!s) continue
-    const text = `${said[s.decision]} ${signed(s.total)}`
+    const text = `${said[s.decision]}하기로 했어`
     lines.push({ phase: 'flags', kind: 'scale', who: c.city, text, detail: scaleText(s, me), scale: s, me })
     if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번 마음을 돌림` })
   }
