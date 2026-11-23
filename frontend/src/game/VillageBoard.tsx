@@ -309,7 +309,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       )}
       {h.lit != null && <use href={h.lit ? '#vb-win-on' : '#vb-win-off'} x={x - 18} y={y - 20} filter="url(#vb-rough)" />}
       {h.suspicion != null && (
-        <g transform={`translate(${x - 10},${y + 30})`} className={over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}>
+        <g transform={`translate(${x - 20},${y + 30})`} className={over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}>
           <rect x="-50" y="-5" width="100" height="10" rx="5" fill="#5a3d22" />
           <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
           {/* 재판 기준 60 말뚝 */}
@@ -325,12 +325,12 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
               </text>
             </g>
           )}
-          {over && <rect x="53" y="-14" width="38" height="26" rx="3" fill="#a8361f" />}
-          <text x="58" y="6" fontSize="18" fontWeight="700" className={over ? 'vb-light' : undefined}>
+          {over && <rect x="53" y="-14" width="32" height="26" rx="3" fill="#a8361f" />}
+          <text x="56" y="6" fontSize="18" fontWeight="700" className={over ? 'vb-light' : undefined}>
             {h.suspicion}
           </text>
           {pick?.preview && (pick.preview.next !== h.suspicion || pick.preview.trial) && (
-            <text x="94" y="6" fontSize="17.5" fontWeight="700" className={worsens(pick.preview) ? 'vb-rust' : 'vb-green'}>
+            <text x="88" y="6" fontSize="17.5" fontWeight="700" className={worsens(pick.preview) ? 'vb-rust' : 'vb-green'}>
               →{pick.preview.next}
               {pick.preview.trial && ' 재판'}
             </text>
