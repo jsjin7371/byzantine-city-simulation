@@ -268,6 +268,8 @@ test('scale text reads like the brief and swayed citizens get a "마음을 돌�
   const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
   assert.equal(scaleText(scale, 1), '내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → 합 +240, 대피')
   const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
-  assert.ok(lines.some((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags'))
+  const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
+  assert.equal(line.text, '대피 +240')
+  assert.equal(line.detail, scaleText(scale, 3))
   assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번 마음을 돌림' && l.phase === 'flags'))
 })

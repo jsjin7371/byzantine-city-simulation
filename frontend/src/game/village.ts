@@ -230,7 +230,7 @@ export type Line = Said &
   (
     | { kind: 'when'; text: string }
     | { kind: 'say'; who: number; text: string }
-    | { kind: 'scale'; who: number; text: string }
+    | { kind: 'scale'; who: number; text: string; detail: string; scale: Scale; me: number } // text: 짧은 결론, detail: 몫별 숫자
     | { kind: 'event'; text: string; good?: boolean }
   )
 
@@ -281,7 +281,8 @@ export function villageLines(
   for (const c of citizens) {
     const s = scales[c.city]
     if (!s) continue
-    lines.push({ phase: 'flags', kind: 'scale', who: c.city, text: scaleText(s, me) })
+    const text = `${said[s.decision]} ${signed(s.total)}`
+    lines.push({ phase: 'flags', kind: 'scale', who: c.city, text, detail: scaleText(s, me), scale: s, me })
     if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번 마음을 돌림` })
   }
 
