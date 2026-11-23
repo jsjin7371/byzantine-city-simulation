@@ -97,6 +97,43 @@ export function talkNotes(player: number, result: Pick<TurnResult, 'cities'>) {
   )
 }
 
+// 시민 마음속 저울 (A-1): engine/city/logic.py game_turn을 그대로 옮긴다. 1표 = 100.
+// 기억한 힌트마다 ±100 (대피 +, 잔류 −), 받은 쪽지마다 ±(100 − 보낸 집에 대한 새 의심도). 합 >0 대피, <0 잔류, 0이면 이번 힌트.
+// mine: 내(플레이어) 쪽지 몫. swayed: 그 몫을 빼면 결정이 반대였다 (= 내 쪽지가 마음을 흔들었다).
+export type Weight = { from: number | 'hint'; value: number }
+export type Scale = { parts: Weight[]; total: number; decision: Claim; mine: number | null; swayed: boolean }
+
+const vote = (hint: Truth) => (hint === 'danger' ? 100 : -100)
+const pick = (score: number, hint: Truth): Claim => (score === 0 ? (hint === 'danger' ? 'evacuate' : 'stay') : score > 0 ? 'evacuate' : 'stay')
+
+// history[i] 턴의 시민별 저울. 과거 힌트는 memory에 따라 앞선 턴에서 가져온다 (recent는 직전 1턴, full은 전부).
+// AI 시민은 규칙 밖이라 비운다.
+export function citizenScales(
+  state: Pick<GameState, 'player_city' | 'config'>,
+  history: Pick<TurnResult, 'cities'>[],
+  i: number,
+): Record<number, Scale> {
+  if (state.config.citizen_type === 'ai') return {}
+  const { memory } = state.config
+  const scales: Record<number, Scale> = {}
+  for (const c of history[i].cities) {
+    if (c.role !== 'citizen' || !c.hint) continue
+    const past = memory === 'turn' ? [] : history.slice(memory === 'recent' ? Math.max(0, i - 1) : 0, i)
+    const hints = [...past.map((t) => t.cities.find((x) => x.city === c.city)?.hint), c.hint].filter((h) => h != null)
+    const parts: Weight[] = [{ from: 'hint', value: hints.reduce((a, h) => a + vote(h), 0) }]
+    for (const [s, msg] of Object.entries(c.received ?? {})) {
+      if (!msg) continue
+      const w = 100 - (c.suspicion?.[s] ?? 0)
+      parts.push({ from: Number(s), value: msg.claim === 'evacuate' ? w : -w })
+    }
+    const total = parts.reduce((a, p) => a + p.value, 0)
+    const mine = parts.find((p) => p.from === state.player_city)?.value ?? null
+    const decision = pick(total, c.hint)
+    scales[c.city] = { parts, total, decision, mine, swayed: mine != null && pick(total - mine, c.hint) !== decision }
+  }
+  return scales
+}
+
 export type House = {
   city: number
   slot: number
