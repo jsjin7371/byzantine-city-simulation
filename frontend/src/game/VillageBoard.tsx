@@ -273,11 +273,13 @@ const pressKey = (action: () => void) => (e: KeyboardEvent) => {
   action()
 }
 
-function HouseView({ h, pick }: { h: House; pick?: Pick }) {
+// swayed: 내 쪽지가 없었다면 반대로 골랐을 시민 (작은 불꽃 한 번)
+function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolean }) {
   const { x, y } = h
+  const base = `${houseLabel(h)}${swayed ? ', 내 쪽지에 마음이 바뀜' : ''}`
   const label = pick
-    ? `${houseLabel(h)}${pick.changed ? `, 어제와 달라짐: ${pick.changed.join(', ')}` : ''}. 할 말 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
-    : houseLabel(h)
+    ? `${base}${pick.changed ? `, 어제와 달라짐: ${pick.changed.join(', ')}` : ''}. 할 말 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
+    : base
   const mafia = h.role !== 'citizen'
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
   return (
@@ -321,6 +323,11 @@ function HouseView({ h, pick }: { h: House; pick?: Pick }) {
       {h.flag && (
         <g key={h.flag} className="vb-flag" transform={`translate(${x + 28},${y - 62})`}>
           <use href={`#vb-flag-${h.flag}`} filter="url(#vb-rough)" />
+        </g>
+      )}
+      {swayed && (
+        <g className="vb-spark" transform={`translate(${x + 8},${y - 78})`} aria-hidden>
+          <path d="M0 -13 L3.5 -3.5 L13 0 L3.5 3.5 L0 13 L-3.5 3.5 L-13 0 L-3.5 -3.5 Z" />
         </g>
       )}
       {h.lit != null && <use href={h.lit ? '#vb-win-on' : '#vb-win-off'} x={x - 18} y={y - 20} filter="url(#vb-rough)" />}
@@ -582,11 +589,13 @@ export function VillageBoard({
   result,
   picker,
   stage,
+  swayed = [],
 }: {
   state: GameState
   result: TurnResult | null
   picker?: NotePicker
   stage?: Stage
+  swayed?: number[] // 내 쪽지가 결정을 뒤집은 시민 (citizenScales)
 }) {
   const [open, setOpen] = useState<number | null>(null)
   const svg = useRef<SVGSVGElement>(null)
@@ -670,6 +679,7 @@ export function VillageBoard({
         <HouseView
           key={h.city}
           h={h}
+          swayed={at('flags') && swayed.includes(h.city)}
           pick={
             picker && h.reachable
               ? {

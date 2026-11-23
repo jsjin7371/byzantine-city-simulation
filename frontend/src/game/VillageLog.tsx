@@ -35,7 +35,7 @@ export function VillageLog({ lines, live = false, children }: { lines: Line[] | 
               <span>{line.text}</span>
             </p>
           ) : (
-            <p key={i} className="vl-event">
+            <p key={i} className={line.good ? 'vl-event is-good' : 'vl-event'}>
               {line.text}
             </p>
           ),

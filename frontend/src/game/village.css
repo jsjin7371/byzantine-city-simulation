@@ -120,8 +120,14 @@
   to { offset-distance: 100%; opacity: 0; }
 }
 
+/* 내 쪽지가 마음을 바꾼 집: 작은 불꽃이 한 번 터진다 */
+.vb-spark path { fill: #ffd35a; stroke: #b8861f; stroke-width: 1.5; }
+.vb-spark > path { transform-box: fill-box; transform-origin: center; animation: vb-spark 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes vb-spark { from { opacity: 0; transform: scale(.3) rotate(-45deg); } }
+
 @media (prefers-reduced-motion: reduce) {
   .vb-card, .vb-knot, .vb-sign { animation-name: vb-fade; }
+  .vb-spark > path { animation: none; }
   .vb-fly { display: none; }
   .vb-opt:active { transform: none; }
   .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
@@ -148,6 +154,7 @@
 .vl-tok { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #d9a95f; border: 2px solid var(--wood); font: 700 14px/22px "Batang", serif; text-align: center; }
 .vl-event { margin: 8px 0; font-size: 13.5px; font-weight: 700; color: var(--rust); line-height: 1.4; }
 .vl-event.is-quiet { color: var(--ink); font-weight: 600; }
+.vl-event.is-good { color: var(--forest); }
 .vl-scale { font-size: 12.5px; color: var(--muted); }
 .vl-scale .vl-tok { background: transparent; border-style: dashed; }
 .vl-talk [data-ui-button] { margin-top: 10px; width: 100%; }

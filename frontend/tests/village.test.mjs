@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TOP_ARC, changedHouses, citizenScales, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
+  TOP_ARC, changedHouses, citizenScales, scaleText, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -262,4 +262,12 @@ test('citizen scale counts remembered past hints (recent: last turn, full: all) 
   assert.equal(at('recent').decision, 'evacuate') // 동점이면 이번 힌트
   assert.equal(at('full').total, -100)
   assert.deepEqual(citizenScales({ player_city: 1, config: { ...config, citizen_type: 'ai' } }, history, 2), {})
+})
+
+test('scale text reads like the brief and swayed citizens get a "흔들었다" line at the flags phase', () => {
+  const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
+  assert.equal(scaleText(scale, 1), '내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → 합 +240, 대피')
+  const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
+  assert.ok(lines.some((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags'))
+  assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번 주민을 흔들었다' && l.phase === 'flags'))
 })
