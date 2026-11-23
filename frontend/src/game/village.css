@@ -14,12 +14,22 @@
   font-display: swap;
 }
 
-/* 게임 화면 전용 밝은 숲 톤 (목업 A3). .gm-workspace 안에서만 변수를 바꿔 다른 화면 다크 테마는 그대로 둔다. */
+/* 게임 화면 전용 밝은 숲 톤 (목업 A3 + 연필 흑연색). .gm-workspace 안에서만 변수를 바꿔 다른 화면 다크 테마는 그대로 둔다. */
+.gm-svg-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 .gm-workspace {
   --gm-font: 'Gaegu', cursive;
-  --ink: #3b2a1a;
+  --ink: #3d3a36;
+  --ink-soft: #4c4842;
   --wood: #6b4a2a;
   --parch: #efe0b9;
+  --cream: #f3ebd4;
   --forest: #2f4a28;
   --rust: #a8361f;
   --leave: #35598a;
@@ -29,7 +39,7 @@
   --background: #dfe3d2;
   --text: var(--ink);
   --accent: var(--ink);
-  --muted: #6b5338;
+  --muted: #656058;
   --border: #c3a878;
   --color-error: var(--rust);
   --color-success: var(--forest);
@@ -47,6 +57,15 @@
 .gm-workspace h2,
 .gm-workspace text,
 .gm-workspace tspan { font-family: var(--gm-font); }
+/* 연필 질감(정적 효과): 제목·라벨은 #vb-pencil, 작은 라벨은 #vb-pencil-sm. 긴 본문·포커스 가능 상자에는 적용하지 않는다. */
+.gm-workspace h1:not(.sr-only),
+.gm-workspace h2,
+.vl-talk h3,
+.gr-result h3,
+.vb-pencil { filter: url(#vb-pencil); }
+.vl-when,
+.vl-pager-day,
+.vb-pencil-sm { filter: url(#vb-pencil-sm); }
 .gm-workspace .rs-correct { color: var(--forest); }
 .gm-workspace .rs-incorrect { color: var(--rust); }
 
@@ -228,7 +247,7 @@
 .vb-board .vb-serif { font-family: var(--gm-font); }
 .vb-board .vb-light { fill: #f3e7c6; }
 .vb-board .vb-dday { fill: #ffd35a; }
-.vb-board .vb-cal-num { fill: #4a3119; }
+.vb-board .vb-cal-num { fill: var(--ink-soft); }
 
 .vb-cloth.is-evacuate { fill: var(--leave); stroke: #1f3554; }
 .vb-cloth.is-stay { fill: var(--stay); stroke: #7a5512; }
@@ -398,7 +417,7 @@
   flex: none;
   font-size: 12.5px;
   font-weight: 700;
-  color: var(--wood);
+  color: var(--ink-soft);
   background: var(--ui-background);
   border: 1px solid var(--border);
   border-radius: 4px;
@@ -414,7 +433,7 @@
   word-break: keep-all;
   overflow-wrap: break-word;
 }
-.vl-when { font-size: 13px; font-weight: 700; color: var(--wood); margin: 4px 0 2px; }
+.vl-when { font-size: 13px; font-weight: 700; color: var(--ink-soft); margin: 4px 0 2px; }
 .vl-entry {
   padding: 8px 10px;
   border-radius: 7px;

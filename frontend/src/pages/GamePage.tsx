@@ -100,6 +100,28 @@ function TurnReport({ result }: { result: TurnResult }) {
   )
 }
 
+// 연필 질감 SVG 필터 (목업 start.html pencil-gaegu). 게임 페이지에 한 번만 둔다.
+function PencilFilters() {
+  return (
+    <svg width="0" height="0" className="gm-svg-defs" aria-hidden="true" focusable="false">
+      <defs>
+        <filter id="vb-pencil" x="-5%" y="-12%" width="110%" height="124%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves={2} seed={13} result="edge" />
+          <feDisplacementMap in="SourceGraphic" in2="edge" scale={1.15} xChannelSelector="R" yChannelSelector="G" result="rough" />
+          <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves={2} seed={21} result="grain" />
+          <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.45 0.60" result="mask" />
+          <feComposite in="rough" in2="mask" operator="in" />
+        </filter>
+        <filter id="vb-pencil-sm" x="-4%" y="-10%" width="108%" height="120%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves={2} seed={21} result="grain" />
+          <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.28 0.76" result="mask" />
+          <feComposite in="SourceGraphic" in2="mask" operator="in" />
+        </filter>
+      </defs>
+    </svg>
+  )
+}
+
 function scrollIntoView(el: HTMLElement | null) {
   const behavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
   el?.scrollIntoView({ behavior, block: 'start' })
@@ -207,180 +229,181 @@ export function GamePage() {
 
   const scrollToResult = () => scrollIntoView(resultRef.current)
 
-  if (!state) {
-    return (
-      <div className="gm-workspace">
-        <h1>AI 시민을 속여라</h1>
-        <section className="gm-panel">
-          <ul className="gm-rules">
-            <li>
-              목표: 나는 마피아. {TOTAL_TURNS}턴째에 주민 과반이 오답을
-              고르게 하면 승리, 전부 오답이면 완승.
-            </li>
-            <li>
-              의심도(나에 대한): 주민 관측과 같은 말 {SUSPICION.agree}, 다른 말 +
-              {SUSPICION.disagree}, 공유 쌍인 두 주민에게 서로 다른 말을 하면 모순 +
-              {SUSPICION.contradiction}.
-            </li>
-            <li>
-              패배: 누구든 의심도 {SUSPICION.threshold} 이상이면 재판이 열리고 주민 과반이 나나
-              동료를 지목하면 즉시 패배. {TOTAL_TURNS}턴에 과반 오답이 아니어도 패배.
-            </li>
-          </ul>
-          <div className="gm-row" role="group" aria-label="난이도">
-            {(Object.keys(difficulties) as Difficulty[]).map((key) => (
-              <Button
-                key={key}
-                variant={difficulty === key ? 'default' : 'outline'}
-                aria-pressed={difficulty === key}
-                onClick={() => setDifficulty(key)}
-              >
-                {difficulties[key].label}
-              </Button>
-            ))}
-          </div>
-          <div className="gm-row" role="group" aria-label="주민 종류">
-            {(Object.keys(citizenTypes) as CitizenType[]).map((key) => (
-              <Button
-                key={key}
-                variant={citizenType === key ? 'default' : 'outline'}
-                aria-pressed={citizenType === key}
-                onClick={() => setCitizenType(key)}
-              >
-                {citizenTypes[key].label}
-              </Button>
-            ))}
-          </div>
-          <p className="gm-muted">{citizenTypes[citizenType].hint}</p>
-          <div className="gm-row">
-            <Button onClick={start} disabled={busy}>
-              게임 시작
-            </Button>
-          </div>
-          {error && (
-            <p role="alert" className="rs-incorrect">
-              {error}
-            </p>
-          )}
-        </section>
-      </div>
-    )
-  }
-
   return (
-    <div className="gm-workspace gm-play">
-      <div className="gm-stage">
-        <section className="gm-board-zone" aria-label="마을 보드">
-          <header className="gm-hud">
-            <div className="gm-hud-left">
-              <button type="button" className="gm-exit" onClick={exit} disabled={busy}>
-                ← 나가기
-              </button>
-              <div className="gm-role">
-                <span className="gm-me-dot" aria-hidden="true">
-                  나
-                </span>
-                <span>
-                  나는 {state.player_city}번 집 <span className="gm-role-sub">(마피아)</span>
-                </span>
-              </div>
-            </div>
-            <div className="gm-hud-right">
-              <div className="gm-progress" role="img" aria-label={fooled.label}>
-                <span>속은 주민</span>
-                <span className="gm-dots" aria-hidden="true">
-                  {fooled.dots.map((filled, i) => (
-                    <Fragment key={i}>
-                      {i === fooled.need && <span className="gm-dots-sep" />}
-                      <span className={filled ? 'gm-dot is-fooled' : 'gm-dot'} />
-                    </Fragment>
-                  ))}
-                </span>
-              </div>
-            </div>
-          </header>
-          {error && (
-            <p role="alert" className="rs-incorrect gm-error">
-              {error}
-            </p>
-          )}
-          <div className="gm-board-frame">
-            <VillageBoard
-              state={state}
-              result={shown}
-              swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
-              stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
-              picker={
-                latest
-                  ? { claims, ruled, onClaim: (city, claim) => setClaims({ ...claims, [city]: claim }) }
-                  : undefined
-              }
-            />
-          </div>
-        </section>
-        <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} day={shown?.turn} live={playing}>
-          {shown && !playing && (
-            <div className="vl-pager" role="group" aria-label="지난 밤 넘겨보기">
-              <span className="vl-pager-label">지난 밤 넘겨보기</span>
-              <div className="vl-pager-ctrl">
-                <button
-                  type="button"
-                  className="vl-pager-btn"
-                  aria-label="이전 밤"
-                  disabled={shown.turn <= 1}
-                  onClick={() => setViewed(shown.turn - 1)}
+    <>
+      <PencilFilters />
+      {!state ? (
+        <div className="gm-workspace">
+          <h1>AI 시민을 속여라</h1>
+          <section className="gm-panel">
+            <ul className="gm-rules">
+              <li>
+                목표: 나는 마피아. {TOTAL_TURNS}턴째에 주민 과반이 오답을
+                고르게 하면 승리, 전부 오답이면 완승.
+              </li>
+              <li>
+                의심도(나에 대한): 주민 관측과 같은 말 {SUSPICION.agree}, 다른 말 +
+                {SUSPICION.disagree}, 공유 쌍인 두 주민에게 서로 다른 말을 하면 모순 +
+                {SUSPICION.contradiction}.
+              </li>
+              <li>
+                패배: 누구든 의심도 {SUSPICION.threshold} 이상이면 재판이 열리고 주민 과반이 나나
+                동료를 지목하면 즉시 패배. {TOTAL_TURNS}턴에 과반 오답이 아니어도 패배.
+              </li>
+            </ul>
+            <div className="gm-row" role="group" aria-label="난이도">
+              {(Object.keys(difficulties) as Difficulty[]).map((key) => (
+                <Button
+                  key={key}
+                  variant={difficulty === key ? 'default' : 'outline'}
+                  aria-pressed={difficulty === key}
+                  onClick={() => setDifficulty(key)}
                 >
-                  ‹
-                </button>
-                <span className="vl-pager-day">{shown.turn}일째</span>
-                <button
-                  type="button"
-                  className="vl-pager-btn"
-                  aria-label="다음 밤"
-                  disabled={shown.turn >= history.length}
-                  onClick={() => setViewed(shown.turn + 1 >= history.length ? 0 : shown.turn + 1)}
+                  {difficulties[key].label}
+                </Button>
+              ))}
+            </div>
+            <div className="gm-row" role="group" aria-label="주민 종류">
+              {(Object.keys(citizenTypes) as CitizenType[]).map((key) => (
+                <Button
+                  key={key}
+                  variant={citizenType === key ? 'default' : 'outline'}
+                  aria-pressed={citizenType === key}
+                  onClick={() => setCitizenType(key)}
                 >
-                  ›
-                </button>
-              </div>
+                  {citizenTypes[key].label}
+                </Button>
+              ))}
             </div>
-          )}
-          {playing ? (
-            <Button variant="outline" onClick={() => setStep(null)}>
-              건너뛰기 (Esc)
-            </Button>
-          ) : state.game_over ? (
-            <div className="vl-foot-actions">
-              <Button onClick={scrollToResult}>결과 보기</Button>
-              <Button variant="outline" onClick={exit} disabled={busy}>
-                새 게임
-              </Button>
-            </div>
-          ) : (
-            <Button onClick={submit} disabled={busy || !latest}>
-              {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
-            </Button>
-          )}
-        </VillageLog>
-      </div>
-
-      {finished && (
-        <div ref={resultRef} className="gm-below">
-          <GameResult state={state} history={history}>
-            {shown && (
-              <details className="gm-details">
-                <summary>{shown.turn}턴 자세한 표</summary>
-                <TurnReport result={shown} />
-              </details>
-            )}
+            <p className="gm-muted">{citizenTypes[citizenType].hint}</p>
             <div className="gm-row">
-              <Button onClick={exit} disabled={busy}>
-                새 게임
+              <Button onClick={start} disabled={busy}>
+                게임 시작
               </Button>
             </div>
-          </GameResult>
+            {error && (
+              <p role="alert" className="rs-incorrect">
+                {error}
+              </p>
+            )}
+          </section>
+        </div>
+      ) : (
+        <div className="gm-workspace gm-play">
+          <div className="gm-stage">
+            <section className="gm-board-zone" aria-label="마을 보드">
+              <header className="gm-hud">
+                <div className="gm-hud-left">
+                  <button type="button" className="gm-exit" onClick={exit} disabled={busy}>
+                    ← 나가기
+                  </button>
+                  <div className="gm-role">
+                    <span className="gm-me-dot" aria-hidden="true">
+                      나
+                    </span>
+                    <span>
+                      나는 {state.player_city}번 집 <span className="gm-role-sub">(마피아)</span>
+                    </span>
+                  </div>
+                </div>
+                <div className="gm-hud-right">
+                  <div className="gm-progress" role="img" aria-label={fooled.label}>
+                    <span>속은 주민</span>
+                    <span className="gm-dots" aria-hidden="true">
+                      {fooled.dots.map((filled, i) => (
+                        <Fragment key={i}>
+                          {i === fooled.need && <span className="gm-dots-sep" />}
+                          <span className={filled ? 'gm-dot is-fooled' : 'gm-dot'} />
+                        </Fragment>
+                      ))}
+                    </span>
+                  </div>
+                </div>
+              </header>
+              {error && (
+                <p role="alert" className="rs-incorrect gm-error">
+                  {error}
+                </p>
+              )}
+              <div className="gm-board-frame">
+                <VillageBoard
+                  state={state}
+                  result={shown}
+                  swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
+                  stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
+                  picker={
+                    latest
+                      ? { claims, ruled, onClaim: (city, claim) => setClaims({ ...claims, [city]: claim }) }
+                      : undefined
+                  }
+                />
+              </div>
+            </section>
+            <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} day={shown?.turn} live={playing}>
+              {shown && !playing && (
+                <div className="vl-pager" role="group" aria-label="지난 밤 넘겨보기">
+                  <span className="vl-pager-label">지난 밤 넘겨보기</span>
+                  <div className="vl-pager-ctrl">
+                    <button
+                      type="button"
+                      className="vl-pager-btn"
+                      aria-label="이전 밤"
+                      disabled={shown.turn <= 1}
+                      onClick={() => setViewed(shown.turn - 1)}
+                    >
+                      ‹
+                    </button>
+                    <span className="vl-pager-day">{shown.turn}일째</span>
+                    <button
+                      type="button"
+                      className="vl-pager-btn"
+                      aria-label="다음 밤"
+                      disabled={shown.turn >= history.length}
+                      onClick={() => setViewed(shown.turn + 1 >= history.length ? 0 : shown.turn + 1)}
+                    >
+                      ›
+                    </button>
+                  </div>
+                </div>
+              )}
+              {playing ? (
+                <Button variant="outline" onClick={() => setStep(null)}>
+                  건너뛰기 (Esc)
+                </Button>
+              ) : state.game_over ? (
+                <div className="vl-foot-actions">
+                  <Button onClick={scrollToResult}>결과 보기</Button>
+                  <Button variant="outline" onClick={exit} disabled={busy}>
+                    새 게임
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={submit} disabled={busy || !latest}>
+                  {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
+                </Button>
+              )}
+            </VillageLog>
+          </div>
+
+          {finished && (
+            <div ref={resultRef} className="gm-below">
+              <GameResult state={state} history={history}>
+                {shown && (
+                  <details className="gm-details">
+                    <summary>{shown.turn}턴 자세한 표</summary>
+                    <TurnReport result={shown} />
+                  </details>
+                )}
+                <div className="gm-row">
+                  <Button onClick={exit} disabled={busy}>
+                    새 게임
+                  </Button>
+                </div>
+              </GameResult>
+            </div>
+          )}
         </div>
       )}
-    </div>
+    </>
   )
 }

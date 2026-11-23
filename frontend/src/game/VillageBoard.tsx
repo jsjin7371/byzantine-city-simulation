@@ -134,7 +134,7 @@ function Ground() {
         </g>
         {TREES.map(([x, y]) => <use key={`${x}-${y}`} href="#vb-tree" x={x} y={y} />)}
       </g>
-      <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-serif">
+      <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="13" fontWeight="700" textAnchor="middle" className="vb-serif vb-pencil-sm">
         광장
       </text>
     </g>
@@ -208,10 +208,10 @@ function Sky({ danger }: { danger: boolean }) {
           </g>
         </>
       )}
-      <text x="545" y="40" fontSize="18" fontWeight="700" textAnchor="end" className="vb-serif" aria-hidden>
+      <text x="545" y="40" fontSize="18" fontWeight="700" textAnchor="end" className="vb-serif vb-pencil" aria-hidden>
         {danger ? '오늘 밤 진짜 날씨: 태풍' : '오늘 밤 진짜 날씨: 맑음'}
       </text>
-      <text x="545" y="60" fontSize="12" textAnchor="end" aria-hidden>
+      <text x="545" y="60" fontSize="12" textAnchor="end" className="vb-pencil-sm" aria-hidden>
         {danger ? '주민은 대피해야 산다' : '주민은 집에 있어야 산다'}
       </text>
     </g>
@@ -227,7 +227,7 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
     <g role="img" aria-label={`달력: 결정의 날 D-${left}, ${day}/${TOTAL_TURNS}일`}>
       <rect x="0" y="598" width="900" height="62" fill="#7a5530" />
       <rect x="0" y="598" width="900" height="62" filter="url(#vb-grain)" />
-      <text x="34" y="622" fontSize="12" fontWeight="700" className="vb-light">
+      <text x="34" y="622" fontSize="12" fontWeight="700" className="vb-light vb-pencil-sm">
         결정의 날
       </text>
       <g filter="url(#vb-rough)" stroke="#4a3119" strokeWidth="1.5">
@@ -258,7 +258,7 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
         <path d={`M${px - 11} 645 Q${px} 600 ${px + 11} 645 Z`} fill="#c0392b" stroke="#4a1a10" strokeWidth="2" />
         <circle cx={px} cy="614" r="8" fill="#c0392b" stroke="#4a1a10" strokeWidth="2" />
       </g>
-      <text x="30" y="650" fontSize="28" fontWeight="700" className="vb-serif vb-dday" aria-hidden>
+      <text x="30" y="650" fontSize="28" fontWeight="700" className="vb-serif vb-dday vb-pencil" aria-hidden>
         D-{left}
       </text>
       <text x="842" y="642" fontSize="11" className="vb-light" aria-hidden>
@@ -329,20 +329,20 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       {h.role === 'player' ? (
         <g>
           <circle cx={x - 52} cy={y - 28} r="15" className="vb-badge is-mafia" strokeWidth="2.5" />
-          <text x={x - 52} y={y - 22} fontSize="14" fontWeight="700" textAnchor="middle" className="vb-light">
+          <text x={x - 52} y={y - 22} fontSize="14" fontWeight="700" textAnchor="middle" className="vb-light vb-pencil-sm">
             나
           </text>
         </g>
       ) : (
         <g>
           <circle cx={x - 64} cy={y - 38} r="15" className={`vb-badge${mafia ? ' is-mafia' : ''}`} strokeWidth="2.5" />
-          <text x={x - 64} y={y - 32} fontSize="17" fontWeight="700" textAnchor="middle" className={`vb-serif${mafia ? ' vb-light' : ''}`}>
+          <text x={x - 64} y={y - 32} fontSize="17" fontWeight="700" textAnchor="middle" className={`vb-serif vb-pencil${mafia ? ' vb-light' : ''}`}>
             {h.city}
           </text>
         </g>
       )}
       {mafia && (
-        <text x={x} y={y + 34} fontSize="12" fontWeight="700" textAnchor="middle">
+        <text x={x} y={y + 34} fontSize="12" fontWeight="700" textAnchor="middle" className="vb-pencil-sm">
           {h.city}번 집{h.role === 'colleague' && ' · 동료'}
         </text>
       )}
@@ -464,7 +464,7 @@ function Trial({
         <g className={vote.caught ? 'vb-stamp is-caught' : 'vb-stamp'}>
           <rect x="390" y="400" width="120" height="30" rx="3" strokeWidth="2.5" />
           <rect x="394" y="404" width="112" height="22" rx="2" fill="none" strokeWidth="1" />
-          <text x="450" y="420" fontSize="14" fontWeight="700" textAnchor="middle">
+          <text x="450" y="420" fontSize="14" fontWeight="700" textAnchor="middle" className="vb-pencil-sm">
             {stamp}
           </text>
           <rect className="vb-stamp-ink" x="390" y="400" width="120" height="30" rx="3" aria-hidden />
@@ -513,7 +513,7 @@ function NoteCard({
         <rect x="4" y="5" width="168" height="112" rx="2" fill="#2a1a0c" opacity=".25" />
         <rect width="168" height="112" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
         <circle cx="10" cy="10" r="5" fill="#a8361f" stroke="#4a1a10" />
-        <text x="22" y="24" fontSize="13.5" fontWeight="700">
+        <text x="22" y="24" fontSize="13.5" fontWeight="700" className="vb-pencil-sm">
           {h.city}번 집에 쪽지
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
@@ -530,7 +530,7 @@ function NoteCard({
                 onKeyDown={pressKey(() => onClaim(c))}
               >
                 <rect x={14 + i * 74} y="32" width="66" height="34" rx="3" />
-                <text x={47 + i * 74} y="55" fontSize="16" fontWeight="700" textAnchor="middle">
+                <text x={47 + i * 74} y="55" fontSize="16" fontWeight="700" textAnchor="middle" className="vb-pencil-sm">
                   {decisions[c]}
                 </text>
               </g>
@@ -566,7 +566,7 @@ function Signs() {
       aria-label="첫날 안내: 1 창문 불빛부터 본다, 2 집마다 쪽지를 고른다, 3 점선으로 이어진 두 집에는 같은 말을 한다"
     >
       <rect x="84" y="296" width="9" height="124" fill="#5a3d22" filter="url(#vb-rough)" />
-      <text x="22" y="292" className="vb-sign-title">
+      <text x="22" y="292" className="vb-sign-title vb-pencil-sm">
         첫날 안내
       </text>
       {SIGNS.map((t, i) => (
@@ -578,7 +578,7 @@ function Signs() {
             strokeWidth="2"
             filter="url(#vb-rough)"
           />
-          <text x="22" y={323 + i * 36}>
+          <text x="22" y={323 + i * 36} className="vb-pencil-sm">
             {t}
           </text>
         </g>
