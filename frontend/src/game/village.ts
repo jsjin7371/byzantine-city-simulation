@@ -257,21 +257,21 @@ const AGREE_LINES = [
   (w: string) => `그치, 나도 ${w}이라고 봤어`,
   (w: string) => `맞아, 내 눈에도 ${w}으로 보였어`,
   (w: string) => `같은 생각이네, 나도 ${w}으로 봤어`,
-] as const
+]
 const DISAGREE_LINES = [
   (w: string, me: number, c: string) => `음… 내가 본 건 ${w}인데, ${me}번은 ${c}래`,
   (w: string, me: number, c: string) => `어라, 나는 ${w}이던데 ${me}번은 ${c}라니`,
   (w: string, me: number, c: string) => `이상하네, 난 ${w}으로 봤는데 ${me}번은 ${c}라네`,
-] as const
+]
 const WARN_LINES = [
   (me: number) => `${me}번 좀 수상한데. 한 번만 더 그러면 재판이야`,
   (me: number) => `${me}번 슬슬 의심스러워. 다음엔 바로 재판이야`,
   (me: number) => `${me}번 영 수상쩍네. 또 이러면 재판 열어야겠어`,
-] as const
+]
 const byCity = <T,>(city: number, items: readonly T[]) => items[(city - 1) % items.length]
 
 // 저울 읽기용 문장 목록: 숫자 없이 혼잣말로 항목마다 짧은 한 줄 + 마지막 결론 한 줄.
-export function scaleText(scale: Scale, me: number, memory: GameState['config']['memory'] = 'turn'): string[] {
+export function scaleText(scale: Scale, me: number, memory: GameState['config']['memory']): string[] {
   const lines = scale.parts.map((p) => {
     const abs = Math.abs(p.value)
     if (p.from === 'hint') {

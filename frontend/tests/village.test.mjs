@@ -318,7 +318,7 @@ test('citizen scale counts remembered past hints (recent: last turn, full: all) 
 
 test('scale text reads in plain sentences without numbers and swayed citizens get a "마음을 돌림" line at the flags phase', () => {
   const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
-  assert.deepEqual(scaleText(scale, 1), [
+  assert.deepEqual(scaleText(scale, 1, 'turn'), [
     '내가 본 하늘은 태풍이었어',
     '2번은 대피래. 조금 미심쩍어',
     '4번은 대피래. 믿을 만해',
@@ -326,18 +326,18 @@ test('scale text reads in plain sentences without numbers and swayed citizens ge
     '대피 쪽이 훨씬 무거워서 대피하기로 했어',
   ])
   const clear = { parts: [{ from: 'hint', value: -100 }], total: -100, decision: 'stay', mine: null, swayed: false }
-  assert.deepEqual(scaleText(clear, 1), [
+  assert.deepEqual(scaleText(clear, 1, 'turn'), [
     '내가 본 하늘은 맑았어',
     '잔류 쪽이 조금 더 무거워서 잔류하기로 했어',
   ])
   const tie = { parts: [{ from: 'hint', value: 0 }, { from: 1, value: 0 }], total: 0, decision: 'evacuate', mine: 0, swayed: false }
-  assert.deepEqual(scaleText(tie, 1), [
+  assert.deepEqual(scaleText(tie, 1, 'turn'), [
     '지금까지 본 하늘은 반반이었어',
     '너(1번) 쪽지는 하나도 안 믿겨',
     '양쪽이 똑같아서 이번에 본 하늘대로 대피하기로 했어',
   ])
   const remembered = { parts: [{ from: 'hint', value: -200 }], total: -200, decision: 'stay', mine: null, swayed: false }
-  assert.deepEqual(scaleText(remembered, 1), [
+  assert.deepEqual(scaleText(remembered, 1, 'turn'), [
     '지금까지 본 하늘은 맑음 쪽이 많았어',
     '잔류 쪽이 훨씬 무거워서 잔류하기로 했어',
   ])
@@ -380,7 +380,7 @@ test('pairLogScales attaches each citizen scale only to their notes quote and ke
   const s5 = { parts: [{ from: 'hint', value: -100 }], total: -100, decision: 'stay', mine: null, swayed: false }
   const lines = villageLines(state, { ...turn, vote: { ballots: { 1: 3 }, accused: null, caught: false } }, { 1: s1, 5: s5 })
   // city 5 is not in turn.cities, add a standalone scale for city 5 directly to test ring/unpaired case
-  lines.push({ phase: 'flags', kind: 'scale', who: 5, text: '잔류하기로 했어', detail: scaleText(s5, 3), scale: s5, me: 3 })
+  lines.push({ phase: 'flags', kind: 'scale', who: 5, text: '잔류하기로 했어', detail: scaleText(s5, 3, state.config.memory), scale: s5, me: 3 })
   const entries = pairLogScales(lines)
   const city1Says = entries.filter((e) => e.kind === 'say' && e.who === 1)
   assert.equal(city1Says.length, 4) // notes, contradiction, trial warning, trial ballot
