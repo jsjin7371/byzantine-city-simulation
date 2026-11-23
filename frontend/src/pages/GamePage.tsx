@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Progress } from '../components/ui/progress'
 import { decisions, percent, truths } from '../components/results/resultLabels'
@@ -100,6 +100,11 @@ function TurnReport({ result }: { result: TurnResult }) {
   )
 }
 
+function scrollIntoView(el: HTMLElement | null) {
+  const behavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+  el?.scrollIntoView({ behavior, block: 'start' })
+}
+
 export function GamePage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   const [citizenType, setCitizenType] = useState<CitizenType>('wary')
@@ -110,6 +115,7 @@ export function GamePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [step, setStep] = useState<number | null>(null) // 밤 연출 중인 단계. null이면 최종 상태
+  const resultRef = useRef<HTMLDivElement>(null)
 
   const result = history.at(-1) ?? null
   const steps = useMemo(() => (result ? nightSteps(result) : []), [result])
@@ -181,11 +187,12 @@ export function GamePage() {
   }
 
   const playing = step != null && result != null
+  const finished = Boolean(state?.game_over && !playing)
   const shown = playing ? result : (history[viewed - 1] ?? result)
   const latest = state != null && !state.game_over && shown === result && !playing // 할 말은 마지막 턴에서만 고른다
   const scales = shown && state ? citizenScales(state, history, history.indexOf(shown)) : {}
   const lines = shown && state ? villageLines(state, shown, scales) : null
-  const settled = playing ? (history.at(-2) ?? null) : result // 연출 중에는 지난 턴 숫자
+  const settled = playing ? (history.at(-2) ?? null) : shown // 연출 중에는 지난 턴, 평소에는 보고 있는 밤 숫자
   const citizens = settled?.cities.filter((c) => c.role === 'citizen') ?? []
   const citizenCount = state
     ? Object.values(state.roles).filter((r) => r === 'citizen').length
@@ -193,6 +200,12 @@ export function GamePage() {
   const wrong = citizens.filter((c) => c.correct === false).length
   const fooled = fooledDots(settled ? wrong : 0, citizenCount)
   const ruled = state?.config.citizen_type === 'wary' // 7.6 규칙을 따르는 시민만 예상을 보인다
+
+  useEffect(() => {
+    if (finished) scrollIntoView(resultRef.current)
+  }, [finished])
+
+  const scrollToResult = () => scrollIntoView(resultRef.current)
 
   if (!state) {
     return (
@@ -273,7 +286,7 @@ export function GamePage() {
               </div>
             </div>
             <div className="gm-hud-right">
-              <div className="gm-progress" aria-label={fooled.label}>
+              <div className="gm-progress" role="img" aria-label={fooled.label}>
                 <span>속은 주민</span>
                 <span className="gm-dots" aria-hidden="true">
                   {fooled.dots.map((filled, i) => (
@@ -307,7 +320,7 @@ export function GamePage() {
         </section>
         <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} day={shown?.turn} live={playing}>
           {shown && !playing && (
-            <div className="vl-pager" aria-label="지난 밤 넘겨보기">
+            <div className="vl-pager" role="group" aria-label="지난 밤 넘겨보기">
               <span className="vl-pager-label">지난 밤 넘겨보기</span>
               <div className="vl-pager-ctrl">
                 <button
@@ -336,18 +349,23 @@ export function GamePage() {
             <Button variant="outline" onClick={() => setStep(null)}>
               건너뛰기 (Esc)
             </Button>
-          ) : (
-            !state.game_over && (
-              <Button onClick={submit} disabled={busy || !latest}>
-                {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
+          ) : state.game_over ? (
+            <div className="vl-foot-actions">
+              <Button onClick={scrollToResult}>결과 보기</Button>
+              <Button variant="outline" onClick={exit} disabled={busy}>
+                새 게임
               </Button>
-            )
+            </div>
+          ) : (
+            <Button onClick={submit} disabled={busy || !latest}>
+              {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
+            </Button>
           )}
         </VillageLog>
       </div>
 
-      {state.game_over && !playing && (
-        <div className="gm-below">
+      {finished && (
+        <div ref={resultRef} className="gm-below">
           <GameResult state={state} history={history}>
             {shown && (
               <details className="gm-details">
@@ -355,6 +373,11 @@ export function GamePage() {
                 <TurnReport result={shown} />
               </details>
             )}
+            <div className="gm-row">
+              <Button onClick={exit} disabled={busy}>
+                새 게임
+              </Button>
+            </div>
           </GameResult>
         </div>
       )}
