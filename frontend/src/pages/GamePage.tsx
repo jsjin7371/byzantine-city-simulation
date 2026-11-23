@@ -18,7 +18,7 @@ import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../g
 import { VillageBoard } from '../game/VillageBoard'
 import { VillageLog } from '../game/VillageLog'
 import { GameResult } from '../game/GameResult'
-import { nightSteps, villageLines, visibleLines } from '../game/village'
+import { citizenScales, nightSteps, villageLines, visibleLines } from '../game/village'
 import './GamePage.css'
 
 // 의심도 게이지. 투표 열림 기준(60) 위치에 선을 긋는다.
@@ -175,7 +175,8 @@ export function GamePage() {
   const playing = step != null && result != null
   const shown = playing ? result : (history[viewed - 1] ?? result)
   const latest = state != null && !state.game_over && shown === result && !playing // 할 말은 마지막 턴에서만 고른다
-  const lines = shown && state ? villageLines(state, shown) : null
+  const scales = shown && state ? citizenScales(state, history, history.indexOf(shown)) : {}
+  const lines = shown && state ? villageLines(state, shown, scales) : null
   const settled = playing ? (history.at(-2) ?? null) : result // 연출 중에는 지난 턴 숫자
   const citizens = settled?.cities.filter((c) => c.role === 'citizen') ?? []
   const me = state ? String(state.player_city) : ''
@@ -259,6 +260,7 @@ export function GamePage() {
               <VillageBoard
                 state={state}
                 result={shown}
+                swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
                 stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
                 picker={
                   latest

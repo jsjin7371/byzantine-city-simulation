@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TOP_ARC, changedHouses, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
+  TOP_ARC, changedHouses, citizenScales, scaleText, clashingPairs, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -222,4 +222,52 @@ test('game summary: turn 15 counts wrong citizens, first crossing of 60 and caug
   assert.ok(s.moments.includes('만난 두 주민에게 다른 말을 했다가 1번 들켰다 (2일째)'))
   assert.deepEqual(s.peaks, [10, 70, 50])
   assert.match(s.lesson, /같은 말/)
+})
+
+const turnOf = (cities) => ({ cities: cities.map((c) => ({ ...empty, ...c })) })
+
+test('citizen scale follows engine game_turn: hint ±100, notes ±(100 − new suspicion)', () => {
+  const me = { player_city: 1, config: { ...config, memory: 'turn' } }
+  // 예시: 내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → +240 대피
+  const t = turnOf([
+    { city: 3, hint: 'danger', decision: 'evacuate', received: { 1: msg('stay'), 2: msg('evacuate'), 4: msg('evacuate'), 5: null }, suspicion: { 1: 60, 2: 20, 4: 0, 5: 0 } },
+  ])
+  const s = citizenScales(me, [t], 0)[3]
+  assert.deepEqual(s.parts, [{ from: 'hint', value: 100 }, { from: 1, value: -40 }, { from: 2, value: 80 }, { from: 4, value: 100 }])
+  assert.equal(s.total, 240)
+  assert.equal(s.decision, 'evacuate')
+  assert.equal(s.mine, -40)
+  assert.equal(s.swayed, false)
+})
+
+test('swayed when removing my note flips the decision; tie goes to this turn hint', () => {
+  const me = { player_city: 1, config: { ...config, citizen_type: 'majority', memory: 'turn' } }
+  const t = turnOf([
+    { city: 2, hint: 'danger', decision: 'stay', received: { 1: msg('stay'), 3: msg('stay') }, suspicion: null }, // 100−100−100 = −100
+    { city: 3, hint: 'safe', decision: 'stay', received: { 1: msg('evacuate'), 2: msg('stay') }, suspicion: null }, // −100+100−100
+  ])
+  const s = citizenScales(me, [t], 0)
+  assert.equal(s[2].decision, 'stay')
+  assert.equal(s[2].swayed, true) // 내 쪽지가 없으면 0 → 힌트(대피)
+  assert.equal(s[3].swayed, false)
+  assert.equal(s[3].mine, 100)
+})
+
+test('citizen scale counts remembered past hints (recent: last turn, full: all) and skips AI citizens', () => {
+  const day = (hint) => turnOf([{ city: 2, hint, decision: null, received: {}, suspicion: null }])
+  const history = [day('safe'), day('safe'), day('danger')]
+  const at = (memory) => citizenScales({ player_city: 1, config: { ...config, memory } }, history, 2)[2]
+  assert.equal(at('turn').total, 100)
+  assert.equal(at('recent').total, 0)
+  assert.equal(at('recent').decision, 'evacuate') // 동점이면 이번 힌트
+  assert.equal(at('full').total, -100)
+  assert.deepEqual(citizenScales({ player_city: 1, config: { ...config, citizen_type: 'ai' } }, history, 2), {})
+})
+
+test('scale text reads like the brief and swayed citizens get a "흔들었다" line at the flags phase', () => {
+  const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
+  assert.equal(scaleText(scale, 1), '내 관측 +100 · 2번 +80 · 4번 +100 · 너(1번) −40 → 합 +240, 대피')
+  const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
+  assert.ok(lines.some((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags'))
+  assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번 주민을 흔들었다' && l.phase === 'flags'))
 })
