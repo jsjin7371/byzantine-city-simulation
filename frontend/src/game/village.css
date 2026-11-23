@@ -164,8 +164,6 @@
   75% { opacity: 1; }
   100% { opacity: 0; transform: translate(-2px, 4px); }
 }
-.vb-sun-spin { transform-box: view-box; transform-origin: 760px 46px; animation: vb-sun-spin 32s linear infinite; }
-@keyframes vb-sun-spin { to { transform: rotate(360deg); } }
 .vb-sun-rays { transform-box: view-box; transform-origin: 760px 46px; animation: vb-sun-rays 2.8s ease-in-out infinite alternate; }
 @keyframes vb-sun-rays {
   from { transform: scale(.93); }
@@ -186,7 +184,7 @@
   .vb-hl, .vb-opt, .vb-opt rect, .vb-opt text { transition: none; }
   .vl-beam, .vl-pan, .vb-gauge-fill, .vb-gauge.is-near .vb-gauge-fill, .vb-gauge.is-over .vb-gauge-fill, .vb-gauge.is-over .vb-knot { animation: none; }
   .vb-gauge-fill { transition: none; }
-  .vb-cloud, .vb-swirl, .vb-wind path, .vb-rain, .vb-sun-spin, .vb-sun-rays, .vb-twinkle { animation: none; }
+  .vb-cloud, .vb-swirl, .vb-wind path, .vb-rain, .vb-sun-rays, .vb-twinkle { animation: none; }
 }
 @keyframes vb-fade { from { opacity: 0; } }
 
