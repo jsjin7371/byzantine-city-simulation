@@ -33,7 +33,8 @@ def bot_win_rate(config: dict) -> float | None:
 
 # 플레이 기록 집계 (7.9). 난이도 프리셋은 7.2 표, 프론트 gameApi.ts의 difficulties와 같은 값이다.
 DIFFICULTIES = {"easy": ("쉬움", 0.48), "normal": ("보통", 0.4), "hard": ("어려움", 0.3)}
-CITIZEN_TYPES = ("wary", "majority", "ai")
+# ai는 봇 승률이 없어 사람 대 봇 비교가 안 되므로 집계하지 않는다 (bot_win_rate와 같은 기준)
+CITIZEN_TYPES = ("wary", "majority")
 WIN_OUTCOMES = ("win", "perfect_win")
 STATS_COLUMNS = ["citizen_type", "difficulty", "label", "games", "wins", "win_rate", "bot_win_rate"]
 

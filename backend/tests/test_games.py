@@ -122,11 +122,11 @@ def stats_row(client, citizen_type, difficulty):
 
 def test_stats_empty(client):
     items = client.get("/games/stats").json()["items"]
-    assert len(items) == 9  # 시민 종류 3 × 난이도 3, 판이 없어도 0판으로
+    assert len(items) == 6  # 시민 종류 2(wary·majority) × 난이도 3, 판이 없어도 0판으로
     normal = stats_row(client, "wary", "normal")
     assert normal == {"citizen_type": "wary", "difficulty": "normal", "label": "보통", "games": 0, "wins": 0,
                       "win_rate": None, "bot_win_rate": 0.10}
-    assert stats_row(client, "ai", "easy")["bot_win_rate"] is None
+    assert all(i["citizen_type"] != "ai" for i in items)
 
 
 def test_stats_counts_only_human_default_finished(client):
@@ -142,6 +142,7 @@ def test_stats_counts_only_human_default_finished(client):
     add_game(client, share_mode="none")
     add_game(client, mafia_count=2)
     add_game(client, sensor_error=0.2)  # 프리셋 밖
+    add_game(client, citizen_type="ai")  # 봇 승률이 없어 비교 불가
     add_game(client, outcome="loss", citizen_type="majority", sensor_error=0.3)
 
     wary = stats_row(client, "wary", "normal")
@@ -168,8 +169,8 @@ def test_stats_csv(client):
     assert r.headers["content-type"].startswith("text/csv")
     assert "attachment" in r.headers["content-disposition"]
     rows = list(csv.DictReader(io.StringIO(r.content.decode("utf-8-sig"))))
-    assert len(rows) == 9
+    assert len(rows) == 6
     normal = next(row for row in rows if row["citizen_type"] == "wary" and row["difficulty"] == "normal")
     assert normal == {"citizen_type": "wary", "difficulty": "normal", "label": "보통", "games": "1", "wins": "1",
                       "win_rate": "1.0", "bot_win_rate": "0.1"}
-    assert next(row for row in rows if row["citizen_type"] == "ai")["bot_win_rate"] == ""
+    assert next(row for row in rows if row["games"] == "0")["win_rate"] == ""  # null은 빈 칸
