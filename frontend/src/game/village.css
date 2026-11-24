@@ -1107,7 +1107,7 @@
 .vl-pager-ctrl {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
 }
 .vl-pager-btn {
   position: relative;

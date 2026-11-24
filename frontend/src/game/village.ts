@@ -506,7 +506,7 @@ export function scaleLeader(scale: Pick<Scale, 'total' | 'decision'>): ScaleLead
 export function scaleVoteSummary(
   city: number,
   scale: Scale,
-  citizenType: GameState['config']['citizen_type'] = 'wary',
+  citizenType: GameState['config']['citizen_type'],
 ): string {
   const evac = scale.parts.filter((p) => p.value > 0).reduce((a, p) => a + p.value, 0)
   const stay = scale.parts.filter((p) => p.value < 0).reduce((a, p) => a - p.value, 0)

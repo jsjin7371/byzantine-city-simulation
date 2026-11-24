@@ -432,8 +432,8 @@ test('scale text reads in plain sentences without numbers and swayed citizens ge
   const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
   assert.equal(line.text, '대피하기로 했어')
   assert.equal(line.summary, '4번 집 속마음 저울: 대피 쪽 무게 280, 잔류 쪽 무게 40. 대피 쪽이 더 무거워서 대피하기로 했어요.')
-  assert.equal(scaleVoteSummary(2, clear), '2번 집 속마음 저울: 대피 쪽 무게 0, 잔류 쪽 무게 100. 잔류 쪽이 더 무거워서 잔류하기로 했어요.')
-  assert.equal(scaleVoteSummary(3, tie), '3번 집 속마음 저울: 대피 쪽 무게 0, 잔류 쪽 무게 0. 무게가 같아서 관측대로 대피하기로 했어요.')
+  assert.equal(scaleVoteSummary(2, clear, 'wary'), '2번 집 속마음 저울: 대피 쪽 무게 0, 잔류 쪽 무게 100. 잔류 쪽이 더 무거워서 잔류하기로 했어요.')
+  assert.equal(scaleVoteSummary(3, tie, 'wary'), '3번 집 속마음 저울: 대피 쪽 무게 0, 잔류 쪽 무게 0. 무게가 같아서 관측대로 대피하기로 했어요.')
   // 다수결 주민은 1표=100을 정수 표 수로 읽는다
   const majScale = {
     parts: [{ from: 'hint', value: -100 }, { from: 1, value: 100 }, { from: 2, value: 100 }, { from: 3, value: 100 }],
