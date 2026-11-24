@@ -22,7 +22,9 @@ import {
   citizenScales,
   fooledDots,
   nightSteps,
+  tonightVotes,
   tutorialStep,
+  villageHouses,
   villageLines,
   visibleLines,
 } from '../game/village'
@@ -149,7 +151,7 @@ export function GamePage() {
   const [step, setStep] = useState<number | null>(null) // 밤 연출 중인 단계. null이면 최종 상태
   const [tutorial, setTutorial] = useState(false)
   const [tutorialCursor, setTutorialCursor] = useState(0)
-  const [cardOpen, setCardOpen] = useState(false)
+  const [openCity, setOpenCity] = useState<number | null>(null)
   const [scaleOpen, setScaleOpen] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -203,7 +205,7 @@ export function GamePage() {
       setState(game)
       setTutorial(isTutorial)
       setTutorialCursor(0)
-      setCardOpen(false)
+      setOpenCity(null)
       setScaleOpen(false)
       setHistory([])
       setViewed(0)
@@ -217,6 +219,7 @@ export function GamePage() {
       const turn = await playTurn(state.game_id, state.turn + 1, claims)
       setHistory([...history, turn])
       setViewed(0)
+      setOpenCity(null)
       // 움직임 줄이기 설정이면 연출 없이 바로 최종 상태
       setStep(matchMedia('(prefers-reduced-motion: reduce)').matches ? null : 0)
       setState({
@@ -236,7 +239,7 @@ export function GamePage() {
     setState(null)
     setTutorial(false)
     setTutorialCursor(0)
-    setCardOpen(false)
+    setOpenCity(null)
     setScaleOpen(false)
     setHistory([])
     setViewed(0)
@@ -258,7 +261,7 @@ export function GamePage() {
     ? {
         turn: state.turn,
         playing,
-        cardOpen,
+        cardOpen: openCity != null,
         scaleOpen,
         gameOver: state.game_over,
         viewingPast,
@@ -294,6 +297,13 @@ export function GamePage() {
   const wrong = citizens.filter((c) => c.correct === false).length
   const fooled = fooledDots(settled ? wrong : 0, citizenCount)
   const ruled = state?.config.citizen_type === 'wary' // 7.6 규칙을 따르는 시민만 예상을 보인다
+  const tonightScale = useMemo(() => {
+    if (openCity == null || !latest || !state) return null
+    const houses = villageHouses(state, shown)
+    const votes = tonightVotes(state, houses, openCity, claims, history)
+    if (votes.items.length === 0) return null
+    return { city: openCity, votes }
+  }, [openCity, latest, state, shown, claims, history])
 
   useEffect(() => {
     if (finished) scrollIntoView(resultRef.current)
@@ -369,13 +379,12 @@ export function GamePage() {
                 <VillageBoard
                   state={state}
                   result={shown}
-                  history={history}
                   scales={scales}
                   swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
                   stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
                   highlight={highlight}
                   hideSigns={tutorialActive}
-                  onCardOpen={setCardOpen}
+                  onCardOpen={setOpenCity}
                   boardRef={boardRef}
                   picker={
                     latest
@@ -389,6 +398,7 @@ export function GamePage() {
               lines={lines && playing ? visibleLines(lines, steps[step]) : lines}
               day={shown?.turn}
               live={playing}
+              tonightScale={tonightScale}
               highlight={highlight === 'log' || highlight === 'scale' ? highlight : null}
               onScaleOpen={setScaleOpen}
               scaleBtnRef={scaleBtnRef}

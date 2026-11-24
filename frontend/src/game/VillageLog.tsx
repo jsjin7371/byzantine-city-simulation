@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode, RefObject } from 'react'
-import { pairLogScales } from './village'
-import type { Line, Scale, ScaleLine } from './village'
+import { decisions } from '../components/results/resultLabels'
+import { TONIGHT_SCALE_TITLE, pairLogScales, tonightVotesText, voteItemLabel } from './village'
+import type { Line, Scale, ScaleLine, TonightVotes } from './village'
 
 // 작은 양팔 저울: 왼쪽 접시 대피(+), 오른쪽 접시 잔류(−). 몫마다 블록 하나, 합만큼 기운다.
 // 블록 색: 내 관측 초록, 이웃 쪽지 갈색, 내 쪽지 붉은색.
@@ -58,12 +59,74 @@ function WhyBox({ id, scale }: { id: string; scale: ScaleLine }) {
   )
 }
 
+// 쪽지 카드가 열려 있는 동안 마을 이야기 맨 위에 보여 주는 오늘 밤 저울(합계·예상 결과 없음).
+function TonightScaleBlock({
+  city,
+  votes,
+}: {
+  city: number
+  votes: TonightVotes
+}) {
+  const { subtitle, note, aiNote } = tonightVotesText(votes)
+  const headingId = `vl-tonight-title-${city}`
+  return (
+    <section className="vl-tonight" aria-labelledby={headingId}>
+      <div className="vl-tonight-head">
+        <h3 id={headingId} className="vl-tonight-title">
+          {city}번 집 · {TONIGHT_SCALE_TITLE}
+        </h3>
+        <span className="vl-tonight-sub">{subtitle}</span>
+      </div>
+      <ul className="vl-tonight-list">
+        {votes.items.map((item) => {
+          const label = voteItemLabel(item)
+          const kind = item.role === 'hint' ? 'is-hint' : item.role === 'player' ? 'is-mine' : 'is-note'
+          const emptyText = item.role === 'hint' ? '상쇄' : '고르는 중'
+          const pct = item.weight > 0 ? Math.min(100, Math.max(8, item.weight)) : 0
+          const meterSr =
+            votes.ai || pct === 0 || (item.role === 'hint' && item.hintCount != null)
+              ? null
+              : votes.usesSuspicion
+                ? `믿음 ${item.weight}`
+                : '1표'
+          return (
+            <li key={String(item.from)} className={votes.ai ? 'vl-tonight-row is-ai' : 'vl-tonight-row'}>
+              <span className="vl-tonight-who">{label}</span>
+              {votes.ai && <span className="vl-tonight-dots" aria-hidden="true" />}
+              <span className={`vl-claim-pill ${item.claim ? `is-${item.claim}` : 'is-pending'}`}>
+                {item.claim ? decisions[item.claim] : emptyText}
+              </span>
+              {!votes.ai && (
+                <span className="vl-tonight-meter">
+                  {pct > 0 ? (
+                    <>
+                      <span className="vl-tonight-track" aria-hidden="true">
+                        <span className={`vl-tonight-fill ${kind}`} style={{ width: `${pct}%` }} />
+                      </span>
+                      {meterSr && <span className="sr-only">{meterSr}</span>}
+                    </>
+                  ) : (
+                    <span className="vl-tonight-zero">{item.role === 'hint' ? '상쇄' : '안 믿음'}</span>
+                  )}
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+      {note && <p className="vl-tonight-note">{note}</p>}
+      {aiNote && <p className="vl-tonight-note">{aiNote}</p>}
+    </section>
+  )
+}
+
 // 마을 이야기 (명세 3번). 턴 결과에서 만든 대사를 일기장에 적고, 속마음·저울은 줄 오른쪽 토글 뒤에 접는다.
 // live: 밤 연출 중. 새 줄이 한 줄씩 나타나고 맨 아래로 따라간다.
 export function VillageLog({
   lines,
   day,
   live = false,
+  tonightScale = null,
   highlight = null,
   onScaleOpen,
   scaleBtnRef,
@@ -72,6 +135,7 @@ export function VillageLog({
   lines: Line[] | null
   day?: number
   live?: boolean
+  tonightScale?: { city: number; votes: TonightVotes } | null
   highlight?: 'log' | 'scale' | null
   onScaleOpen?: (open: boolean) => void
   scaleBtnRef?: RefObject<HTMLButtonElement | null>
@@ -143,6 +207,7 @@ export function VillageLog({
           내 쪽지
         </span>
       </div>
+      {tonightScale && <TonightScaleBlock city={tonightScale.city} votes={tonightScale.votes} />}
       <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
         {!entries && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았어요. 집마다 쪽지를 고르고 밤으로 넘겨 보세요.</p>}
         {entries?.map((entry, i) => {

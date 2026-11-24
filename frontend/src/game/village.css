@@ -450,20 +450,6 @@
 .vb-opt.is-stay.is-sel text { fill: var(--ink); }
 .vb-opt:focus-visible rect { stroke: var(--ink); stroke-width: 3; }
 
-/* 쪽지 카드 "이 집의 표" */
-.vb-board .vb-card-sub { fill: #52412c; }
-.vb-vote-pill.is-evacuate rect { fill: var(--leave); stroke: #1f3554; }
-.vb-vote-pill.is-evacuate text { fill: #f3e7c6; }
-.vb-vote-pill.is-stay rect { fill: var(--stay); stroke: #7a5512; }
-.vb-vote-pill.is-stay text { fill: var(--ink); }
-.vb-vote-pill.is-pending rect { fill: #efe0b9; stroke: #8a6a3e; }
-.vb-vote-pill.is-pending text { fill: #52412c; }
-.vb-vote-track { fill: #e6d7b2; stroke: #b59a6a; stroke-width: 1; }
-.vb-vote-fill { stroke: #3b2a1a; stroke-width: 1.2; }
-.vb-vote-fill.is-hint { fill: var(--scale-hint); }
-.vb-vote-fill.is-note { fill: var(--scale-note); }
-.vb-vote-fill.is-mine { fill: var(--scale-mine); }
-
 .vb-new rect { fill: var(--forest); stroke: #f6ebcd; stroke-width: 1.5; }
 .vb-new { animation: vb-fade 300ms ease both; }
 
@@ -772,6 +758,146 @@
   height: 10px;
   border-radius: 2px;
   border: 1px solid #3b2a1a;
+}
+
+/* 쪽지 카드가 열려 있는 동안 마을 이야기 맨 위에 표시되는 오늘 밤 저울 (HTML, 18px 이상) */
+.vl-tonight {
+  position: relative;
+  flex: none;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: var(--ui-background);
+  border: 2px solid var(--wood);
+  border-left: 4px solid var(--rust);
+  border-radius: 5px 9px 9px 5px;
+  box-shadow: 0 2px 8px rgba(59, 42, 26, 0.14);
+  animation: vl-tonight-in 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes vl-tonight-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.vl-tonight-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 8px;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1.5px dotted #b4976a;
+}
+.vl-tonight-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.vl-tonight-sub {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink-soft);
+}
+.vl-tonight-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vl-tonight-row {
+  display: grid;
+  grid-template-columns: minmax(52px, auto) auto minmax(64px, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.vl-tonight-row.is-ai {
+  grid-template-columns: minmax(52px, auto) minmax(16px, 1fr) auto;
+}
+.vl-tonight-who {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.vl-tonight-dots {
+  border-bottom: 2px dotted #b59a6a;
+  height: 1px;
+}
+.vl-claim-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 2px 9px;
+  border: 1.5px solid transparent;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.vl-claim-pill.is-evacuate {
+  background: var(--leave);
+  border-color: #1f3554;
+  color: #f3e7c6;
+  border-radius: 999px;
+}
+.vl-claim-pill.is-stay {
+  background: var(--stay);
+  border-color: #7a5512;
+  color: var(--ink);
+  border-radius: 4px;
+}
+.vl-claim-pill.is-pending {
+  background: var(--parch);
+  border-color: #8a6a3e;
+  border-style: dashed;
+  color: var(--ink);
+  border-radius: 4px;
+}
+.vl-tonight-meter {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.vl-tonight-track {
+  display: block;
+  width: 100%;
+  height: 14px;
+  border-radius: 4px;
+  background: #e6d7b2;
+  border: 1.5px solid #9d7f50;
+  overflow: hidden;
+}
+.vl-tonight-fill {
+  display: block;
+  height: 100%;
+  border-right: 1.5px solid #3b2a1a;
+  box-sizing: border-box;
+}
+.vl-tonight-fill.is-hint { background: var(--scale-hint); }
+.vl-tonight-fill.is-note { background: var(--scale-note); }
+.vl-tonight-fill.is-mine { background: var(--scale-mine); }
+.vl-tonight-zero {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.vl-tonight-note {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink-soft);
+  word-break: keep-all;
 }
 .vl-foot {
   flex: none;
@@ -1106,7 +1232,8 @@
   .vb-tut-arrow,
   .tut-log-stroke,
   .tut-arrow.is-down,
-  .tut-arrow.is-up {
+  .tut-arrow.is-up,
+  .vl-tonight {
     animation: none;
   }
 }

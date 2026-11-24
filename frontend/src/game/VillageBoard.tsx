@@ -5,8 +5,8 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, tonightVotes, tonightVotesText, villageHouses, voteAnimDelays, voteItemLabel, worsens } from './village'
-import type { House, Phase, Preview, Scale, SuspicionLink, TonightVotes, TutorialHighlight } from './village'
+import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, villageHouses, voteAnimDelays, worsens } from './village'
+import type { House, Phase, Preview, Scale, SuspicionLink, TutorialHighlight } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
@@ -620,75 +620,32 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
   )
 }
 
-function VotePill({
-  claim,
-  x,
-  width,
-  emptyText = '고르는 중',
-}: {
-  claim: Claim | null
-  x: number
-  width: number
-  emptyText?: string
-}) {
-  return (
-    <g className={`vb-vote-pill ${claim ? `is-${claim}` : 'is-pending'}`}>
-      <rect
-        x={x}
-        y="0.5"
-        width={width}
-        height="14"
-        rx="2.5"
-        strokeWidth="1.2"
-        strokeDasharray={claim ? undefined : '3 2'}
-      />
-      <text x={x + width / 2} y="11" fontSize={claim ? '12' : '11'} fontWeight="700" textAnchor="middle">
-        {claim ? decisions[claim] : emptyText}
-      </text>
-    </g>
-  )
-}
-
-// 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 + 오늘 밤 이 집이 받을 표 구성.
+// 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 (명세 1번).
 function NoteCard({
   h,
   claim,
   preview,
-  votes,
   onClaim,
   onCardFocusChange,
   highlightSuspicion = false,
-  highlightVotes = false,
 }: {
   h: House
   claim?: Claim
   preview: (c: Claim) => Preview | null
-  votes: TonightVotes
   onClaim: (c: Claim) => void
   onCardFocusChange: (focused: boolean) => void
   highlightSuspicion?: boolean
-  highlightVotes?: boolean
 }) {
-  const cardW = 184
+  const cardW = 192
   const left = h.x < PLAZA.x
-  const cx = left ? h.x + 100 : h.x - 100 - cardW
   const pEvac = preview('evacuate')
   const pStay = preview('stay')
   const hasPreview = Boolean(pEvac || pStay)
   const hasTrial = Boolean(pEvac?.trial || pStay?.trial)
-  const votesTop = hasPreview ? (hasTrial ? 90 : 76) : 62
-  const rowStart = votesTop + 18
-  const rowH = 14
-  const noteExtra = votes.noCitizenNotesYet ? 15 : 0
-  const aiExtra = votes.ai ? 26 : 0
-  const cardH = rowStart + votes.items.length * rowH + noteExtra + aiExtra + 5
-  // 위쪽 집은 "쪽지 비교" 알약(y=239) 위로(하늘 글씨 y=65 아래), 아래쪽 집은 광장(y=395) 아래·달력(y=598) 위로 clamp
-  const cy =
-    h.y < 300
-      ? Math.max(66, Math.min(h.y - 54, 236 - cardH))
-      : Math.max(396, Math.min(h.y - 77, 592 - cardH))
-  const { subtitle: votesSubtitle, note: votesNote, aria: votesAria } = tonightVotesText(votes)
-  const footerStart = rowStart + votes.items.length * rowH
+  const cardH = hasPreview ? (hasTrial ? 108 : 88) : 68
+  // 위쪽 집은 점선 이름표(y=228) 위로(하늘 경계 y=106 아래), 아래쪽 집은 광장(y=395)·양쪽 오솔길(y<=397)·게이지(x<=352, x>=578) 사이 빈 공간에 놓는다.
+  const cx = h.y < 300 ? (left ? h.x + 100 : h.x - 100 - cardW) : 354
+  const cy = h.y < 300 ? Math.max(106, Math.min(h.y - 54, 224 - cardH)) : 398
   return (
     <g transform={`translate(${cx},${cy})`}>
       <g
@@ -702,13 +659,13 @@ function NoteCard({
       >
         <rect x="4" y="5" width={cardW} height={cardH} rx="2" fill="#2a1a0c" opacity=".25" />
         <rect width={cardW} height={cardH} rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
-        <circle cx="10" cy="10" r="4.5" fill="#a8361f" stroke="#4a1a10" />
-        <text x="20" y="21" fontSize="15" fontWeight="700">
+        <circle cx="10" cy="11" r="4.5" fill="#a8361f" stroke="#4a1a10" />
+        <text x="20" y="22" fontSize="18" fontWeight="700">
           {h.city}번 집에 보낼 쪽지
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
           const p = c === 'evacuate' ? pEvac : pStay
-          const btnX = 14 + i * 82
+          const btnX = 14 + i * 86
           return (
             <g key={c}>
               <g
@@ -720,18 +677,18 @@ function NoteCard({
                 onClick={() => onClaim(c)}
                 onKeyDown={onActivateKey(() => onClaim(c))}
               >
-                <rect x={btnX} y="28" width="74" height="28" rx="3" />
-                <text x={btnX + 37} y="47" fontSize="16.5" fontWeight="700" textAnchor="middle">
+                <rect x={btnX} y="30" width="78" height="30" rx="3" />
+                <text x={btnX + 39} y="51" fontSize="18" fontWeight="700" textAnchor="middle">
                   {decisions[c]}
                 </text>
               </g>
               {p && (
                 <g fontWeight="700" textAnchor="middle" aria-hidden>
-                  <text x={btnX + 37} y="70" fontSize="14" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
+                  <text x={btnX + 39} y="79" fontSize="18" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
                     {p.from} → {p.next}
                   </text>
                   {p.trial && (
-                    <text x={btnX + 37} y="84" fontSize="12.5" className="vb-rust">
+                    <text x={btnX + 39} y="98" fontSize="18" className="vb-rust">
                       재판 열림
                     </text>
                   )}
@@ -741,88 +698,8 @@ function NoteCard({
           )
         })}
         {highlightSuspicion && hasPreview && (
-          <rect className="vb-tut-ring" x="10" y="58" width="164" height={hasTrial ? 31 : 17} rx="5" aria-hidden />
+          <rect className="vb-tut-ring" x="10" y="63" width="172" height={hasTrial ? 40 : 21} rx="5" aria-hidden />
         )}
-        <line x1="10" y1={votesTop} x2={cardW - 10} y2={votesTop} stroke="#c3a878" strokeWidth="1.2" strokeDasharray="4 3" />
-        <g role="img" aria-label={votesAria}>
-          <text x="10" y={votesTop + 13} fontSize="12.5" fontWeight="700" aria-hidden>
-            {TONIGHT_SCALE_TITLE}
-          </text>
-          <text x={cardW - 10} y={votesTop + 13} fontSize="11.5" fontWeight="700" textAnchor="end" className="vb-card-sub" aria-hidden>
-            {votesSubtitle}
-          </text>
-          {votes.items.map((item, idx) => {
-            const ry = rowStart + idx * rowH
-            const label = voteItemLabel(item)
-            const kind = item.role === 'hint' ? 'is-hint' : item.role === 'player' ? 'is-mine' : 'is-note'
-            const trackW = 70
-            const barW = item.weight > 0 ? Math.min(trackW, Math.max(4, Math.round((item.weight / 100) * trackW))) : 0
-            const emptyText = item.role === 'hint' ? '상쇄' : '고르는 중'
-            return (
-              <g key={String(item.from)} transform={`translate(0,${ry})`} aria-hidden>
-                <text x="10" y="11" fontSize="12" fontWeight="700">
-                  {label}
-                </text>
-                {votes.ai ? (
-                  <>
-                    <line x1="54" y1="7.5" x2="122" y2="7.5" stroke="#c3a878" strokeWidth="1.2" strokeDasharray="2 3" />
-                    <VotePill claim={item.claim} x={126} width={48} emptyText={emptyText} />
-                  </>
-                ) : (
-                  <>
-                    <VotePill claim={item.claim} x={54} width={46} emptyText={emptyText} />
-                    <rect x="104" y="3" width={trackW} height="9" rx="2" className="vb-vote-track" />
-                    {barW > 0 ? (
-                      <rect x="104" y="3" width={barW} height="9" rx="2" className={`vb-vote-fill ${kind}`} />
-                    ) : (
-                      <text x={104 + trackW / 2} y="10.5" fontSize="10.5" fontWeight="700" textAnchor="middle" className="vb-card-sub">
-                        {item.role === 'hint' ? '상쇄' : '안 믿음'}
-                      </text>
-                    )}
-                  </>
-                )}
-              </g>
-            )
-          })}
-          {votesNote && (
-            <text
-              x="10"
-              y={footerStart + 11}
-              fontSize="11.5"
-              fontWeight="700"
-              className="vb-card-sub"
-              aria-hidden
-            >
-              {votesNote}
-            </text>
-          )}
-          {votes.ai && (
-            <text
-              x="10"
-              y={footerStart + noteExtra + 11}
-              fontSize="11.5"
-              fontWeight="700"
-              className="vb-card-sub"
-              aria-hidden
-            >
-              <tspan x="10">AI 주민은 의심도를 참고해</tspan>
-              <tspan x="10" dy="12">
-                스스로 판단해요
-              </tspan>
-            </text>
-          )}
-          {highlightVotes && (
-            <rect
-              className="vb-tut-ring"
-              x="7"
-              y={votesTop + 2}
-              width={cardW - 14}
-              height={cardH - votesTop - 5}
-              rx="5"
-              aria-hidden
-            />
-          )}
-        </g>
       </g>
     </g>
   )
@@ -980,7 +857,6 @@ type Stage = { phase: Phase; ballots: number; decided: number; prev: TurnResult 
 export function VillageBoard({
   state,
   result,
-  history = result ? [result] : [],
   picker,
   stage,
   scales = {},
@@ -992,14 +868,13 @@ export function VillageBoard({
 }: {
   state: GameState
   result: TurnResult | null
-  history?: TurnResult[]
   picker?: NotePicker
   stage?: Stage
   scales?: Record<number, Scale> // ③ 주민 결정 표 줄에 쓸 실제 저울 값 (citizenScales)
   swayed?: number[] // 내 쪽지가 결정을 뒤집은 시민 (citizenScales)
   highlight?: TutorialHighlight | null // 튜토리얼 강조 대상 이름
   hideSigns?: boolean // 튜토리얼에서는 첫날 안내 표지판을 숨긴다
-  onCardOpen?: (open: boolean) => void
+  onCardOpen?: (city: number | null) => void
   boardRef?: RefObject<SVGSVGElement | null>
 }) {
   const [open, setOpen] = useState<number | null>(null)
@@ -1016,6 +891,7 @@ export function VillageBoard({
   }
   if (prevInspectScope !== inspectScope) {
     setPrevInspectScope(inspectScope)
+    setOpen(null)
     setHovered(null)
     setFocused(null)
   }
@@ -1039,11 +915,11 @@ export function VillageBoard({
       last.current = null
     }
   }, [open])
-  // 선택창과 집·튜토리얼 말풍선 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
+  // 선택창과 집·튜토리얼 말풍선·오늘 밤 저울 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
   useEffect(() => {
     if (open == null) return
     const close = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('.vb-card, .vb-house, .tut-box')) setOpen(null)
+      if (!(e.target as Element).closest('.vb-card, .vb-house, .tut-box, .vl-tonight')) setOpen(null)
     }
     document.addEventListener('click', close)
     return () => document.removeEventListener('click', close)
@@ -1074,13 +950,13 @@ export function VillageBoard({
         houses.find((h) => h.slot === 4 && h.reachable) ??
         null)
       : null
-  const cardOpen = Boolean(opened)
+  const openCity = opened?.city ?? null
   const inspected = hovered ?? focused
   const activeSuspicionLinks =
     !night && !highlight && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
   useEffect(() => {
-    onCardOpen?.(cardOpen)
-  }, [cardOpen, onCardOpen])
+    onCardOpen?.(openCity)
+  }, [openCity, onCardOpen])
   return (
     <svg
       ref={assignSvg}
@@ -1217,13 +1093,11 @@ export function VillageBoard({
           h={opened}
           claim={picker.claims[opened.city]}
           preview={(c) => preview(opened, c)}
-          votes={tonightVotes(state, houses, opened.city, picker.claims, history)}
           onClaim={(c) => picker.onClaim(opened.city, c)}
           onCardFocusChange={(hasFocus) => {
             cardFocused.current = hasFocus
           }}
           highlightSuspicion={highlight === 'suspicion'}
-          highlightVotes={highlight === 'votes'}
         />
       )}
     </svg>
