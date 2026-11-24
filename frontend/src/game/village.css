@@ -117,9 +117,29 @@
   fill: var(--ink-soft);
   font-weight: 700;
 }
-.gm-start-scene .vb-opt-item.is-selected .opt-label,
+.gm-start-scene .vb-opt-item.is-selected .opt-label {
+  fill: #2b1a0c;
+}
 .gm-start-scene .vb-role-card.is-selected .card-title {
   fill: var(--ink);
+}
+.gm-start-scene .vb-opt-circle {
+  fill: none;
+  stroke: #6e1a0c;
+  stroke-width: 3.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 104;
+  stroke-dashoffset: 0;
+  animation: gs-circle-draw 400ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+@keyframes gs-circle-draw {
+  from {
+    stroke-dashoffset: 104;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 .gm-start-scene .vb-role-card .card-paper {
   fill: #ede0be;
@@ -159,8 +179,13 @@
   outline-offset: 4px;
 }
 .gm-start-scene .vb-opt-item:focus-visible {
-  outline: 3px solid var(--ink);
+  outline: 3px solid #2b1a0c;
   outline-offset: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gm-start-scene .vb-opt-circle {
+    animation: none;
+  }
 }
 .gm-start-error {
   position: absolute;

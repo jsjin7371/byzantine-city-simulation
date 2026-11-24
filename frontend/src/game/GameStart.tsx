@@ -14,6 +14,18 @@ const OPTION_SLOTS = [
 const DIFF_RX: Record<Difficulty, number> = { easy: 44, normal: 44, hard: 48 }
 const CITIZEN_RX: Record<CitizenType, number> = { majority: 46, wary: 44, ai: 42 }
 
+// 손으로 쓱 둘러 그린 듯한 동그라미(약간 기울고 위쪽 끝이 살짝 겹치는 경로).
+function handCirclePath(rx: number, ry: number) {
+  const n = (v: number) => Number(v.toFixed(1))
+  return [
+    `M ${n(-0.34 * rx)} ${n(-0.88 * ry)}`,
+    `C ${n(0.26 * rx)} ${n(-1.12 * ry)}, ${n(0.98 * rx)} ${n(-0.7 * ry)}, ${n(1.02 * rx)} ${n(-0.04 * ry)}`,
+    `C ${n(1.06 * rx)} ${n(0.68 * ry)}, ${n(0.46 * rx)} ${n(1.04 * ry)}, ${n(-0.08 * rx)} ${n(0.98 * ry)}`,
+    `C ${n(-0.7 * rx)} ${n(0.92 * ry)}, ${n(-1.05 * rx)} ${n(0.5 * ry)}, ${n(-0.98 * rx)} ${n(-0.14 * ry)}`,
+    `C ${n(-0.91 * rx)} ${n(-0.74 * ry)}, ${n(-0.36 * rx)} ${n(-1.02 * ry)}, ${n(0.16 * rx)} ${n(-0.94 * ry)}`,
+  ].join(' ')
+}
+
 const PLANK_PATH = 'M404 0 H1004 L1036 33 L1004 66 H404 Z'
 const roleCardPath = (x: number) => `M${x} 440 H${x + 268} L${x + 286} 458 V578 H${x} Z`
 
@@ -411,32 +423,16 @@ function OptionPlank<T extends string>({
               onClick={() => onChange(item.key)}
               onKeyDown={(e) => onRadioKey(e, keys, i, onChange, optionRefs.current)}
             >
-              {selected ? (
-                <>
-                  <rect
-                    x={slot.x}
-                    y="8"
-                    width={slot.w}
-                    height="50"
-                    rx="3"
-                    fill="#f6ebcd"
-                    stroke="#8a6a3e"
-                    strokeWidth="1.6"
-                    filter="url(#vs-rough)"
+              <rect x={slot.x} y="8" width={slot.w} height="50" fill="transparent" />
+              {selected && (
+                <g transform={`translate(${cx}, 33) rotate(-2.5)`} filter="url(#vs-rough-sm)" aria-hidden="true">
+                  <path
+                    key={item.key}
+                    className="vb-opt-circle"
+                    d={handCirclePath(item.rx, 20)}
+                    pathLength={100}
                   />
-                  <ellipse
-                    cx={cx}
-                    cy="33"
-                    rx={item.rx}
-                    ry="19"
-                    fill="none"
-                    stroke="#a8361f"
-                    strokeWidth="3"
-                    filter="url(#vs-rough)"
-                  />
-                </>
-              ) : (
-                <rect x={slot.x} y="8" width={slot.w} height="50" fill="transparent" />
+                </g>
               )}
               <text className="opt-label vb-pencil" x={cx} y="41" fontSize="24" textAnchor="middle">
                 {item.label}
