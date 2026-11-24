@@ -347,42 +347,53 @@ export const PHASE_LABEL: Record<Phase, string> = {
   day: '', // 낮에는 이름표를 숨긴다
 }
 
-type Step = { phase: Phase; ballots: number; ms: number }
+type Step = { phase: Phase; ballots: number; decided: number; ms: number }
 
 // 한 턴 결과를 보여 줄 단계 목록. 마지막 단계(day)가 최종 상태다.
-export function nightSteps(result: Pick<TurnResult, 'vote'>): Step[] {
+// ③ 주민 결정(flags)은 시민 집마다 차례로 표 줄을 쌓고 깃발을 세운다 (추가 연출 합계 2초 이내).
+export function nightSteps(result: Pick<TurnResult, 'vote'> & Partial<Pick<TurnResult, 'cities'>>): Step[] {
+  const citizens = result.cities?.filter((c) => c.role === 'citizen').length ?? 0
   const steps: Step[] = [
-    { phase: 'night', ballots: 0, ms: 700 },
-    { phase: 'notes', ballots: 0, ms: 1100 },
-    { phase: 'flags', ballots: 0, ms: 900 },
-    { phase: 'suspicion', ballots: 0, ms: 1100 },
+    { phase: 'night', ballots: 0, decided: 0, ms: 700 },
+    { phase: 'notes', ballots: 0, decided: 0, ms: 1100 },
   ]
+  if (citizens > 0) {
+    for (let i = 1; i <= citizens; i++) steps.push({ phase: 'flags', ballots: 0, decided: i, ms: 650 })
+  } else {
+    steps.push({ phase: 'flags', ballots: 0, decided: Infinity, ms: 900 })
+  }
+  steps.push({ phase: 'suspicion', ballots: 0, decided: Infinity, ms: 1100 })
   if (result.vote) {
     const n = Object.keys(result.vote.ballots).length
-    for (let i = 1; i <= n; i++) steps.push({ phase: 'trial', ballots: i, ms: 450 })
-    steps.push({ phase: 'verdict', ballots: n, ms: 1100 })
+    for (let i = 1; i <= n; i++) steps.push({ phase: 'trial', ballots: i, decided: Infinity, ms: 450 })
+    steps.push({ phase: 'verdict', ballots: n, decided: Infinity, ms: 1100 })
   }
-  steps.push({ phase: 'day', ballots: Infinity, ms: 0 })
+  steps.push({ phase: 'day', ballots: Infinity, decided: Infinity, ms: 0 })
   return steps
 }
 
 // 연출 중 집 상태: 깃발·의심도는 그 단계가 오기 전까지 지난 턴 값, 창문은 다음 날 전까지 오늘 밤 힌트.
+// flags 단계에서는 decided 수만큼 시계 방향 순서로 시민 깃발을 차례로 세운다.
 export function stagedHouses(
   state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth' | 'next_hints'>,
   prev: Pick<TurnResult, 'cities' | 'next_hints'> | null,
   result: Pick<TurnResult, 'cities' | 'next_hints'>,
   phase: Phase,
+  decided = Infinity,
 ): House[] {
   const after = villageHouses(state, result)
   if (phase === 'day') return after
   const before = villageHouses(state, prev ?? { cities: [], next_hints: null })
+  let citizenIndex = 0
   return after.map((h, i) => {
     const tonight = result.cities.find((c) => c.city === h.city)?.hint ?? null
+    const order = h.role === 'citizen' ? ++citizenIndex : 0
+    const showFlag = reached(phase, 'suspicion') || (phase === 'flags' && order <= decided)
     return {
       ...h,
       hint: tonight,
       lit: tonight ? tonight === state.truth : null,
-      flag: reached(phase, 'flags') ? h.flag : before[i].flag,
+      flag: showFlag ? h.flag : before[i].flag,
       suspicion: reached(phase, 'suspicion') ? h.suspicion : before[i].suspicion,
       suspicions: reached(phase, 'suspicion') ? h.suspicions : before[i].suspicions,
     }

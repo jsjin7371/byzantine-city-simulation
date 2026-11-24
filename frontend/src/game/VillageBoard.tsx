@@ -6,7 +6,7 @@ import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
 import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, tonightVotes, villageHouses, worsens } from './village'
-import type { House, Phase, Preview, SuspicionLink, TonightVotes, TutorialHighlight } from './village'
+import type { House, Phase, Preview, Scale, SuspicionLink, TonightVotes, TutorialHighlight } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
@@ -298,6 +298,81 @@ function houseLabel(h: House, playerCity: number) {
 // changed: 어제와 달라진 점 (힌트 바뀜, 새 점선). 어제 쪽지를 그대로 두었으니 여기만 다시 보면 된다.
 type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
 type InspectHandlers = { onEnter: () => void; onLeave: () => void; onFocus: () => void; onBlur: () => void }
+type VoteBar = { scale: Scale; me: number; animate: boolean }
+
+// ③ 주민 결정 단계의 집별 표 줄: 실제 저울 값(citizenScales)을 대피·잔류 두 줄로 쌓는다.
+function VoteStack({ x, y, bar }: { x: number; y: number; bar: VoteBar }) {
+  const buildRow = (side: 1 | -1) => {
+    let cursor = 39
+    return bar.scale.parts
+      .filter((p) => p.value * side > 0)
+      .map((p) => {
+        const w = Math.max(4, Math.min(18, Math.round((Math.abs(p.value) / 100) * 15)))
+        const item = { from: p.from, x: cursor, w }
+        cursor += w + 2
+        return item
+      })
+  }
+  const evac = buildRow(1)
+  const stay = buildRow(-1)
+  return (
+    <g
+      className={bar.animate ? 'vb-votes is-anim' : 'vb-votes'}
+      transform={`translate(${x - 134},${y - 116})`}
+      aria-hidden="true"
+    >
+      <rect width="126" height="44" rx="5" fill="#f6ebcd" stroke="#6b4a2a" strokeWidth="1.8" filter="url(#vb-rough)" />
+      {/* 대피 줄: 둥근 알약 모양 + 파랑 + 글자 */}
+      <g className="vb-votes-tag is-evacuate">
+        <rect x="5" y="5.5" width="30" height="14" rx="7" strokeWidth="1.2" />
+        <text x="20" y="16" fontSize="11.5" fontWeight="700" textAnchor="middle">
+          대피
+        </text>
+      </g>
+      {evac.map((b, i) => (
+        <g
+          key={String(b.from)}
+          className="vb-vote-blk"
+          style={bar.animate ? { animationDelay: `${40 + i * 35}ms` } : undefined}
+        >
+          <rect
+            x={b.x}
+            y="6.5"
+            width={b.w}
+            height="12"
+            rx="2.5"
+            className={`vb-vote-sq is-evacuate${b.from === bar.me ? ' is-mine' : ''}`}
+          />
+          {b.from === 'hint' && <circle cx={b.x + b.w / 2} cy="12.5" r="2" fill="#f3e7c6" />}
+        </g>
+      ))}
+      {/* 잔류 줄: 네모 꼬리표 모양 + 황토 + 글자 */}
+      <g className="vb-votes-tag is-stay">
+        <rect x="5" y="24.5" width="30" height="14" rx="2" strokeWidth="1.2" />
+        <text x="20" y="35" fontSize="11.5" fontWeight="700" textAnchor="middle">
+          잔류
+        </text>
+      </g>
+      {stay.map((b, i) => (
+        <g
+          key={String(b.from)}
+          className="vb-vote-blk"
+          style={bar.animate ? { animationDelay: `${40 + (evac.length + i) * 35}ms` } : undefined}
+        >
+          <rect
+            x={b.x}
+            y="25.5"
+            width={b.w}
+            height="12"
+            rx="1"
+            className={`vb-vote-sq is-stay${b.from === bar.me ? ' is-mine' : ''}`}
+          />
+          {b.from === 'hint' && <circle cx={b.x + b.w / 2} cy="31.5" r="2" fill="#3d3a36" />}
+        </g>
+      ))}
+    </g>
+  )
+}
 
 // swayed: 내 쪽지가 없었다면 반대로 골랐을 시민 (작은 불꽃 한 번)
 function HouseView({
@@ -305,6 +380,8 @@ function HouseView({
   playerCity,
   pick,
   inspect,
+  voteBar,
+  freshFlag = false,
   swayed,
   highlight,
   pointed = false,
@@ -313,6 +390,8 @@ function HouseView({
   playerCity: number
   pick?: Pick
   inspect?: InspectHandlers
+  voteBar?: VoteBar
+  freshFlag?: boolean
   swayed?: boolean
   highlight?: TutorialHighlight | null
   pointed?: boolean
@@ -379,11 +458,16 @@ function HouseView({
         </text>
       )}
       {h.flag && (
-        <g key={h.flag} className={hlFlag ? 'vb-flag vb-tut-hl' : 'vb-flag'} transform={`translate(${x + 28},${y - 62})`}>
+        <g
+          key={freshFlag ? `fresh-${h.flag}` : h.flag}
+          className={`vb-flag${freshFlag ? ' is-fresh' : ''}${hlFlag ? ' vb-tut-hl' : ''}`}
+          transform={`translate(${x + 28},${y - 62})`}
+        >
           <use href={`#vb-flag-${h.flag}`} />
           {hlFlag && <rect className="vb-tut-ring" x="-6" y="-61" width="60" height="64" rx="8" aria-hidden />}
         </g>
       )}
+      {voteBar && <VoteStack x={x} y={y} bar={voteBar} />}
       {swayed && (
         <g className="vb-spark" transform={`translate(${x + 8},${y - 78})`} aria-hidden>
           <path d="M0 -13 L3.5 -3.5 L13 0 L3.5 3.5 L0 13 L-3.5 3.5 L-13 0 L-3.5 -3.5 Z" />
@@ -850,7 +934,7 @@ type NotePicker = {
 }
 
 // 밤 연출 중인 단계. prev는 지난 턴 결과 (깃발·의심도가 바뀌기 전 모습).
-type Stage = { phase: Phase; ballots: number; prev: TurnResult | null }
+type Stage = { phase: Phase; ballots: number; decided: number; prev: TurnResult | null }
 
 // 숲속 마을 보드 (명세 2번). result가 없으면 1턴 전, 있으면 그 턴이 끝난 상태를 그린다.
 // picker가 있으면 집을 눌러 다음 턴에 할 말을 고른다 (명세 1번).
@@ -860,6 +944,7 @@ export function VillageBoard({
   result,
   picker,
   stage,
+  scales = {},
   swayed = [],
   highlight = null,
   hideSigns = false,
@@ -870,6 +955,7 @@ export function VillageBoard({
   result: TurnResult | null
   picker?: NotePicker
   stage?: Stage
+  scales?: Record<number, Scale> // ③ 주민 결정 표 줄에 쓸 실제 저울 값 (citizenScales)
   swayed?: number[] // 내 쪽지가 결정을 뒤집은 시민 (citizenScales)
   highlight?: TutorialHighlight | null // 튜토리얼 강조 대상 이름
   hideSigns?: boolean // 튜토리얼에서는 첫날 안내 표지판을 숨긴다
@@ -907,7 +993,13 @@ export function VillageBoard({
   const night = result && stage && stage.phase !== 'day' ? { ...stage, result } : null
   const at = (p: Phase) => !night || reached(night.phase, p)
   const turn = night ? night.result.turn - 1 : (result?.turn ?? state.turn)
-  const houses = night ? stagedHouses(state, night.prev, night.result, night.phase) : villageHouses(state, result)
+  const houses = night
+    ? stagedHouses(state, night.prev, night.result, night.phase, night.decided)
+    : villageHouses(state, result)
+  const citizenOrder = new Map<number, number>()
+  for (const h of houses) {
+    if (h.role === 'citizen') citizenOrder.set(h.city, citizenOrder.size + 1)
+  }
   const pairs = (night ? night.result.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
   const clashes = picker ? clashingPairs(pairs, picker.claims) : []
   // 연출 중 모순이 들킨 쌍 (내가 두 집에 다른 말을 했다)
@@ -988,37 +1080,50 @@ export function VillageBoard({
         광장
       </text>
       {picker && turn === 0 && !hideSigns && <Signs />}
-      {houses.map((h) => (
-        <HouseView
-          key={h.city}
-          h={h}
-          playerCity={state.player_city}
-          swayed={at('flags') && swayed.includes(h.city)}
-          highlight={highlight}
-          pointed={pointerTarget?.city === h.city}
-          inspect={
-            !night && h.role === 'citizen' && h.suspicions != null
-              ? {
-                  onEnter: () => setHovered(h.city),
-                  onLeave: () => setHovered((cur) => (cur === h.city ? null : cur)),
-                  onFocus: () => setFocused(h.city),
-                  onBlur: () => setFocused((cur) => (cur === h.city ? null : cur)),
-                }
-              : undefined
-          }
-          pick={
-            picker && h.reachable
-              ? {
-                  claim: picker.claims[h.city],
-                  open: open === h.city,
-                  preview: preview(h, picker.claims[h.city]),
-                  changed: changed[h.city],
-                  onOpen: () => setOpen(open === h.city ? null : h.city),
-                }
-              : undefined
-          }
-        />
-      ))}
+      {houses.map((h) => {
+        const order = citizenOrder.get(h.city) ?? 0
+        const inFlags = night?.phase === 'flags' && order > 0
+        const decided = !night || reached(night.phase, 'suspicion') || (inFlags && order <= night.decided)
+        const activeDeciding = Boolean(inFlags && order === night.decided)
+        const scale = scales[h.city]
+        return (
+          <HouseView
+            key={h.city}
+            h={h}
+            playerCity={state.player_city}
+            voteBar={
+              inFlags && order <= night.decided && scale
+                ? { scale, me: state.player_city, animate: activeDeciding }
+                : undefined
+            }
+            freshFlag={activeDeciding}
+            swayed={decided && swayed.includes(h.city)}
+            highlight={highlight}
+            pointed={pointerTarget?.city === h.city}
+            inspect={
+              !night && h.role === 'citizen' && h.suspicions != null
+                ? {
+                    onEnter: () => setHovered(h.city),
+                    onLeave: () => setHovered((cur) => (cur === h.city ? null : cur)),
+                    onFocus: () => setFocused(h.city),
+                    onBlur: () => setFocused((cur) => (cur === h.city ? null : cur)),
+                  }
+                : undefined
+            }
+            pick={
+              picker && h.reachable
+                ? {
+                    claim: picker.claims[h.city],
+                    open: open === h.city,
+                    preview: preview(h, picker.claims[h.city]),
+                    changed: changed[h.city],
+                    onOpen: () => setOpen(open === h.city ? null : h.city),
+                  }
+                : undefined
+            }
+          />
+        )
+      })}
       {activeSuspicionLinks.length > 0 && <SuspicionLines links={activeSuspicionLinks} />}
       {pointerTarget && <HousePointer target={pointerTarget} />}
       {night && at('notes') && <Talk result={night.result} player={state.player_city} />}

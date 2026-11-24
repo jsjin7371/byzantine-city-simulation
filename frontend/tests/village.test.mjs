@@ -208,13 +208,21 @@ test('trial lines: one accusation per voter, then the verdict', () => {
   assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 마피아가 들켰다')
 })
 
-test('night steps: night, notes, flags, suspicion, then one step per ballot and the verdict, ending on day', () => {
+test('night steps: night, notes, flags (one per citizen when cities given), suspicion, then ballots, verdict, day', () => {
   assert.deepEqual(nightSteps({ vote: null }).map((s) => s.phase), ['night', 'notes', 'flags', 'suspicion', 'day'])
   const steps = nightSteps({ vote: { ballots: { 1: 3, 4: 1, 5: 3 }, accused: 3, caught: true } })
   assert.deepEqual(steps.map((s) => s.phase), ['night', 'notes', 'flags', 'suspicion', 'trial', 'trial', 'trial', 'verdict', 'day'])
   assert.deepEqual(steps.filter((s) => s.phase === 'trial').map((s) => s.ballots), [1, 2, 3])
   assert.equal(steps.at(-1).ms, 0)
   assert.equal(nightSteps({ vote: null }).reduce((t, s) => t + s.ms, 0), 3800)
+
+  // 시민 4명: ③ 단계가 집마다 차례로 1~4 진행, 추가 연출 시간은 2000ms 이내
+  const fourCitizens = [1, 2, 4, 5].map((city) => ({ role: 'citizen', city }))
+  const detailed = nightSteps({ vote: null, cities: [{ role: 'player', city: 3 }, ...fourCitizens] })
+  const flagSteps = detailed.filter((s) => s.phase === 'flags')
+  assert.deepEqual(flagSteps.map((s) => s.decided), [1, 2, 3, 4])
+  const addedMs = detailed.reduce((t, s) => t + s.ms, 0) - 3800
+  assert.ok(addedMs > 0 && addedMs <= 2000)
 })
 
 test('visible lines follow the step: words in phase order, accusations one at a time', () => {
@@ -241,6 +249,12 @@ test('staged houses keep last turn flags and suspicion until their phase, window
   assert.equal(at('suspicion')[1].suspicion, 60)
   assert.equal(at('day')[1].lit, false) // 다음 날 힌트
   assert.equal(at('notes', null)[1].flag, null) // 첫 턴은 깃발 없음
+  // flags 단계에서 decided=1이면 시계 방향 첫 시민(4번)만 새 깃발, 뒷 시민(1번)은 이전 깃발 유지
+  const firstOnly = Object.fromEntries(stagedHouses(state, prev, tonight, 'flags', 1).map((h) => [h.city, h]))
+  assert.equal(firstOnly[4].flag, 'stay')
+  assert.equal(firstOnly[1].flag, 'stay') // 아직 차례 전이라 이전 턴 값(stay)
+  const allDecided = Object.fromEntries(stagedHouses(state, prev, tonight, 'flags', 3).map((h) => [h.city, h]))
+  assert.equal(allDecided[1].flag, 'evacuate')
 })
 
 const over = (outcome, end_reason) => ({ ...state, outcome, end_reason })
