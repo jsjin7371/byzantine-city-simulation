@@ -22,6 +22,10 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   assert.equal(opened.step?.highlight, 'suspicion')
   assert.equal(tutorialStep(opened.cursor, day1).step?.highlight, 'suspicion')
 
+  // 카드를 이미 열어 둔 상태면 창문 단계에서 다음으로 넘어갈 때 카드 대기 단계를 건너뛰고 바로 의심도 단계가 된다
+  const withOpenCard = { ...day1, cardOpen: true }
+  assert.equal(tutorialStep(tutorialStep(1, withOpenCard).cursor + 1, withOpenCard).step?.highlight, 'suspicion')
+
   // 점선 → 밤으로 버튼(턴 제출 대기)
   assert.equal(tutorialStep(4, day1).step?.highlight, 'share')
   const waitTurn = tutorialStep(5, day1)

@@ -16,10 +16,11 @@ export function Tutorial({
   return (
     <div
       className={step ? 'tut-box' : 'tut-box is-empty'}
-      role="region"
-      aria-label="튜토리얼 안내"
+      role={step ? 'region' : undefined}
+      aria-label={step ? '튜토리얼 안내' : undefined}
+      aria-hidden={!step || undefined}
     >
-      <p className="tut-text" role="status" aria-live="polite">
+      <p className="tut-text" role="status">
         {step?.text ?? ''}
       </p>
       {step && (
