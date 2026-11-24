@@ -500,11 +500,30 @@ export function scaleLeader(scale: Pick<Scale, 'total' | 'decision'>): ScaleLead
   return { winner: 'tie', label: text, aria: text }
 }
 
-// 밤 ③ 표 줄(aria-hidden) 대신 낭독기에 읽힐 집별 표 요약 (저울 값 그대로, 소수 없음).
-export function scaleVoteSummary(city: number, scale: Scale): string {
+// 밤 ③ 표 줄(aria-hidden) 대신 낭독기에 읽힐 집별 저울 요약.
+// 다수결은 1표=100을 정수 표 수로, 눈치는 신뢰 가중치 합을 무게로 읽는다.
+export function scaleVoteSummary(
+  city: number,
+  scale: Scale,
+  citizenType: GameState['config']['citizen_type'] = 'wary',
+): string {
   const evac = scale.parts.filter((p) => p.value > 0).reduce((a, p) => a + p.value, 0)
   const stay = scale.parts.filter((p) => p.value < 0).reduce((a, p) => a - p.value, 0)
-  return `${city}번 집 대피 ${evac}표, 잔류 ${stay}표, ${scaleLeader(scale).aria}`
+  const choice = `${said[scale.decision]}하기로 했어요`
+  if (citizenType === 'majority') {
+    const evacVotes = Math.round(evac / 100)
+    const stayVotes = Math.round(stay / 100)
+    const verdict =
+      scale.total === 0
+        ? `표가 같아서 관측대로 ${choice}`
+        : `${said[scale.decision]} 쪽이 더 많아서 ${choice}`
+    return `${city}번 집 속마음 저울: 대피 ${evacVotes}표, 잔류 ${stayVotes}표. ${verdict}.`
+  }
+  const verdict =
+    scale.total === 0
+      ? `무게가 같아서 관측대로 ${choice}`
+      : `${said[scale.decision]} 쪽이 더 무거워서 ${choice}`
+  return `${city}번 집 속마음 저울: 대피 쪽 무게 ${evac}, 잔류 쪽 무게 ${stay}. ${verdict}.`
 }
 
 const saw = { danger: '태풍', safe: '맑음' } as const
@@ -601,7 +620,7 @@ export function villageLines(
       kind: 'scale',
       who: c.city,
       text,
-      summary: scaleVoteSummary(c.city, s),
+      summary: scaleVoteSummary(c.city, s, state.config.citizen_type),
       detail: scaleText(s, me, state.config.memory),
       scale: s,
       me,

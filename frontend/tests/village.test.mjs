@@ -425,9 +425,26 @@ test('scale text reads in plain sentences without numbers and swayed citizens ge
   const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
   const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
   assert.equal(line.text, '대피하기로 했어')
-  assert.equal(line.summary, '4번 집 대피 280표, 잔류 40표, 대피 쪽이 많아 대피')
-  assert.equal(scaleVoteSummary(2, clear), '2번 집 대피 0표, 잔류 100표, 잔류 쪽이 많아 잔류')
-  assert.equal(scaleVoteSummary(3, tie), '3번 집 대피 0표, 잔류 0표, 같아서 관측대로 대피')
+  assert.equal(line.summary, '4번 집 속마음 저울: 대피 쪽 무게 280, 잔류 쪽 무게 40. 대피 쪽이 더 무거워서 대피하기로 했어요.')
+  assert.equal(scaleVoteSummary(2, clear), '2번 집 속마음 저울: 대피 쪽 무게 0, 잔류 쪽 무게 100. 잔류 쪽이 더 무거워서 잔류하기로 했어요.')
+  assert.equal(scaleVoteSummary(3, tie), '3번 집 속마음 저울: 대피 쪽 무게 0, 잔류 쪽 무게 0. 무게가 같아서 관측대로 대피하기로 했어요.')
+  // 다수결 주민은 1표=100을 정수 표 수로 읽는다
+  const majScale = {
+    parts: [{ from: 'hint', value: -100 }, { from: 1, value: 100 }, { from: 2, value: 100 }, { from: 3, value: 100 }],
+    total: 200,
+    decision: 'evacuate',
+    mine: 100,
+    swayed: false,
+  }
+  const majLines = villageLines(
+    { ...state, config: { ...config, citizen_type: 'majority' } },
+    { turn: 1, cities: result.cities, sharing: [], vote: null },
+    { 4: majScale },
+  )
+  const majLine = majLines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
+  assert.equal(majLine.summary, '4번 집 속마음 저울: 대피 3표, 잔류 1표. 대피 쪽이 더 많아서 대피하기로 했어요.')
+  assert.equal(scaleVoteSummary(2, clear, 'majority'), '2번 집 속마음 저울: 대피 0표, 잔류 1표. 잔류 쪽이 더 많아서 잔류하기로 했어요.')
+  assert.equal(scaleVoteSummary(3, tie, 'majority'), '3번 집 속마음 저울: 대피 0표, 잔류 0표. 표가 같아서 관측대로 대피하기로 했어요.')
   assert.deepEqual(scaleLeader(scale), { winner: 'evacuate', label: '대피 쪽이 많아요', aria: '대피 쪽이 많아 대피' })
   assert.deepEqual(scaleLeader(clear), { winner: 'stay', label: '잔류 쪽이 많아요', aria: '잔류 쪽이 많아 잔류' })
   assert.deepEqual(scaleLeader(tie), { winner: 'tie', label: '같아서 관측대로 대피', aria: '같아서 관측대로 대피' })
