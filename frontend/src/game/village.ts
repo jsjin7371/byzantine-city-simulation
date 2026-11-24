@@ -237,7 +237,8 @@ export type VoteItem = {
 export type TonightVotes = {
   items: VoteItem[]
   noCitizenNotesYet: boolean // 1일째처럼 이웃 주민이 아직 어제 결정이 없을 때
-  usesSuspicion: boolean // 눈치·AI 시민이면 true, 다수결이면 false
+  usesSuspicion: boolean // 눈치 시민(7.6 가중치 규칙)이면 true, 다수결·AI면 false
+  ai: boolean // AI 시민(LLM 자율 판단)이면 true
 }
 
 // 쪽지 카드 "이 집의 표": 오늘 밤 targetCity가 받을 관측 1표 + 보낸 집별 쪽지 1장.
@@ -249,9 +250,10 @@ export function tonightVotes(
   claims: Record<string, Claim>,
 ): TonightVotes {
   const target = houses.find((h) => h.city === targetCity)
-  const usesSuspicion = state.config.citizen_type !== 'majority'
+  const usesSuspicion = state.config.citizen_type === 'wary'
+  const ai = state.config.citizen_type === 'ai'
   if (!target || target.role !== 'citizen') {
-    return { items: [], noCitizenNotesYet: false, usesSuspicion }
+    return { items: [], noCitizenNotesYet: false, usesSuspicion, ai }
   }
   const items: VoteItem[] = []
   if (target.hint) {
@@ -262,55 +264,33 @@ export function tonightVotes(
       weight: 100,
     })
   }
-  const neighbors =
+  const neighbors = (
     state.config.connection === 'ring'
-      ? [((targetCity + 3) % 5) + 1, (targetCity % 5) + 1].sort((a, b) => a - b)
+      ? [((targetCity + 3) % 5) + 1, (targetCity % 5) + 1]
       : [1, 2, 3, 4, 5].filter((c) => c !== targetCity)
+  ).sort((a, b) => Number(state.roles[b] === 'player') - Number(state.roles[a] === 'player') || a - b)
   const byCity = new Map(houses.map((h) => [h.city, h]))
   const lie: Claim = state.truth === 'danger' ? 'stay' : 'evacuate'
   const weightOf = (sender: number) =>
     usesSuspicion ? Math.max(0, 100 - (target.suspicions?.[sender] ?? 0)) : 100
-  let citizenNeighborCount = 0
-  let hasCitizenNotes = false
 
-  const ordered = [
-    ...neighbors.filter((c) => state.roles[c] === 'player'),
-    ...neighbors.filter((c) => state.roles[c] !== 'player'),
-  ]
-  for (const sender of ordered) {
+  for (const sender of neighbors) {
     const role = state.roles[sender]
-    if (role === 'player') {
-      items.push({
-        from: sender,
-        role,
-        claim: claims[targetCity] ?? null,
-        weight: weightOf(sender),
-      })
-    } else if (role === 'colleague') {
-      items.push({
-        from: sender,
-        role,
-        claim: lie,
-        weight: weightOf(sender),
-      })
-    } else if (role === 'citizen') {
-      citizenNeighborCount++
-      const flag = byCity.get(sender)?.flag ?? null
-      if (flag) {
-        hasCitizenNotes = true
-        items.push({
-          from: sender,
-          role,
-          claim: flag,
-          weight: weightOf(sender),
-        })
-      }
-    }
+    const claim =
+      role === 'player'
+        ? (claims[targetCity] ?? null)
+        : role === 'colleague'
+          ? lie
+          : (byCity.get(sender)?.flag ?? null)
+    if (role === 'citizen' && !claim) continue
+    items.push({ from: sender, role, claim, weight: weightOf(sender) })
   }
   return {
     items,
-    noCitizenNotesYet: citizenNeighborCount > 0 && !hasCitizenNotes,
+    noCitizenNotesYet:
+      neighbors.some((c) => state.roles[c] === 'citizen') && !items.some((item) => item.role === 'citizen'),
     usesSuspicion,
+    ai,
   }
 }
 
@@ -349,15 +329,27 @@ export const PHASE_LABEL: Record<Phase, string> = {
 
 type Step = { phase: Phase; ballots: number; decided: number; ms: number }
 
+// 시계 방향 집 순서에서 시민의 1-based 순번.
+export function citizenOrder(houses: Pick<House, 'city' | 'role'>[]): Map<number, number> {
+  const order = new Map<number, number>()
+  for (const h of houses) {
+    if (h.role === 'citizen') order.set(h.city, order.size + 1)
+  }
+  return order
+}
+
 // 한 턴 결과를 보여 줄 단계 목록. 마지막 단계(day)가 최종 상태다.
-// ③ 주민 결정(flags)은 시민 집마다 차례로 표 줄을 쌓고 깃발을 세운다 (추가 연출 합계 2초 이내).
-export function nightSteps(result: Pick<TurnResult, 'vote'> & Partial<Pick<TurnResult, 'cities'>>): Step[] {
-  const citizens = result.cities?.filter((c) => c.role === 'citizen').length ?? 0
+// ③ 주민 결정(flags)은 표 줄이 있는 시민이면 집마다 차례로(650ms) 쌓고, AI 시민(withVotes=false)은 한 번에 세운다.
+export function nightSteps(
+  result: Pick<TurnResult, 'vote' | 'cities'>,
+  withVotes = true,
+): Step[] {
   const steps: Step[] = [
     { phase: 'night', ballots: 0, decided: 0, ms: 700 },
     { phase: 'notes', ballots: 0, decided: 0, ms: 1100 },
   ]
-  if (citizens > 0) {
+  if (withVotes) {
+    const citizens = result.cities.filter((c) => c.role === 'citizen').length
     for (let i = 1; i <= citizens; i++) steps.push({ phase: 'flags', ballots: 0, decided: i, ms: 650 })
   } else {
     steps.push({ phase: 'flags', ballots: 0, decided: Infinity, ms: 900 })
@@ -384,11 +376,11 @@ export function stagedHouses(
   const after = villageHouses(state, result)
   if (phase === 'day') return after
   const before = villageHouses(state, prev ?? { cities: [], next_hints: null })
-  let citizenIndex = 0
+  const orderOf = citizenOrder(after)
   return after.map((h, i) => {
     const tonight = result.cities.find((c) => c.city === h.city)?.hint ?? null
-    const order = h.role === 'citizen' ? ++citizenIndex : 0
-    const showFlag = reached(phase, 'suspicion') || (phase === 'flags' && order <= decided)
+    const order = orderOf.get(h.city) ?? 0
+    const showFlag = reached(phase, 'suspicion') || (phase === 'flags' && order > 0 && order <= decided)
     return {
       ...h,
       hint: tonight,

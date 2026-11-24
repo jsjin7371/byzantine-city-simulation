@@ -472,7 +472,7 @@
 
 /* 주민 집에 마우스·초점을 올릴 때 표시되는 의심 선과 숫자 꼬리표 */
 .vb-sus-links { pointer-events: none; animation: vb-fade 180ms cubic-bezier(0.23, 1, 0.32, 1) both; }
-.vb-sus-path { fill: none; stroke: #7a2416; stroke-linecap: round; opacity: .88; }
+.vb-sus-path { fill: none; stroke: #7a2416; stroke-linecap: butt; opacity: .88; }
 .vb-sus-link.is-over .vb-sus-path { stroke: var(--rust); opacity: .96; }
 .vb-sus-tag rect { fill: #f6ebcd; stroke: #7a2416; }
 .vb-sus-tag text { fill: #4a1a10; }
@@ -847,7 +847,9 @@
 /* 밤 연출 (목업 A3): 밤빛 → 오솔길로 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
 .vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 400ms ease both; }
 .vb-flag { transform-box: fill-box; transform-origin: left bottom; }
-.vb-board.is-playing .vb-flag.is-fresh { animation: vb-flip 320ms cubic-bezier(0.23, 1, 0.32, 1) 240ms both; }
+.vb-board.is-playing .vb-flag.is-fresh { animation: vb-flip 320ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-board.is-playing .vb-flag.is-fresh.after-votes { animation-delay: 240ms; }
+.vb-board.is-playing .vb-spark > path { animation-delay: 560ms; }
 @keyframes vb-flip { from { transform: scaleX(.06); opacity: .2; } }
 /* 밤 ③ 주민 결정 단계: 한 집씩 표 줄이 먼저 쌓인 뒤 깃발이 선다 */
 .vb-votes { pointer-events: none; }

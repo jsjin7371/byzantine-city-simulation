@@ -166,7 +166,8 @@ export function GamePage() {
   }, [inGame])
 
   const result = history.at(-1) ?? null
-  const steps = useMemo(() => (result ? nightSteps(result) : []), [result])
+  const withVotes = state?.config.citizen_type !== 'ai'
+  const steps = useMemo(() => (result ? nightSteps(result, withVotes) : []), [result, withVotes])
   // 단계마다 정해진 시간 뒤 다음 단계로. 마지막(다음 날)에 닿으면 연출 끝.
   useEffect(() => {
     if (step == null) return

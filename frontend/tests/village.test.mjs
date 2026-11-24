@@ -208,17 +208,27 @@ test('trial lines: one accusation per voter, then the verdict', () => {
   assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 마피아가 들켰다')
 })
 
-test('night steps: night, notes, flags (one per citizen when cities given), suspicion, then ballots, verdict, day', () => {
-  assert.deepEqual(nightSteps({ vote: null }).map((s) => s.phase), ['night', 'notes', 'flags', 'suspicion', 'day'])
-  const steps = nightSteps({ vote: { ballots: { 1: 3, 4: 1, 5: 3 }, accused: 3, caught: true } })
-  assert.deepEqual(steps.map((s) => s.phase), ['night', 'notes', 'flags', 'suspicion', 'trial', 'trial', 'trial', 'verdict', 'day'])
-  assert.deepEqual(steps.filter((s) => s.phase === 'trial').map((s) => s.ballots), [1, 2, 3])
-  assert.equal(steps.at(-1).ms, 0)
-  assert.equal(nightSteps({ vote: null }).reduce((t, s) => t + s.ms, 0), 3800)
-
-  // 시민 4명: ③ 단계가 집마다 차례로 1~4 진행, 추가 연출 시간은 2000ms 이내
+test('night steps: night, notes, flags (one per citizen with vote bars, single step for AI), suspicion, then ballots, verdict, day', () => {
   const fourCitizens = [1, 2, 4, 5].map((city) => ({ role: 'citizen', city }))
-  const detailed = nightSteps({ vote: null, cities: [{ role: 'player', city: 3 }, ...fourCitizens] })
+  const cities = [{ role: 'player', city: 3 }, ...fourCitizens]
+
+  // AI 시민(표 줄 없음): flags 1단계(900ms, decided=Infinity), 총 3800ms
+  const aiSteps = nightSteps({ vote: null, cities }, false)
+  assert.deepEqual(aiSteps.map((s) => s.phase), ['night', 'notes', 'flags', 'suspicion', 'day'])
+  assert.equal(aiSteps[2].decided, Infinity)
+  assert.equal(aiSteps[2].ms, 900)
+  assert.equal(aiSteps.reduce((t, s) => t + s.ms, 0), 3800)
+
+  const trialSteps = nightSteps(
+    { vote: { ballots: { 1: 3, 4: 1, 5: 3 }, accused: 3, caught: true }, cities },
+    false,
+  )
+  assert.deepEqual(trialSteps.map((s) => s.phase), ['night', 'notes', 'flags', 'suspicion', 'trial', 'trial', 'trial', 'verdict', 'day'])
+  assert.deepEqual(trialSteps.filter((s) => s.phase === 'trial').map((s) => s.ballots), [1, 2, 3])
+  assert.equal(trialSteps.at(-1).ms, 0)
+
+  // 눈치·다수결 시민 4명: ③ 단계가 집마다 차례로 1~4 진행(650ms씩), 추가 연출 시간은 2000ms 이내
+  const detailed = nightSteps({ vote: null, cities })
   const flagSteps = detailed.filter((s) => s.phase === 'flags')
   assert.deepEqual(flagSteps.map((s) => s.decided), [1, 2, 3, 4])
   const addedMs = detailed.reduce((t, s) => t + s.ms, 0) - 3800
@@ -227,7 +237,7 @@ test('night steps: night, notes, flags (one per citizen when cities given), susp
 
 test('visible lines follow the step: words in phase order, accusations one at a time', () => {
   const lines = villageLines(state, { ...turn, vote: { ballots: { 1: 3, 4: 1 }, accused: null, caught: false } })
-  const steps = nightSteps({ vote: { ballots: { 1: 3, 4: 1 } } })
+  const steps = nightSteps({ vote: { ballots: { 1: 3, 4: 1 } }, cities: turn.cities }, false)
   assert.deepEqual(texts(visibleLines(lines, steps[0])), ['① 날씨 관측 (4일째, 1번과 4번이 만났다)'])
   assert.ok(!texts(visibleLines(lines, steps[1])).some((t) => t.startsWith('잠깐')))
   assert.ok(texts(visibleLines(lines, steps[3])).some((t) => t.startsWith('잠깐')))
@@ -239,9 +249,17 @@ test('visible lines follow the step: words in phase order, accusations one at a 
 
 test('staged houses keep last turn flags and suspicion until their phase, windows show tonight until day', () => {
   const prev = { ...result, cities: result.cities.map((c) => ({ ...c, decision: 'stay', suspicion: c.suspicion && { ...c.suspicion, 3: 0 } })) }
-  const tonight = { ...result, cities: result.cities.map((c) => ({ ...c, hint: c.city === 1 ? 'danger' : c.hint })) }
+  const tonight = {
+    ...result,
+    cities: result.cities.map((c) => ({
+      ...c,
+      hint: c.city === 1 ? 'danger' : c.hint,
+      decision: c.city === 4 ? 'evacuate' : c.decision,
+    })),
+  }
   const at = (phase, p = prev) => Object.fromEntries(stagedHouses(state, p, tonight, phase).map((h) => [h.city, h]))
   assert.equal(at('notes')[1].flag, 'stay')
+  assert.equal(at('notes')[4].flag, 'stay')
   assert.equal(at('notes')[1].suspicion, 0)
   assert.equal(at('notes')[1].lit, true) // 오늘 밤 힌트 (태풍 = 정답)
   assert.equal(at('flags')[1].flag, 'evacuate')
@@ -249,9 +267,9 @@ test('staged houses keep last turn flags and suspicion until their phase, window
   assert.equal(at('suspicion')[1].suspicion, 60)
   assert.equal(at('day')[1].lit, false) // 다음 날 힌트
   assert.equal(at('notes', null)[1].flag, null) // 첫 턴은 깃발 없음
-  // flags 단계에서 decided=1이면 시계 방향 첫 시민(4번)만 새 깃발, 뒷 시민(1번)은 이전 깃발 유지
+  // flags 단계에서 decided=1이면 시계 방향 첫 시민(4번)만 새 깃발(evacuate), 뒷 시민(1번)은 이전 깃발(stay) 유지
   const firstOnly = Object.fromEntries(stagedHouses(state, prev, tonight, 'flags', 1).map((h) => [h.city, h]))
-  assert.equal(firstOnly[4].flag, 'stay')
+  assert.equal(firstOnly[4].flag, 'evacuate')
   assert.equal(firstOnly[1].flag, 'stay') // 아직 차례 전이라 이전 턴 값(stay)
   const allDecided = Object.fromEntries(stagedHouses(state, prev, tonight, 'flags', 3).map((h) => [h.city, h]))
   assert.equal(allDecided[1].flag, 'evacuate')
@@ -425,23 +443,28 @@ test('suspicionLinks returns thicker curves for positive suspicions and hides ze
   assert.deepEqual(suspicionLinks(houses, 3), [])
 })
 
-test('tonightVotes lists observation + notes with last-night trust weights, handles day 1, ring, pending claim, and majority', () => {
+test('tonightVotes lists observation + notes with last-night trust weights, handles day 1, ring, pending claim, majority, and ai', () => {
   // 1일째: 시민 쪽지 없음, 동료 마피아는 정답(danger→대피)의 반대(stay), 나는 고르는 중(null)
   const day1Houses = villageHouses(state, null)
   const v1 = tonightVotes(state, day1Houses, 1, {})
   assert.equal(v1.noCitizenNotesYet, true)
   assert.equal(v1.usesSuspicion, true)
+  assert.equal(v1.ai, false)
   assert.deepEqual(v1.items, [
     { from: 'hint', role: 'hint', claim: 'evacuate', weight: 100 },
     { from: 3, role: 'player', claim: null, weight: 100 },
     { from: 2, role: 'colleague', claim: 'stay', weight: 100 },
   ])
 
-  // 2일째 이후: 시민은 어제 결정(깃발), 가중치는 100 − 어젯밤 의심도
+  // 2일째 이후: 시민은 어제 결정(깃발), 가중치는 100 − 어젯밤 의심도 (4·5번 결정을 다르게 해 출처 뒤바뀜 검증)
   const detailed = {
     ...result,
     cities: result.cities.map((c) =>
-      c.city === 1 ? { ...c, suspicion: { 2: 20, 3: 60, 4: 100, 5: 0 } } : c,
+      c.city === 1
+        ? { ...c, suspicion: { 2: 20, 3: 60, 4: 100, 5: 0 } }
+        : c.city === 4
+          ? { ...c, decision: 'evacuate' }
+          : c,
     ),
   }
   const day2Houses = villageHouses(state, detailed)
@@ -451,7 +474,7 @@ test('tonightVotes lists observation + notes with last-night trust weights, hand
     { from: 'hint', role: 'hint', claim: 'stay', weight: 100 },
     { from: 3, role: 'player', claim: 'stay', weight: 40 },
     { from: 2, role: 'colleague', claim: 'stay', weight: 80 },
-    { from: 4, role: 'citizen', claim: 'stay', weight: 0 },
+    { from: 4, role: 'citizen', claim: 'evacuate', weight: 0 },
     { from: 5, role: 'citizen', claim: 'stay', weight: 100 },
   ])
 
@@ -464,5 +487,13 @@ test('tonightVotes lists observation + notes with last-night trust weights, hand
   const majState = { ...state, config: { ...config, citizen_type: 'majority' } }
   const vMaj = tonightVotes(majState, day2Houses, 1, { 1: 'evacuate' })
   assert.equal(vMaj.usesSuspicion, false)
+  assert.equal(vMaj.ai, false)
   assert.ok(vMaj.items.every((x) => x.weight === 100))
+
+  // AI 주민: LLM이 판단하므로 100 − 의심도 가중치를 쓰지 않고 모두 같은 크기(100)
+  const aiState = { ...state, config: { ...config, citizen_type: 'ai' } }
+  const vAi = tonightVotes(aiState, day2Houses, 1, { 1: 'evacuate' })
+  assert.equal(vAi.usesSuspicion, false)
+  assert.equal(vAi.ai, true)
+  assert.ok(vAi.items.every((x) => x.weight === 100))
 })
