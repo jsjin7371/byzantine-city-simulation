@@ -26,12 +26,18 @@ function Balance({ scale, me }: { scale: Scale; me: number }) {
     )
   }
   return (
-    <svg className="vl-balance" viewBox="0 0 120 62" width="84" height="44" aria-hidden="true">
+    <svg className="vl-balance" viewBox="0 0 120 76" width="120" height="76" aria-hidden="true">
       <path d="M60 24 V56 M48 58 H72" className="vl-post" />
       <path d="M18 24 H102" className="vl-beam" style={{ '--tilt': `${tilt}deg` } as CSSProperties} />
       {pan(1)}
       {pan(-1)}
       <circle cx="60" cy="24" r="2.5" className="vl-pivot" />
+      <text x="18" y="71" fontSize="12.5" fontWeight="700" textAnchor="middle" className="vl-pan-label">
+        대피
+      </text>
+      <text x="102" y="71" fontSize="12.5" fontWeight="700" textAnchor="middle" className="vl-pan-label">
+        잔류
+      </text>
     </svg>
   )
 }
@@ -42,6 +48,20 @@ function WhyBox({ id, scale }: { id: string; scale: ScaleLine }) {
   return (
     <div id={id} className="vl-why-box">
       <Balance scale={scale.scale} me={scale.me} />
+      <div className="vl-legend" aria-hidden="true">
+        <span>
+          <i className="vl-swatch is-hint" />
+          자기 관측
+        </span>
+        <span>
+          <i className="vl-swatch is-note" />
+          이웃 쪽지
+        </span>
+        <span>
+          <i className="vl-swatch is-mine" />
+          내 쪽지
+        </span>
+      </div>
       <ul className="vl-why-list">
         {reasons.map((line, i) => (
           <li key={i}>{line}</li>
@@ -81,6 +101,7 @@ export function VillageLog({
         <h2>마을 이야기</h2>
         {day != null && <span className="vl-day">{day}일째 밤</span>}
       </div>
+      <p className="vl-intro">밤마다 주민들이 나눈 말과 결정한 이유가 적힌다. 줄 옆 › 버튼을 누르면 속마음 저울이 보인다.</p>
       <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
         {!entries && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았다. 집마다 쪽지를 고르고 밤으로 넘긴다.</p>}
         {entries?.map((entry, i) => {

@@ -312,10 +312,10 @@
 
 .vb-board {
   display: block;
-  width: min(100%, calc((100svh - 76px) * 900 / 660));
+  width: min(100%, calc((100svh - 76px) * 900 / 698));
   max-height: 100%;
   height: auto;
-  aspect-ratio: 900 / 660;
+  aspect-ratio: 900 / 698;
   border-radius: 8px;
   box-shadow: 0 8px 28px rgba(34, 24, 12, 0.28);
   fill: var(--ink);
@@ -354,6 +354,8 @@
 @keyframes vb-alert { from { transform: scale(1); } to { transform: scale(1.25); } }
 .vb-post path { stroke: var(--rust); stroke-width: 3; }
 .vb-gauge.is-over .vb-post path { stroke: #2b1a0c; }
+.vb-post-label { fill: var(--rust); paint-order: stroke; stroke: #efe0b9; stroke-width: 2.5px; stroke-linejoin: round; }
+.vb-gauge.is-over .vb-post-label { fill: #2b1a0c; }
 
 .vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
 .vb-share-tag rect { fill: #f6ebcd; stroke: #b8861f; }
@@ -509,6 +511,13 @@
   border-radius: 4px;
   padding: 2px 8px;
 }
+.vl-intro {
+  margin: -2px 0 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  word-break: keep-all;
+}
 .vl-log {
   flex: 1 1 auto;
   min-height: 0;
@@ -659,9 +668,31 @@
 .vl-pan .vl-plate { fill: #c99a5b; stroke-width: 1.5; }
 .vl-pivot { fill: var(--wood); }
 .vl-pan rect { stroke: #3b2a1a; stroke-width: .8; }
-.vl-pan .is-hint { fill: #6f8f3e; }
-.vl-pan .is-note { fill: #d9bb7c; }
-.vl-pan .is-mine { fill: var(--rust); }
+.vl-pan-label { fill: var(--ink-soft); }
+.vl-pan .is-hint, .vl-swatch.is-hint { fill: #6f8f3e; background: #6f8f3e; }
+.vl-pan .is-note, .vl-swatch.is-note { fill: #d9bb7c; background: #d9bb7c; }
+.vl-pan .is-mine, .vl-swatch.is-mine { fill: var(--rust); background: var(--rust); }
+.vl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 10px;
+  font-size: 13.5px;
+  line-height: 1.3;
+  color: var(--ink-soft);
+}
+.vl-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.vl-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid #3b2a1a;
+}
 .vl-foot {
   flex: none;
   margin-top: 12px;

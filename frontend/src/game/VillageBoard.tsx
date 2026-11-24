@@ -231,6 +231,36 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
   )
 }
 
+// 보드 하단 상시 범례: 깃발(지난밤 결정)과 창문 불빛(다음 관측).
+function BoardLegend() {
+  return (
+    <g
+      className="vb-legend"
+      role="img"
+      aria-label="보드 범례: 깃발은 그 주민의 지난밤 결정(대피/잔류), 창문 불 켜짐은 다음 관측이 맞음, 꺼짐은 틀림"
+    >
+      <rect x="0" y="660" width="900" height="38" fill="#efe0b9" />
+      <line x1="0" y1="660" x2="900" y2="660" stroke="#4a3119" strokeWidth="2" />
+      <g aria-hidden>
+        <use href="#vb-flag-evacuate" transform="translate(88,691) scale(.48)" />
+        <use href="#vb-flag-stay" transform="translate(116,691) scale(.48)" />
+        <text x="148" y="684" fontSize="14.5" fontWeight="700">
+          깃발: 그 주민의 지난밤 결정(대피/잔류)
+        </text>
+        <line x1="444" y1="669" x2="444" y2="689" stroke="#c3a878" strokeWidth="1.5" />
+        <use href="#vb-win-on" transform="translate(468,679) scale(.85)" />
+        <text x="486" y="684" fontSize="14.5" fontWeight="700">
+          창문 불 켜짐: 다음 관측 맞음
+        </text>
+        <use href="#vb-win-off" transform="translate(716,679) scale(.85)" />
+        <text x="732" y="684" fontSize="14.5" fontWeight="700">
+          꺼짐: 틀림
+        </text>
+      </g>
+    </g>
+  )
+}
+
 // 쪽지 하나로 바뀔 의심도 읽기용 문구. 예) "의심도 50에서 70, 재판 열림"
 const previewText = (p: Preview) => `의심도 ${p.from}에서 ${p.next}${p.trial ? ', 재판 열림' : ''}`
 
@@ -323,6 +353,9 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
           <g className="vb-post">
             <path d={`M${postX} -12 V9`} />
             <path d={`M${postX - 5} -13 H${postX + 5}`} />
+            <text x={postX} y="-16" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-post-label" aria-hidden>
+              재판 {SUSPICION.threshold}
+            </text>
           </g>
           {over && (
             <g className="vb-knot" aria-hidden>
@@ -630,7 +663,7 @@ export function VillageBoard({
     <svg
       ref={svg}
       className={night ? 'vb-board is-playing' : 'vb-board'}
-      viewBox="0 0 900 660"
+      viewBox="0 0 900 698"
       role="group"
       aria-label={`${turn}턴 뒤 마을 보드`}
       onKeyDown={(e) => e.key === 'Escape' && setOpen(null)}
@@ -638,6 +671,7 @@ export function VillageBoard({
       <Defs />
       <Ground />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
+      <BoardLegend />
       <Sky danger={state.truth === 'danger'} />
       {night && <rect className="vb-night" width="900" height="598" />}
       {night && (
