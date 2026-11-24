@@ -1,15 +1,16 @@
 """게임 세션 API (docs/spec.md 7.9). 턴마다 God을 호출해 결과를 받은 그대로 저장·중계한다."""
 import csv
 import io
+from datetime import timedelta
 from threading import Lock
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.god.client import GodGameError
-from app.models import Experiment, Game, GameTurn, Status
+from app.models import Experiment, Game, GameTurn, Status, utcnow
 from app.schemas import GameConfig, GameTurnIn
 
 router = APIRouter(prefix="/games", tags=["games"])
@@ -90,7 +91,12 @@ def fail(db: Session, game: Game, e: GodGameError):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, summary="게임 시작")
-def create_game(body: GameConfig, request: Request, db: Session = Depends(get_db)):
+def create_game(
+    body: GameConfig,
+    request: Request,
+    replace: int | None = Query(None, description="지금 하던 게임 id. 그 판을 끝내고 새로 시작한다"),
+    db: Session = Depends(get_db),
+):
     with _create_lock:
         active = db.scalar(
             select(Experiment.id).where(Experiment.status.in_([Status.PENDING, Status.RUNNING])).limit(1)
@@ -99,7 +105,22 @@ def create_game(body: GameConfig, request: Request, db: Session = Depends(get_db
             raise HTTPException(
                 status.HTTP_409_CONFLICT, f"이미 실행 중인 실험(#{active})이 있습니다. 끝난 뒤 다시 시작해 주세요."
             )
-        db.execute(update(Game).where(Game.status == Status.IN_PROGRESS).values(status=Status.ABANDONED))
+        # God은 게임을 한 판만 들고 있으므로 다른 사람의 진행 중인 판을 끊지 않게 한 판씩만 받는다.
+        # 하던 판(replace)과 오래 방치된 판만 끝내고, 그래도 진행 중인 판이 있으면 거절한다.
+        in_progress = Game.status == Status.IN_PROGRESS
+        if replace is not None:
+            db.execute(update(Game).where(in_progress, Game.id == replace).values(status=Status.ABANDONED))
+        idle_minutes = request.app.state.settings.game_idle_minutes
+        idle = timedelta(minutes=idle_minutes)
+        db.execute(update(Game).where(in_progress, Game.updated_at < utcnow() - idle).values(status=Status.ABANDONED))
+        busy = db.scalar(select(Game.id).where(in_progress).limit(1))
+        if busy is not None:
+            db.commit()  # 방치된 판 정리는 남긴다
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"다른 사람이 게임을 하고 있습니다. 잠시 후 다시 시작해 주세요. "
+                f"(그 판이 {idle_minutes:g}분 동안 진행되지 않으면 자동으로 끝납니다)",
+            )
         game = Game(config=body.model_dump(), status=Status.IN_PROGRESS)
         db.add(game)
         db.flush()  # id만 받아 둔다. God 시작이 성공할 때까지 커밋하지 않아 state 없는 게임이 남지 않는다
@@ -155,6 +176,7 @@ def play_turn(game_id: int, body: GameTurnIn, request: Request, db: Session = De
         fail(db, game, GodGameError(f"엔진(God) 턴 응답 형식이 잘못되었습니다. (상세: {e!r})"))
     db.add(GameTurn(game_id=game_id, turn=changes["turn"], result=result))
     game.state = {**game.state, **changes}
+    game.updated_at = utcnow()
     if changes["game_over"]:
         game.status = Status.FINISHED
     db.commit()

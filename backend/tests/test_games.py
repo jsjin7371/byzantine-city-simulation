@@ -1,15 +1,24 @@
 import csv
 import io
+from datetime import timedelta
 
 from app.god.client import GodGameError
-from app.models import Experiment, Game, Status
+from app.models import Experiment, Game, Status, utcnow
 from app.schemas import GameConfig
 
 
-def start(client, **cfg):
-    r = client.post("/games", json={"seed": 1, **cfg})
+def start(client, replace=None, **cfg):
+    params = {} if replace is None else {"replace": replace}
+    r = client.post("/games", params=params, json={"seed": 1, **cfg})
     assert r.status_code == 201, r.text
     return r.json()
+
+
+def set_idle(client, game_id, minutes):
+    """게임의 마지막 진행 시각을 minutes분 전으로 돌린다."""
+    with client.app.state.session_factory() as s:
+        s.get(Game, game_id).updated_at = utcnow() - timedelta(minutes=minutes)
+        s.commit()
 
 
 def claims_for(state):
@@ -50,10 +59,15 @@ def test_share_pairs_announced(client):
 
 
 def test_bot_win_rate(client):
-    assert start(client, mafia_count=1, sensor_error=0.48)["bot_win_rate"] == 0.32
-    assert start(client, mafia_count=1, sensor_error=0.4, citizen_type="majority")["bot_win_rate"] == 0.748
-    assert start(client, mafia_count=1, sensor_error=0.3, citizen_type="ai")["bot_win_rate"] is None
-    assert start(client, sensor_error=0.3, share_mode="none")["bot_win_rate"] is None
+    prev = None
+    for cfg, expected in [
+        ({"mafia_count": 1, "sensor_error": 0.48}, 0.32),
+        ({"mafia_count": 1, "sensor_error": 0.4, "citizen_type": "majority"}, 0.748),
+        ({"mafia_count": 1, "sensor_error": 0.3, "citizen_type": "ai"}, None),
+        ({"sensor_error": 0.3, "share_mode": "none"}, None),
+    ]:
+        prev = start(client, replace=prev and prev["game_id"], **cfg)
+        assert prev["bot_win_rate"] == expected
 
 
 def test_errors(client):
@@ -67,12 +81,51 @@ def test_errors(client):
     assert client.post("/games", json={"mafia_count": 3}).status_code == 422
 
 
-def test_new_game_abandons_previous(client):
+def test_new_game_rejected_while_other_in_progress(client):
+    """다른 사람의 진행 중인 판은 끊지 않고 새 게임을 409로 거절한다."""
     first = start(client)
-    second = start(client)
+    r = client.post("/games", json={})
+    assert r.status_code == 409 and "다른 사람이 게임을 하고 있습니다" in r.json()["detail"]
+    assert client.get(f"/games/{first['game_id']}").json()["status"] == "in_progress"
+    assert play(client, first, 1).status_code == 200  # 기존 판은 그대로 계속
+
+
+def test_replace_own_game(client):
+    """하던 판 id를 replace로 넘기면 그 판을 끝내고 새로 시작한다."""
+    first = start(client)
+    second = start(client, replace=first["game_id"])
     assert client.get(f"/games/{first['game_id']}").json()["status"] == "abandoned"
     assert play(client, first, 1).status_code == 409
     assert client.get(f"/games/{second['game_id']}").json()["status"] == "in_progress"
+    # 이미 끝난 판이나 없는 id를 넘겨도 다른 사람의 판은 끊기지 않는다
+    assert client.post("/games", params={"replace": first["game_id"]}, json={}).status_code == 409
+    assert client.post("/games", params={"replace": 999}, json={}).status_code == 409
+
+
+def test_idle_game_cleared(client):
+    """마지막 진행 후 GAME_IDLE_MINUTES(기본 10분)가 지난 판은 새 게임 요청 때 abandoned."""
+    first = start(client)
+    set_idle(client, first["game_id"], 9)
+    assert client.post("/games", json={}).status_code == 409
+    set_idle(client, first["game_id"], 11)
+    second = start(client)
+    assert client.get(f"/games/{first['game_id']}").json()["status"] == "abandoned"
+    assert client.get(f"/games/{second['game_id']}").json()["status"] == "in_progress"
+
+
+def test_turn_refreshes_idle_timer(client):
+    first = start(client)
+    set_idle(client, first["game_id"], 11)
+    assert play(client, first, 1).status_code == 200  # 턴을 진행하면 다시 활성
+    assert client.post("/games", json={}).status_code == 409
+
+
+def test_finished_game_does_not_block(client):
+    state = start(client)
+    for t in range(1, 16):
+        if play(client, state, t).json()["game_over"]:
+            break
+    start(client)  # 끝난 판은 막지 않는다
 
 
 def test_409_while_experiment_active(client):
@@ -102,8 +155,10 @@ def test_start_failure_leaves_no_game(client):
             raise exc
 
         client.app.state.game_god.start = boom
-        assert client.post("/games", json={}).status_code == 502
+        r = client.post("/games", params={"replace": prev["game_id"]}, json={})
+        assert r.status_code == 502
         assert client.get(f"/games/{prev['game_id'] + 1}").status_code == 404  # 행이 남지 않음
+        # 시작에 실패하면 replace로 끝내려던 판도 그대로 남는다
         assert client.get(f"/games/{prev['game_id']}").json()["status"] == "in_progress"
 
 

@@ -96,6 +96,8 @@ class Game(Base):
     config: Mapped[dict] = mapped_column(JSON)
     state: Mapped[dict | None] = mapped_column(JSON)  # God의 게임 상태(7.8). 턴마다 갱신
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    # 마지막으로 시작하거나 턴을 진행한 시각. 오래 방치된 판을 정리하는 기준 (7.9)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
 class GameTurn(Base):

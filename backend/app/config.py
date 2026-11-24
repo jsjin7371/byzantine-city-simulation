@@ -18,6 +18,8 @@ class Settings:
     god_url: str = field(default_factory=lambda: os.getenv("GOD_URL", "http://god:8000"))
     god_timeout: float = field(default_factory=lambda: float(os.getenv("GOD_TIMEOUT", "120")))
     n_cities: int = field(default_factory=lambda: int(os.getenv("N_CITIES", "5")))
+    # 게임은 한 번에 한 판. 이 시간(분) 동안 턴 진행이 없는 판은 새 게임 요청 때 abandoned로 정리한다
+    game_idle_minutes: float = field(default_factory=lambda: float(os.getenv("GAME_IDLE_MINUTES", "10")))
     # 프론트 개발 서버 주소 (Vite 5173, CRA 3000)
     cors_origins: list[str] = field(
         default_factory=lambda: _list(os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000"))
