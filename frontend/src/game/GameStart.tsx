@@ -388,7 +388,6 @@ function OptionPlank<T extends string>({
   rotate,
   ariaLabel,
   label,
-  labelX = 444,
   items,
   value,
   onChange,
@@ -399,7 +398,6 @@ function OptionPlank<T extends string>({
   rotate: number
   ariaLabel: string
   label: string
-  labelX?: number
   items: readonly OptionItem<T>[]
   value: T
   onChange: (val: T) => void
@@ -421,7 +419,7 @@ function OptionPlank<T extends string>({
         <circle cx="418" cy="12" r="2.8" fill="#4a3119" />
         <circle cx="418" cy="54" r="2.8" fill="#4a3119" />
 
-        <text x={labelX} y="41" fontSize="25" fontWeight="700" className="vb-pencil">
+        <text x="444" y="41" fontSize="25" fontWeight="700" className="vb-pencil">
           {label}
         </text>
 
@@ -743,7 +741,6 @@ export function GameStart({
             rotate={-0.5}
             ariaLabel="난이도"
             label="난이도:"
-            labelX={432}
             items={diffItems}
             value={difficulty}
             onChange={onDifficulty}
@@ -761,9 +758,9 @@ export function GameStart({
                 onMouseEnter={openHover}
                 onMouseLeave={closeHoverSoon}
               >
-                <rect x="499" y="11" width="44" height="44" fill="transparent" />
-                <circle className="gs-help-ring" cx="521" cy="33" r="13.5" filter="url(#vs-rough-sm)" />
-                <text x="521" y="40" fontSize="20" fontWeight="700" textAnchor="middle" className="vb-pencil">
+                <rect x="1044" y="2" width="62" height="62" fill="transparent" />
+                <circle className="gs-help-ring" cx="1075" cy="33" r="16.5" filter="url(#vs-rough-sm)" />
+                <text x="1075" y="41" fontSize="24" fontWeight="700" textAnchor="middle" className="vb-pencil">
                   ?
                 </text>
               </g>
