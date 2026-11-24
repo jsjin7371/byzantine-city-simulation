@@ -1,5 +1,9 @@
+import csv
+import io
+
 from app.god.client import GodGameError
-from app.models import Experiment, Status
+from app.models import Experiment, Game, Status
+from app.schemas import GameConfig
 
 
 def start(client, **cfg):
@@ -101,3 +105,71 @@ def test_start_failure_leaves_no_game(client):
         assert client.post("/games", json={}).status_code == 502
         assert client.get(f"/games/{prev['game_id'] + 1}").status_code == 404  # 행이 남지 않음
         assert client.get(f"/games/{prev['game_id']}").json()["status"] == "in_progress"
+
+
+def add_game(client, status="finished", outcome="win", **cfg):
+    """집계 테스트용으로 God 없이 끝난 게임 행을 바로 넣는다."""
+    config = GameConfig(**{"sensor_error": 0.4, **cfg}).model_dump()
+    with client.app.state.session_factory() as s:
+        s.add(Game(status=status, config=config, state={"outcome": outcome}))
+        s.commit()
+
+
+def stats_row(client, citizen_type, difficulty):
+    items = client.get("/games/stats").json()["items"]
+    return next(i for i in items if i["citizen_type"] == citizen_type and i["difficulty"] == difficulty)
+
+
+def test_stats_empty(client):
+    items = client.get("/games/stats").json()["items"]
+    assert len(items) == 9  # 시민 종류 3 × 난이도 3, 판이 없어도 0판으로
+    normal = stats_row(client, "wary", "normal")
+    assert normal == {"citizen_type": "wary", "difficulty": "normal", "label": "보통", "games": 0, "wins": 0,
+                      "win_rate": None, "bot_win_rate": 0.10}
+    assert stats_row(client, "ai", "easy")["bot_win_rate"] is None
+
+
+def test_stats_counts_only_human_default_finished(client):
+    add_game(client, outcome="win")
+    add_game(client, outcome="perfect_win")
+    add_game(client, outcome="loss")
+    add_game(client, outcome="win", seed=7)  # seed는 규칙을 바꾸지 않으므로 포함
+    # 아래는 모두 제외
+    add_game(client, player="bot")
+    add_game(client, status="in_progress", outcome=None)
+    add_game(client, status="abandoned", outcome=None)
+    add_game(client, status="failed", outcome=None)
+    add_game(client, share_mode="none")
+    add_game(client, mafia_count=2)
+    add_game(client, sensor_error=0.2)  # 프리셋 밖
+    add_game(client, outcome="loss", citizen_type="majority", sensor_error=0.3)
+
+    wary = stats_row(client, "wary", "normal")
+    assert (wary["games"], wary["wins"], wary["win_rate"]) == (4, 3, 0.75)
+    majority = stats_row(client, "majority", "hard")
+    assert (majority["games"], majority["wins"], majority["win_rate"], majority["bot_win_rate"]) == (1, 0, 0.0, 0.482)
+    assert sum(i["games"] for i in client.get("/games/stats").json()["items"]) == 5
+
+
+def test_stats_from_real_game(client):
+    state = start(client, sensor_error=0.48)
+    for t in range(1, 16):
+        r = play(client, state, t).json()
+        if r["game_over"]:
+            break
+    row = stats_row(client, "wary", "easy")
+    assert row["games"] == 1 and row["wins"] == (r["outcome"] in ("win", "perfect_win"))
+
+
+def test_stats_csv(client):
+    add_game(client, outcome="win")
+    r = client.get("/games/stats.csv")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment" in r.headers["content-disposition"]
+    rows = list(csv.DictReader(io.StringIO(r.content.decode("utf-8-sig"))))
+    assert len(rows) == 9
+    normal = next(row for row in rows if row["citizen_type"] == "wary" and row["difficulty"] == "normal")
+    assert normal == {"citizen_type": "wary", "difficulty": "normal", "label": "보통", "games": "1", "wins": "1",
+                      "win_rate": "1.0", "bot_win_rate": "0.1"}
+    assert next(row for row in rows if row["citizen_type"] == "ai")["bot_win_rate"] == ""
