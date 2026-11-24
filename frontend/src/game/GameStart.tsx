@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import type { KeyboardEvent, RefObject } from 'react'
-import { TOTAL_TURNS, citizenTypes, difficulties } from '../gameApi'
+import { citizenTypes, difficulties } from '../gameApi'
 import type { CitizenType, Difficulty } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
@@ -206,7 +206,7 @@ function StartDefs() {
         <rect x="424" y="80" width="592" height="96" rx="4" />
       </clipPath>
       <clipPath id="vs-clip-goal-note">
-        <path d="M366 190 H1056 L1074 208 V258 H366 Z" />
+        <path d="M366 190 H1056 L1074 208 V276 H366 Z" />
       </clipPath>
       <clipPath id="vs-clip-plank">
         <path d={PLANK_PATH} />
@@ -590,25 +590,28 @@ export function GameStart({
         {/* 목표 종이 쪽지 */}
         <g>
           <path
-            d="M366 190 H1056 L1074 208 V258 H366 Z"
+            d="M366 190 H1056 L1074 208 V276 H366 Z"
             fill="#f6ebcd"
             stroke="#8a6a3e"
             strokeWidth="2.2"
             filter="url(#vs-rough)"
           />
-          <rect x="366" y="190" width="708" height="68" filter="url(#vs-grain)" clipPath="url(#vs-clip-goal-note)" />
+          <rect x="366" y="190" width="708" height="86" filter="url(#vs-grain)" clipPath="url(#vs-clip-goal-note)" />
           <path d="M1056 190 V208 H1074" fill="#e4d2a6" stroke="#8a6a3e" strokeWidth="1.6" filter="url(#vs-rough)" />
           <circle cx="384" cy="206" r="5.5" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" filter="url(#vs-rough)" />
-          <text x="720" y="218" fontSize="20" fontWeight="700" textAnchor="middle" className="vb-pencil">
-            마피아로 숨어 {TOTAL_TURNS}일째 밤에 주민 반 넘게 틀린 결정을 내리게 해요.
+          <text x="720" y="216" fontSize="18.5" fontWeight="700" textAnchor="middle" className="vb-pencil">
+            정체를 숨긴 마피아가 되어, 마지막 밤에 주민 과반이 날씨와 반대로 움직이게 해요.
           </text>
-          <text x="720" y="245" fontSize="20" fontWeight="700" textAnchor="middle" className="vb-pencil">
-            재판에 걸리면 바로 져요.
+          <text x="720" y="240" fontSize="17.5" fontWeight="700" textAnchor="middle" className="vb-pencil-sm">
+            (태풍이면 집에 붙잡아 두고, 맑으면 대피시켜요)
+          </text>
+          <text x="720" y="264" fontSize="18.5" fontWeight="700" textAnchor="middle" className="vb-pencil">
+            거짓 쪽지가 들키면 의심이 쌓이고, 재판에서 내가 마피아로 지목되면 져요.
           </text>
         </g>
 
         {/* 선택 표지판 (난이도 / 주민) + 주민 설명 쪽지 3장 */}
-        <g role="group" aria-label="게임 설정 표지판">
+        <g role="group" aria-label="게임 설정 표지판" transform="translate(0, 18)">
           <ellipse cx="720" cy="596" rx="34" ry="8" fill="#2a3d1d" opacity="0.38" filter="url(#vs-rough)" />
           <rect
             x="711"
@@ -707,6 +710,7 @@ export function GameStart({
 
         {/* "마을로 들어가기" 큰 초록 나무 판자 버튼 */}
         <g
+          transform="translate(0, 18)"
           className={busy ? 'gs-enter is-busy' : 'vb-clickable gs-enter'}
           role="button"
           tabIndex={0}
