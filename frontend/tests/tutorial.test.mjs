@@ -15,8 +15,8 @@ test('splitSentences breaks on sentence-ending punctuation without changing text
 
 test('tutorialStep progresses across 3 days based on turn, animation, note card, scale toggle, and game over', () => {
   assert.equal(TUTORIAL_SEED, 15)
-  assert.equal(TUTORIAL_STEPS.length, 13)
-  // 문구에 숫자(1/13 등)가 들어가지 않는다
+  assert.equal(TUTORIAL_STEPS.length, 14)
+  // 문구에 숫자(1/14 등)가 들어가지 않는다
   for (const s of TUTORIAL_STEPS) assert.doesNotMatch(s.text, /\d/)
 
   const day1 = { turn: 0, playing: false, cardOpen: false, scaleOpen: false, gameOver: false }
@@ -83,30 +83,39 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   assert.equal(tutorialStep(10, { ...day2, scaleOpen: true, viewingPast: true }).cursor, 10)
   assert.equal(tutorialStep(10, { ...day2, scaleOpen: true, viewingPast: true }).step, null)
 
-  // 마지막 전 단계 다음 → 안내 숨기고 3일 밤 끝날 때까지 자유 진행
+  // 2일 마지막 단계 다음 → 안내 숨기고 3일 밤 끝날 때까지 자유 진행
   assert.equal(tutorialStep(12, day2).step, null)
   assert.equal(tutorialStep(12, { turn: 2, playing: true, cardOpen: false, gameOver: false }).step, null)
   assert.equal(tutorialStep(12, { turn: 2, playing: false, cardOpen: false, gameOver: false }).step, null)
   assert.equal(tutorialStep(12, { turn: 3, playing: true, cardOpen: false, gameOver: false }).step, null)
 
-  // 3일 밤 연출이 끝난 뒤: 마지막 단계(대상 없음, 이어서 하기 / 시작 화면으로)
-  const end = tutorialStep(12, { turn: 3, playing: false, cardOpen: false, gameOver: false })
+  // 3일 밤 연출이 끝난 뒤: 주민 종류 안내(다수결·AI) → 마지막 종료 단계(이어서 하기 / 시작 화면으로)
+  const day3 = { turn: 3, playing: false, cardOpen: false, gameOver: false }
+  const rolesStep = tutorialStep(12, day3)
+  assert.equal(rolesStep.step?.highlight, null)
+  assert.equal(rolesStep.step?.closing, true)
+  assert.match(rolesStep.step?.text ?? '', /다수결 주민.*한 표.*재판/)
+  assert.match(rolesStep.step?.text ?? '', /AI 주민.*스스로 판단/)
+  assert.equal(splitSentences(rolesStep.step?.text ?? '').length, 3)
+
+  const end = tutorialStep(13, day3)
   assert.equal(end.step?.highlight, null)
   assert.equal(end.step?.finish, true)
 
   // 4일째 이후에는 안내 종료
   assert.equal(tutorialStep(12, { turn: 4, playing: false, cardOpen: false, gameOver: false }).step, null)
+  assert.equal(tutorialStep(13, { turn: 4, playing: false, cardOpen: false, gameOver: false }).step, null)
 
-  // 1일 낮에 단계를 덜 눌러도 밤을 넘기면 2일 안내로, 2일째 밤을 넘기면 3일 끝 대기로 건너뛴다
+  // 1일 낮에 단계를 덜 눌러도 밤을 넘기면 2일 안내로, 2일째 밤을 넘기면 3일 끝 마무리(주민 종류 안내)로 건너뛴다
   assert.equal(tutorialStep(0, day2).step?.highlight, 'flags')
   assert.equal(tutorialStep(7, { turn: 2, playing: false, cardOpen: false, gameOver: false }).step, null)
-  assert.equal(tutorialStep(7, { turn: 3, playing: false, cardOpen: false, gameOver: false }).step?.finish, true)
+  assert.equal(tutorialStep(7, day3).step?.closing, true)
 
   // 지난밤 넘겨보기 중에는 커서를 유지하되 단계 표시와 강조를 숨긴다
-  const past = tutorialStep(12, { turn: 3, playing: false, cardOpen: false, gameOver: false, viewingPast: true })
-  assert.equal(past.cursor, 12)
+  const past = tutorialStep(13, { ...day3, viewingPast: true })
+  assert.equal(past.cursor, 13)
   assert.equal(past.step, null)
-  assert.equal(tutorialStep(past.cursor, { turn: 3, playing: false, cardOpen: false, gameOver: false, viewingPast: false }).step?.finish, true)
+  assert.equal(tutorialStep(past.cursor, day3).step?.finish, true)
 
   // 튜토리얼 중 게임이 끝나면(재판 발각 등) 안내를 끈다
   const caught = tutorialStep(4, { turn: 2, playing: false, cardOpen: false, gameOver: true })

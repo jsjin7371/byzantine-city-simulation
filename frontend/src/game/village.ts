@@ -761,6 +761,7 @@ export type TutorialStep = {
   text: string
   highlight: TutorialHighlight | null
   wait?: 'card' | 'turn' | 'scale'
+  closing?: boolean
   finish?: boolean
 }
 
@@ -818,6 +819,11 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: null,
+    closing: true,
+    text: '시작 화면에서 다른 주민도 고를 수 있어요. 다수결 주민은 의심도가 없어 모든 쪽지를 똑같이 한 표로 세고 재판도 안 열려요. AI 주민은 규칙 대신 AI가 관측·쪽지·의심도를 보고 스스로 판단해요.',
+  },
+  {
+    highlight: null,
     finish: true,
     text: '튜토리얼은 여기까지예요. 재판에서 내가 마피아로 지목되면 지고, 마지막 밤에 주민 과반을 속이면 이겨요.',
   },
@@ -827,6 +833,7 @@ const TUTORIAL_STEP = {
   cardWait: TUTORIAL_STEPS.findIndex((s) => s.wait === 'card'),
   day2Start: TUTORIAL_STEPS.findIndex((s) => s.wait === 'turn') + 1,
   scaleWait: TUTORIAL_STEPS.findIndex((s) => s.wait === 'scale'),
+  closing: TUTORIAL_STEPS.findIndex((s) => s.closing),
   finish: TUTORIAL_STEPS.findIndex((s) => s.finish),
   done: TUTORIAL_STEPS.length,
 } as const
@@ -855,17 +862,17 @@ export function tutorialStep(
   cursor: number,
   { turn, playing, cardOpen, scaleOpen = false, gameOver, viewingPast = false }: TutorialContext,
 ): { cursor: number; step: TutorialStep | null } {
-  const { cardWait, day2Start, scaleWait, finish, done } = TUTORIAL_STEP
+  const { cardWait, day2Start, scaleWait, closing, done } = TUTORIAL_STEP
   if (gameOver || cursor < 0 || cursor >= done || turn > TUTORIAL_END_TURN) return { cursor: done, step: null }
 
   let next = cursor
   if (turn === 0 && next === cardWait && cardOpen) next = cardWait + 1
   else if (turn === 1 && next < day2Start) next = day2Start
-  else if (turn >= 2 && next < finish) next = finish
+  else if (turn >= 2 && next < closing) next = closing
 
   if (turn === 1 && !playing && !viewingPast && next === scaleWait && scaleOpen) next = scaleWait + 1
 
   if (playing || viewingPast) return { cursor: next, step: null }
-  if (next === finish && turn < TUTORIAL_END_TURN) return { cursor: next, step: null }
+  if (next >= closing && turn < TUTORIAL_END_TURN) return { cursor: next, step: null }
   return { cursor: next, step: TUTORIAL_STEPS[next] }
 }
