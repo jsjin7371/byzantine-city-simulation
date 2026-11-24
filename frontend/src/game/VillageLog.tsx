@@ -75,7 +75,7 @@ function TonightScaleBlock({
       className={highlighted ? 'vl-tonight is-tut-votes' : 'vl-tonight'}
       aria-label={`${city}번 집 · ${TONIGHT_SCALE_TITLE}`}
     >
-      <p className="sr-only">{`${city}번 집, ${aria}`}</p>
+      <p className="sr-only">{aria}</p>
       {highlighted && (
         <svg
           className="tut-tonight-frame"

@@ -333,7 +333,7 @@ function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: 
       ? `M 5 ${targetRow.top + 16.5} Q ${(5 + x1) / 2} ${targetRow.top + 18.2} ${x1} ${targetRow.top + 15.8}`
       : `M ${x0 + 8} ${y0} Q ${(x0 + x1) / 2} ${y0 - 1.8} ${x1 - 5} ${y0 + 0.6} Q ${x1 + 2.5} ${ym} ${x1 - 4} ${y1 - 0.5} Q ${(x0 + x1) / 2} ${y1 + 1.8} ${x0 + 6} ${y1 - 0.5} Q ${x0 - 2} ${ym} ${x0 + 10} ${y0 + 0.5}`
   return (
-    <g transform={`translate(${x - 158},${y - 104})`} aria-hidden="true">
+    <g transform={`translate(${x - 158},${y - 108})`} aria-hidden="true">
       <g className={animate ? 'vb-votes is-anim' : 'vb-votes'}>
         <rect width="126" height="48" rx="5" fill="#f6ebcd" stroke="#6b4a2a" strokeWidth="1.8" filter="url(#vb-rough)" />
         {rows.map((row) => (

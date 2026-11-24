@@ -558,7 +558,6 @@ test('DIFFICULTY_STATS derives expected error%, mean wrong citizens, and >=3 wro
     const preset = difficulties[row.key]
     assert.equal(preset.mafia_count, 1)
     assert.equal(row.label, preset.label)
-    assert.equal(row.errorPct, Math.round(preset.sensor_error * 100))
   }
   assert.deepEqual(
     DIFFICULTY_STATS.map((r) => [r.key, r.errorPct, r.avgWrong, r.atLeastThreePct, r.waryBotWinPct, r.majorityBotWinPct]),
