@@ -973,16 +973,45 @@
 /* 밤 연출 (목업 A3): 밤빛 → 오솔길로 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
 .vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 400ms ease both; }
 .vb-flag { transform-box: fill-box; transform-origin: left bottom; }
-.vb-board.is-playing .vb-flag.is-fresh { animation: vb-flip 220ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-board.is-playing .vb-flag.is-fresh { animation: vb-flip 170ms cubic-bezier(0.23, 1, 0.32, 1) both; }
 .vb-board.is-playing .vb-flag.is-fresh.after-votes { animation-delay: var(--flag-delay, 0ms); }
-.vb-board.is-playing .vb-spark > path { animation-duration: 210ms; animation-delay: var(--spark-delay, 0ms); }
+.vb-board.is-playing .vb-spark > path { animation-duration: 145ms; animation-delay: var(--spark-delay, 0ms); }
 @keyframes vb-flip { from { transform: scaleX(.06); opacity: .2; } }
-/* 밤 ③ 주민 결정 단계: 한 집씩 표 줄이 먼저 쌓인 뒤 깃발, 그 뒤 불꽃 순으로 연출한다 */
+/* 밤 ③ 주민 결정 단계: 한 집씩 상자 → 표 줄 → 많은 쪽 표시 → 꼬리표 → 깃발 → 불꽃 순으로 연출한다 */
 .vb-votes { pointer-events: none; }
-.vb-votes.is-anim { animation: vb-votes-in 120ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-votes.is-anim { animation: vb-votes-in 90ms cubic-bezier(0.23, 1, 0.32, 1) both; }
 @keyframes vb-votes-in { from { opacity: 0; transform: translateY(6px); } }
-.vb-votes.is-anim .vb-vote-blk { transform-box: fill-box; transform-origin: left center; animation: vb-blk-in 120ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-votes.is-anim .vb-vote-blk { transform-box: fill-box; transform-origin: left center; animation: vb-blk-in 90ms cubic-bezier(0.23, 1, 0.32, 1) both; }
 @keyframes vb-blk-in { from { opacity: 0; transform: scaleX(0); } }
+.vb-votes-mark {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 102;
+  stroke-dashoffset: 0;
+}
+.vb-votes-mark.is-evacuate { stroke: #1f3554; }
+.vb-votes-mark.is-stay,
+.vb-votes-mark.is-tie { stroke: #7a2416; }
+.vb-votes.is-anim .vb-votes-mark {
+  animation: vb-mark-draw 170ms cubic-bezier(0.23, 1, 0.32, 1) var(--mark-delay, 0ms) backwards;
+}
+@keyframes vb-mark-draw {
+  from { stroke-dashoffset: 102; }
+  to { stroke-dashoffset: 0; }
+}
+.vb-votes-leader rect { fill: #f6ebcd; stroke: #6b4a2a; }
+.vb-votes-leader text { fill: var(--ink); }
+.vb-votes-leader.is-evacuate rect { stroke: #1f3554; }
+.vb-votes-leader.is-evacuate text { fill: #1f3554; }
+.vb-votes-leader.is-stay rect { stroke: #7a5512; }
+.vb-votes.is-anim .vb-votes-leader {
+  animation: vb-leader-in 100ms cubic-bezier(0.23, 1, 0.32, 1) var(--tag-delay, 0ms) backwards;
+}
+@keyframes vb-leader-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
 .vb-votes-tag.is-evacuate rect { fill: var(--leave); stroke: #1f3554; }
 .vb-votes-tag.is-evacuate text { fill: #f3e7c6; }
 .vb-votes-tag.is-stay rect { fill: var(--stay); stroke: #7a5512; }
@@ -1020,6 +1049,8 @@
   .vb-board.is-playing .vb-flag.is-fresh,
   .vb-votes.is-anim,
   .vb-votes.is-anim .vb-vote-blk,
+  .vb-votes.is-anim .vb-votes-mark,
+  .vb-votes.is-anim .vb-votes-leader,
   .vb-board.is-playing .vb-ballot,
   .vb-board.is-playing .vb-stamp,
   .vb-board.is-playing .vb-stamp-ink,

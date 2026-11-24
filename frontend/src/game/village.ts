@@ -374,17 +374,21 @@ export const PHASE_LABEL: Record<Phase, string> = {
 
 type Step = { phase: Phase; ballots: number; decided: number; ms: number }
 
-// 밤 ③ 주민 결정 한 집 연출 시간표 (블록 전부 등장 → 깃발 → 불꽃 순차, 4집 기준 추가 연출 1980ms <= 2000ms).
+// 밤 ③ 주민 결정 한 집 연출 시간표 (상자 → 블록 → 많은 쪽 표시 → 꼬리표 → 깃발 → 불꽃 순차, 4집 기준 추가 연출 2860ms <= 3000ms).
 export const VOTE_ANIM = {
-  boxMs: 120,
-  blockStartMs: 30,
+  boxMs: 90,
+  blockStartMs: 90,
   blockStaggerMs: 25,
-  blockMs: 120,
+  blockMs: 90,
+  markGapMs: 15,
+  markMs: 170,
+  tagGapMs: 10,
+  tagMs: 100,
   flagGapMs: 20,
-  flagMs: 220,
+  flagMs: 170,
   sparkGapMs: 10,
-  sparkMs: 210,
-  stepMs: 720,
+  sparkMs: 145,
+  stepMs: 940,
 } as const
 
 export function voteAnimDelays(blockCount: number) {
@@ -392,9 +396,11 @@ export function voteAnimDelays(blockCount: number) {
     blockCount > 0
       ? VOTE_ANIM.blockStartMs + (blockCount - 1) * VOTE_ANIM.blockStaggerMs + VOTE_ANIM.blockMs
       : VOTE_ANIM.boxMs
-  const flagDelay = blocksEnd + VOTE_ANIM.flagGapMs
+  const markDelay = blocksEnd + VOTE_ANIM.markGapMs
+  const tagDelay = markDelay + VOTE_ANIM.markMs + VOTE_ANIM.tagGapMs
+  const flagDelay = tagDelay + VOTE_ANIM.tagMs + VOTE_ANIM.flagGapMs
   const sparkDelay = flagDelay + VOTE_ANIM.flagMs + VOTE_ANIM.sparkGapMs
-  return { blocksEnd, flagDelay, sparkDelay, totalMs: sparkDelay + VOTE_ANIM.sparkMs }
+  return { blocksEnd, markDelay, tagDelay, flagDelay, sparkDelay, totalMs: sparkDelay + VOTE_ANIM.sparkMs }
 }
 
 // 한 턴 결과를 보여 줄 단계 목록. 마지막 단계(day)가 최종 상태다.

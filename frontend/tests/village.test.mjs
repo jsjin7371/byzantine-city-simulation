@@ -227,17 +227,19 @@ test('night steps: night, notes, flags (one per citizen with vote bars, single s
   assert.deepEqual(trialSteps.filter((s) => s.phase === 'trial').map((s) => s.ballots), [1, 2, 3])
   assert.equal(trialSteps.at(-1).ms, 0)
 
-  // 눈치·다수결 시민 4명: ③ 단계가 집마다 차례로 1~4 진행, 추가 연출 시간은 2000ms 이내
+  // 눈치·다수결 시민 4명: ③ 단계가 집마다 차례로 1~4 진행, 추가 연출 시간은 합계 3000ms 이내
   const detailed = nightSteps({ vote: null, cities })
   const flagSteps = detailed.filter((s) => s.phase === 'flags')
   assert.deepEqual(flagSteps.map((s) => s.decided), [1, 2, 3, 4])
   const addedMs = detailed.reduce((t, s) => t + s.ms, 0) - 3800
-  assert.ok(addedMs > 0 && addedMs <= 2000)
+  assert.ok(addedMs > 0 && addedMs <= 3000)
 
-  // 블록 전부 등장 → 깃발 → 불꽃 순으로 겹치지 않고 한 집 단계 시간 안에 끝난다 (블록 1~5개)
-  for (const n of [1, 2, 3, 4, 5]) {
+  // 상자 → 블록 → 많은 쪽 표시 → 꼬리표 → 깃발 → 불꽃 순으로 겹치지 않고 한 집 단계 시간 안에 끝난다 (블록 0~5개)
+  for (const n of [0, 1, 2, 3, 4, 5]) {
     const d = voteAnimDelays(n)
-    assert.ok(d.flagDelay >= d.blocksEnd, `flag starts after blocks for n=${n}`)
+    assert.ok(d.markDelay >= d.blocksEnd, `mark starts after blocks for n=${n}`)
+    assert.ok(d.tagDelay >= d.markDelay + VOTE_ANIM.markMs, `tag starts after mark for n=${n}`)
+    assert.ok(d.flagDelay >= d.tagDelay + VOTE_ANIM.tagMs, `flag starts after tag for n=${n}`)
     assert.ok(d.sparkDelay >= d.flagDelay + VOTE_ANIM.flagMs, `spark starts after flag for n=${n}`)
     assert.ok(d.totalMs <= VOTE_ANIM.stepMs, `fits in stepMs for n=${n}: ${d.totalMs} <= ${VOTE_ANIM.stepMs}`)
   }

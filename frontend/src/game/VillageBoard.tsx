@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, villageHouses, voteAnimDelays, worsens } from './village'
+import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, villageHouses, voteAnimDelays, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TutorialHighlight } from './village'
 import './village.css'
 
@@ -299,11 +299,11 @@ function houseLabel(h: House, playerCity: number) {
 type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
 
 const VOTE_ROWS = [
-  { side: 1 as const, claim: 'evacuate' as const, label: '대피', top: 5.5, tagRx: 7, blkRx: 2.5, dotFill: '#f3e7c6' },
-  { side: -1 as const, claim: 'stay' as const, label: '잔류', top: 24.5, tagRx: 2, blkRx: 1, dotFill: '#3d3a36' },
+  { side: 1 as const, claim: 'evacuate' as const, label: '대피', top: 6, tagRx: 7, blkRx: 2.5, dotFill: '#f3e7c6' },
+  { side: -1 as const, claim: 'stay' as const, label: '잔류', top: 27, tagRx: 2, blkRx: 1, dotFill: '#3d3a36' },
 ] as const
 
-// ③ 주민 결정 단계의 집별 표 줄: 실제 저울 값(citizenScales)을 대피·잔류 두 줄로 쌓는다.
+// ③ 주민 결정 단계의 집별 표 줄: 실제 저울 값(citizenScales)을 대피·잔류 두 줄로 쌓고, 많은 쪽을 손그림 선과 꼬리표로 가리킨다.
 function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: Scale; me: number; animate: boolean }) {
   let blockIndex = 0
   const rows = VOTE_ROWS.map((row) => {
@@ -316,12 +316,24 @@ function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: 
         cursor += w + 2
         return item
       })
-    return { ...row, blocks }
+    return { ...row, blocks, endX: blocks.length > 0 ? cursor - 2 : 35 }
   })
+  const leader = scaleLeader(scale)
+  const delays = voteAnimDelays(blockIndex)
+  const targetRow = rows.find((r) => r.claim === leader.side) ?? rows[0]
+  const x0 = 3
+  const x1 = Math.min(123, Math.max(56, targetRow.endX + 4))
+  const y0 = targetRow.top - 2.5
+  const y1 = targetRow.top + 16.5
+  const ym = (y0 + y1) / 2
+  const markPath =
+    leader.winner === 'tie'
+      ? `M 5 ${targetRow.top + 16.5} Q ${(5 + x1) / 2} ${targetRow.top + 18.2} ${x1} ${targetRow.top + 15.8}`
+      : `M ${x0 + 8} ${y0} Q ${(x0 + x1) / 2} ${y0 - 1.8} ${x1 - 5} ${y0 + 0.6} Q ${x1 + 2.5} ${ym} ${x1 - 4} ${y1 - 0.5} Q ${(x0 + x1) / 2} ${y1 + 1.8} ${x0 + 6} ${y1 - 0.5} Q ${x0 - 2} ${ym} ${x0 + 10} ${y0 + 0.5}`
   return (
-    <g transform={`translate(${x - 134},${y - 116})`} aria-hidden="true">
+    <g transform={`translate(${x - 134},${y - 118})`} aria-hidden="true">
       <g className={animate ? 'vb-votes is-anim' : 'vb-votes'}>
-        <rect width="126" height="44" rx="5" fill="#f6ebcd" stroke="#6b4a2a" strokeWidth="1.8" filter="url(#vb-rough)" />
+        <rect width="126" height="48" rx="5" fill="#f6ebcd" stroke="#6b4a2a" strokeWidth="1.8" filter="url(#vb-rough)" />
         {rows.map((row) => (
           <g key={row.claim}>
             <g className={`vb-votes-tag is-${row.claim}`}>
@@ -353,6 +365,22 @@ function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: 
             ))}
           </g>
         ))}
+        <path
+          d={markPath}
+          pathLength="100"
+          className={`vb-votes-mark is-${leader.winner}`}
+          filter="url(#vb-rough)"
+          style={animate ? ({ '--mark-delay': `${delays.markDelay}ms` } as CSSProperties) : undefined}
+        />
+        <g
+          className={`vb-votes-leader is-${leader.winner}`}
+          style={animate ? ({ '--tag-delay': `${delays.tagDelay}ms` } as CSSProperties) : undefined}
+        >
+          <rect x="-8" y="-32" width="142" height="26" rx="13" strokeWidth="2" filter="url(#vb-rough)" />
+          <text x="63" y="-13" fontSize="18" fontWeight="700" textAnchor="middle">
+            {leader.label}
+          </text>
+        </g>
       </g>
     </g>
   )
