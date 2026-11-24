@@ -670,10 +670,10 @@ function NoteCard({
   const pStay = preview('stay')
   const hasPreview = Boolean(pEvac || pStay)
   const hasTrial = Boolean(pEvac?.trial || pStay?.trial)
-  const cardH = hasPreview ? (hasTrial ? 108 : 88) : 68
-  // 위쪽 집은 점선 이름표(y=228) 위로(하늘 경계 y=106 아래), 아래쪽 집은 광장(y=395)·양쪽 오솔길(y<=397)·게이지(x<=352, x>=578) 사이 빈 공간에 놓는다.
+  const cardH = hasPreview ? (hasTrial ? 98 : 80) : 62
+  // 위쪽 집은 점선 이름표(y=228) 위로(하늘 경계 y=106 아래), 아래쪽 집은 광장(y=395)·양쪽 점선(y<=389.5)·게이지(y>=498) 사이 빈 공간에 놓는다.
   const cx = h.y < 300 ? (left ? h.x + 100 : h.x - 100 - cardW) : 354
-  const cy = h.y < 300 ? Math.max(106, Math.min(h.y - 54, 224 - cardH)) : 398
+  const cy = h.y < 300 ? Math.max(106, Math.min(h.y - 54, 224 - cardH)) : 396
   return (
     <g transform={`translate(${cx},${cy})`}>
       <g
@@ -685,10 +685,10 @@ function NoteCard({
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) onCardFocusChange(false)
         }}
       >
-        <rect x="4" y="5" width={cardW} height={cardH} rx="2" fill="#2a1a0c" opacity=".25" />
+        <rect x="4" y="4" width={cardW} height={cardH} rx="2" fill="#2a1a0c" opacity=".25" />
         <rect width={cardW} height={cardH} rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
-        <circle cx="10" cy="11" r="4.5" fill="#a8361f" stroke="#4a1a10" />
-        <text x="20" y="22" fontSize="18" fontWeight="700">
+        <circle cx="10" cy="10" r="4.5" fill="#a8361f" stroke="#4a1a10" />
+        <text x="20" y="20" fontSize="18" fontWeight="700">
           {h.city}번 집에 보낼 쪽지
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
@@ -705,18 +705,18 @@ function NoteCard({
                 onClick={() => onClaim(c)}
                 onKeyDown={onActivateKey(() => onClaim(c))}
               >
-                <rect x={btnX} y="30" width="78" height="30" rx="3" />
-                <text x={btnX + 39} y="51" fontSize="18" fontWeight="700" textAnchor="middle">
+                <rect x={btnX} y="27" width="78" height="28" rx="3" />
+                <text x={btnX + 39} y="47" fontSize="18" fontWeight="700" textAnchor="middle">
                   {decisions[c]}
                 </text>
               </g>
               {p && (
                 <g fontWeight="700" textAnchor="middle" aria-hidden>
-                  <text x={btnX + 39} y="79" fontSize="18" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
+                  <text x={btnX + 39} y="73" fontSize="18" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
                     {p.from} → {p.next}
                   </text>
                   {p.trial && (
-                    <text x={btnX + 39} y="98" fontSize="18" className="vb-rust">
+                    <text x={btnX + 39} y="91" fontSize="18" className="vb-rust">
                       재판 열림
                     </text>
                   )}
@@ -726,7 +726,7 @@ function NoteCard({
           )
         })}
         {highlightSuspicion && hasPreview && (
-          <rect className="vb-tut-ring" x="10" y="63" width="172" height={hasTrial ? 40 : 21} rx="5" aria-hidden />
+          <rect className="vb-tut-ring" x="10" y="58" width="172" height={hasTrial ? 37 : 19} rx="5" aria-hidden />
         )}
       </g>
     </g>
