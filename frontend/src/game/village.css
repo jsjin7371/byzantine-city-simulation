@@ -450,6 +450,20 @@
 .vb-opt.is-stay.is-sel text { fill: var(--ink); }
 .vb-opt:focus-visible rect { stroke: var(--ink); stroke-width: 3; }
 
+/* 쪽지 카드 "이 집의 표" */
+.vb-board .vb-card-sub { fill: #52412c; }
+.vb-vote-pill.is-evacuate rect { fill: var(--leave); stroke: #1f3554; }
+.vb-vote-pill.is-evacuate text { fill: #f3e7c6; }
+.vb-vote-pill.is-stay rect { fill: var(--stay); stroke: #7a5512; }
+.vb-vote-pill.is-stay text { fill: var(--ink); }
+.vb-vote-pill.is-pending rect { fill: #efe0b9; stroke: #8a6a3e; }
+.vb-vote-pill.is-pending text { fill: #52412c; }
+.vb-vote-track { fill: #e6d7b2; stroke: #b59a6a; stroke-width: 1; }
+.vb-vote-fill { stroke: #3b2a1a; stroke-width: 1.2; }
+.vb-vote-fill.is-hint { fill: var(--scale-hint); }
+.vb-vote-fill.is-note { fill: var(--scale-note); }
+.vb-vote-fill.is-mine { fill: var(--scale-mine); }
+
 .vb-new rect { fill: var(--forest); stroke: #f6ebcd; stroke-width: 1.5; }
 .vb-new { animation: vb-fade 300ms ease both; }
 

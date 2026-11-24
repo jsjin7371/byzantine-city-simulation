@@ -5,8 +5,8 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
-import type { House, Phase, Preview, SuspicionLink, TutorialHighlight } from './village'
+import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, tonightVotes, villageHouses, worsens } from './village'
+import type { House, Phase, Preview, SuspicionLink, TonightVotes, TutorialHighlight } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
@@ -544,35 +544,64 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
   )
 }
 
-// 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 (명세 1번). 예) 50 → 70, 재판 열림
+// 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 + 오늘 밤 이 집이 받을 표 구성.
 function NoteCard({
   h,
   claim,
   preview,
+  votes,
   onClaim,
   highlightSuspicion = false,
 }: {
   h: House
   claim?: Claim
   preview: (c: Claim) => Preview | null
+  votes: TonightVotes
   onClaim: (c: Claim) => void
   highlightSuspicion?: boolean
 }) {
+  const cardW = 216
   const left = h.x < PLAZA.x
-  const cx = left ? h.x + 100 : h.x - 284
-  const cy = h.y < 300 ? h.y - 54 : h.y - 77
-  const hasPreview = Boolean(preview('evacuate') || preview('stay'))
+  const cx = left ? 336 : 348
+  const pEvac = preview('evacuate')
+  const pStay = preview('stay')
+  const hasPreview = Boolean(pEvac || pStay)
+  const hasTrial = Boolean(pEvac?.trial || pStay?.trial)
+  const votesTop = hasPreview ? (hasTrial ? 112 : 96) : 76
+  const rowStart = votesTop + 26
+  const rowH = 22
+  const noteExtra = votes.noCitizenNotesYet ? 22 : 0
+  const cardH = rowStart + votes.items.length * rowH + noteExtra + 10
+  const cy = h.y < 300 ? 140 : Math.max(140, 476 - cardH)
+  const votesSummary = votes.items
+    .map((item) => {
+      const who =
+        item.role === 'hint'
+          ? '관측'
+          : item.role === 'player'
+            ? '내 쪽지'
+            : item.role === 'colleague'
+              ? `동료 ${item.from}번`
+              : `${item.from}번`
+      const what = item.claim ? decisions[item.claim] : '고르는 중'
+      return votes.usesSuspicion ? `${who} ${what} 믿음 ${item.weight}` : `${who} ${what} 1표`
+    })
+    .join(', ')
+  const votesAria = `이 집의 표${votes.usesSuspicion ? ' (어젯밤 기준)' : ' (모두 1표)'}: ${votesSummary}${
+    votes.noCitizenNotesYet ? ', 1일째는 주민 쪽지 없음' : ''
+  }`
   return (
     <g transform={`translate(${cx},${cy})`}>
       <g className={`vb-card${left ? ' from-left' : ' from-right'}`} role="group" aria-label={`${h.city}번 집에 보낼 쪽지`}>
-        <rect x="4" y="5" width="184" height="122" rx="2" fill="#2a1a0c" opacity=".25" />
-        <rect width="184" height="122" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
+        <rect x="4" y="5" width={cardW} height={cardH} rx="2" fill="#2a1a0c" opacity=".25" />
+        <rect width={cardW} height={cardH} rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
         <circle cx="10" cy="10" r="5" fill="#a8361f" stroke="#4a1a10" />
         <text x="22" y="25" fontSize="15.5" fontWeight="700">
           {h.city}번 집에 보낼 쪽지
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
-          const p = preview(c)
+          const p = c === 'evacuate' ? pEvac : pStay
+          const btnX = 14 + i * 100
           return (
             <g key={c}>
               <g
@@ -584,18 +613,18 @@ function NoteCard({
                 onClick={() => onClaim(c)}
                 onKeyDown={onActivateKey(() => onClaim(c))}
               >
-                <rect x={14 + i * 82} y="34" width="74" height="36" rx="3" />
-                <text x={51 + i * 82} y="58" fontSize="17.5" fontWeight="700" textAnchor="middle">
+                <rect x={btnX} y="33" width="88" height="34" rx="3" />
+                <text x={btnX + 44} y="56" fontSize="17.5" fontWeight="700" textAnchor="middle">
                   {decisions[c]}
                 </text>
               </g>
               {p && (
                 <g fontWeight="700" textAnchor="middle" aria-hidden>
-                  <text x={51 + i * 82} y="91" fontSize="15" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
+                  <text x={btnX + 44} y="86" fontSize="15" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
                     {p.from} → {p.next}
                   </text>
                   {p.trial && (
-                    <text x={51 + i * 82} y="110" fontSize="13.5" className="vb-rust">
+                    <text x={btnX + 44} y="103" fontSize="13.5" className="vb-rust">
                       재판 열림
                     </text>
                   )}
@@ -605,8 +634,73 @@ function NoteCard({
           )
         })}
         {highlightSuspicion && hasPreview && (
-          <rect className="vb-tut-ring" x="10" y="74" width="164" height="42" rx="5" aria-hidden />
+          <rect className="vb-tut-ring" x="10" y="70" width="196" height={hasTrial ? 39 : 23} rx="5" aria-hidden />
         )}
+        <line x1="12" y1={votesTop} x2={cardW - 12} y2={votesTop} stroke="#c3a878" strokeWidth="1.4" strokeDasharray="4 3" />
+        <g role="group" aria-label={votesAria}>
+          <text x="14" y={votesTop + 17} fontSize="14" fontWeight="700">
+            이 집의 표
+          </text>
+          <text x={cardW - 14} y={votesTop + 17} fontSize="12.5" fontWeight="700" textAnchor="end" className="vb-card-sub">
+            {votes.usesSuspicion ? '어젯밤 기준' : '모두 1표'}
+          </text>
+          {votes.items.map((item, idx) => {
+            const ry = rowStart + idx * rowH
+            const label =
+              item.role === 'hint'
+                ? '관측'
+                : item.role === 'player'
+                  ? '나'
+                  : item.role === 'colleague'
+                    ? '동료'
+                    : `${item.from}번`
+            const kind = item.role === 'hint' ? 'is-hint' : item.role === 'player' ? 'is-mine' : 'is-note'
+            const trackW = 96
+            const barW = item.weight > 0 ? Math.max(4, Math.round((item.weight / 100) * trackW)) : 0
+            return (
+              <g key={String(item.from)} transform={`translate(0,${ry})`} aria-hidden>
+                <text x="14" y="14" fontSize="13.5" fontWeight="700">
+                  {label}
+                </text>
+                {item.claim ? (
+                  <g className={`vb-vote-pill is-${item.claim}`}>
+                    <rect x="48" y="1" width="44" height="18" rx="3" strokeWidth="1.2" />
+                    <text x="70" y="14" fontSize="13" fontWeight="700" textAnchor="middle">
+                      {decisions[item.claim]}
+                    </text>
+                  </g>
+                ) : (
+                  <g className="vb-vote-pill is-pending">
+                    <rect x="46" y="1" width="54" height="18" rx="3" strokeWidth="1.2" strokeDasharray="3 2" />
+                    <text x="73" y="14" fontSize="12.5" fontWeight="700" textAnchor="middle">
+                      고르는 중
+                    </text>
+                  </g>
+                )}
+                <rect x="106" y="4" width={trackW} height="12" rx="2.5" className="vb-vote-track" />
+                {barW > 0 ? (
+                  <rect x="106" y="4" width={barW} height="12" rx="2.5" className={`vb-vote-fill ${kind}`} />
+                ) : (
+                  <text x={106 + trackW / 2} y="14" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-card-sub">
+                    안 믿음
+                  </text>
+                )}
+              </g>
+            )
+          })}
+          {votes.noCitizenNotesYet && (
+            <text
+              x="14"
+              y={rowStart + votes.items.length * rowH + 14}
+              fontSize="13"
+              fontWeight="700"
+              className="vb-card-sub"
+              aria-hidden
+            >
+              1일째는 주민 쪽지 없음
+            </text>
+          )}
+        </g>
       </g>
     </g>
   )
@@ -962,6 +1056,7 @@ export function VillageBoard({
           h={opened}
           claim={picker.claims[opened.city]}
           preview={(c) => preview(opened, c)}
+          votes={tonightVotes(state, houses, opened.city, picker.claims)}
           onClaim={(c) => picker.onClaim(opened.city, c)}
           highlightSuspicion={highlight === 'suspicion'}
         />

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
+  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, villageHouses, villageLines, visibleLines, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -409,4 +409,46 @@ test('suspicionLinks returns thicker curves for positive suspicions and hides ze
   assert.deepEqual(suspicionLinks(houses, 5), [])
   assert.deepEqual(suspicionLinks(houses, 2), [])
   assert.deepEqual(suspicionLinks(houses, 3), [])
+})
+
+test('tonightVotes lists observation + notes with last-night trust weights, handles day 1, ring, pending claim, and majority', () => {
+  // 1일째: 시민 쪽지 없음, 동료 마피아는 정답(danger→대피)의 반대(stay), 나는 고르는 중(null)
+  const day1Houses = villageHouses(state, null)
+  const v1 = tonightVotes(state, day1Houses, 1, {})
+  assert.equal(v1.noCitizenNotesYet, true)
+  assert.equal(v1.usesSuspicion, true)
+  assert.deepEqual(v1.items, [
+    { from: 'hint', role: 'hint', claim: 'evacuate', weight: 100 },
+    { from: 3, role: 'player', claim: null, weight: 100 },
+    { from: 2, role: 'colleague', claim: 'stay', weight: 100 },
+  ])
+
+  // 2일째 이후: 시민은 어제 결정(깃발), 가중치는 100 − 어젯밤 의심도
+  const detailed = {
+    ...result,
+    cities: result.cities.map((c) =>
+      c.city === 1 ? { ...c, suspicion: { 2: 20, 3: 60, 4: 100, 5: 0 } } : c,
+    ),
+  }
+  const day2Houses = villageHouses(state, detailed)
+  const v2 = tonightVotes(state, day2Houses, 1, { 1: 'stay' })
+  assert.equal(v2.noCitizenNotesYet, false)
+  assert.deepEqual(v2.items, [
+    { from: 'hint', role: 'hint', claim: 'stay', weight: 100 },
+    { from: 3, role: 'player', claim: 'stay', weight: 40 },
+    { from: 2, role: 'colleague', claim: 'stay', weight: 80 },
+    { from: 4, role: 'citizen', claim: 'stay', weight: 0 },
+    { from: 5, role: 'citizen', claim: 'stay', weight: 100 },
+  ])
+
+  // ring 연결: 1번 집 양옆은 5번과 2번뿐
+  const ringState = { ...state, config: { ...config, connection: 'ring' } }
+  const vRing = tonightVotes(ringState, day2Houses, 1, { 1: 'stay' })
+  assert.deepEqual(vRing.items.map((x) => x.from), ['hint', 2, 5])
+
+  // 다수결 주민: 의심도 무시하고 모두 1표(100)
+  const majState = { ...state, config: { ...config, citizen_type: 'majority' } }
+  const vMaj = tonightVotes(majState, day2Houses, 1, { 1: 'evacuate' })
+  assert.equal(vMaj.usesSuspicion, false)
+  assert.ok(vMaj.items.every((x) => x.weight === 100))
 })

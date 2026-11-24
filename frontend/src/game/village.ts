@@ -227,6 +227,93 @@ export function suspicionLinks(
     })
 }
 
+export type VoteItem = {
+  from: 'hint' | number
+  role: 'hint' | Role
+  claim: Claim | null // null이면 "고르는 중"
+  weight: number // 0..100 (1표 = 100, 어젯밤 의심도 기준)
+}
+
+export type TonightVotes = {
+  items: VoteItem[]
+  noCitizenNotesYet: boolean // 1일째처럼 이웃 주민이 아직 어제 결정이 없을 때
+  usesSuspicion: boolean // 눈치·AI 시민이면 true, 다수결이면 false
+}
+
+// 쪽지 카드 "이 집의 표": 오늘 밤 targetCity가 받을 관측 1표 + 보낸 집별 쪽지 1장.
+// 합계나 예상 결과는 계산하지 않고 표 구성과 어젯밤 기준 믿음 크기만 돌려준다.
+export function tonightVotes(
+  state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth'>,
+  houses: Pick<House, 'city' | 'role' | 'hint' | 'flag' | 'suspicions'>[],
+  targetCity: number,
+  claims: Record<string, Claim>,
+): TonightVotes {
+  const target = houses.find((h) => h.city === targetCity)
+  const usesSuspicion = state.config.citizen_type !== 'majority'
+  if (!target || target.role !== 'citizen') {
+    return { items: [], noCitizenNotesYet: false, usesSuspicion }
+  }
+  const items: VoteItem[] = []
+  if (target.hint) {
+    items.push({
+      from: 'hint',
+      role: 'hint',
+      claim: target.hint === 'danger' ? 'evacuate' : 'stay',
+      weight: 100,
+    })
+  }
+  const neighbors =
+    state.config.connection === 'ring'
+      ? [((targetCity + 3) % 5) + 1, (targetCity % 5) + 1].sort((a, b) => a - b)
+      : [1, 2, 3, 4, 5].filter((c) => c !== targetCity)
+  const byCity = new Map(houses.map((h) => [h.city, h]))
+  const lie: Claim = state.truth === 'danger' ? 'stay' : 'evacuate'
+  const weightOf = (sender: number) =>
+    usesSuspicion ? Math.max(0, 100 - (target.suspicions?.[sender] ?? 0)) : 100
+  let citizenNeighborCount = 0
+  let hasCitizenNotes = false
+
+  const ordered = [
+    ...neighbors.filter((c) => state.roles[c] === 'player'),
+    ...neighbors.filter((c) => state.roles[c] !== 'player'),
+  ]
+  for (const sender of ordered) {
+    const role = state.roles[sender]
+    if (role === 'player') {
+      items.push({
+        from: sender,
+        role,
+        claim: claims[targetCity] ?? null,
+        weight: weightOf(sender),
+      })
+    } else if (role === 'colleague') {
+      items.push({
+        from: sender,
+        role,
+        claim: lie,
+        weight: weightOf(sender),
+      })
+    } else if (role === 'citizen') {
+      citizenNeighborCount++
+      const flag = byCity.get(sender)?.flag ?? null
+      if (flag) {
+        hasCitizenNotes = true
+        items.push({
+          from: sender,
+          role,
+          claim: flag,
+          weight: weightOf(sender),
+        })
+      }
+    }
+  }
+  return {
+    items,
+    noCitizenNotesYet: citizenNeighborCount > 0 && !hasCitizenNotes,
+    usesSuspicion,
+  }
+}
+
 // HUD "속은 주민 ●●○|○" 계산: 시민 수만큼 점, 속은(틀린) 시민 수만큼 채움, 과반(need) 눈금 위치.
 export function fooledDots(wrong: number, total: number) {
   const need = majority(total)
