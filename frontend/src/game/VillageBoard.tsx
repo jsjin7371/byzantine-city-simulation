@@ -237,23 +237,23 @@ function BoardLegend() {
     <g
       className="vb-legend"
       role="img"
-      aria-label="보드 범례: 깃발은 그 주민의 지난밤 결정(대피/잔류), 창문 불 켜짐은 다음 관측이 맞음, 꺼짐은 틀림"
+      aria-label="보드 범례: 깃발은 지난밤 결정(대피/잔류), 창문 불 켜짐은 다음 관측이 맞음, 꺼짐은 틀림"
     >
       <rect x="0" y="660" width="900" height="38" fill="#efe0b9" />
       <line x1="0" y1="660" x2="900" y2="660" stroke="#4a3119" strokeWidth="2" />
       <g aria-hidden>
-        <use href="#vb-flag-evacuate" transform="translate(88,691) scale(.48)" />
-        <use href="#vb-flag-stay" transform="translate(116,691) scale(.48)" />
-        <text x="148" y="684" fontSize="14.5" fontWeight="700">
-          깃발: 그 주민의 지난밤 결정(대피/잔류)
+        <use href="#vb-flag-evacuate" transform="translate(108,691) scale(.48)" />
+        <use href="#vb-flag-stay" transform="translate(136,691) scale(.48)" />
+        <text x="168" y="684" fontSize="14.5" fontWeight="700">
+          깃발: 지난밤 결정(대피/잔류)
         </text>
-        <line x1="444" y1="669" x2="444" y2="689" stroke="#c3a878" strokeWidth="1.5" />
-        <use href="#vb-win-on" transform="translate(468,679) scale(.85)" />
-        <text x="486" y="684" fontSize="14.5" fontWeight="700">
+        <line x1="420" y1="669" x2="420" y2="689" stroke="#c3a878" strokeWidth="1.5" />
+        <use href="#vb-win-on" transform="translate(450,679) scale(.85)" />
+        <text x="468" y="684" fontSize="14.5" fontWeight="700">
           창문 불 켜짐: 다음 관측 맞음
         </text>
-        <use href="#vb-win-off" transform="translate(716,679) scale(.85)" />
-        <text x="732" y="684" fontSize="14.5" fontWeight="700">
+        <use href="#vb-win-off" transform="translate(698,679) scale(.85)" />
+        <text x="714" y="684" fontSize="14.5" fontWeight="700">
           꺼짐: 틀림
         </text>
       </g>
@@ -287,7 +287,7 @@ type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: s
 // swayed: 내 쪽지가 없었다면 반대로 골랐을 시민 (작은 불꽃 한 번)
 function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolean }) {
   const { x, y } = h
-  const base = `${houseLabel(h)}${swayed ? ', 내 쪽지에 마음이 바뀜' : ''}`
+  const base = `${houseLabel(h)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
   const label = pick
     ? `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
     : base
@@ -351,9 +351,9 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
           <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
           {/* 재판 기준 60 말뚝 */}
           <g className="vb-post">
-            <path d={`M${postX} -12 V9`} />
-            <path d={`M${postX - 5} -13 H${postX + 5}`} />
-            <text x={postX} y="-16" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-post-label" aria-hidden>
+            <path d={`M${postX} -9 V10`} />
+            <path d={`M${postX - 5} -9 H${postX + 5}`} />
+            <text x={postX} y="22" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-post-label" aria-hidden>
               재판 {SUSPICION.threshold}
             </text>
           </g>
@@ -379,7 +379,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       )}
       {pick?.claim && <use href={`#vb-note-${pick.claim}`} x={x + 70} y={y - 30} />}
       {pick?.changed && (
-        <g className="vb-new" transform={`translate(${x - 10},${y + 54})`} aria-hidden>
+        <g className="vb-new" transform={`translate(${x - 10},${y + (h.suspicion != null ? 70 : 54)})`} aria-hidden>
           <rect x="-92" y="-11.5" width="184" height="23" rx="11.5" />
           <text y="4.5" fontSize="13.5" fontWeight="700" textAnchor="middle" className="vb-light">
             변동: {pick.changed.join('·')}

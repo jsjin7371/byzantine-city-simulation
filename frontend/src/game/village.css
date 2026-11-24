@@ -34,6 +34,9 @@
   --rust: #a8361f;
   --leave: #35598a;
   --stay: #d9a12e;
+  --scale-hint: #6f8f3e;
+  --scale-note: #d9bb7c;
+  --scale-mine: var(--rust);
 
   --surface: var(--parch);
   --text: var(--ink);
@@ -512,7 +515,7 @@
   padding: 2px 8px;
 }
 .vl-intro {
-  margin: -2px 0 10px;
+  margin: -2px 0 6px;
   font-size: 14px;
   line-height: 1.4;
   color: var(--ink-soft);
@@ -669,14 +672,19 @@
 .vl-pivot { fill: var(--wood); }
 .vl-pan rect { stroke: #3b2a1a; stroke-width: .8; }
 .vl-pan-label { fill: var(--ink-soft); }
-.vl-pan .is-hint, .vl-swatch.is-hint { fill: #6f8f3e; background: #6f8f3e; }
-.vl-pan .is-note, .vl-swatch.is-note { fill: #d9bb7c; background: #d9bb7c; }
-.vl-pan .is-mine, .vl-swatch.is-mine { fill: var(--rust); background: var(--rust); }
+.vl-pan .is-hint { fill: var(--scale-hint); }
+.vl-pan .is-note { fill: var(--scale-note); }
+.vl-pan .is-mine { fill: var(--scale-mine); }
+.vl-swatch.is-hint { background: var(--scale-hint); }
+.vl-swatch.is-note { background: var(--scale-note); }
+.vl-swatch.is-mine { background: var(--scale-mine); }
 .vl-legend {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px 10px;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0 0 10px;
   font-size: 13.5px;
   line-height: 1.3;
   color: var(--ink-soft);

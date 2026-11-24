@@ -1,7 +1,7 @@
 import { SUSPICION, claimTargets, majority } from '../gameApi.ts'
 import type { Claim, GameState, Role, Truth, TurnResult } from '../gameApi.ts'
 
-// 숲속 보드 좌표 (viewBox 900x660, 목업 A3). 0번 자리는 내 집(아래 가운데), 1~4번은 시계방향.
+// 숲속 보드 좌표 (viewBox 900x698, 목업 A3). 0번 자리는 내 집(아래 가운데), 1~4번은 시계방향.
 // trail: 집 앞 공터에서 광장까지의 오솔길 [시작x, 시작y, 조절x, 조절y, 끝x, 끝y].
 const SLOTS = [
   { x: 450, y: 540, trail: [450, 512, 450, 452, 450, 392] },
