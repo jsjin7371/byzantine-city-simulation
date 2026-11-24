@@ -15,8 +15,8 @@ test('splitSentences breaks on sentence-ending punctuation without changing text
 
 test('tutorialStep progresses across 3 days based on turn, animation, note card, scale toggle, and game over', () => {
   assert.equal(TUTORIAL_SEED, 15)
-  assert.equal(TUTORIAL_STEPS.length, 11)
-  // 문구에 숫자(1/11 등)가 들어가지 않는다
+  assert.equal(TUTORIAL_STEPS.length, 13)
+  // 문구에 숫자(1/13 등)가 들어가지 않는다
   for (const s of TUTORIAL_STEPS) assert.doesNotMatch(s.text, /\d/)
 
   const day1 = { turn: 0, playing: false, cardOpen: false, scaleOpen: false, gameOver: false }
@@ -27,7 +27,7 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   assert.equal(waitCard.step?.highlight, 'houses')
   assert.equal(waitCard.step?.wait, 'card')
 
-  // 쪽지 카드가 열리면 자동으로 4단계(의심도 막대)로 진행, 이후 카드를 닫아도 유지
+  // 쪽지 카드가 열리면 자동으로 의심도 단계로 진행, 이후 카드를 닫아도 유지
   const opened = tutorialStep(2, { ...day1, cardOpen: true })
   assert.equal(opened.cursor, 3)
   assert.equal(opened.step?.highlight, 'suspicion')
@@ -37,64 +37,67 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   const withOpenCard = { ...day1, cardOpen: true }
   assert.equal(tutorialStep(tutorialStep(1, withOpenCard).cursor + 1, withOpenCard).step?.highlight, 'suspicion')
 
-  // 점선 → 밤으로 버튼(턴 제출 대기)
-  assert.equal(tutorialStep(4, day1).step?.highlight, 'share')
-  const waitTurn = tutorialStep(5, day1)
+  // 카드 아래 "이 집의 표" → 점선 → 밤으로 버튼(턴 제출 대기)
+  assert.equal(tutorialStep(4, day1).step?.highlight, 'votes')
+  assert.equal(tutorialStep(5, day1).step?.highlight, 'share')
+  const waitTurn = tutorialStep(6, day1)
   assert.equal(waitTurn.step?.highlight, 'submit')
   assert.equal(waitTurn.step?.wait, 'turn')
 
-  // 1일 밤 연출 중에는 안내 숨김, 끝나면 7단계(깃발) → 8단계(마을 이야기) → 9단계(› 버튼 대기) → 10단계(달라진 집 표시)
-  const night1 = tutorialStep(5, { turn: 1, playing: true, cardOpen: false, scaleOpen: false, gameOver: false })
-  assert.equal(night1.cursor, 6)
+  // 1일 밤 연출 중에는 안내 숨김, 끝나면 깃발 → 의심 선 안내 → 마을 이야기 → › 버튼 대기 → 달라진 집 표시
+  const night1 = tutorialStep(6, { turn: 1, playing: true, cardOpen: false, scaleOpen: false, gameOver: false })
+  assert.equal(night1.cursor, 7)
   assert.equal(night1.step, null)
 
   const day2 = { turn: 1, playing: false, cardOpen: false, scaleOpen: false, gameOver: false }
   assert.equal(tutorialStep(night1.cursor, day2).step?.highlight, 'flags')
-  assert.equal(tutorialStep(7, day2).step?.highlight, 'log')
-  const waitScale = tutorialStep(8, day2)
+  assert.equal(tutorialStep(8, day2).step?.highlight, null)
+  assert.match(tutorialStep(8, day2).step?.text ?? '', /의심하는 선/)
+  assert.equal(tutorialStep(9, day2).step?.highlight, 'log')
+  const waitScale = tutorialStep(10, day2)
   assert.equal(waitScale.step?.highlight, 'scale')
   assert.equal(waitScale.step?.wait, 'scale')
 
   // › 버튼을 실제로 펼치면 다음 단계(달라진 집 표시)로 진행, 이후 접어도 유지
-  const scaleExpanded = tutorialStep(8, { ...day2, scaleOpen: true })
-  assert.equal(scaleExpanded.cursor, 9)
+  const scaleExpanded = tutorialStep(10, { ...day2, scaleOpen: true })
+  assert.equal(scaleExpanded.cursor, 11)
   assert.equal(scaleExpanded.step?.highlight, 'changed')
   assert.equal(tutorialStep(scaleExpanded.cursor, day2).step?.highlight, 'changed')
 
   // 이미 펼쳐 둔 상태면 마을 이야기 단계에서 다음을 누를 때 대기 단계를 건너뛰고 달라진 집 표시로 간다
   const withOpenScale = { ...day2, scaleOpen: true }
-  assert.equal(tutorialStep(tutorialStep(7, withOpenScale).cursor + 1, withOpenScale).step?.highlight, 'changed')
+  assert.equal(tutorialStep(tutorialStep(9, withOpenScale).cursor + 1, withOpenScale).step?.highlight, 'changed')
 
   // 연출 중이나 지난밤 보기 중에는 scaleOpen이 true여도 단계를 넘기지 않는다
-  assert.equal(tutorialStep(8, { ...day2, playing: true }).cursor, 8)
-  assert.equal(tutorialStep(8, { ...day2, playing: true }).step, null)
-  assert.equal(tutorialStep(8, { ...day2, scaleOpen: true, playing: true }).cursor, 8)
-  assert.equal(tutorialStep(8, { ...day2, scaleOpen: true, playing: true }).step, null)
-  assert.equal(tutorialStep(8, { ...day2, scaleOpen: true, viewingPast: true }).cursor, 8)
-  assert.equal(tutorialStep(8, { ...day2, scaleOpen: true, viewingPast: true }).step, null)
+  assert.equal(tutorialStep(10, { ...day2, playing: true }).cursor, 10)
+  assert.equal(tutorialStep(10, { ...day2, playing: true }).step, null)
+  assert.equal(tutorialStep(10, { ...day2, scaleOpen: true, playing: true }).cursor, 10)
+  assert.equal(tutorialStep(10, { ...day2, scaleOpen: true, playing: true }).step, null)
+  assert.equal(tutorialStep(10, { ...day2, scaleOpen: true, viewingPast: true }).cursor, 10)
+  assert.equal(tutorialStep(10, { ...day2, scaleOpen: true, viewingPast: true }).step, null)
 
-  // 10단계 다음 → 안내 숨기고 3일 밤 끝날 때까지 자유 진행
-  assert.equal(tutorialStep(10, day2).step, null)
-  assert.equal(tutorialStep(10, { turn: 2, playing: true, cardOpen: false, gameOver: false }).step, null)
-  assert.equal(tutorialStep(10, { turn: 2, playing: false, cardOpen: false, gameOver: false }).step, null)
-  assert.equal(tutorialStep(10, { turn: 3, playing: true, cardOpen: false, gameOver: false }).step, null)
+  // 마지막 전 단계 다음 → 안내 숨기고 3일 밤 끝날 때까지 자유 진행
+  assert.equal(tutorialStep(12, day2).step, null)
+  assert.equal(tutorialStep(12, { turn: 2, playing: true, cardOpen: false, gameOver: false }).step, null)
+  assert.equal(tutorialStep(12, { turn: 2, playing: false, cardOpen: false, gameOver: false }).step, null)
+  assert.equal(tutorialStep(12, { turn: 3, playing: true, cardOpen: false, gameOver: false }).step, null)
 
   // 3일 밤 연출이 끝난 뒤: 마지막 단계(대상 없음, 이어서 하기 / 시작 화면으로)
-  const end = tutorialStep(10, { turn: 3, playing: false, cardOpen: false, gameOver: false })
+  const end = tutorialStep(12, { turn: 3, playing: false, cardOpen: false, gameOver: false })
   assert.equal(end.step?.highlight, null)
   assert.equal(end.step?.finish, true)
 
   // 4일째 이후에는 안내 종료
-  assert.equal(tutorialStep(10, { turn: 4, playing: false, cardOpen: false, gameOver: false }).step, null)
+  assert.equal(tutorialStep(12, { turn: 4, playing: false, cardOpen: false, gameOver: false }).step, null)
 
   // 1일 낮에 단계를 덜 눌러도 밤을 넘기면 2일 안내로, 2일째 밤을 넘기면 3일 끝 대기로 건너뛴다
   assert.equal(tutorialStep(0, day2).step?.highlight, 'flags')
-  assert.equal(tutorialStep(6, { turn: 2, playing: false, cardOpen: false, gameOver: false }).step, null)
-  assert.equal(tutorialStep(6, { turn: 3, playing: false, cardOpen: false, gameOver: false }).step?.finish, true)
+  assert.equal(tutorialStep(7, { turn: 2, playing: false, cardOpen: false, gameOver: false }).step, null)
+  assert.equal(tutorialStep(7, { turn: 3, playing: false, cardOpen: false, gameOver: false }).step?.finish, true)
 
   // 지난밤 넘겨보기 중에는 커서를 유지하되 단계 표시와 강조를 숨긴다
-  const past = tutorialStep(10, { turn: 3, playing: false, cardOpen: false, gameOver: false, viewingPast: true })
-  assert.equal(past.cursor, 10)
+  const past = tutorialStep(12, { turn: 3, playing: false, cardOpen: false, gameOver: false, viewingPast: true })
+  assert.equal(past.cursor, 12)
   assert.equal(past.step, null)
   assert.equal(tutorialStep(past.cursor, { turn: 3, playing: false, cardOpen: false, gameOver: false, viewingPast: false }).step?.finish, true)
 

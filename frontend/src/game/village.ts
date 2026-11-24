@@ -663,6 +663,7 @@ export type TutorialHighlight =
   | 'windows'
   | 'houses'
   | 'suspicion'
+  | 'votes'
   | 'share'
   | 'submit'
   | 'flags'
@@ -696,6 +697,10 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민의 관측과 다른 쪽지를 보내면 의심도가 올라가요. 재판 기준을 넘으면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
   },
   {
+    highlight: 'votes',
+    text: '주민은 관측 한 표와 받은 쪽지들로 결정을 내려요. 의심하는 집이 보낸 쪽지는 블록이 작아져 덜 믿어요. 카드 아래에서 오늘 밤 이 집이 받을 표를 볼 수 있어요.',
+  },
+  {
     highlight: 'share',
     text: '점선으로 이어진 두 집은 오늘 밤 내 쪽지를 서로 비교해요(쪽지 비교). 두 집에 다른 쪽지를 보내면 모순이 생겨 의심도가 크게 올라요.',
   },
@@ -706,7 +711,11 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'flags',
-    text: '깃발은 주민이 지난밤 내린 결정(대피·잔류)이에요.',
+    text: '밤에 표가 쌓여 주민의 결정이 깃발(대피·잔류)로 섰어요. 이 깃발은 다음 날 다른 주민에게 보내는 쪽지가 돼요.',
+  },
+  {
+    highlight: null,
+    text: '주민 집에 마우스를 올리면 그 주민이 다른 집을 의심하는 선이 보여요. 의심도가 높을수록 선이 굵고, 키보드 초점으로도 볼 수 있어요.',
   },
   {
     highlight: 'log',

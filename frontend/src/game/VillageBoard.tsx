@@ -636,6 +636,7 @@ function NoteCard({
   votes,
   onClaim,
   highlightSuspicion = false,
+  highlightVotes = false,
 }: {
   h: House
   claim?: Claim
@@ -643,6 +644,7 @@ function NoteCard({
   votes: TonightVotes
   onClaim: (c: Claim) => void
   highlightSuspicion?: boolean
+  highlightVotes?: boolean
 }) {
   const cardW = 216
   const left = h.x < PLAZA.x
@@ -783,6 +785,17 @@ function NoteCard({
             >
               1일째는 주민 쪽지 없음
             </text>
+          )}
+          {highlightVotes && (
+            <rect
+              className="vb-tut-ring"
+              x="8"
+              y={votesTop + 2}
+              width={cardW - 16}
+              height={cardH - votesTop - 6}
+              rx="5"
+              aria-hidden
+            />
           )}
         </g>
       </g>
@@ -963,6 +976,12 @@ export function VillageBoard({
   boardRef?: RefObject<SVGSVGElement | null>
 }) {
   const [open, setOpen] = useState<number | null>(null)
+  const [prevHighlight, setPrevHighlight] = useState(highlight)
+  if (prevHighlight !== highlight) {
+    setPrevHighlight(highlight)
+    // 쪽지 비교(share) 안내로 넘어가면 중앙 점선을 가리지 않게 카드를 접는다.
+    if (highlight === 'share') setOpen(null)
+  }
   const [hovered, setHovered] = useState<number | null>(null)
   const [focused, setFocused] = useState<number | null>(null)
   const svg = useRef<SVGSVGElement>(null)
@@ -981,11 +1000,11 @@ export function VillageBoard({
       last.current = null
     }
   }, [open])
-  // 선택창과 집 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
+  // 선택창과 집·튜토리얼 말풍선 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
   useEffect(() => {
     if (open == null) return
     const close = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('.vb-card, .vb-house')) setOpen(null)
+      if (!(e.target as Element).closest('.vb-card, .vb-house, .tut-box')) setOpen(null)
     }
     document.addEventListener('click', close)
     return () => document.removeEventListener('click', close)
@@ -1164,6 +1183,7 @@ export function VillageBoard({
           votes={tonightVotes(state, houses, opened.city, picker.claims)}
           onClaim={(c) => picker.onClaim(opened.city, c)}
           highlightSuspicion={highlight === 'suspicion'}
+          highlightVotes={highlight === 'votes'}
         />
       )}
     </svg>
