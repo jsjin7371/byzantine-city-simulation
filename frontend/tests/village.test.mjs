@@ -148,7 +148,7 @@ test('village lines: contradiction, matching and mismatching words, trial warnin
   assert.ok(texts(lines).includes('음… 내가 본 건 태풍인데, 3번은 잔류래'))
   assert.ok(texts(lines).includes('그래, 내가 본 하늘도 태풍이었어'))
   assert.ok(lines.some((l) => l.who === 1 && l.text === '3번 좀 수상한데. 한 번만 더 그러면 재판이야'))
-  assert.ok(texts(lines).includes('4번이 1번을 의심하고 있다'))
+  assert.ok(texts(lines).includes('4번이 1번을 의심하고 있다 (의심도 30)'))
   assert.ok(!texts(lines).includes('3번이 이상하다.')) // 눈치 시민은 reason 대신 템플릿
 })
 

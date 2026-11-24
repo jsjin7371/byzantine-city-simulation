@@ -372,7 +372,7 @@ export function villageLines(
       lines.push({ phase: 'suspicion', kind: 'say', who: c.city, text: byCity(c.city, WARN_LINES)(me) })
     const [top, value] = Object.entries(c.suspicion).sort((x, y) => y[1] - x[1])[0] ?? []
     if (top && value > 0 && state.roles[top] === 'citizen')
-      lines.push({ phase: 'suspicion', kind: 'event', text: `${c.city}번이 ${top}번을 의심하고 있다` })
+      lines.push({ phase: 'suspicion', kind: 'event', text: `${c.city}번이 ${top}번을 의심하고 있다 (의심도 ${value})` })
   }
 
   if (result.vote) {
