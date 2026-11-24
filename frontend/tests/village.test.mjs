@@ -109,21 +109,27 @@ test('suspicion preview matches engine game_turn (7.6): ±20, contradiction +20,
   // 기대값은 engine/city/logic.py game_turn(hint, {"3": claim}, shared, {"3": from})로 직접 돌려 얻은 값
   const at = (suspicion, hint) => ({ city: 1, hint, suspicion })
   const pairs = [[1, 4]]
-  assert.deepEqual(suspicionPreview(at(50, 'danger'), 'stay', [], {}), { from: 50, next: 70, trial: true })
-  assert.deepEqual(suspicionPreview(at(30, 'danger'), 'evacuate', [], {}), { from: 30, next: 10, trial: false })
+  assert.deepEqual(suspicionPreview(at(50, 'danger'), 'stay', [], {}), { from: 50, next: 70, trial: true, contradiction: false })
+  assert.deepEqual(suspicionPreview(at(30, 'danger'), 'evacuate', [], {}), { from: 30, next: 10, trial: false, contradiction: false })
   assert.equal(suspicionPreview(at(10, 'safe'), 'stay', [], {}).next, 0)
   assert.equal(suspicionPreview(at(null, 'safe'), 'evacuate', [], {}).next, 20) // 1턴 전은 0에서
-  assert.deepEqual(suspicionPreview(at(50, 'safe'), 'evacuate', pairs, { 4: 'stay' }), { from: 50, next: 90, trial: true })
+  assert.deepEqual(suspicionPreview(at(50, 'safe'), 'evacuate', pairs, { 4: 'stay' }), { from: 50, next: 90, trial: true, contradiction: true })
   assert.equal(suspicionPreview(at(95, 'safe'), 'evacuate', pairs, { 4: 'evacuate' }).next, 100)
   assert.equal(suspicionPreview(at(70, 'danger'), 'evacuate', pairs, { 4: 'stay' }).next, 70)
   // 상대에게 말을 안 보냈거나(ring) 내가 없는 쌍의 모순은 더하지 않는다 (God은 자기 쌍만 shared로 넘긴다)
   assert.equal(suspicionPreview(at(50, 'safe'), 'evacuate', pairs, {}).next, 70)
   assert.equal(suspicionPreview(at(50, 'safe'), 'evacuate', [[4, 5]], { 4: 'stay', 5: 'evacuate' }).next, 70)
   assert.equal(suspicionPreview(at(50, null), 'stay', [], {}), null)
-  // 미리보기 색: 100→100 불리는 나쁨, 0→0 유리는 안전
+  // 미리보기 색: 100→100 불리는 나쁨, 0→0 유리는 안전, 맞는 말이라도 모순이 겹치면 의심도 0·50 모두 불리
   assert.equal(worsens(suspicionPreview(at(100, 'danger'), 'stay', [], {})), true)
   assert.equal(worsens(suspicionPreview(at(0, 'safe'), 'stay', [], {})), false)
   assert.equal(worsens(suspicionPreview(at(30, 'danger'), 'evacuate', [], {})), false)
+  const agreeClash0 = suspicionPreview(at(0, 'danger'), 'evacuate', pairs, { 4: 'stay' })
+  const agreeClash50 = suspicionPreview(at(50, 'danger'), 'evacuate', pairs, { 4: 'stay' })
+  assert.deepEqual(agreeClash0, { from: 0, next: 0, trial: false, contradiction: true })
+  assert.deepEqual(agreeClash50, { from: 50, next: 50, trial: false, contradiction: true })
+  assert.equal(worsens(agreeClash0), true)
+  assert.equal(worsens(agreeClash50), true)
 })
 
 test('changed houses: hint differs from today or newly on a dotted line, nothing else', () => {

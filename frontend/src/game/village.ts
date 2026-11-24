@@ -76,11 +76,12 @@ export function suspicionPreview(
   })
   const delta = (agrees(h.hint, claim) ? SUSPICION.agree : SUSPICION.disagree) + (contradiction ? SUSPICION.contradiction : 0)
   const next = Math.min(100, Math.max(0, from + delta))
-  return { from, next, trial: next >= SUSPICION.threshold }
+  return { from, next, trial: next >= SUSPICION.threshold, contradiction }
 }
 export type Preview = NonNullable<ReturnType<typeof suspicionPreview>>
-// 불리한 말은 항상 +20 이상이라 next>=from이고 next>0 (100→100도 불리). 유리한 말은 next<from이거나 0→0.
-export const worsens = (p: Pick<Preview, 'from' | 'next'>) => p.next >= p.from && p.next > 0
+// 관측과 어긋나거나(+20) 모순이 겹치면(0 이상) 불리(100→100 포함). 모순 없이 관측에 맞는 말(감소 또는 0→0)만 유리.
+export const worsens = (p: Pick<Preview, 'from' | 'next' | 'contradiction'>) =>
+  p.contradiction || (p.next >= p.from && p.next > 0)
 
 // 어제와 달라진 집 (쪽지를 다시 볼 곳): 다음 힌트가 이번 턴과 바뀌었거나 새로 쪽지 비교에 들어온 시민. 첫날은 없다.
 export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'next_hints' | 'next_share_pairs'>) {
