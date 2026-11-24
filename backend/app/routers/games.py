@@ -1,7 +1,9 @@
 """게임 세션 API (docs/spec.md 7.9). 턴마다 God을 호출해 결과를 받은 그대로 저장·중계한다."""
+import csv
+import io
 from threading import Lock
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -27,6 +29,45 @@ def bot_win_rate(config: dict) -> float | None:
     if any(config.get(k) != v for k, v in _DEFAULTS.items()):
         return None
     return BOT_WIN_RATE.get((config["citizen_type"], config["mafia_count"], config["sensor_error"]))
+
+
+# 플레이 기록 집계 (7.9). 난이도 프리셋은 7.2 표, 프론트 gameApi.ts의 difficulties와 같은 값이다.
+DIFFICULTIES = {"easy": ("쉬움", 0.48), "normal": ("보통", 0.4), "hard": ("어려움", 0.3)}
+CITIZEN_TYPES = ("wary", "majority", "ai")
+WIN_OUTCOMES = ("win", "perfect_win")
+STATS_COLUMNS = ["citizen_type", "difficulty", "label", "games", "wins", "win_rate", "bot_win_rate"]
+
+
+def difficulty_of(config: dict) -> str | None:
+    """사람이 하고 기본 설정에 난이도 프리셋을 쓴 판이면 난이도 키, 아니면 None (집계에서 뺀다)."""
+    if config.get("player") != "human" or config.get("mafia_count") != 1:
+        return None
+    if any(config.get(k) != v for k, v in _DEFAULTS.items()):
+        return None
+    return next((key for key, (_, err) in DIFFICULTIES.items() if config.get("sensor_error") == err), None)
+
+
+def play_stats(db: Session) -> list[dict]:
+    """끝난 판을 시민 종류 × 난이도로 묶어 판 수·승리 수를 센다. 판이 없는 조합도 0판으로 돌려준다."""
+    counts = {(c, d): [0, 0] for c in CITIZEN_TYPES for d in DIFFICULTIES}
+    for config, state in db.execute(select(Game.config, Game.state).where(Game.status == Status.FINISHED)):
+        key = (config.get("citizen_type"), difficulty_of(config))
+        if key not in counts:
+            continue
+        counts[key][0] += 1
+        counts[key][1] += (state or {}).get("outcome") in WIN_OUTCOMES
+    return [
+        {
+            "citizen_type": c,
+            "difficulty": d,
+            "label": DIFFICULTIES[d][0],
+            "games": games,
+            "wins": wins,
+            "win_rate": wins / games if games else None,
+            "bot_win_rate": BOT_WIN_RATE.get((c, 1, DIFFICULTIES[d][1])),
+        }
+        for (c, d), (games, wins) in counts.items()
+    ]
 
 
 def get_game_or_404(db: Session, game_id: int) -> Game:
@@ -68,6 +109,26 @@ def create_game(body: GameConfig, request: Request, db: Session = Depends(get_db
             raise HTTPException(status.HTTP_502_BAD_GATEWAY, f"게임 엔진 호출에 실패해 게임을 시작하지 못했습니다. ({e})") from e
         db.commit()
     return to_out(game)
+
+
+# /stats 경로는 /{game_id}보다 먼저 등록해야 한다 (아니면 "stats"를 game_id로 읽어 422)
+@router.get("/stats", summary="플레이 기록 집계")
+def get_stats(db: Session = Depends(get_db)):
+    return {"items": play_stats(db)}
+
+
+@router.get("/stats.csv", summary="플레이 기록 집계 CSV", response_class=Response)
+def get_stats_csv(db: Session = Depends(get_db)):
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=STATS_COLUMNS, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(play_stats(db))
+    # BOM을 붙여야 엑셀이 UTF-8 한글(label)을 깨뜨리지 않는다
+    return Response(
+        "﻿" + buf.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="play_stats.csv"'},
+    )
 
 
 @router.get("/{game_id}", summary="게임 상태")
