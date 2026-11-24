@@ -41,6 +41,35 @@ export function clashingPairs(pairs: [number, number][], claims: Record<string, 
   return pairs.filter(([a, b]) => claims[a] && claims[b] && claims[a] !== claims[b])
 }
 
+// 모순 매듭 문구: 눈치 주민은 고정 수치(+20)를 보이고, AI 주민은 LLM이 의심도를 자유롭게 정하므로 고정 수치 없이 안내한다.
+export function contradictionKnotCopy(
+  citizenType: GameState['config']['citizen_type'],
+  kind: 'clashes' | 'caught',
+  a: number,
+  b: number,
+): { text: string; label: string } {
+  if (citizenType === 'ai') {
+    return kind === 'caught'
+      ? {
+          text: '모순 발견',
+          label: `모순 발견: ${a}번 집과 ${b}번 집에 다른 쪽지를 보냈어요. AI 주민이 의심할 수 있어요.`,
+        }
+      : {
+          text: '모순 주의',
+          label: `모순 주의: ${a}번 집과 ${b}번 집에 다른 쪽지를 골랐어요. AI 주민이 의심할 수 있어요.`,
+        }
+  }
+  return kind === 'caught'
+    ? {
+        text: `모순 +${SUSPICION.contradiction}`,
+        label: `모순 발견: ${a}번 집과 ${b}번 집, 의심도 +${SUSPICION.contradiction}`,
+      }
+    : {
+        text: `모순 +${SUSPICION.contradiction}`,
+        label: `모순 위험: ${a}번 집과 ${b}번 집에 다른 쪽지, 의심도 +${SUSPICION.contradiction}`,
+      }
+}
+
 const agrees = (hint: Truth, claim: Claim) => (hint === 'danger') === (claim === 'evacuate')
 
 // 쪽지 하나로 그 시민의 나에 대한 의심도가 어떻게 바뀔지 (7.6, engine/city/logic.py game_turn과 같은 규칙).
@@ -666,6 +695,23 @@ export function pairLogScales(lines: Line[]): LogEntry[] {
     }
   }
   return entries
+}
+
+// 마을 이야기 상단 안내와 3색 범례 표시 여부. AI 주민은 속마음 저울(› 버튼)과 3색 막대를 쓰지 않는다.
+export function villageLogHeader(citizenType: GameState['config']['citizen_type']): {
+  intro: string
+  showLegend: boolean
+} {
+  if (citizenType === 'ai') {
+    return {
+      intro: '밤마다 AI 주민이 직접 판단한 이유가 적혀요.',
+      showLegend: false,
+    }
+  }
+  return {
+    intro: '밤마다 주민들이 나눈 말과 결정한 이유가 적혀요. 줄 옆 › 버튼을 누르면 속마음 저울이 보여요.',
+    showLegend: true,
+  }
 }
 
 // 그 단계까지 나온 대사. 재판 지목은 한 명씩.

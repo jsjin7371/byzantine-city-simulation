@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { decisions } from '../components/results/resultLabels'
-import { TONIGHT_SCALE_TITLE, pairLogScales, tonightVotesText, voteItemLabel } from './village'
+import type { CitizenType } from '../gameApi'
+import { TONIGHT_SCALE_TITLE, pairLogScales, tonightVotesText, villageLogHeader, voteItemLabel } from './village'
 import type { Line, Scale, ScaleLine, TonightVotes } from './village'
 
 // 작은 양팔 저울: 왼쪽 접시 대피(+), 오른쪽 접시 잔류(−). 몫마다 블록 하나, 합만큼 기운다.
@@ -137,6 +138,7 @@ function TonightScaleBlock({
 export function VillageLog({
   lines,
   day,
+  citizenType = 'wary',
   live = false,
   tonightScale = null,
   highlight = null,
@@ -146,6 +148,7 @@ export function VillageLog({
 }: {
   lines: Line[] | null
   day?: number
+  citizenType?: CitizenType
   live?: boolean
   tonightScale?: { city: number; votes: TonightVotes } | null
   highlight?: 'log' | 'scale' | 'votes' | null
@@ -153,6 +156,7 @@ export function VillageLog({
   scaleBtnRef?: RefObject<HTMLButtonElement | null>
   children?: ReactNode
 }) {
+  const { intro, showLegend } = villageLogHeader(citizenType)
   const log = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const entries = lines ? pairLogScales(lines) : null
@@ -204,21 +208,23 @@ export function VillageLog({
         <h2>마을 이야기</h2>
         {day != null && <span className="vl-day">{day}일째 밤</span>}
       </div>
-      <p className="vl-intro">밤마다 주민들이 나눈 말과 결정한 이유가 적혀요. 줄 옆 › 버튼을 누르면 속마음 저울이 보여요.</p>
-      <div className="vl-legend" aria-hidden="true">
-        <span>
-          <i className="vl-swatch is-hint" />
-          주민 관측
-        </span>
-        <span>
-          <i className="vl-swatch is-note" />
-          이웃 쪽지
-        </span>
-        <span>
-          <i className="vl-swatch is-mine" />
-          내 쪽지
-        </span>
-      </div>
+      <p className={citizenType === 'ai' ? 'vl-intro is-ai' : 'vl-intro'}>{intro}</p>
+      {showLegend && (
+        <div className="vl-legend" aria-hidden="true">
+          <span>
+            <i className="vl-swatch is-hint" />
+            주민 관측
+          </span>
+          <span>
+            <i className="vl-swatch is-note" />
+            이웃 쪽지
+          </span>
+          <span>
+            <i className="vl-swatch is-mine" />
+            내 쪽지
+          </span>
+        </div>
+      )}
       <div className="vl-tonight-live" aria-live="polite" aria-atomic="true">
         {tonightScale && (
           <TonightScaleBlock

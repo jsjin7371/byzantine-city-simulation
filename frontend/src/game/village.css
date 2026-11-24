@@ -560,7 +560,7 @@
 
 .vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
 .vb-share-tag rect { fill: #f6ebcd; stroke: #b8861f; }
-/* 두 집에 다른 쪽지: 점선이 붉게 (모순 +20 매듭과 함께 보여 색만으로 구분하지 않는다) */
+/* 두 집에 다른 쪽지: 점선이 붉게 (모순 매듭과 함께 보여 색만으로 구분하지 않는다) */
 .vb-share .is-clash .vb-share-line { stroke: var(--rust); }
 .vb-share .is-clash .vb-share-glow { stroke: #e0703f; }
 .vb-share .is-clash .vb-share-tag rect { stroke: var(--rust); }
@@ -729,6 +729,11 @@
   line-height: 1.4;
   color: var(--ink-soft);
   word-break: keep-all;
+}
+.vl-intro.is-ai {
+  margin: -2px 0 10px;
+  font-size: 18px;
+  line-height: 1.35;
 }
 .vl-log {
   flex: 1 1 auto;

@@ -397,6 +397,7 @@ export function GamePage() {
             <VillageLog
               lines={lines && playing ? visibleLines(lines, steps[step]) : lines}
               day={shown?.turn}
+              citizenType={state.config.citizen_type}
               live={playing}
               tonightScale={tonightScale}
               highlight={highlight === 'log' || highlight === 'scale' || highlight === 'votes' ? highlight : null}

@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, villageHouses, voteAnimDelays, worsens } from './village'
+import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, villageHouses, voteAnimDelays, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TutorialHighlight } from './village'
 import './village.css'
 
@@ -834,8 +834,8 @@ function ContradictionKnot({ x, y, label, text, title }: { x: number; y: number;
       <g className="vb-knot">
         <use href="#vb-knot" x={x} y={y} />
       </g>
-      <rect x={x - 54} y={y - 52} width="108" height="25" rx="4" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
-      <text x={x} y={y - 34} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-rust">
+      <rect x={x - 54} y={y - 52} width="108" height="26" rx="4" fill="#f6ebcd" stroke="#a8361f" strokeWidth="1.5" />
+      <text x={x} y={y - 33} fontSize="18" fontWeight="700" textAnchor="middle" className="vb-rust">
         {text}
       </text>
     </g>
@@ -1091,31 +1091,16 @@ export function VillageBoard({
       {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
       {caught.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
-        return (
-          <ContradictionKnot
-            key={`${a}-${b}`}
-            x={mx}
-            y={my}
-            label={`모순 발견: ${a}번 집과 ${b}번 집, 의심도 +${SUSPICION.contradiction}`}
-            text={`모순 +${SUSPICION.contradiction}`}
-          />
-        )
+        const knot = contradictionKnotCopy(state.config.citizen_type, 'caught', a, b)
+        return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} />
       })}
       {result?.vote && at('trial') && (
         <Trial vote={result.vote} houses={houses} shown={night?.ballots} verdict={at('verdict')} />
       )}
       {clashes.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
-        return (
-          <ContradictionKnot
-            key={`${a}-${b}`}
-            x={mx}
-            y={my}
-            label={`모순 위험: ${a}번 집과 ${b}번 집에 다른 쪽지, 의심도 +${SUSPICION.contradiction}`}
-            text={`모순 +${SUSPICION.contradiction}`}
-            title
-          />
-        )
+        const knot = contradictionKnotCopy(state.config.citizen_type, 'clashes', a, b)
+        return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} title />
       })}
       {opened && picker && (
         <NoteCard

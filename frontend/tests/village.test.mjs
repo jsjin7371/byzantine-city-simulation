@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
 import { difficulties } from '../src/gameApi.ts'
 
@@ -77,6 +77,32 @@ test('a contradiction knot appears only when the two houses that meet hear diffe
   assert.deepEqual(pairMid(3, 5, 1), [450, 308])
   assert.deepEqual(pairMid(3, 4, 2), [450, 330])
   assert.deepEqual(pairMid(3, 4, 5), [398, 319])
+})
+
+test('ai citizens omit fixed +20 contradiction copy and scale legend while wary keeps them', () => {
+  const aiClash = contradictionKnotCopy('ai', 'clashes', 1, 5)
+  const aiCaught = contradictionKnotCopy('ai', 'caught', 1, 5)
+  assert.equal(aiClash.text, '모순 주의')
+  assert.equal(aiCaught.text, '모순 발견')
+  assert.doesNotMatch(aiClash.text + aiClash.label + aiCaught.text + aiCaught.label, /\+20/)
+  assert.match(aiClash.label, /1번 집과 5번 집.*AI 주민이 의심할 수 있어요/)
+  assert.match(aiCaught.label, /1번 집과 5번 집.*AI 주민이 의심할 수 있어요/)
+
+  const waryClash = contradictionKnotCopy('wary', 'clashes', 1, 5)
+  const waryCaught = contradictionKnotCopy('wary', 'caught', 1, 5)
+  assert.equal(waryClash.text, '모순 +20')
+  assert.equal(waryCaught.text, '모순 +20')
+  assert.match(waryClash.label, /의심도 \+20/)
+  assert.match(waryCaught.label, /의심도 \+20/)
+
+  const aiLog = villageLogHeader('ai')
+  assert.equal(aiLog.showLegend, false)
+  assert.match(aiLog.intro, /AI 주민.*직접 판단한 이유/)
+  assert.doesNotMatch(aiLog.intro, /›|속마음 저울/)
+
+  const waryLog = villageLogHeader('wary')
+  assert.equal(waryLog.showLegend, true)
+  assert.match(waryLog.intro, /›.*속마음 저울/)
 })
 
 test('suspicion preview matches engine game_turn (7.6): ±20, contradiction +20, clamp 0~100, trial at 60', () => {
