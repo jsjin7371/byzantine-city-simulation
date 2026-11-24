@@ -63,14 +63,30 @@ function WhyBox({ id, scale }: { id: string; scale: ScaleLine }) {
 function TonightScaleBlock({
   city,
   votes,
+  highlighted = false,
 }: {
   city: number
   votes: TonightVotes
+  highlighted?: boolean
 }) {
   const { subtitle, note, aiNote } = tonightVotesText(votes)
   const headingId = `vl-tonight-title-${city}`
   return (
-    <section className="vl-tonight" aria-labelledby={headingId}>
+    <section className={highlighted ? 'vl-tonight is-tut-votes' : 'vl-tonight'} aria-labelledby={headingId}>
+      {highlighted && (
+        <svg
+          className="tut-tonight-frame"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path
+            className="tut-tonight-stroke"
+            d="M 1.6 1.6 Q 50 0.5 98.5 1.8 Q 99.4 50 98.4 98.4 Q 50 99.5 1.5 98.3 Q 0.6 50 1.8 1.4"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      )}
       <div className="vl-tonight-head">
         <h3 id={headingId} className="vl-tonight-title">
           {city}번 집 · {TONIGHT_SCALE_TITLE}
@@ -136,7 +152,7 @@ export function VillageLog({
   day?: number
   live?: boolean
   tonightScale?: { city: number; votes: TonightVotes } | null
-  highlight?: 'log' | 'scale' | null
+  highlight?: 'log' | 'scale' | 'votes' | null
   onScaleOpen?: (open: boolean) => void
   scaleBtnRef?: RefObject<HTMLButtonElement | null>
   children?: ReactNode
@@ -207,7 +223,13 @@ export function VillageLog({
           내 쪽지
         </span>
       </div>
-      {tonightScale && <TonightScaleBlock city={tonightScale.city} votes={tonightScale.votes} />}
+      {tonightScale && (
+        <TonightScaleBlock
+          city={tonightScale.city}
+          votes={tonightScale.votes}
+          highlighted={highlight === 'votes'}
+        />
+      )}
       <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
         {!entries && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았어요. 집마다 쪽지를 고르고 밤으로 넘겨 보세요.</p>}
         {entries?.map((entry, i) => {

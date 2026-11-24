@@ -399,7 +399,7 @@ export function GamePage() {
               day={shown?.turn}
               live={playing}
               tonightScale={tonightScale}
-              highlight={highlight === 'log' || highlight === 'scale' ? highlight : null}
+              highlight={highlight === 'log' || highlight === 'scale' || highlight === 'votes' ? highlight : null}
               onScaleOpen={setScaleOpen}
               scaleBtnRef={scaleBtnRef}
             >

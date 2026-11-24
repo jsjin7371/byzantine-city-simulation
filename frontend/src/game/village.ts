@@ -784,7 +784,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'votes',
-    text: '주민은 관측 한 표와 받은 쪽지들로 결정을 내려요. 의심하는 집이 보낸 쪽지는 블록이 작아져 덜 믿어요. 카드 아래에서 오늘 밤 이 집이 받을 표를 볼 수 있어요.',
+    text: '주민은 관측 한 표와 받은 쪽지들로 결정을 내려요. 의심하는 집이 보낸 쪽지는 블록이 작아져 덜 믿어요. 마을 이야기 위에서 오늘 밤 저울을 볼 수 있어요.',
   },
   {
     highlight: 'share',
@@ -797,7 +797,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'flags',
-    text: '밤에 표가 쌓여 주민의 결정이 깃발(대피·잔류)로 섰어요. 이 깃발은 다음 날 다른 주민에게 보내는 쪽지가 돼요.',
+    text: '밤에 표가 쌓여 더 많은 쪽으로 깃발(대피·잔류)이 섰어요. 이 깃발은 다음 날 다른 주민에게 보내는 쪽지가 돼요.',
   },
   {
     highlight: null,

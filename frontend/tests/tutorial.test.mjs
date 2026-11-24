@@ -37,8 +37,12 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   const withOpenCard = { ...day1, cardOpen: true }
   assert.equal(tutorialStep(tutorialStep(1, withOpenCard).cursor + 1, withOpenCard).step?.highlight, 'suspicion')
 
-  // 카드 아래 "이 집의 표" → 점선 → 밤으로 버튼(턴 제출 대기)
-  assert.equal(tutorialStep(4, day1).step?.highlight, 'votes')
+  // 마을 이야기 위 "오늘 밤 저울" → 점선 → 밤으로 버튼(턴 제출 대기)
+  const votesStep = tutorialStep(4, day1)
+  assert.equal(votesStep.step?.highlight, 'votes')
+  assert.match(votesStep.step?.text ?? '', /마을 이야기.*오늘 밤 저울/)
+  assert.doesNotMatch(votesStep.step?.text ?? '', /카드 아래/)
+  assert.equal(splitSentences(votesStep.step?.text ?? '').length, 3)
   assert.equal(tutorialStep(5, day1).step?.highlight, 'share')
   const waitTurn = tutorialStep(6, day1)
   assert.equal(waitTurn.step?.highlight, 'submit')
@@ -50,7 +54,10 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   assert.equal(night1.step, null)
 
   const day2 = { turn: 1, playing: false, cardOpen: false, scaleOpen: false, gameOver: false }
-  assert.equal(tutorialStep(night1.cursor, day2).step?.highlight, 'flags')
+  const flagsStep = tutorialStep(night1.cursor, day2)
+  assert.equal(flagsStep.step?.highlight, 'flags')
+  assert.match(flagsStep.step?.text ?? '', /많은 쪽으로 깃발/)
+  assert.equal(splitSentences(flagsStep.step?.text ?? '').length, 2)
   assert.equal(tutorialStep(8, day2).step?.highlight, null)
   assert.match(tutorialStep(8, day2).step?.text ?? '', /의심하는 선/)
   assert.equal(tutorialStep(9, day2).step?.highlight, 'log')
