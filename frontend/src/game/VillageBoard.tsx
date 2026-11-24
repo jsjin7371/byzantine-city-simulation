@@ -107,7 +107,14 @@ const SKY_SPARKS = [
 // 하늘: 정답이 위험이면 태풍 구름, 안전이면 맑은 하늘
 function Sky({ danger }: { danger: boolean }) {
   return (
-    <g role="img" aria-label={danger ? '하늘: 오늘 밤 진짜 날씨는 태풍, 주민은 대피해야 산다' : '하늘: 오늘 밤 진짜 날씨는 맑음, 주민은 집에 있어야 산다'}>
+    <g
+      role="img"
+      aria-label={
+        danger
+          ? '하늘: 이번 판 진짜 날씨는 태풍, 주민은 대피해야 산다. 내 목표: 주민을 집에 붙잡아 두기'
+          : '하늘: 이번 판 진짜 날씨는 맑음, 주민은 집에 있어야 산다. 내 목표: 주민을 대피시키기'
+      }
+    >
       <g filter="url(#vb-rough)" aria-hidden>
         <path
           d="M0 0 H900 V96 Q850 112 800 98 Q740 118 680 100 Q610 120 540 102 Q470 118 400 100 Q330 116 260 99 Q190 114 120 98 Q60 112 0 98 Z"
@@ -117,23 +124,23 @@ function Sky({ danger }: { danger: boolean }) {
       {danger ? (
         <>
           <g className="vb-cloud" fill="#7d8c96" aria-hidden>
-            <ellipse cx="640" cy="44" rx="70" ry="30" />
-            <ellipse cx="710" cy="34" rx="62" ry="30" />
-            <ellipse cx="790" cy="46" rx="74" ry="32" />
-            <ellipse cx="860" cy="30" rx="60" ry="30" />
+            <ellipse cx="665" cy="44" rx="70" ry="30" />
+            <ellipse cx="735" cy="34" rx="62" ry="30" />
+            <ellipse cx="815" cy="46" rx="74" ry="32" />
+            <ellipse cx="885" cy="30" rx="60" ry="30" />
           </g>
           <g className="vb-cloud is-b" fill="#5f6f7b" aria-hidden>
-            <ellipse cx="700" cy="62" rx="80" ry="20" />
-            <ellipse cx="820" cy="66" rx="80" ry="20" />
+            <ellipse cx="725" cy="62" rx="80" ry="20" />
+            <ellipse cx="845" cy="66" rx="80" ry="20" />
           </g>
           <g className="vb-wind" stroke="#eef2f2" strokeWidth="2.5" fill="none" strokeLinecap="round" aria-hidden>
-            <path d="M230 40 Q290 26 340 42 Q380 54 420 38" />
-            <path d="M300 70 Q360 58 410 70 Q450 80 500 64 a10 10 0 1 0 -6 -14" />
-            <path d="M180 78 Q220 68 260 78" />
+            <path d="M120 40 Q180 26 230 42 Q265 54 300 38" />
+            <path d="M150 70 Q205 58 250 70 Q280 78 315 64 a10 10 0 1 0 -6 -14" />
+            <path d="M70 78 Q110 68 150 78" />
           </g>
           <g stroke="#5f6f7b" strokeWidth="2" strokeLinecap="round" aria-hidden>
-            <path className="vb-rain" d="M640 76 l-6 12 M704 78 l-6 12 M768 78 l-6 12 M832 78 l-6 12" />
-            <path className="vb-rain is-b" d="M672 78 l-6 12 M736 80 l-6 12 M800 80 l-6 12" />
+            <path className="vb-rain" d="M665 76 l-6 12 M729 78 l-6 12 M793 78 l-6 12 M857 78 l-6 12" />
+            <path className="vb-rain is-b" d="M697 78 l-6 12 M761 80 l-6 12 M825 80 l-6 12" />
           </g>
         </>
       ) : (
@@ -164,11 +171,11 @@ function Sky({ danger }: { danger: boolean }) {
           </g>
         </>
       )}
-      <text x="545" y="40" fontSize="18" fontWeight="700" textAnchor="end" className="vb-pencil" aria-hidden>
-        {danger ? '오늘 밤 진짜 날씨: 태풍' : '오늘 밤 진짜 날씨: 맑음'}
+      <text x="450" y="40" fontSize="18" fontWeight="700" textAnchor="middle" className="vb-pencil" aria-hidden>
+        {danger ? '이번 판 진짜 날씨: 태풍' : '이번 판 진짜 날씨: 맑음'}
       </text>
-      <text x="545" y="62" fontSize="14.5" textAnchor="end" aria-hidden>
-        {danger ? '주민은 대피해야 산다' : '주민은 집에 있어야 산다'}
+      <text x="450" y="62" fontSize="14.5" textAnchor="middle" aria-hidden>
+        {danger ? '내 목표: 주민을 집에 붙잡아 두기' : '내 목표: 주민을 대피시키기'}
       </text>
     </g>
   )
