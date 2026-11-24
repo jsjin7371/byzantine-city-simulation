@@ -849,7 +849,7 @@
 /* 튜토리얼 말풍선 및 대상 강조 */
 .tut-box {
   flex: none;
-  height: 112px;
+  height: 140px;
   margin-bottom: 8px;
   padding: 10px 14px;
   display: flex;
@@ -873,12 +873,15 @@
   flex: 1 1 320px;
   min-width: 0;
   margin: 0;
-  font-size: 16.5px;
+  font-size: 20px;
   font-weight: 700;
-  line-height: 1.45;
+  line-height: 1.35;
   color: var(--ink);
   word-break: keep-all;
   overflow-wrap: break-word;
+}
+.tut-line {
+  display: block;
 }
 .tut-actions {
   flex: none;

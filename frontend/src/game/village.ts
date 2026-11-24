@@ -578,6 +578,14 @@ export type TutorialContext = {
   viewingPast?: boolean
 }
 
+// 튜토리얼 문구를 문장 끝(. ? !) 기준으로 나눈다. 화면 낭독기는 원래 문장 그대로 읽히고 시각적으로만 문장마다 줄을 바꾼다.
+export function splitSentences(text: string): string[] {
+  return text
+    .trim()
+    .split(/(?<=[.?!])\s+/)
+    .filter(Boolean)
+}
+
 // 튜토리얼 단계 진행 규칙: 지금 턴·연출 중 여부·쪽지 카드 열림·게임 종료·지난밤 보기로 커서와 현재 표시할 단계를 정한다.
 export function tutorialStep(
   cursor: number,

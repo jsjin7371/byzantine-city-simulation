@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { TUTORIAL_SEED, TUTORIAL_STEPS, tutorialStep } from '../src/game/village.ts'
+import { TUTORIAL_SEED, TUTORIAL_STEPS, splitSentences, tutorialStep } from '../src/game/village.ts'
+
+test('splitSentences breaks on sentence-ending punctuation without changing text', () => {
+  assert.deepEqual(splitSentences(''), [])
+  assert.deepEqual(splitSentences('한 문장만 있어요.'), ['한 문장만 있어요.'])
+  assert.deepEqual(splitSentences('질문인가요? 감탄이에요! 끝이에요.'), ['질문인가요?', '감탄이에요!', '끝이에요.'])
+  for (const s of TUTORIAL_STEPS) {
+    const parts = splitSentences(s.text)
+    assert.ok(parts.length >= 1)
+    assert.equal(parts.join(' '), s.text)
+  }
+})
 
 test('tutorialStep progresses across 3 days based on turn, animation, note card, and game over', () => {
   assert.equal(TUTORIAL_SEED, 15)
