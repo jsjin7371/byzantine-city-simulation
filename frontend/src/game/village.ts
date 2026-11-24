@@ -48,26 +48,13 @@ export function contradictionKnotCopy(
   a: number,
   b: number,
 ): { text: string; label: string } {
+  const head = kind === 'caught' ? '모순 발견' : citizenType === 'ai' ? '모순 주의' : '모순 위험'
   if (citizenType === 'ai') {
-    return kind === 'caught'
-      ? {
-          text: '모순 발견',
-          label: `모순 발견: ${a}번 집과 ${b}번 집에 다른 쪽지를 보냈어요. AI 주민이 의심할 수 있어요.`,
-        }
-      : {
-          text: '모순 주의',
-          label: `모순 주의: ${a}번 집과 ${b}번 집에 다른 쪽지를 골랐어요. AI 주민이 의심할 수 있어요.`,
-        }
+    const verb = kind === 'caught' ? '보냈어요' : '골랐어요'
+    return { text: head, label: `${head}: ${a}번 집과 ${b}번 집에 다른 쪽지를 ${verb}. AI 주민이 의심할 수 있어요.` }
   }
-  return kind === 'caught'
-    ? {
-        text: `모순 +${SUSPICION.contradiction}`,
-        label: `모순 발견: ${a}번 집과 ${b}번 집, 의심도 +${SUSPICION.contradiction}`,
-      }
-    : {
-        text: `모순 +${SUSPICION.contradiction}`,
-        label: `모순 위험: ${a}번 집과 ${b}번 집에 다른 쪽지, 의심도 +${SUSPICION.contradiction}`,
-      }
+  const pair = kind === 'caught' ? `${a}번 집과 ${b}번 집` : `${a}번 집과 ${b}번 집에 다른 쪽지`
+  return { text: `모순 +${SUSPICION.contradiction}`, label: `${head}: ${pair}, 의심도 +${SUSPICION.contradiction}` }
 }
 
 const agrees = (hint: Truth, claim: Claim) => (hint === 'danger') === (claim === 'evacuate')
