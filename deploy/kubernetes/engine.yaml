@@ -1,0 +1,364 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: god
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: god
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: god
+        app.kubernetes.io/part-of: byzantine-engine-static
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: god
+          image: byzantine-god:k8s-static
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: N_CITIES
+              value: "5"
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: god
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: god
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: city-1
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: city-1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: city-1
+        app.kubernetes.io/part-of: byzantine-engine-static
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: city-1
+          image: byzantine-city:k8s-static
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CITY_ID
+              value: "1"
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: city-1
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: city-1
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: city-2
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: city-2
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: city-2
+        app.kubernetes.io/part-of: byzantine-engine-static
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: city-2
+          image: byzantine-city:k8s-static
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CITY_ID
+              value: "2"
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: city-2
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: city-2
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: city-3
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: city-3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: city-3
+        app.kubernetes.io/part-of: byzantine-engine-static
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: city-3
+          image: byzantine-city:k8s-static
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CITY_ID
+              value: "3"
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: city-3
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: city-3
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: city-4
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: city-4
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: city-4
+        app.kubernetes.io/part-of: byzantine-engine-static
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: city-4
+          image: byzantine-city:k8s-static
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CITY_ID
+              value: "4"
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: city-4
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: city-4
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: city-5
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: city-5
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: city-5
+        app.kubernetes.io/part-of: byzantine-engine-static
+    spec:
+      automountServiceAccountToken: false
+      containers:
+        - name: city-5
+          image: byzantine-city:k8s-static
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CITY_ID
+              value: "5"
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            timeoutSeconds: 2
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 500m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: city-5
+  namespace: byzantine-engine-static
+  labels:
+    app.kubernetes.io/part-of: byzantine-engine-static
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: city-5
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
