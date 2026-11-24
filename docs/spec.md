@@ -440,7 +440,12 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 
 - 요청·응답 형식은 7.7, 7.8과 같다. 백엔드는 턴 결과를 받은 그대로 저장한다 (예: `games`, `game_turns` JSON 컬럼). 테이블 설계는 4단계에서 정한다.
 - `bot_win_rate`: 같은 설정에서 `player == "bot"`의 마피아 승률 (0.0~1.0, 결과 화면 비교용). 값은 7.2 난이도 표의 측정값을 백엔드가 설정별로 들고 있다. 프리셋 밖 설정(`mafia_count` 2, 표에 없는 `sensor_error`, 기본값이 아닌 `connection`·`memory`·`share_mode`·`share_pairs`, `citizen_type` `"ai"`)이면 `null`. God은 이 필드를 모른다.
-- 새 게임을 시작하면 이전 `in_progress` 게임은 `abandoned`.
+- 게임은 한 번에 한 판만 진행한다 (God이 한 판만 보관). `POST /games`는 아래 순서로 처리한다.
+  1. 쿼리 `?replace={game_id}`가 있으면 그 판이 `in_progress`일 때 `abandoned`로 바꾼다. 하던 판을 버리고 새로 시작할 때 프론트가 지금 `game_id`를 넘긴다.
+  2. 마지막 진행(시작 또는 턴) 후 `GAME_IDLE_MINUTES`(기본 10분)가 지난 `in_progress` 판은 `abandoned`로 바꾼다.
+  3. 그래도 `in_progress` 판이 남아 있으면 `409` ("다른 사람이 게임을 하고 있습니다…"). 진행 중인 판은 끊지 않는다.
+  - 시작이 God 오류(`502`)로 실패하면 1·2의 변경도 되돌린다.
+  - 사용자 구분이 없으므로 `replace`로 다른 사람의 판 id를 넘기면 그 판도 끝난다.
 - 플레이 기록 집계(`/games/stats`): `status == "finished"`, `player == "human"`, `citizen_type`이 `"wary"` 또는 `"majority"`(`"ai"`는 봇 승률이 없어 제외), `mafia_count` 1, `connection`·`memory`·`share_mode`·`share_pairs`가 기본값, `sensor_error`가 7.2 난이도 프리셋 값(0.48/0.4/0.3)인 판만 센다. `seed`는 따지지 않는다. 승리는 `outcome`이 `"win"` 또는 `"perfect_win"`인 판.
   - 응답: `{"items": [...]}`. 시민 종류 2개 × 난이도 3개 = 항상 6개 항목이며, 판이 없는 조합도 `games: 0`으로 들어간다.
   - 항목: `citizen_type`, `difficulty`(`"easy"`/`"normal"`/`"hard"`), `label`(`"쉬움"`/`"보통"`/`"어려움"`), `games`(판 수), `wins`(승리 수), `win_rate`(`wins / games`, 0판이면 `null`), `bot_win_rate`(7.2 표의 같은 난이도 봇 승률).

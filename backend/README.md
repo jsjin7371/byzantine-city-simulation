@@ -88,6 +88,7 @@ cd backend
 | `GOD_URL` | `http://god:8000` | God 주소 |
 | `GOD_TIMEOUT` | `120` | God 응답 대기 시간(초) |
 | `N_CITIES` | `5` | 도시 수 (god과 맞춰야 함) |
+| `GAME_IDLE_MINUTES` | `10` | 이 시간(분) 동안 턴 진행이 없는 게임은 새 게임 요청 때 끝냄 (spec 7.9) |
 | `CORS_ORIGINS` | `http://localhost:5173,http://localhost:3000` | 프론트 개발 서버 주소 |
 
 ## DB 스키마를 바꿀 때
