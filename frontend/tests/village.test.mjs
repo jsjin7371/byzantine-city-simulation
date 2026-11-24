@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TRAILS, VOTE_ANIM, changedHouses, citizenScales, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -396,8 +396,13 @@ test('scale text reads in plain sentences without numbers and swayed citizens ge
   const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
   const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
   assert.equal(line.text, '대피하기로 했어')
-  assert.equal(line.summary, '4번 집 대피 280표, 잔류 40표')
-  assert.equal(scaleVoteSummary(2, clear), '2번 집 대피 0표, 잔류 100표')
+  assert.equal(line.summary, '4번 집 대피 280표, 잔류 40표, 대피 쪽이 많아 대피')
+  assert.equal(scaleVoteSummary(2, clear), '2번 집 대피 0표, 잔류 100표, 잔류 쪽이 많아 잔류')
+  assert.equal(scaleVoteSummary(3, tie), '3번 집 대피 0표, 잔류 0표, 같아서 관측대로 대피')
+  assert.deepEqual(scaleLeader(scale), { winner: 'evacuate', side: 'evacuate', label: '대피 쪽이 많아요', aria: '대피 쪽이 많아 대피' })
+  assert.deepEqual(scaleLeader(clear), { winner: 'stay', side: 'stay', label: '잔류 쪽이 많아요', aria: '잔류 쪽이 많아 잔류' })
+  assert.deepEqual(scaleLeader(tie), { winner: 'tie', side: 'evacuate', label: '같아서 관측대로', aria: '같아서 관측대로 대피' })
+  assert.deepEqual(scaleLeader({ total: 0, decision: 'stay' }), { winner: 'tie', side: 'stay', label: '같아서 관측대로', aria: '같아서 관측대로 잔류' })
   assert.deepEqual(line.detail, scaleText(scale, 3, state.config.memory))
   assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번이 내 쪽지에 넘어왔다' && l.phase === 'flags'))
 })
@@ -532,10 +537,14 @@ test('tonightVotes lists observation + notes with last-night trust weights, hand
   assert.deepEqual(vFull1.items[0], { from: 'hint', role: 'hint', claim: 'evacuate', weight: 100, hintCount: 1 })
   assert.equal(voteItemLabel(vFull1.items[0]), '관측 1표')
 
-  // tonightVotesText: wary / majority / ai 부제와 라벨 확인
+  // tonightVotesText: wary / majority / ai 제목·부제·안내 문구 확인
+  assert.equal(TONIGHT_SCALE_TITLE, '오늘 밤 저울')
   assert.equal(tonightVotesText(v1).subtitle, '어젯밤 기준')
-  assert.match(tonightVotesText(v1).aria, /관측 대피 믿음 100, 내 쪽지 고르는 중 믿음 100, 동료 2번 잔류 믿음 100, 1일째는 주민 쪽지 없음/)
+  assert.equal(tonightVotesText(v1).note, '1일째는 이웃 주민 쪽지가 없어요')
+  assert.equal(tonightVotesText(v1).aiNote, null)
+  assert.match(tonightVotesText(v1).aria, /^오늘 밤 저울 \(어젯밤 기준\): 관측 대피 믿음 100, 내 쪽지 고르는 중 믿음 100, 동료 2번 잔류 믿음 100, 1일째는 이웃 주민 쪽지가 없어요$/)
   assert.equal(tonightVotesText(vMaj).subtitle, '모두 1표')
   assert.equal(tonightVotesText(vAi).subtitle, '스스로 판단')
+  assert.equal(tonightVotesText(vAi).aiNote, 'AI 주민은 의심도를 참고해 스스로 판단해요')
   assert.match(tonightVotesText(vAi).aria, /AI 주민은 의심도를 참고해 스스로 판단해요/)
 })

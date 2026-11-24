@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, tonightVotes, tonightVotesText, villageHouses, voteAnimDelays, voteItemLabel, worsens } from './village'
+import { PHASE_LABEL, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, tonightVotes, tonightVotesText, villageHouses, voteAnimDelays, voteItemLabel, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TonightVotes, TutorialHighlight } from './village'
 import './village.css'
 
@@ -687,7 +687,7 @@ function NoteCard({
     h.y < 300
       ? Math.max(66, Math.min(h.y - 54, 236 - cardH))
       : Math.max(396, Math.min(h.y - 77, 592 - cardH))
-  const { subtitle: votesSubtitle, aria: votesAria } = tonightVotesText(votes)
+  const { subtitle: votesSubtitle, note: votesNote, aria: votesAria } = tonightVotesText(votes)
   const footerStart = rowStart + votes.items.length * rowH
   return (
     <g transform={`translate(${cx},${cy})`}>
@@ -746,7 +746,7 @@ function NoteCard({
         <line x1="10" y1={votesTop} x2={cardW - 10} y2={votesTop} stroke="#c3a878" strokeWidth="1.2" strokeDasharray="4 3" />
         <g role="img" aria-label={votesAria}>
           <text x="10" y={votesTop + 13} fontSize="12.5" fontWeight="700" aria-hidden>
-            이 집의 표
+            {TONIGHT_SCALE_TITLE}
           </text>
           <text x={cardW - 10} y={votesTop + 13} fontSize="11.5" fontWeight="700" textAnchor="end" className="vb-card-sub" aria-hidden>
             {votesSubtitle}
@@ -784,7 +784,7 @@ function NoteCard({
               </g>
             )
           })}
-          {votes.noCitizenNotesYet && (
+          {votesNote && (
             <text
               x="10"
               y={footerStart + 11}
@@ -793,7 +793,7 @@ function NoteCard({
               className="vb-card-sub"
               aria-hidden
             >
-              1일째는 주민 쪽지 없음
+              {votesNote}
             </text>
           )}
           {votes.ai && (

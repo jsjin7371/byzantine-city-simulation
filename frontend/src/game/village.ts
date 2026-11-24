@@ -315,9 +315,18 @@ export function voteItemLabel(item: VoteItem, verbose = false): string {
   return `${item.from}번`
 }
 
-// 쪽지 카드 "이 집의 표" 부제와 낭독기 설명 문구.
-export function tonightVotesText(votes: TonightVotes): { subtitle: string; aria: string } {
+export const TONIGHT_SCALE_TITLE = '오늘 밤 저울'
+
+// 오늘 밤 저울 부제·안내 문구와 낭독기 설명 문구.
+export function tonightVotesText(votes: TonightVotes): {
+  subtitle: string
+  note: string | null
+  aiNote: string | null
+  aria: string
+} {
   const subtitle = votes.ai ? '스스로 판단' : votes.usesSuspicion ? '어젯밤 기준' : '모두 1표'
+  const note = votes.noCitizenNotesYet ? '1일째는 이웃 주민 쪽지가 없어요' : null
+  const aiNote = votes.ai ? 'AI 주민은 의심도를 참고해 스스로 판단해요' : null
   const summary = votes.items
     .map((item) => {
       const who = voteItemLabel(item, true)
@@ -326,10 +335,8 @@ export function tonightVotesText(votes: TonightVotes): { subtitle: string; aria:
       return votes.usesSuspicion ? `${who} ${what} 믿음 ${item.weight}` : `${who} ${what} 1표`
     })
     .join(', ')
-  const aria = `이 집의 표 (${subtitle}): ${summary}${
-    votes.noCitizenNotesYet ? ', 1일째는 주민 쪽지 없음' : ''
-  }${votes.ai ? '. AI 주민은 의심도를 참고해 스스로 판단해요' : ''}`
-  return { subtitle, aria }
+  const aria = `${TONIGHT_SCALE_TITLE} (${subtitle}): ${summary}${note ? `, ${note}` : ''}${aiNote ? `. ${aiNote}` : ''}`
+  return { subtitle, note, aiNote, aria }
 }
 
 // HUD "속은 주민 ●●○|○" 계산: 시민 수만큼 점, 속은(틀린) 시민 수만큼 채움, 과반(need) 눈금 위치.
@@ -453,11 +460,34 @@ export type Line = Said &
     | { kind: 'event'; text: string; good?: boolean }
   )
 
+export type ScaleLeader = {
+  winner: Claim | 'tie'
+  side: Claim
+  label: string
+  aria: string
+}
+
+// 밤 ③ 주민 결정에서 표가 많은 쪽(또는 동점 시 관측대로)의 꼬리표와 낭독 문구.
+export function scaleLeader(scale: Pick<Scale, 'total' | 'decision'>): ScaleLeader {
+  if (scale.total > 0) {
+    return { winner: 'evacuate', side: 'evacuate', label: '대피 쪽이 많아요', aria: '대피 쪽이 많아 대피' }
+  }
+  if (scale.total < 0) {
+    return { winner: 'stay', side: 'stay', label: '잔류 쪽이 많아요', aria: '잔류 쪽이 많아 잔류' }
+  }
+  return {
+    winner: 'tie',
+    side: scale.decision,
+    label: '같아서 관측대로',
+    aria: `같아서 관측대로 ${said[scale.decision]}`,
+  }
+}
+
 // 밤 ③ 표 줄(aria-hidden) 대신 낭독기에 읽힐 집별 표 요약 (저울 값 그대로, 소수 없음).
 export function scaleVoteSummary(city: number, scale: Scale): string {
   const evac = scale.parts.filter((p) => p.value > 0).reduce((a, p) => a + p.value, 0)
   const stay = scale.parts.filter((p) => p.value < 0).reduce((a, p) => a - p.value, 0)
-  return `${city}번 집 대피 ${evac}표, 잔류 ${stay}표`
+  return `${city}번 집 대피 ${evac}표, 잔류 ${stay}표, ${scaleLeader(scale).aria}`
 }
 
 const saw = { danger: '태풍', safe: '맑음' } as const
