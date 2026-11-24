@@ -493,14 +493,14 @@ export function GameStart({
   return (
     <div className="gm-workspace gm-start">
       <h1 ref={headingRef} tabIndex={-1} className="sr-only">
-        AI 시민을 속여라
+        AI 주민을 속여라
       </h1>
       <svg
         className="gm-start-scene"
         viewBox="0 0 1440 900"
         preserveAspectRatio="xMidYMid meet"
         role="group"
-        aria-label="AI 시민을 속여라 시작 화면"
+        aria-label="AI 주민을 속여라 시작 화면"
       >
         <StartDefs />
         <StartBackdrop />
@@ -583,7 +583,7 @@ export function GameStart({
             textAnchor="middle"
             className="vb-cream vb-pencil"
           >
-            AI 시민을 속여라
+            AI 주민을 속여라
           </text>
         </g>
 

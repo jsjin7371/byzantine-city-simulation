@@ -253,7 +253,7 @@ export function GamePage() {
       ) : (
         <div className="gm-workspace gm-play">
           <h1 ref={headingRef} tabIndex={-1} className="sr-only">
-            AI 시민을 속여라
+            AI 주민을 속여라
           </h1>
           <div className="gm-stage">
             <section className="gm-board-zone" aria-label="마을 보드">
