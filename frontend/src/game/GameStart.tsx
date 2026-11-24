@@ -970,7 +970,7 @@ export function GameStart({
         >
           <div className="gs-diff-help-top">
             <p className="gs-diff-help-lead">
-              난이도는 주민 관측이 틀릴 확률만 달라져요. 마피아는 나 혼자예요.
+              난이도는 주민 관측이 틀릴 확률(센서 오류율)만 달라져요. 마피아(비잔틴 도시)는 나 혼자예요.
             </p>
             <button
               type="button"
@@ -986,26 +986,30 @@ export function GameStart({
               <thead>
                 <tr>
                   <th scope="col">난이도</th>
-                  <th scope="col">관측이 틀릴 확률</th>
+                  <th scope="col">
+                    관측이 틀릴 확률
+                    <br />
+                    <span className="gs-diff-term">(센서 오류율)</span>
+                  </th>
                   <th scope="col">
                     하룻밤 잘못 보는 주민
                     <br />
-                    (4명 중 평균)
+                    <span className="gs-diff-term">(센서 오류 도시 · 4명 평균)</span>
                   </th>
                   <th scope="col">
-                    주민 3명 이상이 함께
+                    주민 3명 이상 함께 잘못 볼 확률
                     <br />
-                    잘못 볼 확률
+                    <span className="gs-diff-term">(센서 오류 도시 3곳 이상)</span>
                   </th>
                   <th scope="col" className={citizenType === 'wary' ? 'is-active-col' : undefined}>
-                    봇 승률
+                    봇(비잔틴 도시) 승률
                     <br />
-                    (눈치 주민{citizenType === 'wary' ? ' · 선택' : ''})
+                    <span className="gs-diff-term">(눈치 주민{citizenType === 'wary' ? ' · 선택' : ''})</span>
                   </th>
                   <th scope="col" className={citizenType === 'majority' ? 'is-active-col' : undefined}>
-                    봇 승률
+                    봇(비잔틴 도시) 승률
                     <br />
-                    (다수결 주민{citizenType === 'majority' ? ' · 선택' : ''})
+                    <span className="gs-diff-term">(다수결 주민{citizenType === 'majority' ? ' · 선택' : ''})</span>
                   </th>
                 </tr>
               </thead>
@@ -1029,10 +1033,13 @@ export function GameStart({
             </table>
           </div>
           <p className="gs-diff-help-foot">
-            봇은 항상 진짜 날씨의 반대만 말하는 마피아예요. 봇 승률은 모두 대화 조건 시뮬레이션 결과예요(눈치 1만 판, 다수결 1천 판). 3명 이상 확률은 이항분포 계산값이에요.{' '}
+            봇(비잔틴 도시)은 항상 진짜 날씨의 반대만 말하는 마피아로, 거짓 쪽지는 메시지 조작에 해당해요. 봇 승률은 모두 대화 조건 시뮬레이션 결과예요(눈치 1만 판, 다수결 1천 판). 3명 이상 확률은 이항분포 계산값이며,{' '}
             <span className={citizenType === 'ai' ? 'is-active-note' : undefined}>
               AI 주민은 아직 측정값이 없어요.
             </span>
+          </p>
+          <p className="gs-diff-help-foot">
+            게임에서는 전송 중 메시지 누락률·조작률이 0%예요(쪽지가 사라지거나 뒤집히지 않아요).
           </p>
         </div>
       )}
