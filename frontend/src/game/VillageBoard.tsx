@@ -673,9 +673,9 @@ function NoteCard({
   const hasPreview = Boolean(pEvac || pStay)
   const hasTrial = Boolean(pEvac?.trial || pStay?.trial)
   const cardH = hasPreview ? (hasTrial ? 98 : 80) : 62
-  // 위쪽 집은 점선 이름표(y=228) 위로(하늘 경계 y=106 아래), 아래쪽 집은 광장(y=395)·양쪽 점선(y<=389.5)·게이지(y>=498) 사이 빈 공간에 놓는다.
+  // 위쪽 집은 점선 이름표(y=228) 위로(하늘 경계 y=106 아래), 아래쪽 집은 광장 아래·내 집 지붕(y=482)·게이지(y>=493) 사이 빈 공간에 놓는다.
   const cx = h.y < 300 ? (left ? h.x + 100 : h.x - 100 - cardW) : 354
-  const cy = h.y < 300 ? Math.max(106, Math.min(h.y - 54, 224 - cardH)) : 396
+  const cy = h.y < 300 ? Math.max(106, Math.min(h.y - 54, 224 - cardH)) : Math.min(396, 474 - cardH)
   return (
     <g transform={`translate(${cx},${cy})`}>
       <g
