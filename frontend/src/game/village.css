@@ -849,7 +849,7 @@
 /* 튜토리얼 말풍선 및 대상 강조 */
 .tut-box {
   flex: none;
-  height: 104px;
+  height: 112px;
   margin-bottom: 8px;
   padding: 10px 14px;
   display: flex;

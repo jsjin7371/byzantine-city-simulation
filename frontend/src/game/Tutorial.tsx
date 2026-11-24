@@ -18,7 +18,6 @@ export function Tutorial({
       className={step ? 'tut-box' : 'tut-box is-empty'}
       role={step ? 'region' : undefined}
       aria-label={step ? '튜토리얼 안내' : undefined}
-      aria-hidden={!step || undefined}
     >
       <p className="tut-text" role="status">
         {step?.text ?? ''}

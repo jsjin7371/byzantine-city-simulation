@@ -593,25 +593,25 @@ const SIGNS = ['1 불빛부터 봐요', '2 집마다 쪽지 골라요', '3 점�
 function Signs() {
   return (
     <g
-      fontSize="15"
+      fontSize="14"
       fontWeight="700"
       role="img"
       aria-label="첫날 안내: 1 창문 불빛부터 봐요, 2 집마다 쪽지를 골라요, 3 점선으로 이어진 두 집에는 같은 쪽지를 보내요"
     >
-      <rect x="88" y="296" width="9" height="128" fill="#5a3d22" filter="url(#vb-rough)" />
-      <text x="18" y="292" className="vb-sign-title">
+      <rect x="80" y="302" width="9" height="112" fill="#5a3d22" filter="url(#vb-rough)" />
+      <text x="16" y="298" className="vb-sign-title">
         첫날 안내
       </text>
       {SIGNS.map((t, i) => (
         <g key={t} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
-            d={`M10 ${304 + i * 38} H200 L212 ${319 + i * 38} L200 ${334 + i * 38} H10 Z`}
+            d={`M8 ${308 + i * 33} H174 L184 ${322 + i * 33} L174 ${336 + i * 33} H8 Z`}
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
             filter="url(#vb-rough)"
           />
-          <text x="16" y={324 + i * 38}>
+          <text x="14" y={327 + i * 33}>
             {t}
           </text>
         </g>
