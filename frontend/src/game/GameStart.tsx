@@ -155,6 +155,14 @@ function StartDefs() {
         <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves={2} seed={9} result="n" />
         <feDisplacementMap in="SourceGraphic" in2="n" scale={2.2} xChannelSelector="R" yChannelSelector="G" />
       </filter>
+      {/* 선택 동그라미: 흔들린 선 + 연필 입자 (vb-pencil보다 입자가 굵게 보이게) */}
+      <filter id="vs-pencil-circle" x="-20%" y="-20%" width="140%" height="140%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves={2} seed={9} result="n" />
+        <feDisplacementMap in="SourceGraphic" in2="n" scale={2.2} xChannelSelector="R" yChannelSelector="G" result="rough" />
+        <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves={2} seed={5} result="grain" />
+        <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.3 -0.1" result="mask" />
+        <feComposite in="rough" in2="mask" operator="in" />
+      </filter>
       <path
         id="vs-spark-star"
         d="M0 -8 L2.2 -2.2 L8 0 L2.2 2.2 L0 8 L-2.2 2.2 L-8 0 L-2.2 -2.2 Z"
@@ -431,7 +439,7 @@ function OptionPlank<T extends string>({
             >
               <rect x={slot.x} y="8" width={slot.w} height="50" fill="transparent" />
               {selected && (
-                <g transform={`translate(${cx}, 33) rotate(-2.5)`} filter="url(#vs-rough-sm)" aria-hidden="true">
+                <g transform={`translate(${cx}, 33) rotate(-2.5) scale(-1 1)`} /* 좌우 반전: 시계 반대 방향으로 그린다 */ filter="url(#vs-pencil-circle)" aria-hidden="true">
                   <path
                     key={item.key}
                     className={animate ? 'vb-opt-circle is-animated' : 'vb-opt-circle'}
