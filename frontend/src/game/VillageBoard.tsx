@@ -321,6 +321,7 @@ function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: 
   const leader = scaleLeader(scale)
   const delays = voteAnimDelays(blockIndex)
   const targetRow = rows.find((r) => r.claim === leader.side) ?? rows[0]
+  const pillW = leader.winner === 'tie' ? 172 : 142
   const x0 = 3
   const x1 = Math.min(123, Math.max(56, targetRow.endX + 4))
   const y0 = targetRow.top - 2.5
@@ -331,7 +332,7 @@ function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: 
       ? `M 5 ${targetRow.top + 16.5} Q ${(5 + x1) / 2} ${targetRow.top + 18.2} ${x1} ${targetRow.top + 15.8}`
       : `M ${x0 + 8} ${y0} Q ${(x0 + x1) / 2} ${y0 - 1.8} ${x1 - 5} ${y0 + 0.6} Q ${x1 + 2.5} ${ym} ${x1 - 4} ${y1 - 0.5} Q ${(x0 + x1) / 2} ${y1 + 1.8} ${x0 + 6} ${y1 - 0.5} Q ${x0 - 2} ${ym} ${x0 + 10} ${y0 + 0.5}`
   return (
-    <g transform={`translate(${x - 134},${y - 118})`} aria-hidden="true">
+    <g transform={`translate(${x - 158},${y - 104})`} aria-hidden="true">
       <g className={animate ? 'vb-votes is-anim' : 'vb-votes'}>
         <rect width="126" height="48" rx="5" fill="#f6ebcd" stroke="#6b4a2a" strokeWidth="1.8" filter="url(#vb-rough)" />
         {rows.map((row) => (
@@ -376,8 +377,8 @@ function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: 
           className={`vb-votes-leader is-${leader.winner}`}
           style={animate ? ({ '--tag-delay': `${delays.tagDelay}ms` } as CSSProperties) : undefined}
         >
-          <rect x="-8" y="-32" width="142" height="26" rx="13" strokeWidth="2" filter="url(#vb-rough)" />
-          <text x="63" y="-13" fontSize="18" fontWeight="700" textAnchor="middle">
+          <rect x={63 - pillW / 2} y="-30" width={pillW} height="26" rx="13" strokeWidth="2" filter="url(#vb-rough)" />
+          <text x="63" y="-11" fontSize="18" fontWeight="700" textAnchor="middle">
             {leader.label}
           </text>
         </g>
@@ -713,7 +714,7 @@ function NoteCard({
               {p && (
                 <g fontWeight="700" textAnchor="middle" aria-hidden>
                   <text x={btnX + 39} y="73" fontSize="18" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
-                    {p.from} → {p.next}
+                    {p.from}→{p.next}
                   </text>
                   {p.trial && (
                     <text x={btnX + 39} y="91" fontSize="18" className="vb-rust">

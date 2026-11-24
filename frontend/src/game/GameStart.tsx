@@ -528,34 +528,43 @@ export function GameStart({
     clearHoverTimer()
     hoverTimerRef.current = window.setTimeout(() => setHelpHovered(false), 150)
   }, [clearHoverTimer])
-  const closeHelp = useCallback(() => {
-    clearHoverTimer()
-    setHelpPinned(false)
-    setHelpHovered(false)
-  }, [clearHoverTimer])
+  const closeHelp = useCallback(
+    (restoreFocus = false) => {
+      clearHoverTimer()
+      setHelpPinned(false)
+      setHelpHovered(false)
+      if (restoreFocus) helpBtnRef.current?.focus()
+    },
+    [clearHoverTimer],
+  )
   const toggleHelp = useCallback(() => {
-    clearHoverTimer()
     if (helpPinned) {
       setHelpPinned(false)
       setHelpHovered(false)
     } else {
       setHelpPinned(true)
     }
-  }, [clearHoverTimer, helpPinned])
+  }, [helpPinned])
 
   useEffect(() => () => clearHoverTimer(), [clearHoverTimer])
+
+  useEffect(() => {
+    clearHoverTimer()
+    if (helpPinned) {
+      helpPopRef.current?.focus({ preventScroll: true })
+    }
+  }, [helpPinned, clearHoverTimer])
 
   useEffect(() => {
     if (!helpOpen) return
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') {
-        const focusInside = helpPopRef.current?.contains(document.activeElement)
-        closeHelp()
-        if (focusInside) helpBtnRef.current?.focus()
+        const focusInside = Boolean(helpPopRef.current?.contains(document.activeElement))
+        closeHelp(helpPinned || focusInside)
       }
     }
     const onClickOutside = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('.gs-diff-help-btn, .gs-diff-help')) closeHelp()
+      if (!(e.target as Element).closest('.gs-diff-help-btn, .gs-diff-help')) closeHelp(false)
     }
     window.addEventListener('keydown', onKeyDown)
     document.addEventListener('click', onClickOutside)
@@ -563,7 +572,7 @@ export function GameStart({
       window.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('click', onClickOutside)
     }
-  }, [helpOpen, closeHelp])
+  }, [helpOpen, helpPinned, closeHelp])
 
   useLayoutEffect(() => {
     if (!helpOpen) return
@@ -578,7 +587,7 @@ export function GameStart({
       const pad = 12
       const left = Math.max(pad, Math.min((hostRect.width - popRect.width) / 2, hostRect.width - popRect.width - pad))
       // 난이도·주민 선택지를 가리지 않게 표지판 위쪽에 먼저 두고, 화면 높이가 좁으면 상단 여백에 맞춘다.
-      const aboveTop = btnRect.top - hostRect.top - popRect.height - 26
+      const aboveTop = btnRect.top - hostRect.top - popRect.height - 22
       const top = aboveTop >= pad ? aboveTop : pad
       setHelpPos({ left: Math.round(left), top: Math.round(top) })
     }
@@ -747,18 +756,12 @@ export function GameStart({
                 tabIndex={0}
                 aria-label="난이도 기준 설명 보기"
                 aria-expanded={helpOpen}
-                aria-controls="gs-diff-help"
                 onClick={toggleHelp}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    toggleHelp()
-                  }
-                }}
+                onKeyDown={onActivateKey(toggleHelp)}
                 onMouseEnter={openHover}
                 onMouseLeave={closeHoverSoon}
               >
-                <rect x="504" y="15" width="34" height="36" fill="transparent" />
+                <rect x="499" y="11" width="44" height="44" fill="transparent" />
                 <circle className="gs-help-ring" cx="521" cy="33" r="13.5" filter="url(#vs-rough-sm)" />
                 <text x="521" y="40" fontSize="20" fontWeight="700" textAnchor="middle" className="vb-pencil">
                   ?
@@ -960,10 +963,10 @@ export function GameStart({
       {helpOpen && (
         <div
           ref={helpPopRef}
-          id="gs-diff-help"
           className="gs-diff-help"
           role="region"
           aria-label="난이도 기준 설명"
+          tabIndex={-1}
           style={helpPos ? { left: `${helpPos.left}px`, top: `${helpPos.top}px` } : undefined}
           onMouseEnter={openHover}
           onMouseLeave={closeHoverSoon}
@@ -976,12 +979,12 @@ export function GameStart({
               type="button"
               className="gs-diff-help-close"
               aria-label="난이도 설명 닫기"
-              onClick={closeHelp}
+              onClick={() => closeHelp(true)}
             >
               ×
             </button>
           </div>
-          <div className="gs-diff-help-table-wrap">
+          <div className="gs-diff-help-table-wrap" tabIndex={0} role="region" aria-label="난이도 비교 표">
             <table className="gs-diff-help-table">
               <thead>
                 <tr>

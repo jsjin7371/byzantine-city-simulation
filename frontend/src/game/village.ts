@@ -484,7 +484,7 @@ export function scaleLeader(scale: Pick<Scale, 'total' | 'decision'>): ScaleLead
   return {
     winner: 'tie',
     side: scale.decision,
-    label: '같아서 관측대로',
+    label: `같아서 관측대로 ${said[scale.decision]}`,
     aria: `같아서 관측대로 ${said[scale.decision]}`,
   }
 }

@@ -69,10 +69,13 @@ function TonightScaleBlock({
   votes: TonightVotes
   highlighted?: boolean
 }) {
-  const { subtitle, note, aiNote } = tonightVotesText(votes)
-  const headingId = `vl-tonight-title-${city}`
+  const { subtitle, note, aiNote, aria } = tonightVotesText(votes)
   return (
-    <section className={highlighted ? 'vl-tonight is-tut-votes' : 'vl-tonight'} aria-labelledby={headingId}>
+    <section
+      className={highlighted ? 'vl-tonight is-tut-votes' : 'vl-tonight'}
+      aria-label={`${city}번 집 · ${TONIGHT_SCALE_TITLE}`}
+    >
+      <p className="sr-only">{`${city}번 집, ${aria}`}</p>
       {highlighted && (
         <svg
           className="tut-tonight-frame"
@@ -87,51 +90,44 @@ function TonightScaleBlock({
           />
         </svg>
       )}
-      <div className="vl-tonight-head">
-        <h3 id={headingId} className="vl-tonight-title">
-          {city}번 집 · {TONIGHT_SCALE_TITLE}
-        </h3>
-        <span className="vl-tonight-sub">{subtitle}</span>
-      </div>
-      <ul className="vl-tonight-list">
-        {votes.items.map((item) => {
-          const label = voteItemLabel(item)
-          const kind = item.role === 'hint' ? 'is-hint' : item.role === 'player' ? 'is-mine' : 'is-note'
-          const emptyText = item.role === 'hint' ? '상쇄' : '고르는 중'
-          const pct = item.weight > 0 ? Math.min(100, Math.max(8, item.weight)) : 0
-          const meterSr =
-            votes.ai || pct === 0 || (item.role === 'hint' && item.hintCount != null)
-              ? null
-              : votes.usesSuspicion
-                ? `믿음 ${item.weight}`
-                : '1표'
-          return (
-            <li key={String(item.from)} className={votes.ai ? 'vl-tonight-row is-ai' : 'vl-tonight-row'}>
-              <span className="vl-tonight-who">{label}</span>
-              {votes.ai && <span className="vl-tonight-dots" aria-hidden="true" />}
-              <span className={`vl-claim-pill ${item.claim ? `is-${item.claim}` : 'is-pending'}`}>
-                {item.claim ? decisions[item.claim] : emptyText}
-              </span>
-              {!votes.ai && (
-                <span className="vl-tonight-meter">
-                  {pct > 0 ? (
-                    <>
-                      <span className="vl-tonight-track" aria-hidden="true">
+      <div aria-hidden="true">
+        <div className="vl-tonight-head">
+          <h3 className="vl-tonight-title">
+            {city}번 집 · {TONIGHT_SCALE_TITLE}
+          </h3>
+          <span className="vl-tonight-sub">{subtitle}</span>
+        </div>
+        <ul className="vl-tonight-list">
+          {votes.items.map((item) => {
+            const label = voteItemLabel(item)
+            const kind = item.role === 'hint' ? 'is-hint' : item.role === 'player' ? 'is-mine' : 'is-note'
+            const emptyText = item.role === 'hint' ? '상쇄' : '고르는 중'
+            const pct = item.weight > 0 ? Math.min(100, Math.max(8, item.weight)) : 0
+            return (
+              <li key={String(item.from)} className={votes.ai ? 'vl-tonight-row is-ai' : 'vl-tonight-row'}>
+                <span className="vl-tonight-who">{label}</span>
+                {votes.ai && <span className="vl-tonight-dots" />}
+                <span className={`vl-claim-pill ${item.claim ? `is-${item.claim}` : 'is-pending'}`}>
+                  {item.claim ? decisions[item.claim] : emptyText}
+                </span>
+                {!votes.ai && (
+                  <span className="vl-tonight-meter">
+                    {pct > 0 ? (
+                      <span className="vl-tonight-track">
                         <span className={`vl-tonight-fill ${kind}`} style={{ width: `${pct}%` }} />
                       </span>
-                      {meterSr && <span className="sr-only">{meterSr}</span>}
-                    </>
-                  ) : (
-                    <span className="vl-tonight-zero">{item.role === 'hint' ? '상쇄' : '안 믿음'}</span>
-                  )}
-                </span>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-      {note && <p className="vl-tonight-note">{note}</p>}
-      {aiNote && <p className="vl-tonight-note">{aiNote}</p>}
+                    ) : (
+                      <span className="vl-tonight-zero">{item.role === 'hint' ? '상쇄' : '안 믿음'}</span>
+                    )}
+                  </span>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+        {note && <p className="vl-tonight-note">{note}</p>}
+        {aiNote && <p className="vl-tonight-note">{aiNote}</p>}
+      </div>
     </section>
   )
 }
@@ -223,13 +219,15 @@ export function VillageLog({
           내 쪽지
         </span>
       </div>
-      {tonightScale && (
-        <TonightScaleBlock
-          city={tonightScale.city}
-          votes={tonightScale.votes}
-          highlighted={highlight === 'votes'}
-        />
-      )}
+      <div className="vl-tonight-live" aria-live="polite" aria-atomic="true">
+        {tonightScale && (
+          <TonightScaleBlock
+            city={tonightScale.city}
+            votes={tonightScale.votes}
+            highlighted={highlight === 'votes'}
+          />
+        )}
+      </div>
       <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
         {!entries && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았어요. 집마다 쪽지를 고르고 밤으로 넘겨 보세요.</p>}
         {entries?.map((entry, i) => {
