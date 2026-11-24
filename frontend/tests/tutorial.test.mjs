@@ -66,6 +66,10 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   assert.equal(tutorialStep(tutorialStep(7, withOpenScale).cursor + 1, withOpenScale).step?.highlight, 'changed')
 
   // 연출 중이나 지난밤 보기 중에는 scaleOpen이 true여도 단계를 넘기지 않는다
+  assert.equal(tutorialStep(8, { ...day2, playing: true }).cursor, 8)
+  assert.equal(tutorialStep(8, { ...day2, playing: true }).step, null)
+  assert.equal(tutorialStep(8, { ...day2, scaleOpen: true, playing: true }).cursor, 8)
+  assert.equal(tutorialStep(8, { ...day2, scaleOpen: true, playing: true }).step, null)
   assert.equal(tutorialStep(8, { ...day2, scaleOpen: true, viewingPast: true }).cursor, 8)
   assert.equal(tutorialStep(8, { ...day2, scaleOpen: true, viewingPast: true }).step, null)
 

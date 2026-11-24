@@ -129,6 +129,8 @@
   stroke-width: 3.4;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+.gm-start-scene .vb-opt-circle.is-animated {
   stroke-dasharray: 104;
   stroke-dashoffset: 0;
   animation: gs-circle-draw 400ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
@@ -183,7 +185,7 @@
   outline-offset: 4px;
 }
 @media (prefers-reduced-motion: reduce) {
-  .gm-start-scene .vb-opt-circle {
+  .gm-start-scene .vb-opt-circle.is-animated {
     animation: none;
   }
 }
@@ -918,7 +920,7 @@
 
 .vb-board .vb-tut-ring {
   fill: none;
-  stroke: var(--rust);
+  stroke: #7a2416;
   stroke-width: 3.5;
   stroke-dasharray: 8 5;
   stroke-linecap: round;
@@ -938,32 +940,17 @@
   pointer-events: none;
 }
 .vb-tut-arrow {
-  animation-duration: 1.4s;
-  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
-  animation-iteration-count: 3;
+  animation: vb-arrow-nudge 1.4s cubic-bezier(0.23, 1, 0.32, 1) 3;
 }
-.vb-tut-arrow.is-ur { animation-name: vb-arrow-ur; }
-.vb-tut-arrow.is-dr { animation-name: vb-arrow-dr; }
-.vb-tut-arrow.is-ul { animation-name: vb-arrow-ul; }
-.vb-tut-arrow.is-dl { animation-name: vb-arrow-dl; }
-@keyframes vb-arrow-ur {
+@keyframes vb-arrow-nudge {
   0%, 100% { transform: translate(0, 0); }
-  45% { transform: translate(4px, -4px); }
-}
-@keyframes vb-arrow-dr {
-  0%, 100% { transform: translate(0, 0); }
-  45% { transform: translate(4px, 4px); }
-}
-@keyframes vb-arrow-ul {
-  0%, 100% { transform: translate(0, 0); }
-  45% { transform: translate(-4px, -4px); }
-}
-@keyframes vb-arrow-dl {
-  0%, 100% { transform: translate(0, 0); }
-  45% { transform: translate(-4px, 4px); }
+  45% { transform: translate(var(--dx, 4px), var(--dy, -4px)); }
 }
 
 /* 튜토리얼 이야기 칸 손그림 상자 및 라벨 */
+.vl-talk.is-tut-log {
+  padding-top: 28px;
+}
 .tut-log-frame {
   position: absolute;
   inset: -6px;
@@ -979,13 +966,7 @@
   stroke-width: 3.2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-dasharray: 104;
-  stroke-dashoffset: 0;
-  animation: tut-frame-draw 420ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
-}
-@keyframes tut-frame-draw {
-  from { stroke-dashoffset: 104; }
-  to { stroke-dashoffset: 0; }
+  animation: vb-fade 320ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
 }
 
 .tut-note-tag {
@@ -1056,11 +1037,19 @@
   outline: 3px dashed var(--rust);
   outline-offset: 3px;
 }
+.tut-hl:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 4px;
+}
 .vl-why-btn.is-tut-target {
   border-color: var(--rust);
   outline: 2.5px dashed var(--rust);
   outline-offset: 2px;
   color: #7a2416;
+}
+.vl-why-btn.is-tut-target:focus-visible {
+  outline: 2.5px solid var(--ink);
+  outline-offset: 2px;
 }
 
 @media (max-width: 1100px) {

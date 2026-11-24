@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import type { KeyboardEvent, RefObject } from 'react'
 import { citizenTypes, difficulties } from '../gameApi'
 import type { CitizenType, Difficulty } from '../gameApi'
@@ -394,6 +394,12 @@ function OptionPlank<T extends string>({
   optionRefs: RefObject<(SVGGElement | null)[]>
 }) {
   const keys = items.map((item) => item.key)
+  const [lastValue, setLastValue] = useState(value)
+  const [animate, setAnimate] = useState(false)
+  if (value !== lastValue) {
+    setLastValue(value)
+    setAnimate(true)
+  }
   return (
     <g transform={`translate(0, ${y}) rotate(${rotate}, 720, 33)`} role="radiogroup" aria-label={ariaLabel}>
       <path d={PLANK_PATH} fill="#c99a5b" stroke="#4a3119" strokeWidth="2.4" filter="url(#vs-rough)" />
@@ -428,7 +434,7 @@ function OptionPlank<T extends string>({
                 <g transform={`translate(${cx}, 33) rotate(-2.5)`} filter="url(#vs-rough-sm)" aria-hidden="true">
                   <path
                     key={item.key}
-                    className="vb-opt-circle"
+                    className={animate ? 'vb-opt-circle is-animated' : 'vb-opt-circle'}
                     d={handCirclePath(item.rx, 20)}
                     pathLength={100}
                   />

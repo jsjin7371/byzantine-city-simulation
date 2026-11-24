@@ -116,7 +116,6 @@ export function VillageLog({
             <path
               className="tut-log-stroke"
               d="M 1.6 1.2 Q 50 0.4 98.6 1.4 Q 99.5 50 98.5 98.7 Q 50 99.6 1.4 98.6 Q 0.5 50 1.8 0.9"
-              pathLength={100}
               vectorEffect="non-scaling-stroke"
             />
           </svg>

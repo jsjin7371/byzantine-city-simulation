@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { RefObject } from 'react'
+import type { CSSProperties, RefObject } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
@@ -625,20 +625,19 @@ function Signs() {
 // 튜토리얼 행동 단계(집 누르기): 안내 대상 집 옆의 빈 풀밭에 손그림 화살표와 "여기를 눌러 보세요" 쪽지를 놓는다.
 function HousePointer({ target }: { target: House }) {
   const left = target.x < PLAZA.x
-  const top = target.y < PLAZA.y
+  const top = left && target.y < PLAZA.y
   const noteX = left ? 24 : 700
   const noteY = top ? 314 : 346
   const noteW = 176
   const noteH = 38
   const fold = 12
-  const dir = left ? (top ? 'ur' : 'dr') : top ? 'ul' : 'dl'
+  const dx = left ? '4px' : '-4px'
+  const dy = top ? '-4px' : '4px'
   const arrowD = left
     ? top
       ? 'M 160 309 Q 184 288 206 266 M 192 267 L 207 265 L 204 280'
       : 'M 160 389 Q 184 408 206 424 M 192 422 L 207 425 L 203 410'
-    : top
-      ? 'M 740 309 Q 716 288 694 266 M 708 267 L 693 265 L 696 280'
-      : 'M 740 389 Q 716 408 694 424 M 708 422 L 693 425 L 697 410'
+    : 'M 740 389 Q 716 408 694 424 M 708 422 L 693 425 L 697 410'
   return (
     <g className="vb-tut-pointer" aria-hidden="true">
       <g filter="url(#vb-rough)">
@@ -667,7 +666,7 @@ function HousePointer({ target }: { target: House }) {
       >
         여기를 눌러 보세요
       </text>
-      <g className={`vb-tut-arrow is-${dir}`}>
+      <g className="vb-tut-arrow" style={{ '--dx': dx, '--dy': dy } as CSSProperties}>
         <path
           d={arrowD}
           fill="none"
@@ -778,7 +777,7 @@ export function VillageBoard({
     highlight === 'houses' && picker && !opened
       ? (houses.find((h) => h.slot === 2 && h.reachable) ??
         houses.find((h) => h.slot === 1 && h.reachable) ??
-        houses.find((h) => h.reachable) ??
+        houses.find((h) => h.slot === 4 && h.reachable) ??
         null)
       : null
   const cardOpen = Boolean(opened)
