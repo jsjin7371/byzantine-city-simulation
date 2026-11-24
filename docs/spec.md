@@ -435,10 +435,17 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 | POST | `/games/{game_id}/turns` | `{"turn", "claims"}`로 한 턴 진행. 턴 결과 JSON(7.7)으로 응답 |
 | GET | `/games/{game_id}` | 게임 상태(7.8) + `"status"`: `"in_progress"` / `"finished"` / `"abandoned"` / `"failed"` + `"bot_win_rate"` |
 | GET | `/games/{game_id}/turns/{turn}` | 저장된 턴 결과 JSON |
+| GET | `/games/stats` | 플레이 기록 집계 (아래) |
+| GET | `/games/stats.csv` | 같은 집계를 CSV 파일로 (`play_stats.csv`, UTF-8 BOM) |
 
 - 요청·응답 형식은 7.7, 7.8과 같다. 백엔드는 턴 결과를 받은 그대로 저장한다 (예: `games`, `game_turns` JSON 컬럼). 테이블 설계는 4단계에서 정한다.
 - `bot_win_rate`: 같은 설정에서 `player == "bot"`의 마피아 승률 (0.0~1.0, 결과 화면 비교용). 값은 7.2 난이도 표의 측정값을 백엔드가 설정별로 들고 있다. 프리셋 밖 설정(`mafia_count` 2, 표에 없는 `sensor_error`, 기본값이 아닌 `connection`·`memory`·`share_mode`·`share_pairs`, `citizen_type` `"ai"`)이면 `null`. God은 이 필드를 모른다.
 - 새 게임을 시작하면 이전 `in_progress` 게임은 `abandoned`.
+- 플레이 기록 집계(`/games/stats`): `status == "finished"`, `player == "human"`, `mafia_count` 1, `connection`·`memory`·`share_mode`·`share_pairs`가 기본값, `sensor_error`가 7.2 난이도 프리셋 값(0.48/0.4/0.3)인 판만 센다. `seed`는 따지지 않는다. 승리는 `outcome`이 `"win"` 또는 `"perfect_win"`인 판.
+  - 응답: `{"items": [...]}`. 시민 종류 3개 × 난이도 3개 = 항상 9개 항목이며, 판이 없는 조합도 `games: 0`으로 들어간다.
+  - 항목: `citizen_type`, `difficulty`(`"easy"`/`"normal"`/`"hard"`), `label`(`"쉬움"`/`"보통"`/`"어려움"`), `games`(판 수), `wins`(승리 수), `win_rate`(`wins / games`, 0판이면 `null`), `bot_win_rate`(7.2 표의 같은 난이도 봇 승률, `"ai"`는 `null`).
+  - 화면에는 "N판 기준"으로 표기한다. 판 수가 적으므로 통계적 유의성은 주장하지 않는다.
+  - CSV는 같은 열 순서이며, `null`은 빈 칸.
 - 실험(`/experiments`)이 `pending`·`running`이면 `POST /games`는 `409`.
 - 오류 코드(404/409/422)와 `detail` 형식은 3절과 같다.
 
