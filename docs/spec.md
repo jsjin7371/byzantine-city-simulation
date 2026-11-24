@@ -463,8 +463,10 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 - God의 AI 시민 City 호출 시간 제한은 40초(City의 LLM 30초보다 길게, `god/main.py` 상수). 시민 5곳은 병렬로 부른다. 규칙 시민은 기본 1초.
 - 게임 전용 키를 쓴다 (PR 리뷰 키와 분리). OpenAI 호환 chat completions로 호출하고, 환경변수 `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`은 City 컨테이너에만 준다. 키가 없으면 테스트용 가짜 LLM을 쓴다 (5단계).
 - 결정, 의심도, 판단 이유는 한 번의 호출로 받는다. 같은 seed 재현은 AI 시민에 보장하지 않는다.
-- `LLM_BASE_URL`은 chat completions **전체 주소**다 (예: `https://api.openai.com/v1/chat/completions`, 게이트웨이는 끝 슬래시까지). 비면 OpenAI 기본 주소.
-- 프롬프트: 성격, 이번 턴 힌트, 받은 주장, 공유에서 드러난 모순 도시, 직전 의심도. `response_format`은 모델마다 지원이 달라 쓰지 않고 프롬프트로 JSON만 요구한다. 응답은 `choices[0].message.content`를 JSON으로 읽고, 실패하면 첫 `{` ~ 마지막 `}`를 읽는다.
-- 검증: `decision`은 두 값 중 하나, 의심도는 요청에 있던 도시만 0~100 정수로 자른다(빠진 도시는 직전 값), `reason`은 200자까지. 호출 오류나 형식 오류면 **눈치 있는 시민 규칙 결과**로 대신하고 `reason` 앞에 `[AI 응답 실패(오류 종류)로 눈치 규칙 대체]`를 붙인다.
+- `LLM_BASE_URL`은 chat completions **전체 주소** 또는 `/v1` 기본 주소다 (예: `https://api.groq.com/openai/v1`). `/v1`로 끝나면 `/chat/completions`를 붙인다. 기존 전체 주소와 게이트웨이의 끝 슬래시는 유지하며, 비면 OpenAI 기본 주소다.
+- 프롬프트: `system`에는 태풍 마을 주민 역할·성격·판단 지침·JSON 형식을, `user`에는 이번 턴 힌트·받은 주장·공유에서 드러난 모순 도시·직전 의심도만 넣는다. 제공되지 않은 정답·역할·다른 주민 힌트는 알 수 없다. 판단 이유는 주민이 직접 말하는 한국어 한두 문장이다. `response_format`은 기본적으로 쓰지 않고, 지원 모델에서 `LLM_JSON_MODE=json_object`로 선택할 수 있다. 응답은 `choices[0].message.content`를 JSON으로 읽고, 실패하면 첫 `{` ~ 마지막 `}`를 읽는다.
+- 검증: `decision`, `suspicion`, `reason` 키는 필수다. `decision`은 두 값 중 하나, 의심도는 요청에 있던 도시만 유한한 숫자를 0~100 정수로 자른다(빠진 도시는 직전 값), `reason`은 문자열 또는 null이며 200자까지다. 호출 오류·응답 누락·출력 중단·형식 오류면 **눈치 있는 시민 규칙 결과**로 대신하고 `reason` 앞에 `[AI 응답 실패(오류 종류)로 눈치 규칙 대체]`를 붙인다.
 - 가짜 LLM: `LLM_API_KEY`가 비면 눈치 있는 시민 규칙 결과를 JSON 문자열로 돌려주는 함수가 모델 자리에 들어가 같은 파싱·검증을 탄다. CI·테스트는 이것만 쓴다.
 - **비결정성**: 같은 seed라도 AI 시민의 결정·의심도·이유는 판마다 달라질 수 있다 (가짜 LLM일 때만 재현된다).
+- 요청은 재시도하지 않는다. 429도 바로 대체한다. `LLM_TIMEOUT`은 0 초과 30초 이하(기본 30), 출력은 `max_tokens=1024`로 제한한다. 로그는 `source=api/test/fake`, `outcome=request/success/fallback`, 원인 코드만 남기며 키·프롬프트·응답 원문은 기록하지 않는다. 키 없는 가짜 응답은 실제 성공으로 집계하지 않는다.
+- `LLM_REASONING_EFFORT`는 지원 모델에서 low/medium/high 중 선택하며 기본은 미전송이다. 검사는 GPT-OSS의 low를 사용해 추론 토큰을 줄일 수 있다. `outcome=response`의 구조화된 메타데이터에는 숫자 토큰 사용량과 허용된 한도 헤더만 기록하고 응답 원문·키는 제외한다.
