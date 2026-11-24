@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { RefObject } from 'react'
 import { decisions } from '../components/results/resultLabels'
 import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
@@ -655,6 +656,7 @@ export function VillageBoard({
   highlight = null,
   hideSigns = false,
   onCardOpen,
+  boardRef,
 }: {
   state: GameState
   result: TurnResult | null
@@ -664,9 +666,14 @@ export function VillageBoard({
   highlight?: string | null // 튜토리얼 강조 대상 이름
   hideSigns?: boolean // 튜토리얼에서는 첫날 안내 표지판을 숨긴다
   onCardOpen?: (open: boolean) => void
+  boardRef?: RefObject<SVGSVGElement | null>
 }) {
   const [open, setOpen] = useState<number | null>(null)
   const svg = useRef<SVGSVGElement>(null)
+  const assignSvg = (node: SVGSVGElement | null) => {
+    svg.current = node
+    if (boardRef) boardRef.current = node
+  }
   const last = useRef<number | null>(null)
   // 쪽지가 열리면 첫 선택 버튼으로, 닫히면 그 집으로 포커스를 옮긴다.
   useEffect(() => {
@@ -710,7 +717,8 @@ export function VillageBoard({
   }, [cardOpen, onCardOpen])
   return (
     <svg
-      ref={svg}
+      ref={assignSvg}
+      tabIndex={-1}
       className={night ? 'vb-board is-playing' : 'vb-board'}
       viewBox="0 0 900 698"
       role="group"

@@ -186,6 +186,7 @@
   padding: 14px 18px 12px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-rows: minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -322,8 +323,9 @@
 }
 
 .gm-board-frame {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
+  container-type: size;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -331,13 +333,15 @@
 
 .vb-board {
   display: block;
-  width: min(100%, calc((100svh - 76px) * 900 / 698));
-  max-height: 100%;
+  width: min(100cqw, calc(100cqh * 900 / 698));
   height: auto;
   aspect-ratio: 900 / 698;
   border-radius: 8px;
   box-shadow: 0 8px 28px rgba(34, 24, 12, 0.28);
   fill: var(--ink);
+}
+.vb-board:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .gm-below {
@@ -772,10 +776,14 @@
   .gm-stage {
     height: auto;
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+  .gm-board-frame {
+    flex: none;
+    container-type: normal;
   }
   .vb-board {
     width: 100%;
-    max-height: none;
   }
   .vl-log { max-height: 360px; }
 }
@@ -841,6 +849,7 @@
 /* 튜토리얼 말풍선 및 대상 강조 */
 .tut-box {
   flex: none;
+  min-height: 104px;
   margin-bottom: 8px;
   padding: 10px 14px;
   display: flex;
@@ -855,18 +864,14 @@
   box-shadow: 0 3px 10px rgba(38, 25, 11, 0.16);
 }
 .tut-box.is-empty {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  border: 0;
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
   pointer-events: none;
 }
 .tut-text {
   flex: 1 1 320px;
+  min-width: 0;
   margin: 0;
   font-size: 16.5px;
   font-weight: 700;
@@ -880,9 +885,6 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-.gm-board-zone:has(.tut-box:not(.is-empty)) .vb-board {
-  width: min(100%, calc((100svh - 168px) * 900 / 698));
 }
 
 .vb-board .vb-tut-ring {
@@ -922,8 +924,8 @@
 }
 
 @media (max-width: 1100px) {
-  .gm-board-zone:has(.tut-box:not(.is-empty)) .vb-board {
-    width: 100%;
+  .tut-actions [data-ui-button] {
+    min-height: 40px;
   }
 }
 

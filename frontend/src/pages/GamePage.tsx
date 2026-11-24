@@ -152,6 +152,8 @@ export function GamePage() {
   const [cardOpen, setCardOpen] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const boardRef = useRef<SVGSVGElement>(null)
+  const submitRef = useRef<HTMLButtonElement>(null)
   const inGame = state !== null
   const prevInGame = useRef(inGame)
   useEffect(() => {
@@ -243,6 +245,7 @@ export function GamePage() {
   const dismissTutorial = () => {
     setTutorial(false)
     setTutorialCursor(TUTORIAL_STEPS.length)
+    boardRef.current?.focus({ preventScroll: true })
   }
 
   const handleCardOpen = useCallback((isOpen: boolean) => {
@@ -252,6 +255,8 @@ export function GamePage() {
 
   const playing = step != null && result != null
   const finished = Boolean(state?.game_over && !playing)
+  const shown = playing ? result : (history[viewed - 1] ?? result)
+  const viewingPast = shown !== result
   const tut =
     tutorial && state
       ? tutorialStep(tutorialCursor, {
@@ -259,6 +264,7 @@ export function GamePage() {
           playing,
           cardOpen,
           gameOver: state.game_over,
+          viewingPast,
         })
       : null
   const tutCursor = tut?.cursor
@@ -266,16 +272,22 @@ export function GamePage() {
   const highlight = activeTutorial?.highlight ?? null
   const nextTutorial = () => {
     if (tutCursor == null || !state) return
-    setTutorialCursor(
-      tutorialStep(tutCursor + 1, {
-        turn: state.turn,
-        playing,
-        cardOpen,
-        gameOver: state.game_over,
-      }).cursor,
-    )
+    const next = tutorialStep(tutCursor + 1, {
+      turn: state.turn,
+      playing,
+      cardOpen,
+      gameOver: state.game_over,
+      viewingPast,
+    })
+    setTutorialCursor(next.cursor)
+    if (!next.step || next.step.wait || next.step.finish) {
+      if (next.step?.wait === 'turn' && submitRef.current && !submitRef.current.disabled) {
+        submitRef.current.focus({ preventScroll: true })
+      } else {
+        boardRef.current?.focus({ preventScroll: true })
+      }
+    }
   }
-  const shown = playing ? result : (history[viewed - 1] ?? result)
   const latest = state != null && !state.game_over && shown === result && !playing // 할 말은 마지막 턴에서만 고른다
   const scales = shown && state ? citizenScales(state, history, history.indexOf(shown)) : {}
   const lines = shown && state ? villageLines(state, shown, scales) : null
@@ -367,6 +379,7 @@ export function GamePage() {
                   highlight={highlight}
                   hideSigns={tutorial}
                   onCardOpen={handleCardOpen}
+                  boardRef={boardRef}
                   picker={
                     latest
                       ? { claims, ruled, onClaim: (city, claim) => setClaims({ ...claims, [city]: claim }) }
@@ -420,6 +433,7 @@ export function GamePage() {
                 </div>
               ) : (
                 <Button
+                  ref={submitRef}
                   className={highlight === 'submit' ? 'tut-hl' : undefined}
                   onClick={submit}
                   disabled={busy || !latest}

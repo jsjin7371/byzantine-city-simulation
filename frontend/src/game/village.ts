@@ -577,12 +577,13 @@ export type TutorialContext = {
   playing: boolean
   cardOpen: boolean
   gameOver: boolean
+  viewingPast?: boolean
 }
 
-// 튜토리얼 단계 진행 규칙: 지금 턴·연출 중 여부·쪽지 카드 열림·게임 종료로 커서와 현재 표시할 단계를 정한다.
+// 튜토리얼 단계 진행 규칙: 지금 턴·연출 중 여부·쪽지 카드 열림·게임 종료·지난밤 보기로 커서와 현재 표시할 단계를 정한다.
 export function tutorialStep(
   cursor: number,
-  { turn, playing, cardOpen, gameOver }: TutorialContext,
+  { turn, playing, cardOpen, gameOver, viewingPast = false }: TutorialContext,
 ): { cursor: number; step: TutorialStep | null } {
   const done = TUTORIAL_STEPS.length
   if (gameOver || cursor < 0 || cursor >= done || turn >= 4) return { cursor: done, step: null }
@@ -592,7 +593,7 @@ export function tutorialStep(
   else if (turn === 1 && next < 6) next = 6
   else if (turn >= 2 && next < 9) next = 9
 
-  if (playing) return { cursor: next, step: null }
+  if (playing || viewingPast) return { cursor: next, step: null }
   if (next === 9 && turn < 3) return { cursor: next, step: null }
   return { cursor: next, step: TUTORIAL_STEPS[next] }
 }

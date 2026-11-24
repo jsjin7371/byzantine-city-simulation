@@ -57,6 +57,12 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   assert.equal(tutorialStep(6, { turn: 2, playing: false, cardOpen: false, gameOver: false }).step, null)
   assert.equal(tutorialStep(6, { turn: 3, playing: false, cardOpen: false, gameOver: false }).step?.finish, true)
 
+  // 지난밤 넘겨보기 중에는 커서를 유지하되 단계 표시와 강조를 숨긴다
+  const past = tutorialStep(9, { turn: 3, playing: false, cardOpen: false, gameOver: false, viewingPast: true })
+  assert.equal(past.cursor, 9)
+  assert.equal(past.step, null)
+  assert.equal(tutorialStep(past.cursor, { turn: 3, playing: false, cardOpen: false, gameOver: false, viewingPast: false }).step?.finish, true)
+
   // 튜토리얼 중 게임이 끝나면(재판 발각 등) 안내를 끈다
   const caught = tutorialStep(4, { turn: 2, playing: false, cardOpen: false, gameOver: true })
   assert.equal(caught.step, null)
