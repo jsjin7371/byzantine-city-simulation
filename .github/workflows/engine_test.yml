@@ -52,6 +52,9 @@ jobs:
       - name: God 마피아 게임
         if: ${{ !cancelled() }}
         run: python -m unittest test_god_game -v
+      - name: God Kubernetes 자원 관리
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_god_kubernetes -v
       - name: Docker 검사 스크립트
         if: ${{ !cancelled() }}
         run: python -m unittest test_network_smoke -v
