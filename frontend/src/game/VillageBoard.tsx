@@ -293,11 +293,13 @@ function HouseView({
   pick,
   swayed,
   highlight,
+  pointed = false,
 }: {
   h: House
   pick?: Pick
   swayed?: boolean
   highlight?: TutorialHighlight | null
+  pointed?: boolean
 }) {
   const { x, y } = h
   const base = `${houseLabel(h)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
@@ -309,7 +311,7 @@ function HouseView({
   // 어긋난 쪽지 한 장이면 재판: 막대가 약하게 두근거린다
   const near = !over && h.suspicion != null && h.suspicion >= SUSPICION.threshold - SUSPICION.disagree
   const postX = -48 + 0.96 * SUSPICION.threshold
-  const hlHouse = Boolean(pick && highlight === 'houses')
+  const hlHouse = Boolean(pick && pointed)
   const hlWindow = highlight === 'windows'
   const hlSuspicion = highlight === 'suspicion'
   const hlFlag = highlight === 'flags'
@@ -325,7 +327,7 @@ function HouseView({
     >
       <title>{label}</title>
       {pick && <ellipse className="vb-hl" cx={x} cy={y + 2} rx="62" ry="17" />}
-      {hlHouse && <ellipse className="vb-tut-ring" cx={x} cy={y - 30} rx="62" ry="48" aria-hidden />}
+      {hlHouse && <ellipse className="vb-tut-ring" cx={x} cy={y - 30} rx="62" ry="48" filter="url(#vb-rough)" aria-hidden />}
       {h.role === 'player' ? (
         <g filter="url(#vb-rough)" transform={`translate(${x},${y}) scale(.8)`}>
           <use href="#vb-hut-dark" />
@@ -620,6 +622,66 @@ function Signs() {
   )
 }
 
+// 튜토리얼 행동 단계(집 누르기): 안내 대상 집 옆의 빈 풀밭에 손그림 화살표와 "여기를 눌러 보세요" 쪽지를 놓는다.
+function HousePointer({ target }: { target: House }) {
+  const left = target.x < PLAZA.x
+  const top = target.y < PLAZA.y
+  const noteX = left ? 24 : 700
+  const noteY = top ? 314 : 346
+  const noteW = 176
+  const noteH = 38
+  const fold = 12
+  const dir = left ? (top ? 'ur' : 'dr') : top ? 'ul' : 'dl'
+  const arrowD = left
+    ? top
+      ? 'M 160 309 Q 184 288 206 266 M 192 267 L 207 265 L 204 280'
+      : 'M 160 389 Q 184 408 206 424 M 192 422 L 207 425 L 203 410'
+    : top
+      ? 'M 740 309 Q 716 288 694 266 M 708 267 L 693 265 L 696 280'
+      : 'M 740 389 Q 716 408 694 424 M 708 422 L 693 425 L 697 410'
+  return (
+    <g className="vb-tut-pointer" aria-hidden="true">
+      <g filter="url(#vb-rough)">
+        <path
+          d={`M${noteX} ${noteY} H${noteX + noteW - fold} L${noteX + noteW} ${noteY + fold} V${noteY + noteH} H${noteX} Z`}
+          fill="#f6ebcd"
+          stroke="#a8361f"
+          strokeWidth="2.2"
+          strokeLinejoin="round"
+        />
+        <path
+          d={`M${noteX + noteW - fold} ${noteY} V${noteY + fold} H${noteX + noteW}`}
+          fill="#e4d2a6"
+          stroke="#a8361f"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+        />
+      </g>
+      <text
+        x={noteX + (noteW - fold / 2) / 2}
+        y={noteY + 25}
+        fontSize="18"
+        fontWeight="700"
+        textAnchor="middle"
+        className="vb-pencil-sm"
+      >
+        여기를 눌러 보세요
+      </text>
+      <g className={`vb-tut-arrow is-${dir}`}>
+        <path
+          d={arrowD}
+          fill="none"
+          stroke="#7a2416"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          filter="url(#vb-rough)"
+        />
+      </g>
+    </g>
+  )
+}
+
 function ContradictionKnot({ x, y, label, text, title }: { x: number; y: number; label: string; text: string; title?: boolean }) {
   return (
     <g role="img" aria-label={label}>
@@ -711,6 +773,14 @@ export function VillageBoard({
     picker?.ruled && claim ? suspicionPreview(h, claim, pairs, picker.claims) : null
   const changed = picker && result ? changedHouses(result) : {}
   const opened = picker ? houses.find((h) => h.city === open && h.reachable) : undefined
+  // 집 누르기 안내 단계에서는 한 집(왼쪽 위 우선)만 가리켜 화면에 움직이는 요소를 하나로 유지한다.
+  const pointerTarget =
+    highlight === 'houses' && picker && !opened
+      ? (houses.find((h) => h.slot === 2 && h.reachable) ??
+        houses.find((h) => h.slot === 1 && h.reachable) ??
+        houses.find((h) => h.reachable) ??
+        null)
+      : null
   const cardOpen = Boolean(opened)
   useEffect(() => {
     onCardOpen?.(cardOpen)
@@ -773,6 +843,7 @@ export function VillageBoard({
           h={h}
           swayed={at('flags') && swayed.includes(h.city)}
           highlight={highlight}
+          pointed={pointerTarget?.city === h.city}
           pick={
             picker && h.reachable
               ? {
@@ -786,6 +857,7 @@ export function VillageBoard({
           }
         />
       ))}
+      {pointerTarget && <HousePointer target={pointerTarget} />}
       {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
       {caught.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)

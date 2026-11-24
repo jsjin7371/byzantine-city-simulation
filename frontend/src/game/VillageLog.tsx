@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { pairLogScales } from './village'
 import type { Line, Scale, ScaleLine } from './village'
 
@@ -64,27 +64,67 @@ export function VillageLog({
   lines,
   day,
   live = false,
-  highlight = false,
+  highlight = null,
+  onScaleOpen,
+  scaleBtnRef,
   children,
 }: {
   lines: Line[] | null
   day?: number
   live?: boolean
-  highlight?: boolean
+  highlight?: 'log' | 'scale' | null
+  onScaleOpen?: (open: boolean) => void
+  scaleBtnRef?: RefObject<HTMLButtonElement | null>
   children?: ReactNode
 }) {
   const log = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState<Record<string, boolean>>({})
   const entries = lines ? pairLogScales(lines) : null
   const count = entries?.length ?? 0
+  const firstScaleIndex = entries
+    ? entries.findIndex((entry) => (entry.kind === 'say' || entry.kind === 'scale') && Boolean(entry.scale))
+    : -1
+  const hasOpenScale = Boolean(
+    entries?.some((entry) => {
+      if ((entry.kind !== 'say' && entry.kind !== 'scale') || !entry.scale) return false
+      const who = entry.kind === 'scale' ? entry.scale.who : entry.who
+      return Boolean(open[`${day ?? 0}-${who}`])
+    }),
+  )
   useEffect(() => {
     if (live && log.current) log.current.scrollTop = log.current.scrollHeight
   }, [live, count])
+  useEffect(() => {
+    if (highlight === 'scale' && log.current) log.current.scrollTop = 0
+  }, [highlight])
+  useEffect(() => {
+    onScaleOpen?.(hasOpenScale)
+  }, [hasOpenScale, onScaleOpen])
 
   const toggle = (key: string) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }))
 
   return (
-    <aside className={highlight ? 'vl-talk tut-hl' : 'vl-talk'} aria-label="마을 이야기">
+    <aside className={highlight === 'log' ? 'vl-talk is-tut-log' : 'vl-talk'} aria-label="마을 이야기">
+      {highlight === 'log' && (
+        <>
+          <svg
+            className="tut-log-frame"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <path
+              className="tut-log-stroke"
+              d="M 1.6 1.2 Q 50 0.4 98.6 1.4 Q 99.5 50 98.5 98.7 Q 50 99.6 1.4 98.6 Q 0.5 50 1.8 0.9"
+              pathLength={100}
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+          <span className="tut-note-tag is-log" aria-hidden="true">
+            주민들이 여기서 이야기해요
+          </span>
+        </>
+      )}
       <div className="vl-head">
         <h2>마을 이야기</h2>
         {day != null && <span className="vl-day">{day}일째 밤</span>}
@@ -122,6 +162,8 @@ export function VillageLog({
             const key = `${day ?? 0}-${who}`
             const isOpen = !!scale && !!open[key]
             const panelId = `vl-why-${key}`
+            const isFirstScale = i === firstScaleIndex
+            const isGuideTarget = highlight === 'scale' && isFirstScale
             return (
               <article key={i} className={isOpen ? 'vl-entry is-open' : 'vl-entry'}>
                 <div className="vl-entry-row">
@@ -132,8 +174,9 @@ export function VillageLog({
                   <p className="vl-quote">{text}</p>
                   {scale && (
                     <button
+                      ref={isFirstScale ? scaleBtnRef : undefined}
                       type="button"
-                      className="vl-why-btn"
+                      className={isGuideTarget ? 'vl-why-btn is-tut-target' : 'vl-why-btn'}
                       aria-label={`${who}번 주민 속마음 저울 보기`}
                       aria-expanded={isOpen}
                       aria-controls={isOpen ? panelId : undefined}
@@ -145,6 +188,14 @@ export function VillageLog({
                     </button>
                   )}
                 </div>
+                {isGuideTarget && (
+                  <div className="tut-callout is-up-right" aria-hidden="true">
+                    <span className="tut-note-tag">여기를 눌러 보세요</span>
+                    <svg className="tut-arrow is-up" viewBox="0 0 32 30" width="32" height="30">
+                      <path d="M8 26 Q17 18 19 5 M11 12 L19 4 L26 13" />
+                    </svg>
+                  </div>
+                )}
                 {isOpen && scale && <WhyBox id={panelId} scale={scale} />}
               </article>
             )

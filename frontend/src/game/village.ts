@@ -506,12 +506,13 @@ export type TutorialHighlight =
   | 'submit'
   | 'flags'
   | 'log'
+  | 'scale'
   | 'changed'
 
 export type TutorialStep = {
   text: string
   highlight: TutorialHighlight | null
-  wait?: 'card' | 'turn'
+  wait?: 'card' | 'turn' | 'scale'
   finish?: boolean
 }
 
@@ -551,6 +552,11 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
     text: '주민들이 나눈 말과 결정한 이유가 적혀요. 줄 옆 버튼을 누르면 속마음 저울이 보여요.',
   },
   {
+    highlight: 'scale',
+    wait: 'scale',
+    text: '줄 옆 › 버튼을 눌러 주민의 속마음 저울을 펼쳐 보세요.',
+  },
+  {
     highlight: 'changed',
     text: '어제와 달라진 집에는 표시가 생겨요. 어제 고른 쪽지는 그대로 남으니, 표시가 뜬 집만 다시 살펴보면 돼요. 이제 혼자 해 보세요.',
   },
@@ -564,6 +570,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
 const TUTORIAL_STEP = {
   cardWait: TUTORIAL_STEPS.findIndex((s) => s.wait === 'card'),
   day2Start: TUTORIAL_STEPS.findIndex((s) => s.wait === 'turn') + 1,
+  scaleWait: TUTORIAL_STEPS.findIndex((s) => s.wait === 'scale'),
   finish: TUTORIAL_STEPS.findIndex((s) => s.finish),
   done: TUTORIAL_STEPS.length,
 } as const
@@ -574,6 +581,7 @@ export type TutorialContext = {
   turn: number
   playing: boolean
   cardOpen: boolean
+  scaleOpen?: boolean
   gameOver: boolean
   viewingPast?: boolean
 }
@@ -586,18 +594,20 @@ export function splitSentences(text: string): string[] {
     .filter(Boolean)
 }
 
-// 튜토리얼 단계 진행 규칙: 지금 턴·연출 중 여부·쪽지 카드 열림·게임 종료·지난밤 보기로 커서와 현재 표시할 단계를 정한다.
+// 튜토리얼 단계 진행 규칙: 지금 턴·연출 중 여부·쪽지 카드 열림·속마음 저울 펼침·게임 종료·지난밤 보기로 커서와 현재 표시할 단계를 정한다.
 export function tutorialStep(
   cursor: number,
-  { turn, playing, cardOpen, gameOver, viewingPast = false }: TutorialContext,
+  { turn, playing, cardOpen, scaleOpen = false, gameOver, viewingPast = false }: TutorialContext,
 ): { cursor: number; step: TutorialStep | null } {
-  const { cardWait, day2Start, finish, done } = TUTORIAL_STEP
+  const { cardWait, day2Start, scaleWait, finish, done } = TUTORIAL_STEP
   if (gameOver || cursor < 0 || cursor >= done || turn > TUTORIAL_END_TURN) return { cursor: done, step: null }
 
   let next = cursor
   if (turn === 0 && next === cardWait && cardOpen) next = cardWait + 1
   else if (turn === 1 && next < day2Start) next = day2Start
   else if (turn >= 2 && next < finish) next = finish
+
+  if (turn === 1 && !playing && !viewingPast && next === scaleWait && scaleOpen) next = scaleWait + 1
 
   if (playing || viewingPast) return { cursor: next, step: null }
   if (next === finish && turn < TUTORIAL_END_TURN) return { cursor: next, step: null }

@@ -525,6 +525,7 @@
 
 /* 오른쪽 종이 일기장 (마을 이야기) */
 .vl-talk {
+  position: relative;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -920,35 +921,146 @@
   stroke: var(--rust);
   stroke-width: 3.5;
   stroke-dasharray: 8 5;
+  stroke-linecap: round;
   pointer-events: none;
-  filter: drop-shadow(0 0 5px #ffd35a);
-  animation: vb-tut-pulse 1.4s ease-in-out infinite alternate;
 }
 .vb-share.vb-tut-hl .vb-share-glow {
-  opacity: .95;
-  stroke-width: 26;
-  animation: vb-tut-pulse 1.4s ease-in-out infinite alternate;
+  opacity: .9;
+  stroke-width: 24;
 }
 .vb-share.vb-tut-hl .vb-share-tag rect {
   stroke: var(--rust);
   stroke-width: 3;
-  filter: drop-shadow(0 0 6px #ffd35a);
-  animation: vb-tut-pulse 1.4s ease-in-out infinite alternate;
 }
-@keyframes vb-tut-pulse {
-  from { opacity: .45; }
-  to { opacity: 1; }
+
+/* 튜토리얼 보드 손그림 화살표·쪽지 (한 대상에만 표시, 느리고 작게 3회 까딱임) */
+.vb-tut-pointer {
+  pointer-events: none;
+}
+.vb-tut-arrow {
+  animation-duration: 1.4s;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  animation-iteration-count: 3;
+}
+.vb-tut-arrow.is-ur { animation-name: vb-arrow-ur; }
+.vb-tut-arrow.is-dr { animation-name: vb-arrow-dr; }
+.vb-tut-arrow.is-ul { animation-name: vb-arrow-ul; }
+.vb-tut-arrow.is-dl { animation-name: vb-arrow-dl; }
+@keyframes vb-arrow-ur {
+  0%, 100% { transform: translate(0, 0); }
+  45% { transform: translate(4px, -4px); }
+}
+@keyframes vb-arrow-dr {
+  0%, 100% { transform: translate(0, 0); }
+  45% { transform: translate(4px, 4px); }
+}
+@keyframes vb-arrow-ul {
+  0%, 100% { transform: translate(0, 0); }
+  45% { transform: translate(-4px, -4px); }
+}
+@keyframes vb-arrow-dl {
+  0%, 100% { transform: translate(0, 0); }
+  45% { transform: translate(-4px, 4px); }
+}
+
+/* 튜토리얼 이야기 칸 손그림 상자 및 라벨 */
+.tut-log-frame {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+.tut-log-stroke {
+  fill: none;
+  stroke: var(--rust);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 104;
+  stroke-dashoffset: 0;
+  animation: tut-frame-draw 420ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+@keyframes tut-frame-draw {
+  from { stroke-dashoffset: 104; }
+  to { stroke-dashoffset: 0; }
+}
+
+.tut-note-tag {
+  display: inline-block;
+  padding: 2px 11px;
+  background: var(--ui-background);
+  border: 2px solid var(--rust);
+  border-radius: 4px 10px 4px 6px;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.tut-note-tag.is-log {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* 튜토리얼 HTML 행동 단계(밤으로 넘기기 / › 버튼) 화살표·쪽지 */
+.tut-callout {
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.tut-callout.is-down {
+  flex-direction: column;
+  gap: 2px;
+}
+.tut-callout.is-up-right {
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 6px;
+}
+.tut-arrow {
+  display: block;
+  flex: none;
+  overflow: visible;
+  filter: url(#vb-pencil);
+}
+.tut-arrow path {
+  fill: none;
+  stroke: #7a2416;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tut-arrow.is-down {
+  animation: tut-arrow-down 1.4s cubic-bezier(0.23, 1, 0.32, 1) 3;
+}
+.tut-arrow.is-up {
+  animation: tut-arrow-up 1.4s cubic-bezier(0.23, 1, 0.32, 1) 3;
+}
+@keyframes tut-arrow-down {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(5px); }
+}
+@keyframes tut-arrow-up {
+  0%, 100% { transform: translate(0, 0); }
+  45% { transform: translate(2px, -4.5px); }
 }
 
 .tut-hl {
-  outline: 3px solid var(--rust);
+  outline: 3px dashed var(--rust);
   outline-offset: 3px;
-  box-shadow: 0 0 0 5px rgba(255, 211, 90, 0.72), 0 0 14px rgba(255, 211, 90, 0.6);
-  animation: tut-hl-pulse 1.4s ease-in-out infinite alternate;
 }
-@keyframes tut-hl-pulse {
-  from { box-shadow: 0 0 0 2px rgba(255, 211, 90, 0.3), 0 0 5px rgba(255, 211, 90, 0.35); }
-  to { box-shadow: 0 0 0 6px rgba(255, 211, 90, 0.85), 0 0 16px rgba(255, 211, 90, 0.75); }
+.vl-why-btn.is-tut-target {
+  border-color: var(--rust);
+  outline: 2.5px dashed var(--rust);
+  outline-offset: 2px;
+  color: #7a2416;
 }
 
 @media (max-width: 1100px) {
@@ -961,16 +1073,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vb-board .vb-tut-ring,
-  .vb-share.vb-tut-hl .vb-share-glow,
-  .vb-share.vb-tut-hl .vb-share-tag rect,
-  .tut-hl {
+  .vb-tut-arrow,
+  .tut-log-stroke,
+  .tut-arrow.is-down,
+  .tut-arrow.is-up {
     animation: none;
-  }
-  .vb-board .vb-tut-ring {
-    opacity: 1;
-  }
-  .tut-hl {
-    box-shadow: 0 0 0 3px rgba(255, 211, 90, 0.65);
   }
 }

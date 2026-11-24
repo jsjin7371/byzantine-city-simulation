@@ -150,10 +150,12 @@ export function GamePage() {
   const [tutorial, setTutorial] = useState(false)
   const [tutorialCursor, setTutorialCursor] = useState(0)
   const [cardOpen, setCardOpen] = useState(false)
+  const [scaleOpen, setScaleOpen] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const boardRef = useRef<SVGSVGElement>(null)
   const submitRef = useRef<HTMLButtonElement>(null)
+  const scaleBtnRef = useRef<HTMLButtonElement>(null)
   const inGame = state !== null
   const prevInGame = useRef(inGame)
   useEffect(() => {
@@ -201,6 +203,7 @@ export function GamePage() {
       setTutorial(isTutorial)
       setTutorialCursor(0)
       setCardOpen(false)
+      setScaleOpen(false)
       setHistory([])
       setViewed(0)
       setStep(null)
@@ -233,6 +236,7 @@ export function GamePage() {
     setTutorial(false)
     setTutorialCursor(0)
     setCardOpen(false)
+    setScaleOpen(false)
     setHistory([])
     setViewed(0)
     setStep(null)
@@ -254,6 +258,7 @@ export function GamePage() {
         turn: state.turn,
         playing,
         cardOpen,
+        scaleOpen,
         gameOver: state.game_over,
         viewingPast,
       }
@@ -270,6 +275,8 @@ export function GamePage() {
     if (!next.step || next.step.wait || next.step.finish) {
       if (next.step?.wait === 'turn' && submitRef.current && !submitRef.current.disabled) {
         submitRef.current.focus({ preventScroll: true })
+      } else if (next.step?.wait === 'scale' && scaleBtnRef.current) {
+        scaleBtnRef.current.focus({ preventScroll: true })
       } else {
         boardRef.current?.focus({ preventScroll: true })
       }
@@ -379,7 +386,9 @@ export function GamePage() {
               lines={lines && playing ? visibleLines(lines, steps[step]) : lines}
               day={shown?.turn}
               live={playing}
-              highlight={highlight === 'log'}
+              highlight={highlight === 'log' || highlight === 'scale' ? highlight : null}
+              onScaleOpen={setScaleOpen}
+              scaleBtnRef={scaleBtnRef}
             >
               {shown && !playing && (
                 <div className="vl-pager" role="group" aria-label="지난밤 넘겨보기">
@@ -419,14 +428,24 @@ export function GamePage() {
                   </Button>
                 </div>
               ) : (
-                <Button
-                  ref={submitRef}
-                  className={highlight === 'submit' ? 'tut-hl' : undefined}
-                  onClick={submit}
-                  disabled={busy || !latest}
-                >
-                  {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '가장 최근 날에서만 밤으로 넘길 수 있어요'}
-                </Button>
+                <>
+                  {highlight === 'submit' && (
+                    <div className="tut-callout is-down" aria-hidden="true">
+                      <span className="tut-note-tag">여기를 눌러 보세요</span>
+                      <svg className="tut-arrow is-down" viewBox="0 0 36 30" width="36" height="30">
+                        <path d="M18 3 Q16 14 18 25 M11 18 L18 26 L25 18" />
+                      </svg>
+                    </div>
+                  )}
+                  <Button
+                    ref={submitRef}
+                    className={highlight === 'submit' ? 'tut-hl' : undefined}
+                    onClick={submit}
+                    disabled={busy || !latest}
+                  >
+                    {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '가장 최근 날에서만 밤으로 넘길 수 있어요'}
+                  </Button>
+                </>
               )}
             </VillageLog>
           </div>
