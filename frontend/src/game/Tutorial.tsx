@@ -5,11 +5,13 @@ import type { TutorialStep } from './village'
 // 튜토리얼 말풍선: 보드 영역 위쪽에 붙는 동화 일기장 톤의 안내 상자.
 export function Tutorial({
   step,
+  busy = false,
   onNext,
   onDismiss,
   onExit,
 }: {
   step: TutorialStep | null
+  busy?: boolean
   onNext: () => void
   onDismiss: () => void
   onExit: () => void
@@ -36,7 +38,7 @@ export function Tutorial({
               <Button size="sm" onClick={onDismiss}>
                 이어서 하기
               </Button>
-              <Button size="sm" variant="outline" onClick={onExit}>
+              <Button size="sm" variant="outline" onClick={onExit} disabled={busy}>
                 시작 화면으로
               </Button>
             </>

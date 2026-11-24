@@ -370,6 +370,7 @@ export function GamePage() {
               {tutorialActive && (
                 <Tutorial
                   step={activeTutorial}
+                  busy={busy}
                   onNext={nextTutorial}
                   onDismiss={dismissTutorial}
                   onExit={exit}
