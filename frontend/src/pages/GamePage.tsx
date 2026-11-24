@@ -15,7 +15,7 @@ import { GameStart } from '../game/GameStart'
 import { VillageBoard } from '../game/VillageBoard'
 import { VillageLog } from '../game/VillageLog'
 import { GameResult } from '../game/GameResult'
-import { citizenScales, fooledDots, nightSteps, villageLines, visibleLines } from '../game/village'
+import { TUTORIAL_SEED, citizenScales, fooledDots, nightSteps, villageLines, visibleLines } from '../game/village'
 import './GamePage.css'
 
 // 의심도 게이지. 재판 기준(60) 위치에 선을 긋는다.
@@ -137,6 +137,7 @@ export function GamePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [step, setStep] = useState<number | null>(null) // 밤 연출 중인 단계. null이면 최종 상태
+  const [tutorial, setTutorial] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const inGame = state !== null
@@ -176,11 +177,14 @@ export function GamePage() {
     }
   }
 
-  const start = () =>
+  const start = (isTutorial = false) =>
     run(async () => {
       setState(null) // 실패해도 이전 게임을 이어서 진행하지 않게 (God은 새 요청 때 이전 게임을 버린다)
-      const game = await createGame(difficulty, citizenType)
+      const game = isTutorial
+        ? await createGame('easy', 'wary', TUTORIAL_SEED)
+        : await createGame(difficulty, citizenType)
       setState(game)
+      setTutorial(isTutorial)
       setHistory([])
       setViewed(0)
       setStep(null)
@@ -210,6 +214,7 @@ export function GamePage() {
 
   const exit = () => {
     setState(null)
+    setTutorial(false)
     setHistory([])
     setViewed(0)
     setStep(null)
@@ -250,7 +255,8 @@ export function GamePage() {
           headingRef={headingRef}
           onDifficulty={setDifficulty}
           onCitizenType={setCitizenType}
-          onStart={start}
+          onStart={() => start(false)}
+          onTutorial={() => start(true)}
         />
       ) : (
         <div className="gm-workspace gm-play">
@@ -264,6 +270,7 @@ export function GamePage() {
                   <button type="button" className="gm-exit" onClick={exit} disabled={busy}>
                     ← 나가기
                   </button>
+                  {tutorial && !state.game_over && <span className="gm-tutorial-badge">튜토리얼</span>}
                   <div className="gm-role">
                     <span className="gm-me-dot" aria-hidden="true">
                       나

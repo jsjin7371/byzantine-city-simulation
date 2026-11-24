@@ -493,3 +493,106 @@ export function gameSummary(
           : '다수결 주민은 의심하지 않아요. 눈치 주민은 의심도가 쌓이면 재판을 열어요.'
   return { headline, moments, lesson, peaks }
 }
+
+// 튜토리얼 고정 seed (쉬움·눈치): 1일째 점선(2·3번)·꺼진 창문 2곳·주민 4곳·2일째 변동 표시 3곳·기본 쪽지로 3일간 발각 없음.
+export const TUTORIAL_SEED = 15
+
+export type TutorialHighlight =
+  | 'sky'
+  | 'windows'
+  | 'houses'
+  | 'suspicion'
+  | 'share'
+  | 'submit'
+  | 'flags'
+  | 'log'
+  | 'changed'
+
+export type TutorialStep = {
+  id: number
+  text: string
+  highlight: TutorialHighlight | null
+  wait?: 'card' | 'turn'
+  finish?: boolean
+}
+
+export const TUTORIAL_STEPS: readonly TutorialStep[] = [
+  {
+    id: 0,
+    highlight: 'sky',
+    text: '이번 판의 진짜 날씨예요. 주민은 모르고 나(마피아)만 알아요. 마지막 밤에 주민 과반이 날씨와 반대로 움직이면 내가 이겨요.',
+  },
+  {
+    id: 1,
+    highlight: 'windows',
+    text: '주민은 밤마다 날씨를 직접 관측해요. 창문 불이 켜진 집은 다음 관측이 진짜 날씨와 맞고, 꺼진 집은 틀려요. 불이 꺼진 집이 속이기 쉬워요.',
+  },
+  {
+    id: 2,
+    highlight: 'houses',
+    wait: 'card',
+    text: '집을 눌러 보낼 쪽지를 골라 보세요.',
+  },
+  {
+    id: 3,
+    highlight: 'suspicion',
+    text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민의 관측과 다른 쪽지를 보내면 의심도가 올라가요. 재판 기준을 넘으면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
+  },
+  {
+    id: 4,
+    highlight: 'share',
+    text: '점선으로 이어진 두 집은 오늘 밤 내 쪽지를 서로 맞춰 봐요(점선 대조). 두 집에 다른 쪽지를 보내면 모순이 생겨 의심도가 크게 올라요.',
+  },
+  {
+    id: 5,
+    highlight: 'submit',
+    wait: 'turn',
+    text: '다 골랐으면 밤으로 넘겨 보세요.',
+  },
+  {
+    id: 6,
+    highlight: 'flags',
+    text: '깃발은 주민이 지난밤 내린 결정(대피·잔류)이에요.',
+  },
+  {
+    id: 7,
+    highlight: 'log',
+    text: '주민들이 나눈 말과 결정한 이유가 적혀요. 줄 옆 버튼을 누르면 속마음 저울이 보여요.',
+  },
+  {
+    id: 8,
+    highlight: 'changed',
+    text: '어제와 달라진 집에는 표시가 생겨요. 어제 고른 쪽지는 그대로 남으니, 표시가 뜬 집만 다시 살펴보면 돼요. 이제 혼자 해 보세요.',
+  },
+  {
+    id: 9,
+    highlight: null,
+    finish: true,
+    text: '튜토리얼은 여기까지예요. 재판에서 내가 마피아로 지목되면 지고, 마지막 밤에 주민 과반을 속이면 이겨요.',
+  },
+]
+
+export type TutorialContext = {
+  turn: number
+  playing: boolean
+  cardOpen: boolean
+  gameOver: boolean
+}
+
+// 튜토리얼 단계 진행 규칙: 지금 턴·연출 중 여부·쪽지 카드 열림·게임 종료로 커서와 현재 표시할 단계를 정한다.
+export function tutorialStep(
+  cursor: number,
+  { turn, playing, cardOpen, gameOver }: TutorialContext,
+): { cursor: number; step: TutorialStep | null } {
+  const done = TUTORIAL_STEPS.length
+  if (gameOver || cursor < 0 || cursor >= done || turn >= 4) return { cursor: done, step: null }
+
+  let next = cursor
+  if (turn === 0 && next === 2 && cardOpen) next = 3
+  else if (turn === 1 && next < 6) next = 6
+  else if (turn >= 2 && next < 9) next = 9
+
+  if (playing) return { cursor: next, step: null }
+  if (next === 9 && turn < 3) return { cursor: next, step: null }
+  return { cursor: next, step: TUTORIAL_STEPS[next] }
+}

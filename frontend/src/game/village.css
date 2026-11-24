@@ -147,12 +147,14 @@
   font-weight: 700;
 }
 .gm-start-scene .gs-exit.is-busy,
-.gm-start-scene .gs-enter.is-busy {
+.gm-start-scene .gs-enter.is-busy,
+.gm-start-scene .gs-tutorial.is-busy {
   cursor: not-allowed;
   opacity: 0.65;
 }
 .gm-start-scene .gs-exit:focus-visible,
-.gm-start-scene .gs-enter:focus-visible {
+.gm-start-scene .gs-enter:focus-visible,
+.gm-start-scene .gs-tutorial:focus-visible {
   outline: 3px solid #ffd35a;
   outline-offset: 4px;
 }
@@ -227,6 +229,20 @@
   box-shadow: 0 2px 0 rgba(74, 49, 25, 0.2);
 }
 .gm-exit:hover:not(:disabled) { background: var(--ui-background); }
+
+.gm-tutorial-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--forest);
+  border: 1.5px solid #1b2d18;
+  color: var(--ui-background);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  box-shadow: 0 2px 0 rgba(27, 45, 24, 0.25);
+}
 
 .gm-role {
   display: inline-flex;

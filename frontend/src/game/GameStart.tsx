@@ -219,6 +219,9 @@ function StartDefs() {
       <clipPath id="vs-clip-enter-btn">
         <rect x="530" y="610" width="380" height="72" rx="4" />
       </clipPath>
+      <clipPath id="vs-clip-tutorial-btn">
+        <rect x="550" y="698" width="340" height="56" rx="4" />
+      </clipPath>
       <clipPath id="vs-clip-exit-sign">
         <path d="M50 26 H208 V64 H50 L28 45 Z" />
       </clipPath>
@@ -468,6 +471,7 @@ export function GameStart({
   onDifficulty,
   onCitizenType,
   onStart,
+  onTutorial,
 }: {
   difficulty: Difficulty
   citizenType: CitizenType
@@ -477,6 +481,7 @@ export function GameStart({
   onDifficulty: (value: Difficulty) => void
   onCitizenType: (value: CitizenType) => void
   onStart: () => void
+  onTutorial: () => void
 }) {
   const diffKeys = Object.keys(difficulties) as Difficulty[]
   const citizenKeys = Object.keys(citizenTypes) as CitizenType[]
@@ -763,6 +768,64 @@ export function GameStart({
             className="vb-cream vb-pencil"
           >
             마을로 들어가기
+          </text>
+        </g>
+
+        {/* "처음이라면? 튜토리얼" 나무 판자 버튼 */}
+        <g
+          transform="translate(0, 18)"
+          className={busy ? 'gs-tutorial is-busy' : 'vb-clickable gs-tutorial'}
+          role="button"
+          tabIndex={0}
+          aria-disabled={busy || undefined}
+          aria-label="처음이라면? 튜토리얼"
+          onClick={() => {
+            if (!busy) onTutorial()
+          }}
+          onKeyDown={onActivateKey(() => {
+            if (!busy) onTutorial()
+          })}
+        >
+          <rect
+            x="550"
+            y="698"
+            width="340"
+            height="56"
+            rx="4"
+            fill="#7a5530"
+            stroke="#4a3119"
+            strokeWidth="3"
+            filter="url(#vs-rough)"
+          />
+          <rect x="550" y="698" width="340" height="56" filter="url(#vs-grain)" clipPath="url(#vs-clip-tutorial-btn)" />
+          <rect
+            x="559"
+            y="706"
+            width="322"
+            height="40"
+            rx="2"
+            fill="none"
+            stroke="#c99a5b"
+            strokeWidth="1.5"
+            opacity="0.75"
+            filter="url(#vs-rough)"
+          />
+          <g fill="#3b2a1a" stroke="#c99a5b" strokeWidth="1.1">
+            <circle cx="568" cy="715" r="2.6" />
+            <circle cx="872" cy="715" r="2.6" />
+            <circle cx="568" cy="737" r="2.6" />
+            <circle cx="872" cy="737" r="2.6" />
+          </g>
+          <text
+            x="720"
+            y="735"
+            fontSize="26"
+            fontWeight="700"
+            letterSpacing="1"
+            textAnchor="middle"
+            className="vb-cream vb-pencil"
+          >
+            처음이라면? 튜토리얼
           </text>
         </g>
       </svg>
