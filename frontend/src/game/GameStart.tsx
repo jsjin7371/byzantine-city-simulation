@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
-import type { KeyboardEvent, RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { KeyboardEvent, ReactNode, RefObject } from 'react'
 import { citizenTypes, difficulties } from '../gameApi'
 import type { CitizenType, Difficulty } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
+import { DIFFICULTY_STATS } from './village'
 
 const OPTION_SLOTS = [
   { x: 546, w: 112 },
@@ -387,19 +388,23 @@ function OptionPlank<T extends string>({
   rotate,
   ariaLabel,
   label,
+  labelX = 444,
   items,
   value,
   onChange,
   optionRefs,
+  extra,
 }: {
   y: number
   rotate: number
   ariaLabel: string
   label: string
+  labelX?: number
   items: readonly OptionItem<T>[]
   value: T
   onChange: (val: T) => void
   optionRefs: RefObject<(SVGGElement | null)[]>
+  extra?: ReactNode
 }) {
   const keys = items.map((item) => item.key)
   const [lastValue, setLastValue] = useState(value)
@@ -409,65 +414,68 @@ function OptionPlank<T extends string>({
     setAnimate(true)
   }
   return (
-    <g transform={`translate(0, ${y}) rotate(${rotate}, 720, 33)`} role="radiogroup" aria-label={ariaLabel}>
-      <path d={PLANK_PATH} fill="#c99a5b" stroke="#4a3119" strokeWidth="2.4" filter="url(#vs-rough)" />
-      <rect x="404" y="0" width="632" height="66" filter="url(#vs-grain)" clipPath="url(#vs-clip-plank)" />
-      <circle cx="418" cy="12" r="2.8" fill="#4a3119" />
-      <circle cx="418" cy="54" r="2.8" fill="#4a3119" />
+    <g transform={`translate(0, ${y}) rotate(${rotate}, 720, 33)`}>
+      <g role="radiogroup" aria-label={ariaLabel}>
+        <path d={PLANK_PATH} fill="#c99a5b" stroke="#4a3119" strokeWidth="2.4" filter="url(#vs-rough)" />
+        <rect x="404" y="0" width="632" height="66" filter="url(#vs-grain)" clipPath="url(#vs-clip-plank)" />
+        <circle cx="418" cy="12" r="2.8" fill="#4a3119" />
+        <circle cx="418" cy="54" r="2.8" fill="#4a3119" />
 
-      <text x="444" y="41" fontSize="25" fontWeight="700" className="vb-pencil">
-        {label}
-      </text>
+        <text x={labelX} y="41" fontSize="25" fontWeight="700" className="vb-pencil">
+          {label}
+        </text>
 
-      {items.map((item, i) => {
-        const slot = OPTION_SLOTS[i]
-        const cx = slot.x + slot.w / 2
-        const selected = value === item.key
-        return (
-          <g key={item.key}>
-            <g
-              ref={(el) => {
-                optionRefs.current[i] = el
-              }}
-              className={selected ? 'vb-clickable vb-opt-item is-selected' : 'vb-clickable vb-opt-item'}
-              role="radio"
-              aria-checked={selected}
-              aria-label={item.ariaLabel}
-              tabIndex={selected ? 0 : -1}
-              onClick={() => onChange(item.key)}
-              onKeyDown={(e) => onRadioKey(e, keys, i, onChange, optionRefs.current)}
-            >
-              <rect x={slot.x} y="8" width={slot.w} height="50" fill="transparent" />
-              {selected && (
-                <g transform={`translate(${cx}, 33) rotate(-2.5) scale(-1 1)`} /* 좌우 반전: 시계 반대 방향으로 그린다 */ filter="url(#vs-pencil-circle)" aria-hidden="true">
-                  <path
-                    key={item.key}
-                    className={animate ? 'vb-opt-circle is-animated' : 'vb-opt-circle'}
-                    d={handCirclePath(item.rx, 20)}
-                    pathLength={100}
-                  />
-                </g>
-              )}
-              <text className="opt-label vb-pencil" x={cx} y="41" fontSize="24" textAnchor="middle">
-                {item.label}
-              </text>
-            </g>
-            {i < items.length - 1 && (
-              <text
-                x={i === 0 ? 678 : 830}
-                y="40"
-                fontSize="22"
-                fontWeight="700"
-                textAnchor="middle"
-                className="vb-slash"
-                aria-hidden="true"
+        {items.map((item, i) => {
+          const slot = OPTION_SLOTS[i]
+          const cx = slot.x + slot.w / 2
+          const selected = value === item.key
+          return (
+            <g key={item.key}>
+              <g
+                ref={(el) => {
+                  optionRefs.current[i] = el
+                }}
+                className={selected ? 'vb-clickable vb-opt-item is-selected' : 'vb-clickable vb-opt-item'}
+                role="radio"
+                aria-checked={selected}
+                aria-label={item.ariaLabel}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => onChange(item.key)}
+                onKeyDown={(e) => onRadioKey(e, keys, i, onChange, optionRefs.current)}
               >
-                /
-              </text>
-            )}
-          </g>
-        )
-      })}
+                <rect x={slot.x} y="8" width={slot.w} height="50" fill="transparent" />
+                {selected && (
+                  <g transform={`translate(${cx}, 33) rotate(-2.5) scale(-1 1)`} /* 좌우 반전: 시계 반대 방향으로 그린다 */ filter="url(#vs-pencil-circle)" aria-hidden="true">
+                    <path
+                      key={item.key}
+                      className={animate ? 'vb-opt-circle is-animated' : 'vb-opt-circle'}
+                      d={handCirclePath(item.rx, 20)}
+                      pathLength={100}
+                    />
+                  </g>
+                )}
+                <text className="opt-label vb-pencil" x={cx} y="41" fontSize="24" textAnchor="middle">
+                  {item.label}
+                </text>
+              </g>
+              {i < items.length - 1 && (
+                <text
+                  x={i === 0 ? 678 : 830}
+                  y="40"
+                  fontSize="22"
+                  fontWeight="700"
+                  textAnchor="middle"
+                  className="vb-slash"
+                  aria-hidden="true"
+                >
+                  /
+                </text>
+              )}
+            </g>
+          )
+        })}
+      </g>
+      {extra}
     </g>
   )
 }
@@ -497,6 +505,88 @@ export function GameStart({
   const citizenKeys = Object.keys(citizenTypes) as CitizenType[]
   const diffRefs = useRef<(SVGGElement | null)[]>([])
   const citizenRefs = useRef<(SVGGElement | null)[]>([])
+  const hostRef = useRef<HTMLDivElement>(null)
+  const helpBtnRef = useRef<SVGGElement>(null)
+  const helpPopRef = useRef<HTMLDivElement>(null)
+  const hoverTimerRef = useRef<number | null>(null)
+  const [helpPinned, setHelpPinned] = useState(false)
+  const [helpHovered, setHelpHovered] = useState(false)
+  const [helpPos, setHelpPos] = useState<{ left: number; top: number } | null>(null)
+  const helpOpen = helpPinned || helpHovered
+
+  const clearHoverTimer = useCallback(() => {
+    if (hoverTimerRef.current != null) {
+      window.clearTimeout(hoverTimerRef.current)
+      hoverTimerRef.current = null
+    }
+  }, [])
+  const openHover = useCallback(() => {
+    clearHoverTimer()
+    setHelpHovered(true)
+  }, [clearHoverTimer])
+  const closeHoverSoon = useCallback(() => {
+    clearHoverTimer()
+    hoverTimerRef.current = window.setTimeout(() => setHelpHovered(false), 150)
+  }, [clearHoverTimer])
+  const closeHelp = useCallback(() => {
+    clearHoverTimer()
+    setHelpPinned(false)
+    setHelpHovered(false)
+  }, [clearHoverTimer])
+  const toggleHelp = useCallback(() => {
+    clearHoverTimer()
+    if (helpPinned) {
+      setHelpPinned(false)
+      setHelpHovered(false)
+    } else {
+      setHelpPinned(true)
+    }
+  }, [clearHoverTimer, helpPinned])
+
+  useEffect(() => () => clearHoverTimer(), [clearHoverTimer])
+
+  useEffect(() => {
+    if (!helpOpen) return
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        const focusInside = helpPopRef.current?.contains(document.activeElement)
+        closeHelp()
+        if (focusInside) helpBtnRef.current?.focus()
+      }
+    }
+    const onClickOutside = (e: MouseEvent) => {
+      if (!(e.target as Element).closest('.gs-diff-help-btn, .gs-diff-help')) closeHelp()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    document.addEventListener('click', onClickOutside)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('click', onClickOutside)
+    }
+  }, [helpOpen, closeHelp])
+
+  useLayoutEffect(() => {
+    if (!helpOpen) return
+    const updatePosition = () => {
+      const host = hostRef.current
+      const btn = helpBtnRef.current
+      const pop = helpPopRef.current
+      if (!host || !btn || !pop) return
+      const hostRect = host.getBoundingClientRect()
+      const btnRect = btn.getBoundingClientRect()
+      const popRect = pop.getBoundingClientRect()
+      const pad = 12
+      const left = Math.max(pad, Math.min((hostRect.width - popRect.width) / 2, hostRect.width - popRect.width - pad))
+      // 난이도·주민 선택지를 가리지 않게 표지판 위쪽에 먼저 두고, 화면 높이가 좁으면 상단 여백에 맞춘다.
+      const aboveTop = btnRect.top - hostRect.top - popRect.height - 26
+      const top = aboveTop >= pad ? aboveTop : pad
+      setHelpPos({ left: Math.round(left), top: Math.round(top) })
+    }
+    updatePosition()
+    window.addEventListener('resize', updatePosition)
+    return () => window.removeEventListener('resize', updatePosition)
+  }, [helpOpen])
+
   const diffItems = diffKeys.map((key) => ({ key, label: difficulties[key].label, rx: DIFF_RX[key] }))
   const citizenItems = citizenKeys.map((key) => ({
     key,
@@ -506,7 +596,7 @@ export function GameStart({
   }))
 
   return (
-    <div className="gm-workspace gm-start">
+    <div ref={hostRef} className="gm-workspace gm-start">
       <h1 ref={headingRef} tabIndex={-1} className="sr-only">
         AI 주민을 속여라
       </h1>
@@ -644,10 +734,37 @@ export function GameStart({
             rotate={-0.5}
             ariaLabel="난이도"
             label="난이도:"
+            labelX={432}
             items={diffItems}
             value={difficulty}
             onChange={onDifficulty}
             optionRefs={diffRefs}
+            extra={
+              <g
+                ref={helpBtnRef}
+                className={helpOpen ? 'vb-clickable gs-diff-help-btn is-open' : 'vb-clickable gs-diff-help-btn'}
+                role="button"
+                tabIndex={0}
+                aria-label="난이도 기준 설명 보기"
+                aria-expanded={helpOpen}
+                aria-controls="gs-diff-help"
+                onClick={toggleHelp}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    toggleHelp()
+                  }
+                }}
+                onMouseEnter={openHover}
+                onMouseLeave={closeHoverSoon}
+              >
+                <rect x="504" y="15" width="34" height="36" fill="transparent" />
+                <circle className="gs-help-ring" cx="521" cy="33" r="13.5" filter="url(#vs-rough-sm)" />
+                <text x="521" y="40" fontSize="20" fontWeight="700" textAnchor="middle" className="vb-pencil">
+                  ?
+                </text>
+              </g>
+            }
           />
           <OptionPlank
             y={354}
@@ -839,6 +956,86 @@ export function GameStart({
           </text>
         </g>
       </svg>
+
+      {helpOpen && (
+        <div
+          ref={helpPopRef}
+          id="gs-diff-help"
+          className="gs-diff-help"
+          role="region"
+          aria-label="난이도 기준 설명"
+          style={helpPos ? { left: `${helpPos.left}px`, top: `${helpPos.top}px` } : undefined}
+          onMouseEnter={openHover}
+          onMouseLeave={closeHoverSoon}
+        >
+          <div className="gs-diff-help-top">
+            <p className="gs-diff-help-lead">
+              난이도는 주민 관측이 틀릴 확률만 달라져요. 마피아는 나 혼자예요.
+            </p>
+            <button
+              type="button"
+              className="gs-diff-help-close"
+              aria-label="난이도 설명 닫기"
+              onClick={closeHelp}
+            >
+              ×
+            </button>
+          </div>
+          <div className="gs-diff-help-table-wrap">
+            <table className="gs-diff-help-table">
+              <thead>
+                <tr>
+                  <th scope="col">난이도</th>
+                  <th scope="col">관측이 틀릴 확률</th>
+                  <th scope="col">
+                    하룻밤 잘못 보는 주민
+                    <br />
+                    (4명 중 평균)
+                  </th>
+                  <th scope="col">
+                    주민 3명 이상이 함께
+                    <br />
+                    잘못 볼 확률
+                  </th>
+                  <th scope="col" className={citizenType === 'wary' ? 'is-active-col' : undefined}>
+                    봇 승률
+                    <br />
+                    (눈치 주민{citizenType === 'wary' ? ' · 선택' : ''})
+                  </th>
+                  <th scope="col" className={citizenType === 'majority' ? 'is-active-col' : undefined}>
+                    봇 승률
+                    <br />
+                    (다수결 주민{citizenType === 'majority' ? ' · 선택' : ''})
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {DIFFICULTY_STATS.map((row) => (
+                  <tr key={row.key} className={difficulty === row.key ? 'is-current-row' : undefined}>
+                    <th scope="row">
+                      {row.label}
+                      {difficulty === row.key && <span className="gs-diff-cur-tag"> (현재)</span>}
+                    </th>
+                    <td>{row.errorPct}%</td>
+                    <td>{row.avgWrong.toFixed(1)}명</td>
+                    <td>{row.atLeastThreePct}%</td>
+                    <td className={citizenType === 'wary' ? 'is-active-col' : undefined}>{row.waryBotWinPct}%</td>
+                    <td className={citizenType === 'majority' ? 'is-active-col' : undefined}>
+                      {row.majorityBotWinPct}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="gs-diff-help-foot">
+            봇은 항상 진짜 날씨의 반대만 말하는 마피아예요. 봇 승률은 모두 대화 조건 시뮬레이션 결과예요(눈치 1만 판, 다수결 1천 판). 3명 이상 확률은 이항분포 계산값이에요.{' '}
+            <span className={citizenType === 'ai' ? 'is-active-note' : undefined}>
+              AI 주민은 아직 측정값이 없어요.
+            </span>
+          </p>
+        </div>
+      )}
 
       {error && (
         <p role="alert" className="rs-incorrect gm-start-error">

@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, expectedWrongCitizens, probAtLeastThreeWrong, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
+import { difficulties } from '../src/gameApi.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
 const state = {
@@ -549,4 +550,25 @@ test('tonightVotes lists observation + notes with last-night trust weights, hand
   assert.equal(tonightVotesText(vAi).subtitle, '스스로 판단')
   assert.equal(tonightVotesText(vAi).aiNote, 'AI 주민은 의심도를 참고해 스스로 판단해요')
   assert.match(tonightVotesText(vAi).aria, /AI 주민은 의심도를 참고해 스스로 판단해요/)
+})
+
+test('DIFFICULTY_STATS matches preset sensor_error, rounded 4p mean, and binomial P(X>=3) = 4p^3(1-p)+p^4', () => {
+  assert.equal(DIFFICULTY_STATS.length, 3)
+  for (const row of DIFFICULTY_STATS) {
+    const preset = difficulties[row.key]
+    const p = preset.sensor_error
+    assert.equal(preset.mafia_count, 1)
+    assert.equal(row.label, preset.label)
+    assert.equal(row.errorPct, Math.round(p * 100))
+    assert.equal(row.avgWrong, expectedWrongCitizens(p))
+    assert.equal(row.atLeastThreePct, probAtLeastThreeWrong(p))
+  }
+  assert.deepEqual(
+    DIFFICULTY_STATS.map((r) => [r.key, r.errorPct, r.avgWrong, r.atLeastThreePct, r.waryBotWinPct, r.majorityBotWinPct]),
+    [
+      ['easy', 48, 1.9, 28, 32, 87],
+      ['normal', 40, 1.6, 18, 10, 75],
+      ['hard', 30, 1.2, 8, 1, 48],
+    ],
+  )
 })

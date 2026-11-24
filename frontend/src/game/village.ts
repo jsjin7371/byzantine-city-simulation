@@ -1,5 +1,5 @@
-import { SUSPICION, claimTargets, majority } from '../gameApi.ts'
-import type { Claim, GameState, Role, Truth, TurnResult } from '../gameApi.ts'
+import { SUSPICION, claimTargets, difficulties, majority } from '../gameApi.ts'
+import type { Claim, Difficulty, GameState, Role, Truth, TurnResult } from '../gameApi.ts'
 
 // 숲속 보드 좌표 (viewBox 900x698, 목업 A3). 0번 자리는 내 집(아래 가운데), 1~4번은 시계방향.
 // trail: 집 앞 공터에서 광장까지의 오솔길 [시작x, 시작y, 조절x, 조절y, 끝x, 끝y].
@@ -876,3 +876,26 @@ export function tutorialStep(
   if (next >= closing && turn < TUTORIAL_END_TURN) return { cursor: next, step: null }
   return { cursor: next, step: TUTORIAL_STEPS[next] }
 }
+
+export type DifficultyStat = {
+  key: Difficulty
+  label: string
+  errorPct: number
+  avgWrong: number
+  atLeastThreePct: number
+  waryBotWinPct: number
+  majorityBotWinPct: number
+}
+
+// 4명 시민 중 하룻밤 잘못 관측하는 평균 인원 (4p, 소수 첫째 자리 반올림).
+export const expectedWrongCitizens = (p: number) => Math.round(4 * p * 10) / 10
+
+// 4명 시민 중 3명 이상이 함께 잘못 관측할 이항분포 확률 P(X>=3) = 4p^3(1-p) + p^4 (백분율 정수 반올림).
+export const probAtLeastThreeWrong = (p: number) => Math.round((4 * p ** 3 * (1 - p) + p ** 4) * 100)
+
+// 시작 화면 난이도 ? 설명 표 (근거: frontend/src/gameApi.ts 프리셋, docs/spec.md 7.2).
+export const DIFFICULTY_STATS: readonly DifficultyStat[] = [
+  { key: 'easy', label: difficulties.easy.label, errorPct: 48, avgWrong: 1.9, atLeastThreePct: 28, waryBotWinPct: 32, majorityBotWinPct: 87 },
+  { key: 'normal', label: difficulties.normal.label, errorPct: 40, avgWrong: 1.6, atLeastThreePct: 18, waryBotWinPct: 10, majorityBotWinPct: 75 },
+  { key: 'hard', label: difficulties.hard.label, errorPct: 30, avgWrong: 1.2, atLeastThreePct: 8, waryBotWinPct: 1, majorityBotWinPct: 48 },
+]
