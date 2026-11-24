@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, changedHouses, citizenOrder, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, tonightVotes, villageHouses, worsens } from './village'
+import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, tonightVotes, tonightVotesText, villageHouses, voteAnimDelays, voteItemLabel, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TonightVotes, TutorialHighlight } from './village'
 import './village.css'
 
@@ -298,71 +298,59 @@ function houseLabel(h: House, playerCity: number) {
 // changed: 어제와 달라진 점 (힌트 바뀜, 새 점선). 어제 쪽지를 그대로 두었으니 여기만 다시 보면 된다.
 type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
 
+const VOTE_ROWS = [
+  { side: 1 as const, claim: 'evacuate' as const, label: '대피', top: 5.5, tagRx: 7, blkRx: 2.5, dotFill: '#f3e7c6' },
+  { side: -1 as const, claim: 'stay' as const, label: '잔류', top: 24.5, tagRx: 2, blkRx: 1, dotFill: '#3d3a36' },
+] as const
+
 // ③ 주민 결정 단계의 집별 표 줄: 실제 저울 값(citizenScales)을 대피·잔류 두 줄로 쌓는다.
 function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: Scale; me: number; animate: boolean }) {
-  const buildRow = (side: 1 | -1) => {
+  let blockIndex = 0
+  const rows = VOTE_ROWS.map((row) => {
     let cursor = 39
-    return scale.parts
-      .filter((p) => p.value * side > 0)
+    const blocks = scale.parts
+      .filter((p) => p.value * row.side > 0)
       .map((p) => {
         const w = Math.max(4, Math.min(18, Math.round((Math.abs(p.value) / 100) * 15)))
-        const item = { from: p.from, x: cursor, w }
+        const item = { from: p.from, x: cursor, w, index: blockIndex++ }
         cursor += w + 2
         return item
       })
-  }
-  const evac = buildRow(1)
-  const stay = buildRow(-1)
+    return { ...row, blocks }
+  })
   return (
     <g transform={`translate(${x - 134},${y - 116})`} aria-hidden="true">
       <g className={animate ? 'vb-votes is-anim' : 'vb-votes'}>
         <rect width="126" height="44" rx="5" fill="#f6ebcd" stroke="#6b4a2a" strokeWidth="1.8" filter="url(#vb-rough)" />
-        {/* 대피 줄: 둥근 알약 모양 + 파랑 + 글자 */}
-        <g className="vb-votes-tag is-evacuate">
-          <rect x="5" y="5.5" width="30" height="14" rx="7" strokeWidth="1.2" />
-          <text x="20" y="16" fontSize="11.5" fontWeight="700" textAnchor="middle">
-            대피
-          </text>
-        </g>
-        {evac.map((b, i) => (
-          <g
-            key={String(b.from)}
-            className="vb-vote-blk"
-            style={animate ? { animationDelay: `${40 + i * 35}ms` } : undefined}
-          >
-            <rect
-              x={b.x}
-              y="6.5"
-              width={b.w}
-              height="12"
-              rx="2.5"
-              className={`vb-vote-sq is-evacuate${b.from === me ? ' is-mine' : ''}`}
-            />
-            {b.from === 'hint' && <circle cx={b.x + b.w / 2} cy="12.5" r="2" fill="#f3e7c6" />}
-          </g>
-        ))}
-        {/* 잔류 줄: 네모 꼬리표 모양 + 황토 + 글자 */}
-        <g className="vb-votes-tag is-stay">
-          <rect x="5" y="24.5" width="30" height="14" rx="2" strokeWidth="1.2" />
-          <text x="20" y="35" fontSize="11.5" fontWeight="700" textAnchor="middle">
-            잔류
-          </text>
-        </g>
-        {stay.map((b, i) => (
-          <g
-            key={String(b.from)}
-            className="vb-vote-blk"
-            style={animate ? { animationDelay: `${40 + (evac.length + i) * 35}ms` } : undefined}
-          >
-            <rect
-              x={b.x}
-              y="25.5"
-              width={b.w}
-              height="12"
-              rx="1"
-              className={`vb-vote-sq is-stay${b.from === me ? ' is-mine' : ''}`}
-            />
-            {b.from === 'hint' && <circle cx={b.x + b.w / 2} cy="31.5" r="2" fill="#3d3a36" />}
+        {rows.map((row) => (
+          <g key={row.claim}>
+            <g className={`vb-votes-tag is-${row.claim}`}>
+              <rect x="5" y={row.top} width="30" height="14" rx={row.tagRx} strokeWidth="1.2" />
+              <text x="20" y={row.top + 10.5} fontSize="11.5" fontWeight="700" textAnchor="middle">
+                {row.label}
+              </text>
+            </g>
+            {row.blocks.map((b) => (
+              <g
+                key={String(b.from)}
+                className="vb-vote-blk"
+                style={
+                  animate
+                    ? { animationDelay: `${VOTE_ANIM.blockStartMs + b.index * VOTE_ANIM.blockStaggerMs}ms` }
+                    : undefined
+                }
+              >
+                <rect
+                  x={b.x}
+                  y={row.top + 1}
+                  width={b.w}
+                  height="12"
+                  rx={row.blkRx}
+                  className={`vb-vote-sq is-${row.claim}${b.from === me ? ' is-mine' : ''}`}
+                />
+                {b.from === 'hint' && <circle cx={b.x + b.w / 2} cy={row.top + 7} r="2" fill={row.dotFill} />}
+              </g>
+            ))}
           </g>
         ))}
       </g>
@@ -408,13 +396,14 @@ function HouseView({
   const hlFlag = highlight === 'flags'
   const hlChanged = highlight === 'changed'
   const focusable = Boolean(pick || inspect)
+  const delays = voteBar ? voteAnimDelays(voteBar.scale.parts.filter((p) => p.value !== 0).length) : null
   return (
     <g
       className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}${hlHouse ? ' vb-tut-hl' : ''}`}
       {...(pick
         ? { role: 'button', tabIndex: 0, 'aria-expanded': pick.open, onClick: pick.onOpen, onKeyDown: onActivateKey(pick.onOpen) }
         : focusable
-          ? { role: 'img', tabIndex: 0 }
+          ? { role: 'group', tabIndex: 0 }
           : { role: 'img' })}
       onMouseEnter={inspect?.onEnter}
       onMouseLeave={inspect?.onLeave}
@@ -458,6 +447,7 @@ function HouseView({
           <g
             key={freshFlag ? `fresh-${h.flag}` : h.flag}
             className={`vb-flag${freshFlag ? ' is-fresh' : ''}${freshFlag && voteBar ? ' after-votes' : ''}${hlFlag ? ' vb-tut-hl' : ''}`}
+            style={freshFlag && delays ? ({ '--flag-delay': `${delays.flagDelay}ms` } as CSSProperties) : undefined}
           >
             <use href={`#vb-flag-${h.flag}`} />
             {hlFlag && <rect className="vb-tut-ring" x="-6" y="-61" width="60" height="64" rx="8" aria-hidden />}
@@ -466,7 +456,12 @@ function HouseView({
       )}
       {voteBar && <VoteStack x={x} y={y} {...voteBar} />}
       {swayed && (
-        <g className="vb-spark" transform={`translate(${x + 8},${y - 78})`} aria-hidden>
+        <g
+          className="vb-spark"
+          transform={`translate(${x + 8},${y - 78})`}
+          style={delays ? ({ '--spark-delay': `${delays.sparkDelay}ms` } as CSSProperties) : undefined}
+          aria-hidden
+        >
           <path d="M0 -13 L3.5 -3.5 L13 0 L3.5 3.5 L0 13 L-3.5 3.5 L-13 0 L-3.5 -3.5 Z" />
         </g>
       )}
@@ -625,6 +620,35 @@ function Talk({ result, player }: { result: TurnResult; player: number }) {
   )
 }
 
+function VotePill({
+  claim,
+  x,
+  width,
+  emptyText = '고르는 중',
+}: {
+  claim: Claim | null
+  x: number
+  width: number
+  emptyText?: string
+}) {
+  return (
+    <g className={`vb-vote-pill ${claim ? `is-${claim}` : 'is-pending'}`}>
+      <rect
+        x={x}
+        y="0.5"
+        width={width}
+        height="14"
+        rx="2.5"
+        strokeWidth="1.2"
+        strokeDasharray={claim ? undefined : '3 2'}
+      />
+      <text x={x + width / 2} y="11" fontSize={claim ? '12' : '11'} fontWeight="700" textAnchor="middle">
+        {claim ? decisions[claim] : emptyText}
+      </text>
+    </g>
+  )
+}
+
 // 집 옆에서 펼쳐지는 쪽지: 대피/잔류와 의심도 변화 미리보기 + 오늘 밤 이 집이 받을 표 구성.
 function NoteCard({
   h,
@@ -645,38 +669,25 @@ function NoteCard({
   highlightSuspicion?: boolean
   highlightVotes?: boolean
 }) {
-  const cardW = 216
+  const cardW = 184
   const left = h.x < PLAZA.x
-  const cx = left ? 336 : 348
+  const cx = left ? h.x + 100 : h.x - 100 - cardW
   const pEvac = preview('evacuate')
   const pStay = preview('stay')
   const hasPreview = Boolean(pEvac || pStay)
   const hasTrial = Boolean(pEvac?.trial || pStay?.trial)
-  const votesTop = hasPreview ? (hasTrial ? 112 : 96) : 76
-  const rowStart = votesTop + 26
-  const rowH = 22
-  const noteExtra = votes.noCitizenNotesYet ? 22 : 0
-  const aiExtra = votes.ai ? 34 : 0
-  const cardH = rowStart + votes.items.length * rowH + noteExtra + aiExtra + 10
-  const cy = h.y < 300 ? 140 : Math.max(140, 476 - cardH)
-  const votesSummary = votes.items
-    .map((item) => {
-      const who =
-        item.role === 'hint'
-          ? '관측'
-          : item.role === 'player'
-            ? '내 쪽지'
-            : item.role === 'colleague'
-              ? `동료 ${item.from}번`
-              : `${item.from}번`
-      const what = item.claim ? decisions[item.claim] : '고르는 중'
-      return votes.ai ? `${who} ${what}` : votes.usesSuspicion ? `${who} ${what} 믿음 ${item.weight}` : `${who} ${what} 1표`
-    })
-    .join(', ')
-  const votesSubtitle = votes.ai ? '스스로 판단' : votes.usesSuspicion ? '어젯밤 기준' : '모두 1표'
-  const votesAria = `이 집의 표 (${votesSubtitle}): ${votesSummary}${
-    votes.noCitizenNotesYet ? ', 1일째는 주민 쪽지 없음' : ''
-  }${votes.ai ? '. AI 주민은 의심도를 참고해 스스로 판단해요' : ''}`
+  const votesTop = hasPreview ? (hasTrial ? 90 : 76) : 62
+  const rowStart = votesTop + 18
+  const rowH = 14
+  const noteExtra = votes.noCitizenNotesYet ? 15 : 0
+  const aiExtra = votes.ai ? 26 : 0
+  const cardH = rowStart + votes.items.length * rowH + noteExtra + aiExtra + 5
+  // 위쪽 집은 "쪽지 비교" 알약(y=239) 위로(하늘 글씨 y=65 아래), 아래쪽 집은 광장(y=395) 아래·달력(y=598) 위로 clamp
+  const cy =
+    h.y < 300
+      ? Math.max(66, Math.min(h.y - 54, 236 - cardH))
+      : Math.max(396, Math.min(h.y - 77, 592 - cardH))
+  const { subtitle: votesSubtitle, aria: votesAria } = tonightVotesText(votes)
   const footerStart = rowStart + votes.items.length * rowH
   return (
     <g transform={`translate(${cx},${cy})`}>
@@ -691,13 +702,13 @@ function NoteCard({
       >
         <rect x="4" y="5" width={cardW} height={cardH} rx="2" fill="#2a1a0c" opacity=".25" />
         <rect width={cardW} height={cardH} rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
-        <circle cx="10" cy="10" r="5" fill="#a8361f" stroke="#4a1a10" />
-        <text x="22" y="25" fontSize="15.5" fontWeight="700">
+        <circle cx="10" cy="10" r="4.5" fill="#a8361f" stroke="#4a1a10" />
+        <text x="20" y="21" fontSize="15" fontWeight="700">
           {h.city}번 집에 보낼 쪽지
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
           const p = c === 'evacuate' ? pEvac : pStay
-          const btnX = 14 + i * 100
+          const btnX = 14 + i * 82
           return (
             <g key={c}>
               <g
@@ -709,18 +720,18 @@ function NoteCard({
                 onClick={() => onClaim(c)}
                 onKeyDown={onActivateKey(() => onClaim(c))}
               >
-                <rect x={btnX} y="33" width="88" height="34" rx="3" />
-                <text x={btnX + 44} y="56" fontSize="17.5" fontWeight="700" textAnchor="middle">
+                <rect x={btnX} y="28" width="74" height="28" rx="3" />
+                <text x={btnX + 37} y="47" fontSize="16.5" fontWeight="700" textAnchor="middle">
                   {decisions[c]}
                 </text>
               </g>
               {p && (
                 <g fontWeight="700" textAnchor="middle" aria-hidden>
-                  <text x={btnX + 44} y="86" fontSize="15" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
+                  <text x={btnX + 37} y="70" fontSize="14" className={worsens(p) ? 'vb-rust' : 'vb-green'}>
                     {p.from} → {p.next}
                   </text>
                   {p.trial && (
-                    <text x={btnX + 44} y="103" fontSize="13.5" className="vb-rust">
+                    <text x={btnX + 37} y="84" fontSize="12.5" className="vb-rust">
                       재판 열림
                     </text>
                   )}
@@ -730,75 +741,42 @@ function NoteCard({
           )
         })}
         {highlightSuspicion && hasPreview && (
-          <rect className="vb-tut-ring" x="10" y="70" width="196" height={hasTrial ? 39 : 23} rx="5" aria-hidden />
+          <rect className="vb-tut-ring" x="10" y="58" width="164" height={hasTrial ? 31 : 17} rx="5" aria-hidden />
         )}
-        <line x1="12" y1={votesTop} x2={cardW - 12} y2={votesTop} stroke="#c3a878" strokeWidth="1.4" strokeDasharray="4 3" />
+        <line x1="10" y1={votesTop} x2={cardW - 10} y2={votesTop} stroke="#c3a878" strokeWidth="1.2" strokeDasharray="4 3" />
         <g role="img" aria-label={votesAria}>
-          <text x="14" y={votesTop + 17} fontSize="14" fontWeight="700" aria-hidden>
+          <text x="10" y={votesTop + 13} fontSize="12.5" fontWeight="700" aria-hidden>
             이 집의 표
           </text>
-          <text x={cardW - 14} y={votesTop + 17} fontSize="12.5" fontWeight="700" textAnchor="end" className="vb-card-sub" aria-hidden>
+          <text x={cardW - 10} y={votesTop + 13} fontSize="11.5" fontWeight="700" textAnchor="end" className="vb-card-sub" aria-hidden>
             {votesSubtitle}
           </text>
           {votes.items.map((item, idx) => {
             const ry = rowStart + idx * rowH
-            const label =
-              item.role === 'hint'
-                ? '관측'
-                : item.role === 'player'
-                  ? '나'
-                  : item.role === 'colleague'
-                    ? '동료'
-                    : `${item.from}번`
+            const label = voteItemLabel(item)
             const kind = item.role === 'hint' ? 'is-hint' : item.role === 'player' ? 'is-mine' : 'is-note'
-            const trackW = 96
-            const barW = item.weight > 0 ? Math.max(4, Math.round((item.weight / 100) * trackW)) : 0
+            const trackW = 70
+            const barW = item.weight > 0 ? Math.min(trackW, Math.max(4, Math.round((item.weight / 100) * trackW))) : 0
+            const emptyText = item.role === 'hint' ? '상쇄' : '고르는 중'
             return (
               <g key={String(item.from)} transform={`translate(0,${ry})`} aria-hidden>
-                <text x="14" y="14" fontSize="13.5" fontWeight="700">
+                <text x="10" y="11" fontSize="12" fontWeight="700">
                   {label}
                 </text>
                 {votes.ai ? (
                   <>
-                    <line x1="50" y1="10" x2="140" y2="10" stroke="#c3a878" strokeWidth="1.2" strokeDasharray="2 3" />
-                    <g className={`vb-vote-pill ${item.claim ? `is-${item.claim}` : 'is-pending'}`}>
-                      <rect
-                        x="146"
-                        y="1"
-                        width="56"
-                        height="18"
-                        rx="3"
-                        strokeWidth="1.2"
-                        strokeDasharray={item.claim ? undefined : '3 2'}
-                      />
-                      <text x="174" y="14" fontSize={item.claim ? '13' : '12.5'} fontWeight="700" textAnchor="middle">
-                        {item.claim ? decisions[item.claim] : '고르는 중'}
-                      </text>
-                    </g>
+                    <line x1="54" y1="7.5" x2="122" y2="7.5" stroke="#c3a878" strokeWidth="1.2" strokeDasharray="2 3" />
+                    <VotePill claim={item.claim} x={126} width={48} emptyText={emptyText} />
                   </>
                 ) : (
                   <>
-                    {item.claim ? (
-                      <g className={`vb-vote-pill is-${item.claim}`}>
-                        <rect x="48" y="1" width="44" height="18" rx="3" strokeWidth="1.2" />
-                        <text x="70" y="14" fontSize="13" fontWeight="700" textAnchor="middle">
-                          {decisions[item.claim]}
-                        </text>
-                      </g>
-                    ) : (
-                      <g className="vb-vote-pill is-pending">
-                        <rect x="46" y="1" width="54" height="18" rx="3" strokeWidth="1.2" strokeDasharray="3 2" />
-                        <text x="73" y="14" fontSize="12.5" fontWeight="700" textAnchor="middle">
-                          고르는 중
-                        </text>
-                      </g>
-                    )}
-                    <rect x="106" y="4" width={trackW} height="12" rx="2.5" className="vb-vote-track" />
+                    <VotePill claim={item.claim} x={54} width={46} emptyText={emptyText} />
+                    <rect x="104" y="3" width={trackW} height="9" rx="2" className="vb-vote-track" />
                     {barW > 0 ? (
-                      <rect x="106" y="4" width={barW} height="12" rx="2.5" className={`vb-vote-fill ${kind}`} />
+                      <rect x="104" y="3" width={barW} height="9" rx="2" className={`vb-vote-fill ${kind}`} />
                     ) : (
-                      <text x={106 + trackW / 2} y="14" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-card-sub">
-                        안 믿음
+                      <text x={104 + trackW / 2} y="10.5" fontSize="10.5" fontWeight="700" textAnchor="middle" className="vb-card-sub">
+                        {item.role === 'hint' ? '상쇄' : '안 믿음'}
                       </text>
                     )}
                   </>
@@ -808,9 +786,9 @@ function NoteCard({
           })}
           {votes.noCitizenNotesYet && (
             <text
-              x="14"
-              y={footerStart + 14}
-              fontSize="13"
+              x="10"
+              y={footerStart + 11}
+              fontSize="11.5"
               fontWeight="700"
               className="vb-card-sub"
               aria-hidden
@@ -820,15 +798,15 @@ function NoteCard({
           )}
           {votes.ai && (
             <text
-              x="14"
-              y={footerStart + noteExtra + 15}
-              fontSize="12.5"
+              x="10"
+              y={footerStart + noteExtra + 11}
+              fontSize="11.5"
               fontWeight="700"
               className="vb-card-sub"
               aria-hidden
             >
-              <tspan x="14">AI 주민은 의심도를 참고해</tspan>
-              <tspan x="14" dy="15">
+              <tspan x="10">AI 주민은 의심도를 참고해</tspan>
+              <tspan x="10" dy="12">
                 스스로 판단해요
               </tspan>
             </text>
@@ -836,10 +814,10 @@ function NoteCard({
           {highlightVotes && (
             <rect
               className="vb-tut-ring"
-              x="8"
+              x="7"
               y={votesTop + 2}
-              width={cardW - 16}
-              height={cardH - votesTop - 6}
+              width={cardW - 14}
+              height={cardH - votesTop - 5}
               rx="5"
               aria-hidden
             />
@@ -1002,6 +980,7 @@ type Stage = { phase: Phase; ballots: number; decided: number; prev: TurnResult 
 export function VillageBoard({
   state,
   result,
+  history = result ? [result] : [],
   picker,
   stage,
   scales = {},
@@ -1013,6 +992,7 @@ export function VillageBoard({
 }: {
   state: GameState
   result: TurnResult | null
+  history?: TurnResult[]
   picker?: NotePicker
   stage?: Stage
   scales?: Record<number, Scale> // ③ 주민 결정 표 줄에 쓸 실제 저울 값 (citizenScales)
@@ -1073,7 +1053,6 @@ export function VillageBoard({
   const houses = night
     ? stagedHouses(state, night.prev, night.result, night.phase, night.decided)
     : villageHouses(state, result)
-  const orderOf = citizenOrder(houses)
   const pairs = (night ? night.result.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
   const clashes = picker ? clashingPairs(pairs, picker.claims) : []
   // 연출 중 모순이 들킨 쌍 (내가 두 집에 다른 말을 했다)
@@ -1155,10 +1134,9 @@ export function VillageBoard({
       </text>
       {picker && turn === 0 && !hideSigns && <Signs />}
       {houses.map((h) => {
-        const order = orderOf.get(h.city) ?? 0
-        const inFlags = night?.phase === 'flags' && order > 0
-        const decided = !night || reached(night.phase, 'suspicion') || (inFlags && order <= night.decided)
-        const activeDeciding = Boolean(inFlags && (night.decided === Infinity || order === night.decided))
+        const inFlags = night?.phase === 'flags' && h.order > 0
+        const decided = !night || reached(night.phase, 'suspicion') || (inFlags && h.order <= night.decided)
+        const activeDeciding = Boolean(inFlags && (night.decided === Infinity || h.order === night.decided))
         const scale = scales[h.city]
         const hasSuspicion =
           h.role === 'citizen' && h.suspicions != null && Object.values(h.suspicions).some((v) => v > 0)
@@ -1168,7 +1146,7 @@ export function VillageBoard({
             h={h}
             playerCity={state.player_city}
             voteBar={
-              inFlags && order <= night.decided && scale
+              inFlags && h.order <= night.decided && scale
                 ? { scale, me: state.player_city, animate: activeDeciding }
                 : undefined
             }
@@ -1239,7 +1217,7 @@ export function VillageBoard({
           h={opened}
           claim={picker.claims[opened.city]}
           preview={(c) => preview(opened, c)}
-          votes={tonightVotes(state, houses, opened.city, picker.claims)}
+          votes={tonightVotes(state, houses, opened.city, picker.claims, history)}
           onClaim={(c) => picker.onClaim(opened.city, c)}
           onCardFocusChange={(hasFocus) => {
             cardFocused.current = hasFocus

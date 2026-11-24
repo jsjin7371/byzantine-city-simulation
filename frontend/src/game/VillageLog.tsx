@@ -171,6 +171,7 @@ export function VillageLog({
                     <span aria-hidden="true">{who}</span>
                   </span>
                   <p className="vl-quote">{text}</p>
+                  {scale && <span className="sr-only">{scale.summary}</span>}
                   {scale && (
                     <button
                       ref={isFirstScale ? scaleBtnRef : undefined}

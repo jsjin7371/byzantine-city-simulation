@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, villageHouses, villageLines, visibleLines, worsens,
+  TRAILS, VOTE_ANIM, changedHouses, citizenScales, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -227,12 +227,20 @@ test('night steps: night, notes, flags (one per citizen with vote bars, single s
   assert.deepEqual(trialSteps.filter((s) => s.phase === 'trial').map((s) => s.ballots), [1, 2, 3])
   assert.equal(trialSteps.at(-1).ms, 0)
 
-  // 눈치·다수결 시민 4명: ③ 단계가 집마다 차례로 1~4 진행(650ms씩), 추가 연출 시간은 2000ms 이내
+  // 눈치·다수결 시민 4명: ③ 단계가 집마다 차례로 1~4 진행, 추가 연출 시간은 2000ms 이내
   const detailed = nightSteps({ vote: null, cities })
   const flagSteps = detailed.filter((s) => s.phase === 'flags')
   assert.deepEqual(flagSteps.map((s) => s.decided), [1, 2, 3, 4])
   const addedMs = detailed.reduce((t, s) => t + s.ms, 0) - 3800
   assert.ok(addedMs > 0 && addedMs <= 2000)
+
+  // 블록 전부 등장 → 깃발 → 불꽃 순으로 겹치지 않고 한 집 단계 시간 안에 끝난다 (블록 1~5개)
+  for (const n of [1, 2, 3, 4, 5]) {
+    const d = voteAnimDelays(n)
+    assert.ok(d.flagDelay >= d.blocksEnd, `flag starts after blocks for n=${n}`)
+    assert.ok(d.sparkDelay >= d.flagDelay + VOTE_ANIM.flagMs, `spark starts after flag for n=${n}`)
+    assert.ok(d.totalMs <= VOTE_ANIM.stepMs, `fits in stepMs for n=${n}: ${d.totalMs} <= ${VOTE_ANIM.stepMs}`)
+  }
 })
 
 test('visible lines follow the step: words in phase order, accusations one at a time', () => {
@@ -388,6 +396,8 @@ test('scale text reads in plain sentences without numbers and swayed citizens ge
   const lines = villageLines(state, { turn: 1, cities: result.cities, sharing: [], vote: null }, { 4: { ...scale, swayed: true } })
   const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
   assert.equal(line.text, '대피하기로 했어')
+  assert.equal(line.summary, '4번 집 대피 280표, 잔류 40표')
+  assert.equal(scaleVoteSummary(2, clear), '2번 집 대피 0표, 잔류 100표')
   assert.deepEqual(line.detail, scaleText(scale, 3, state.config.memory))
   assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번이 내 쪽지에 넘어왔다' && l.phase === 'flags'))
 })
@@ -496,4 +506,36 @@ test('tonightVotes lists observation + notes with last-night trust weights, hand
   assert.equal(vAi.usesSuspicion, false)
   assert.equal(vAi.ai, true)
   assert.ok(vAi.items.every((x) => x.weight === 100))
+
+  // memory=recent/full: 기억한 과거 힌트를 ±100씩 합산해 "관측 N표"로 표기
+  const hSafe = turnOf([{ city: 1, hint: 'safe', decision: 'stay' }])
+  const hDanger = turnOf([{ city: 1, hint: 'danger', decision: 'evacuate' }])
+  const recentState = { ...state, config: { ...config, memory: 'recent' } }
+  // 어제 safe(-100) + 오늘 safe(-100) = 잔류 2표
+  const vRecent2 = tonightVotes(recentState, day2Houses, 1, { 1: 'stay' }, [hDanger, hSafe])
+  assert.deepEqual(vRecent2.items[0], { from: 'hint', role: 'hint', claim: 'stay', weight: 200, hintCount: 2 })
+  assert.equal(voteItemLabel(vRecent2.items[0]), '관측 2표')
+  assert.match(tonightVotesText(vRecent2).aria, /관측 2표 잔류/)
+
+  // 어제 danger(+100) + 오늘 safe(-100) = 0표 상쇄
+  const vRecent0 = tonightVotes(recentState, day2Houses, 1, { 1: 'stay' }, [hSafe, hDanger])
+  assert.deepEqual(vRecent0.items[0], { from: 'hint', role: 'hint', claim: null, weight: 0, hintCount: 0 })
+  assert.equal(voteItemLabel(vRecent0.items[0]), '관측 0표')
+  assert.match(tonightVotesText(vRecent0).aria, /관측 0표 상쇄/)
+
+  // memory=full: 지난 모든 턴 + 오늘 힌트 합산 (safe 3번 = 잔류 3표, danger 2 + safe 1 = 대피 1표)
+  const fullState = { ...state, config: { ...config, memory: 'full' } }
+  const vFull3 = tonightVotes(fullState, day2Houses, 1, { 1: 'stay' }, [hSafe, hSafe])
+  assert.deepEqual(vFull3.items[0], { from: 'hint', role: 'hint', claim: 'stay', weight: 300, hintCount: 3 })
+  assert.equal(voteItemLabel(vFull3.items[0]), '관측 3표')
+  const vFull1 = tonightVotes(fullState, day2Houses, 1, { 1: 'stay' }, [hDanger, hDanger])
+  assert.deepEqual(vFull1.items[0], { from: 'hint', role: 'hint', claim: 'evacuate', weight: 100, hintCount: 1 })
+  assert.equal(voteItemLabel(vFull1.items[0]), '관측 1표')
+
+  // tonightVotesText: wary / majority / ai 부제와 라벨 확인
+  assert.equal(tonightVotesText(v1).subtitle, '어젯밤 기준')
+  assert.match(tonightVotesText(v1).aria, /관측 대피 믿음 100, 내 쪽지 고르는 중 믿음 100, 동료 2번 잔류 믿음 100, 1일째는 주민 쪽지 없음/)
+  assert.equal(tonightVotesText(vMaj).subtitle, '모두 1표')
+  assert.equal(tonightVotesText(vAi).subtitle, '스스로 판단')
+  assert.match(tonightVotesText(vAi).aria, /AI 주민은 의심도를 참고해 스스로 판단해요/)
 })

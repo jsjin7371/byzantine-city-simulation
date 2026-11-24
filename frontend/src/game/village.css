@@ -847,15 +847,15 @@
 /* 밤 연출 (목업 A3): 밤빛 → 오솔길로 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
 .vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 400ms ease both; }
 .vb-flag { transform-box: fill-box; transform-origin: left bottom; }
-.vb-board.is-playing .vb-flag.is-fresh { animation: vb-flip 320ms cubic-bezier(0.23, 1, 0.32, 1) both; }
-.vb-board.is-playing .vb-flag.is-fresh.after-votes { animation-delay: 240ms; }
-.vb-board.is-playing .vb-spark > path { animation-delay: 560ms; }
+.vb-board.is-playing .vb-flag.is-fresh { animation: vb-flip 220ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-board.is-playing .vb-flag.is-fresh.after-votes { animation-delay: var(--flag-delay, 0ms); }
+.vb-board.is-playing .vb-spark > path { animation-duration: 210ms; animation-delay: var(--spark-delay, 0ms); }
 @keyframes vb-flip { from { transform: scaleX(.06); opacity: .2; } }
-/* 밤 ③ 주민 결정 단계: 한 집씩 표 줄이 먼저 쌓인 뒤 깃발이 선다 */
+/* 밤 ③ 주민 결정 단계: 한 집씩 표 줄이 먼저 쌓인 뒤 깃발, 그 뒤 불꽃 순으로 연출한다 */
 .vb-votes { pointer-events: none; }
-.vb-votes.is-anim { animation: vb-votes-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-votes.is-anim { animation: vb-votes-in 120ms cubic-bezier(0.23, 1, 0.32, 1) both; }
 @keyframes vb-votes-in { from { opacity: 0; transform: translateY(6px); } }
-.vb-votes.is-anim .vb-vote-blk { transform-box: fill-box; transform-origin: left center; animation: vb-blk-in 200ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-votes.is-anim .vb-vote-blk { transform-box: fill-box; transform-origin: left center; animation: vb-blk-in 120ms cubic-bezier(0.23, 1, 0.32, 1) both; }
 @keyframes vb-blk-in { from { opacity: 0; transform: scaleX(0); } }
 .vb-votes-tag.is-evacuate rect { fill: var(--leave); stroke: #1f3554; }
 .vb-votes-tag.is-evacuate text { fill: #f3e7c6; }

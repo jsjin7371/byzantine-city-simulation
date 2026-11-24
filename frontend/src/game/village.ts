@@ -132,6 +132,7 @@ export function citizenScales(
 export type House = {
   city: number
   slot: number
+  order: number // 시계 방향 시민 순번 (1부터, 마피아는 0)
   x: number
   y: number
   role: Role
@@ -151,12 +152,15 @@ export function villageHouses(
   const me = String(state.player_city)
   const hints = result ? result.next_hints : state.next_hints
   const targets = claimTargets(state)
+  let citizenIdx = 0
   return houseSlots(state.player_city).map((h) => {
+    const role = state.roles[h.city]
     const row = result?.cities.find((c) => c.city === h.city)
     const hint = hints?.[h.city]
     return {
       ...h,
-      role: state.roles[h.city],
+      order: role === 'citizen' ? ++citizenIdx : 0,
+      role,
       hint: hint ?? null,
       flag: row?.decision ?? null,
       lit: hint ? hint === state.truth : null,
@@ -176,10 +180,10 @@ const SUSPICION_EDGE: Record<string, LinkGeom> = {
   '0-3': { a: [472, 480], b: [634, 260], c: [568, 396], tag: [556, 392] },
   '0-4': { a: [488, 494], b: [618, 462], c: [548, 466], tag: [548, 474] },
   '1-2': { a: [178, 412], b: [178, 252], c: [70, 344], tag: [140, 374] },
-  '1-3': { a: [280, 418], b: [620, 246], c: [450, 434], tag: [450, 383] },
+  '1-3': { a: [280, 418], b: [620, 246], c: [450, 434], tag: [420, 388] }, // 2-4와 곡선이 교차하므로 꼬리표를 좌우로 나눈다 (광장 글씨 y<=355, 도장 y>=399 사이)
   '1-4': { a: [282, 424], b: [618, 424], c: [450, 438], tag: [450, 431] },
   '2-3': { a: [282, 204], b: [618, 204], c: [450, 152], tag: [450, 178] },
-  '2-4': { a: [280, 246], b: [620, 418], c: [450, 434], tag: [450, 383] },
+  '2-4': { a: [280, 246], b: [620, 418], c: [450, 434], tag: [480, 388] },
   '3-4': { a: [722, 252], b: [748, 416], c: [806, 344], tag: [774, 382] },
 }
 
@@ -212,7 +216,6 @@ export function suspicionLinks(
       const geom = SUSPICION_EDGE[`${lo}-${hi}`]
       if (!geom) return []
       const [start, end] = from.slot < to.slot ? [geom.a, geom.b] : [geom.b, geom.a]
-      const clamped = Math.min(100, Math.max(0, value))
       return [
         {
           from: from.city,
@@ -221,7 +224,7 @@ export function suspicionLinks(
           path: `M${start[0]} ${start[1]} Q${geom.c[0]} ${geom.c[1]} ${end[0]} ${end[1]}`,
           labelX: geom.tag[0],
           labelY: geom.tag[1],
-          strokeWidth: Number((1.8 + (clamped / 100) * 4.2).toFixed(2)),
+          strokeWidth: Number((1.8 + (value / 100) * 4.2).toFixed(2)),
         },
       ]
     })
@@ -230,8 +233,9 @@ export function suspicionLinks(
 export type VoteItem = {
   from: 'hint' | number
   role: 'hint' | Role
-  claim: Claim | null // null이면 "고르는 중"
-  weight: number // 0..100 (1표 = 100, 어젯밤 의심도 기준)
+  claim: Claim | null // null이면 플레이어는 "고르는 중", 관측은 기억 상쇄(0표)
+  weight: number // 0..100 (기억한 관측은 N*100, 어젯밤 의심도 기준)
+  hintCount?: number // memory가 recent/full로 지난 힌트를 포함할 때 순 관측 표 수
 }
 
 export type TonightVotes = {
@@ -241,13 +245,14 @@ export type TonightVotes = {
   ai: boolean // AI 시민(LLM 자율 판단)이면 true
 }
 
-// 쪽지 카드 "이 집의 표": 오늘 밤 targetCity가 받을 관측 1표 + 보낸 집별 쪽지 1장.
+// 쪽지 카드 "이 집의 표": 오늘 밤 targetCity가 받을 관측(기억 포함) + 보낸 집별 쪽지 1장.
 // 합계나 예상 결과는 계산하지 않고 표 구성과 어젯밤 기준 믿음 크기만 돌려준다.
 export function tonightVotes(
   state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth'>,
   houses: Pick<House, 'city' | 'role' | 'hint' | 'flag' | 'suspicions'>[],
   targetCity: number,
   claims: Record<string, Claim>,
+  history: Pick<TurnResult, 'cities'>[] = [],
 ): TonightVotes {
   const target = houses.find((h) => h.city === targetCity)
   const usesSuspicion = state.config.citizen_type === 'wary'
@@ -257,11 +262,20 @@ export function tonightVotes(
   }
   const items: VoteItem[] = []
   if (target.hint) {
+    const { memory } = state.config
+    const past = memory === 'turn' ? [] : memory === 'recent' ? history.slice(-1) : history
+    const pastHints = past
+      .map((t) => t.cities.find((c) => c.city === targetCity)?.hint)
+      .filter((h): h is Truth => h != null)
+    const hints = [...pastHints, target.hint]
+    const net = hints.reduce((sum, h) => sum + vote(h), 0)
+    const count = Math.abs(net) / 100
     items.push({
       from: 'hint',
       role: 'hint',
-      claim: target.hint === 'danger' ? 'evacuate' : 'stay',
-      weight: 100,
+      claim: net === 0 ? null : net > 0 ? 'evacuate' : 'stay',
+      weight: Math.abs(net),
+      ...(pastHints.length > 0 ? { hintCount: count } : {}),
     })
   }
   const neighbors = (
@@ -271,8 +285,7 @@ export function tonightVotes(
   ).sort((a, b) => Number(state.roles[b] === 'player') - Number(state.roles[a] === 'player') || a - b)
   const byCity = new Map(houses.map((h) => [h.city, h]))
   const lie: Claim = state.truth === 'danger' ? 'stay' : 'evacuate'
-  const weightOf = (sender: number) =>
-    usesSuspicion ? Math.max(0, 100 - (target.suspicions?.[sender] ?? 0)) : 100
+  const weightOf = (sender: number) => (usesSuspicion ? 100 - (target.suspicions?.[sender] ?? 0) : 100)
 
   for (const sender of neighbors) {
     const role = state.roles[sender]
@@ -292,6 +305,31 @@ export function tonightVotes(
     usesSuspicion,
     ai,
   }
+}
+
+// 쪽지 카드 표 항목 라벨 (짧은 화면 표기 / 낭독기 표기 공용).
+export function voteItemLabel(item: VoteItem, verbose = false): string {
+  if (item.role === 'hint') return item.hintCount != null ? `관측 ${item.hintCount}표` : '관측'
+  if (item.role === 'player') return verbose ? '내 쪽지' : '나'
+  if (item.role === 'colleague') return verbose ? `동료 ${item.from}번` : '동료'
+  return `${item.from}번`
+}
+
+// 쪽지 카드 "이 집의 표" 부제와 낭독기 설명 문구.
+export function tonightVotesText(votes: TonightVotes): { subtitle: string; aria: string } {
+  const subtitle = votes.ai ? '스스로 판단' : votes.usesSuspicion ? '어젯밤 기준' : '모두 1표'
+  const summary = votes.items
+    .map((item) => {
+      const who = voteItemLabel(item, true)
+      const what = item.claim ? said[item.claim] : item.role === 'hint' ? '상쇄' : '고르는 중'
+      if (votes.ai || (item.role === 'hint' && item.hintCount != null)) return `${who} ${what}`
+      return votes.usesSuspicion ? `${who} ${what} 믿음 ${item.weight}` : `${who} ${what} 1표`
+    })
+    .join(', ')
+  const aria = `이 집의 표 (${subtitle}): ${summary}${
+    votes.noCitizenNotesYet ? ', 1일째는 주민 쪽지 없음' : ''
+  }${votes.ai ? '. AI 주민은 의심도를 참고해 스스로 판단해요' : ''}`
+  return { subtitle, aria }
 }
 
 // HUD "속은 주민 ●●○|○" 계산: 시민 수만큼 점, 속은(틀린) 시민 수만큼 채움, 과반(need) 눈금 위치.
@@ -329,17 +367,31 @@ export const PHASE_LABEL: Record<Phase, string> = {
 
 type Step = { phase: Phase; ballots: number; decided: number; ms: number }
 
-// 시계 방향 집 순서에서 시민의 1-based 순번.
-export function citizenOrder(houses: Pick<House, 'city' | 'role'>[]): Map<number, number> {
-  const order = new Map<number, number>()
-  for (const h of houses) {
-    if (h.role === 'citizen') order.set(h.city, order.size + 1)
-  }
-  return order
+// 밤 ③ 주민 결정 한 집 연출 시간표 (블록 전부 등장 → 깃발 → 불꽃 순차, 4집 기준 추가 연출 1980ms <= 2000ms).
+export const VOTE_ANIM = {
+  boxMs: 120,
+  blockStartMs: 30,
+  blockStaggerMs: 25,
+  blockMs: 120,
+  flagGapMs: 20,
+  flagMs: 220,
+  sparkGapMs: 10,
+  sparkMs: 210,
+  stepMs: 720,
+} as const
+
+export function voteAnimDelays(blockCount: number) {
+  const blocksEnd =
+    blockCount > 0
+      ? VOTE_ANIM.blockStartMs + (blockCount - 1) * VOTE_ANIM.blockStaggerMs + VOTE_ANIM.blockMs
+      : VOTE_ANIM.boxMs
+  const flagDelay = blocksEnd + VOTE_ANIM.flagGapMs
+  const sparkDelay = flagDelay + VOTE_ANIM.flagMs + VOTE_ANIM.sparkGapMs
+  return { blocksEnd, flagDelay, sparkDelay, totalMs: sparkDelay + VOTE_ANIM.sparkMs }
 }
 
 // 한 턴 결과를 보여 줄 단계 목록. 마지막 단계(day)가 최종 상태다.
-// ③ 주민 결정(flags)은 표 줄이 있는 시민이면 집마다 차례로(650ms) 쌓고, AI 시민(withVotes=false)은 한 번에 세운다.
+// ③ 주민 결정(flags)은 표 줄이 있는 시민이면 집마다 차례로(VOTE_ANIM.stepMs) 쌓고, AI 시민(withVotes=false)은 한 번에 세운다.
 export function nightSteps(
   result: Pick<TurnResult, 'vote' | 'cities'>,
   withVotes = true,
@@ -350,7 +402,7 @@ export function nightSteps(
   ]
   if (withVotes) {
     const citizens = result.cities.filter((c) => c.role === 'citizen').length
-    for (let i = 1; i <= citizens; i++) steps.push({ phase: 'flags', ballots: 0, decided: i, ms: 650 })
+    for (let i = 1; i <= citizens; i++) steps.push({ phase: 'flags', ballots: 0, decided: i, ms: VOTE_ANIM.stepMs })
   } else {
     steps.push({ phase: 'flags', ballots: 0, decided: Infinity, ms: 900 })
   }
@@ -376,11 +428,9 @@ export function stagedHouses(
   const after = villageHouses(state, result)
   if (phase === 'day') return after
   const before = villageHouses(state, prev ?? { cities: [], next_hints: null })
-  const orderOf = citizenOrder(after)
   return after.map((h, i) => {
     const tonight = result.cities.find((c) => c.city === h.city)?.hint ?? null
-    const order = orderOf.get(h.city) ?? 0
-    const showFlag = reached(phase, 'suspicion') || (phase === 'flags' && order > 0 && order <= decided)
+    const showFlag = reached(phase, 'suspicion') || (phase === 'flags' && h.order > 0 && h.order <= decided)
     return {
       ...h,
       hint: tonight,
@@ -399,9 +449,16 @@ export type Line = Said &
   (
     | { kind: 'when'; text: string }
     | { kind: 'say'; who: number; text: string }
-    | { kind: 'scale'; who: number; text: string; detail: string[]; scale: Scale; me: number } // text: 짧은 결론, detail: 생각 줄 목록
+    | { kind: 'scale'; who: number; text: string; summary: string; detail: string[]; scale: Scale; me: number } // text: 짧은 결론, summary: 낭독기 표 요약, detail: 생각 줄 목록
     | { kind: 'event'; text: string; good?: boolean }
   )
+
+// 밤 ③ 표 줄(aria-hidden) 대신 낭독기에 읽힐 집별 표 요약 (저울 값 그대로, 소수 없음).
+export function scaleVoteSummary(city: number, scale: Scale): string {
+  const evac = scale.parts.filter((p) => p.value > 0).reduce((a, p) => a + p.value, 0)
+  const stay = scale.parts.filter((p) => p.value < 0).reduce((a, p) => a - p.value, 0)
+  return `${city}번 집 대피 ${evac}표, 잔류 ${stay}표`
+}
 
 const saw = { danger: '태풍', safe: '맑음' } as const
 const said = { evacuate: '대피', stay: '잔류' } as const
@@ -497,6 +554,7 @@ export function villageLines(
       kind: 'scale',
       who: c.city,
       text,
+      summary: scaleVoteSummary(c.city, s),
       detail: scaleText(s, me, state.config.memory),
       scale: s,
       me,

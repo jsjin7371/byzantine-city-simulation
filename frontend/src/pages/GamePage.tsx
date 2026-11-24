@@ -369,6 +369,7 @@ export function GamePage() {
                 <VillageBoard
                   state={state}
                   result={shown}
+                  history={history}
                   scales={scales}
                   swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
                   stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
