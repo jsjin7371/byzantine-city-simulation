@@ -74,7 +74,7 @@ export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'n
     const next = result.next_hints?.[c.city]
     const why = [
       c.hint && next && c.hint !== next ? '관측 바뀜' : null,
-      !met.has(c.city) && result.next_share_pairs?.some((p) => p.includes(c.city)) ? '쪽지 대조' : null,
+      !met.has(c.city) && result.next_share_pairs?.some((p) => p.includes(c.city)) ? '점선 대조' : null,
     ].filter((w) => w != null)
     if (why.length) changes[c.city] = why
   }
@@ -192,7 +192,7 @@ export const PHASE_LABEL: Record<Phase, string> = {
   night: '① 날씨 관측',
   notes: '② 쪽지 전달',
   flags: '③ 주민 결정',
-  suspicion: '④ 의심 변화',
+  suspicion: '④ 의심도 변화',
   trial: '⑤ 광장 재판',
   verdict: '⑥ 재판 결과',
   day: '', // 낮에는 이름표를 숨긴다
@@ -285,7 +285,7 @@ export function scaleText(scale: Scale, me: number, memory: GameState['config'][
       if (memory === 'turn' && abs === 100) return p.value > 0 ? '내가 본 하늘은 태풍이었어' : '내가 본 하늘은 맑았어'
       return `지금까지 본 하늘은 ${p.value > 0 ? '태풍' : '맑음'} 쪽이 많았어`
     }
-    const who = p.from === me ? `너(${me}번)` : `${p.from}번`
+    const who = p.from === me ? `네(${me}번)` : `${p.from}번`
     if (abs === 0) return `${who} 쪽지는 하나도 안 믿겨`
     const topic = p.from === me ? `너(${me}번)는` : `${p.from}번은`
     const side = p.value > 0 ? '대피' : '잔류'
@@ -348,7 +348,7 @@ export function villageLines(
       scale: s,
       me,
     })
-    if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번이 내 쪽지에 넘어옴` })
+    if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번이 내 쪽지에 넘어왔다` })
   }
 
   // 모순 발견: 만난 두 주민이 내가 한 말을 맞춰 봤다
@@ -378,7 +378,7 @@ export function villageLines(
   if (result.vote) {
     lines.push({ phase: 'trial', kind: 'when', text: PHASE_LABEL.trial })
     for (const [from, to] of Object.entries(result.vote.ballots))
-      lines.push({ phase: 'trial', kind: 'say', who: Number(from), text: `나는 ${to}번을 지목한다` })
+      lines.push({ phase: 'trial', kind: 'say', who: Number(from), text: `난 ${to}번을 지목할게` })
     const a = result.vote.accused
     lines.push({
       phase: 'verdict',
@@ -387,8 +387,8 @@ export function villageLines(
         a === null
           ? '과반이 모이지 않아 아무도 지목되지 않았다'
           : result.vote.caught
-            ? `${a}번이 지목됐다. 사기꾼이 들켰다`
-            : `${a}번이 지목됐지만 무고한 주민이었다. 게임은 계속된다`,
+            ? `${a}번이 지목됐다. 마피아가 들켰다`
+            : `${a}번이 지목됐지만 무고한 주민이었다. 마피아는 아직 숨어 있다`,
     })
   }
   return lines
@@ -453,12 +453,12 @@ export function gameSummary(
   const vote = state.end_reason === 'caught' ? last?.vote : null
   const day = last?.turn ?? 0
   const headline = vote
-    ? `${day}일째 광장 재판에서 들켰다`
+    ? `${day}일째 광장 재판에서 들켰어요`
     : state.outcome === 'perfect_win'
-      ? '주민을 모두 끝까지 속였다'
+      ? '주민 모두를 끝까지 속였어요'
       : state.outcome === 'win'
-        ? '주민 과반을 끝까지 속였다'
-        : `${day}일째에 주민 과반이 정답을 골랐다`
+        ? '주민 과반을 끝까지 속였어요'
+        : `${day}일째에 주민 과반이 속지 않았어요`
 
   const moments: string[] = []
   if (vote) {
@@ -466,30 +466,30 @@ export function gameSummary(
       .filter(([, to]) => to === vote.accused)
       .map(([from]) => `${from}번`)
     const who = vote.accused === me ? '나를' : `동료 ${vote.accused}번을`
-    moments.push(`${day}일째 재판에서 ${voters.join(', ')}이 ${who} 지목했다 (${voters.length}표, 과반 ${majority(citizens)}표)`)
+    moments.push(`${day}일째 재판에서 ${voters.join(', ')}이 ${who} 지목했어요 (${voters.length}표, 과반 ${majority(citizens)}표)`)
   } else if (last) {
     const wrong = last.cities.filter((c) => c.role === 'citizen' && c.correct === false).length
-    moments.push(`마지막 ${day}일째에 주민 ${citizens}명 중 ${wrong}명이 오답을 골랐다 (승리에 ${majority(citizens)}명 필요)`)
+    moments.push(`마지막 ${day}일째에 주민 ${citizens}명 중 ${wrong}명이 속았어요 (승리에 ${majority(citizens)}명 필요)`)
   }
   const crossed = history.find((_, i) => (peaks[i] ?? 0) >= SUSPICION.threshold)
   if (crossed) {
     const top = crossed.cities.reduce((a, c) => ((c.suspicion?.[me] ?? 0) > (a.suspicion?.[me] ?? 0) ? c : a))
-    moments.push(`${crossed.turn}일째 ${top.city}번의 의심이 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold}을 넘었다`)
+    moments.push(`${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold}을 넘었어요`)
   }
   const knots = history.filter((t) => t.sharing.some((s) => s.contradictions.some((c) => c.city === me)))
   if (knots.length)
-    moments.push(`만난 두 주민에게 다른 말을 했다가 ${knots.length}번 들켰다 (${knots.map((t) => `${t.turn}일째`).join(', ')})`)
+    moments.push(`점선 대조에서 다른 쪽지를 보냈다가 ${knots.length}번 들켰어요 (${knots.map((t) => `${t.turn}일째`).join(', ')})`)
   const trials = history.filter((t) => t.vote).length
-  if (trials) moments.push(`재판이 ${trials}번 열렸다`)
+  if (trials) moments.push(`재판이 ${trials}번 열렸어요`)
 
   const lesson = knots.length
-    ? '만나는 두 주민에게 다른 말을 하면 바로 들킨다. 점선으로 이어진 집에는 같은 말을 하자.'
+    ? '점선으로 이어진 두 집에 다른 쪽지를 보내면 모순으로 의심도가 크게 올라요. 같은 쪽지를 보내 보세요.'
     : crossed
-      ? '자기 관측과 다른 말을 계속 들은 주민은 의심을 쌓는다. 의심이 높은 집에는 가끔 맞는 말을 해 식히자.'
+      ? '관측과 다른 쪽지를 계속 받으면 의심도가 쌓여요. 의심도가 높은 집에는 가끔 관측에 맞는 쪽지를 보내 낮춰 보세요.'
       : state.outcome === 'loss'
-        ? '들키지는 않았지만 주민 과반을 설득하지 못했다. 창문 불이 꺼진 집은 이미 틀린 쪽을 보고 있다.'
+        ? '들키지는 않았지만 주민 과반을 속이지 못했어요. 창문 불이 꺼진 집은 관측이 틀려 속이기 쉬워요.'
         : peaks.some((v) => v != null)
-          ? '의심을 재판 기준 아래로 관리하며 끝까지 버텼다.'
-          : '다수결 주민은 의심하지 않는다. 눈치 주민은 거짓말이 쌓이면 재판을 연다.'
+          ? '의심도가 재판 기준을 넘지 않게 조절하며 끝까지 버텼어요.'
+          : '다수결 주민은 의심하지 않아요. 눈치 주민은 의심도가 쌓이면 재판을 열어요.'
   return { headline, moments, lesson, peaks }
 }

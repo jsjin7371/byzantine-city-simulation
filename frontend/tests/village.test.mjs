@@ -108,7 +108,7 @@ test('changed houses: hint differs from today or newly on a dotted line, nothing
     next_hints: { 1: 'safe', 4: 'safe', 5: 'danger' },
     next_share_pairs: [[4, 5]],
   }
-  assert.deepEqual(changedHouses(day), { 1: ['관측 바뀜'], 5: ['쪽지 대조'] })
+  assert.deepEqual(changedHouses(day), { 1: ['관측 바뀜'], 5: ['점선 대조'] })
   assert.deepEqual(changedHouses({ ...day, next_hints: null, next_share_pairs: null }), {}) // 게임 종료
 })
 
@@ -201,11 +201,11 @@ test('majority citizens have no suspicion lines and ai citizens speak their reas
 test('trial lines: one accusation per voter, then the verdict', () => {
   const vote = (accused, caught) => villageLines(state, { ...turn, vote: { ballots: { 1: 3, 4: 1 }, accused, caught } })
   const lines = vote(null, false)
-  assert.ok(lines.some((l) => l.who === 1 && l.text === '나는 3번을 지목한다'))
-  assert.ok(lines.some((l) => l.who === 4 && l.text === '나는 1번을 지목한다'))
+  assert.ok(lines.some((l) => l.who === 1 && l.text === '난 3번을 지목할게'))
+  assert.ok(lines.some((l) => l.who === 4 && l.text === '난 1번을 지목할게'))
   assert.equal(lines.at(-1).text, '과반이 모이지 않아 아무도 지목되지 않았다')
-  assert.equal(vote(1, false).at(-1).text, '1번이 지목됐지만 무고한 주민이었다. 게임은 계속된다')
-  assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 사기꾼이 들켰다')
+  assert.equal(vote(1, false).at(-1).text, '1번이 지목됐지만 무고한 주민이었다. 마피아는 아직 숨어 있다')
+  assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 마피아가 들켰다')
 })
 
 test('night steps: night, notes, flags, suspicion, then one step per ballot and the verdict, ending on day', () => {
@@ -224,7 +224,7 @@ test('visible lines follow the step: words in phase order, accusations one at a 
   assert.ok(!texts(visibleLines(lines, steps[1])).some((t) => t.startsWith('잠깐')))
   assert.ok(texts(visibleLines(lines, steps[3])).some((t) => t.startsWith('잠깐')))
   const firstBallot = texts(visibleLines(lines, steps[4]))
-  assert.ok(firstBallot.includes('나는 3번을 지목한다') && !firstBallot.includes('나는 1번을 지목한다'))
+  assert.ok(firstBallot.includes('난 3번을 지목할게') && !firstBallot.includes('난 1번을 지목할게'))
   assert.ok(!firstBallot.includes('과반이 모이지 않아 아무도 지목되지 않았다'))
   assert.deepEqual(visibleLines(lines, steps.at(-1)), lines)
 })
@@ -249,21 +249,30 @@ const day = (n, extra = {}) => ({ ...turn, turn: n, sharing: [], vote: null, ...
 test('game summary: caught explains who accused me at which trial', () => {
   const caught = day(6, { vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true } })
   const s = gameSummary(over('loss', 'caught'), [day(5), caught])
-  assert.equal(s.headline, '6일째 광장 재판에서 들켰다')
-  assert.ok(s.moments.includes('6일째 재판에서 1번, 4번이 나를 지목했다 (2표, 과반 2표)'))
-  assert.ok(s.moments.includes('재판이 1번 열렸다'))
+  assert.equal(s.headline, '6일째 광장 재판에서 들켰어요')
+  assert.ok(s.moments.includes('6일째 재판에서 1번, 4번이 나를 지목했어요 (2표, 과반 2표)'))
+  assert.ok(s.moments.includes('재판이 1번 열렸어요'))
 })
 
-test('game summary: turn 15 counts wrong citizens, first crossing of 60 and caught contradictions', () => {
+test('game summary: turn 15 counts fooled citizens, first crossing of 60 and caught contradictions', () => {
   const quiet = day(1, { cities: turn.cities.map((c) => (c.suspicion ? { ...c, suspicion: { ...c.suspicion, 3: 10 } } : c)) })
   const hot = day(2, { cities: turn.cities.map((c) => (c.city === 4 ? { ...c, suspicion: { ...c.suspicion, 3: 70 } } : c)), sharing: turn.sharing })
   const s = gameSummary(over('win', 'turns_done'), [quiet, hot, day(15)])
-  assert.equal(s.headline, '주민 과반을 끝까지 속였다')
-  assert.ok(s.moments.includes('마지막 15일째에 주민 3명 중 2명이 오답을 골랐다 (승리에 2명 필요)'))
-  assert.ok(s.moments.includes('2일째 4번의 의심이 70까지 올라 처음으로 재판 기준 60을 넘었다'))
-  assert.ok(s.moments.includes('만난 두 주민에게 다른 말을 했다가 1번 들켰다 (2일째)'))
+  assert.equal(s.headline, '주민 과반을 끝까지 속였어요')
+  assert.ok(s.moments.includes('마지막 15일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
+  assert.ok(s.moments.includes('2일째 4번의 의심도가 70까지 올라 처음으로 재판 기준 60을 넘었어요'))
+  assert.ok(s.moments.includes('점선 대조에서 다른 쪽지를 보냈다가 1번 들켰어요 (2일째)'))
   assert.deepEqual(s.peaks, [10, 70, 50])
-  assert.match(s.lesson, /같은 말/)
+  assert.match(s.lesson, /같은 쪽지/)
+
+  const lostDay = day(15, {
+    cities: turn.cities.map((c) => (c.city === 4 ? { ...c, correct: true } : c)),
+  })
+  const lost = gameSummary(over('loss', 'turns_done'), [lostDay])
+  assert.equal(lost.headline, '15일째에 주민 과반이 속지 않았어요')
+  assert.ok(lost.moments.includes('마지막 15일째에 주민 3명 중 1명이 속았어요 (승리에 2명 필요)'))
+  assert.equal(lost.lesson, '들키지는 않았지만 주민 과반을 속이지 못했어요. 창문 불이 꺼진 집은 관측이 틀려 속이기 쉬워요.')
+  assert.equal(gameSummary(over('perfect_win', 'turns_done'), [day(15)]).headline, '주민 모두를 끝까지 속였어요')
 })
 
 const turnOf = (cities) => ({ cities: cities.map((c) => ({ ...empty, ...c })) })
@@ -306,7 +315,7 @@ test('citizen scale counts remembered past hints (recent: last turn, full: all) 
   assert.deepEqual(citizenScales({ player_city: 1, config: { ...config, citizen_type: 'ai' } }, history, 2), {})
 })
 
-test('scale text reads in plain sentences without numbers and swayed citizens get a "내 쪽지에 넘어옴" line at the flags phase', () => {
+test('scale text reads in plain sentences without numbers and swayed citizens get a "내 쪽지에 넘어왔다" line at the flags phase', () => {
   const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
   assert.deepEqual(scaleText(scale, 1, 'turn'), [
     '내가 본 하늘은 태풍이었어',
@@ -323,7 +332,7 @@ test('scale text reads in plain sentences without numbers and swayed citizens ge
   const tie = { parts: [{ from: 'hint', value: 0 }, { from: 1, value: 0 }], total: 0, decision: 'evacuate', mine: 0, swayed: false }
   assert.deepEqual(scaleText(tie, 1, 'turn'), [
     '지금까지 본 하늘은 반반이었어',
-    '너(1번) 쪽지는 하나도 안 믿겨',
+    '네(1번) 쪽지는 하나도 안 믿겨',
     '양쪽이 똑같아서 이번에 본 하늘대로 대피하기로 했어',
   ])
   const remembered = { parts: [{ from: 'hint', value: -200 }], total: -200, decision: 'stay', mine: null, swayed: false }
@@ -348,7 +357,7 @@ test('scale text reads in plain sentences without numbers and swayed citizens ge
   const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
   assert.equal(line.text, '대피하기로 했어')
   assert.deepEqual(line.detail, scaleText(scale, 3, state.config.memory))
-  assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번이 내 쪽지에 넘어옴' && l.phase === 'flags'))
+  assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번이 내 쪽지에 넘어왔다' && l.phase === 'flags'))
 })
 
 test('fooledDots fills wrong citizens up to total and marks the majority threshold', () => {

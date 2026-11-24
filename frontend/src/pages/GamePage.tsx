@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Progress } from '../components/ui/progress'
-import { decisions, percent, truths } from '../components/results/resultLabels'
+import { decisions, percent } from '../components/results/resultLabels'
 import { errorMessage } from '../lib/errors'
 import {
   SUSPICION,
@@ -28,11 +28,13 @@ function Gauge({ value, label }: { value: number; label: string }) {
   )
 }
 
+const weather = { danger: '태풍', safe: '맑음' } as const
+
 function TurnReport({ result }: { result: TurnResult }) {
   return (
-    <section className="gm-panel" aria-label={`${result.turn}턴 결과`}>
+    <section className="gm-panel" aria-label={`${result.turn}일째 결과`}>
       <h2>
-        {result.turn}턴 결과 · 주민 정확도 {percent(result.accuracy)}
+        {result.turn}일째 결과 · 주민 정확도 {percent(result.accuracy)}
       </h2>
       <div className="gm-citizens">
         {result.cities
@@ -40,7 +42,7 @@ function TurnReport({ result }: { result: TurnResult }) {
           .map((c) => (
             <article key={c.city} className="gm-citizen">
               <h3>
-                주민 {c.city} · 관측 {c.hint ? truths[c.hint] : '—'} ·{' '}
+                {c.city}번 주민 · 관측 {c.hint ? weather[c.hint] : '—'} ·{' '}
                 {c.decision ? decisions[c.decision] : '—'}{' '}
                 <span className={c.correct ? 'rs-correct' : 'rs-incorrect'}>
                   {c.correct ? '정답' : '오답'}
@@ -61,12 +63,12 @@ function TurnReport({ result }: { result: TurnResult }) {
             </article>
           ))}
       </div>
-      <h3>정보 공유</h3>
-      {result.sharing.length === 0 && <p className="gm-muted">이번 턴 공유 없음</p>}
+      <h3>점선 대조</h3>
+      {result.sharing.length === 0 && <p className="gm-muted">오늘 밤 점선 대조 없음</p>}
       <ul>
         {result.sharing.map((s) => (
           <li key={s.pair.join('-')}>
-            주민 {s.pair[0]} ↔ 주민 {s.pair[1]}:{' '}
+            {s.pair[0]}번 주민 ↔ {s.pair[1]}번 주민:{' '}
             {s.contradictions.length === 0
               ? '모순 없음'
               : s.contradictions
@@ -92,7 +94,7 @@ function TurnReport({ result }: { result: TurnResult }) {
             : `${result.vote.accused}번 집${result.vote.caught ? ' (마피아 발각)' : ' (무고한 주민 지목)'}`}
         </p>
       ) : (
-        <p className="gm-muted">재판이 열리지 않았습니다.</p>
+        <p className="gm-muted">재판이 열리지 않았어요.</p>
       )}
     </section>
   )
@@ -183,7 +185,7 @@ export function GamePage() {
       setViewed(0)
       setStep(null)
       setClaims(defaultClaims(game))
-    }, '게임을 시작하지 못했습니다.')
+    }, '게임을 시작하지 못했어요.')
 
   const submit = () =>
     run(async () => {
@@ -204,7 +206,7 @@ export function GamePage() {
       })
       // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다 (실패해도 종료 상태는 위에서 반영됨).
       if (turn.game_over) setState(await getGame(state.game_id))
-    }, '턴을 진행하지 못했습니다.')
+    }, '다음 밤으로 넘기지 못했어요.')
 
   const exit = () => {
     setState(null)
@@ -306,8 +308,8 @@ export function GamePage() {
             </section>
             <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} day={shown?.turn} live={playing}>
               {shown && !playing && (
-                <div className="vl-pager" role="group" aria-label="지난 밤 넘겨보기">
-                  <span className="vl-pager-label">지난 밤 넘겨보기</span>
+                <div className="vl-pager" role="group" aria-label="지난밤 넘겨보기">
+                  <span className="vl-pager-label">지난밤 넘겨보기</span>
                   <div className="vl-pager-ctrl">
                     <button
                       type="button"
@@ -344,7 +346,7 @@ export function GamePage() {
                 </div>
               ) : (
                 <Button onClick={submit} disabled={busy || !latest}>
-                  {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
+                  {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '가장 최근 날에서만 밤으로 넘길 수 있어요'}
                 </Button>
               )}
             </VillageLog>
@@ -355,7 +357,7 @@ export function GamePage() {
               <GameResult state={state} history={history}>
                 {shown && (
                   <details className="gm-details">
-                    <summary>{shown.turn}턴 자세한 표</summary>
+                    <summary>{shown.turn}일째 자세한 표</summary>
                     <TurnReport result={shown} />
                   </details>
                 )}

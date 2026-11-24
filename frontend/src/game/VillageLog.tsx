@@ -87,11 +87,11 @@ export function VillageLog({
         <h2>마을 이야기</h2>
         {day != null && <span className="vl-day">{day}일째 밤</span>}
       </div>
-      <p className="vl-intro">밤마다 주민들이 나눈 말과 결정한 이유가 적힌다. 줄 옆 › 버튼을 누르면 속마음 저울이 보인다.</p>
+      <p className="vl-intro">밤마다 주민들이 나눈 말과 결정한 이유가 적혀요. 줄 옆 › 버튼을 누르면 속마음 저울이 보여요.</p>
       <div className="vl-legend" aria-hidden="true">
         <span>
           <i className="vl-swatch is-hint" />
-          자기 관측
+          주민 관측
         </span>
         <span>
           <i className="vl-swatch is-note" />
@@ -103,7 +103,7 @@ export function VillageLog({
         </span>
       </div>
       <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
-        {!entries && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았다. 집마다 쪽지를 고르고 밤으로 넘긴다.</p>}
+        {!entries && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았어요. 집마다 쪽지를 고르고 밤으로 넘겨 보세요.</p>}
         {entries?.map((entry, i) => {
           if (entry.kind === 'when') {
             return (
@@ -132,7 +132,7 @@ export function VillageLog({
                     <button
                       type="button"
                       className="vl-why-btn"
-                      aria-label={`${who}번 주민 생각 보기`}
+                      aria-label={`${who}번 주민 속마음 저울 보기`}
                       aria-expanded={isOpen}
                       aria-controls={isOpen ? panelId : undefined}
                       onClick={() => toggle(key)}

@@ -46,8 +46,8 @@ const ROLE_CARDS: RoleCardSpec[] = [
     tagClass: 'vb-muted',
     tagX: 402,
     tagSize: 17,
-    lines: ['보고 들은 것 중 많은 쪽을 따라요.', '아무도 의심하지 않아 재판이 없어요.'],
-    ariaLabel: '다수결 주민 선택 (입문용): 본 날씨와 들은 말 중 많은 쪽을 따라요. 아무도 의심하지 않아 재판이 없어요.',
+    lines: ['관측과 받은 쪽지 중 많은 쪽을 따라요.', '아무도 의심하지 않아 재판이 없어요.'],
+    ariaLabel: '다수결 주민 선택 (입문용): 관측과 받은 쪽지 중 많은 쪽을 따라요. 아무도 의심하지 않아 재판이 없어요.',
   },
   {
     key: 'wary',
@@ -61,8 +61,8 @@ const ROLE_CARDS: RoleCardSpec[] = [
     tagClass: 'vb-rust',
     tagX: 683,
     tagSize: 17,
-    lines: ['본 날씨와 내 말이 다르거나 엇갈리면', '의심이 쌓여 광장 재판이 열려요.'],
-    ariaLabel: '눈치 주민 선택 (기본): 본 날씨와 내 말이 다르거나 엇갈리면 의심이 쌓여 광장 재판이 열려요.',
+    lines: ['관측과 내 쪽지가 다르거나 엇갈리면', '의심도가 쌓여 광장 재판이 열려요.'],
+    ariaLabel: '눈치 주민 선택 (기본): 관측과 내 쪽지가 다르거나 엇갈리면 의심도가 쌓여 광장 재판이 열려요.',
   },
   {
     key: 'ai',
@@ -72,12 +72,12 @@ const ROLE_CARDS: RoleCardSpec[] = [
     cx: 1020,
     rotate: 0.8,
     stampRotate: -13,
-    tag: '· 못 쓰면 눈치로',
+    tag: '· 연결 안 되면 눈치로',
     tagClass: 'vb-muted',
     tagX: 960,
-    tagSize: 16.5,
+    tagSize: 15.5,
     lines: ['상황을 살피며 스스로 판단해요 (AI)', '의심 많은 주민, 잘 믿는 주민이 섞여요.'],
-    ariaLabel: 'AI 주민 선택 (못 쓰면 눈치로): 상황을 살피며 AI가 스스로 판단해요. 의심 많은 주민, 잘 믿는 주민이 섞여요.',
+    ariaLabel: 'AI 주민 선택 (연결 안 되면 눈치로): 상황을 살피며 스스로 판단해요 (AI). 의심 많은 주민, 잘 믿는 주민이 섞여요.',
   },
 ]
 

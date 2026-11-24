@@ -187,11 +187,11 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
   const left = TOTAL_TURNS - turn
   const px = cellX(day) + CELL_W / 2
   return (
-    <g role="img" aria-label={`달력: 결정의 날 D-${left}, ${day}/${TOTAL_TURNS}일`}>
+    <g role="img" aria-label={`달력: 마지막 밤 D-${left}, ${day}/${TOTAL_TURNS}일`}>
       <rect x="0" y="598" width="900" height="62" fill="#7a5530" />
       <rect x="0" y="598" width="900" height="62" filter="url(#vb-grain)" />
       <text x="30" y="620" fontSize="14" fontWeight="700" className="vb-light">
-        결정의 날
+        마지막 밤
       </text>
       <g filter="url(#vb-rough)" stroke="#4a3119" strokeWidth="1.5">
         {Array.from({ length: TOTAL_TURNS }, (_, i) => i + 1).map((d) => (
@@ -237,7 +237,7 @@ function BoardLegend() {
     <g
       className="vb-legend"
       role="img"
-      aria-label="보드 범례: 깃발은 지난밤 결정(대피/잔류), 창문 불 켜짐은 다음 관측이 맞음, 꺼짐은 틀림"
+      aria-label="보드 범례: 깃발은 지난밤 결정(대피/잔류)이에요. 창문 불이 켜지면 다음 관측이 맞고, 꺼지면 틀려요."
     >
       <rect x="0" y="660" width="900" height="38" fill="#efe0b9" />
       <line x1="0" y1="660" x2="900" y2="660" stroke="#4a3119" strokeWidth="2" />
@@ -270,11 +270,11 @@ function houseLabel(h: House) {
   if (h.role === 'colleague') return `${name}, 동료 마피아`
   return [
     `${name}, 주민`,
-    h.flag ? `지난 결정 ${decisions[h.flag]}` : '아직 결정 없음',
+    h.flag ? `지난밤 결정 ${decisions[h.flag]}` : '아직 결정 없음',
     h.lit != null && `다음 관측 ${h.lit ? '맞음(불 켜짐)' : '틀림(불 꺼짐)'}`,
     h.suspicion != null &&
-      `나를 의심 ${h.suspicion}${h.suspicion >= SUSPICION.threshold ? ', 재판 기준 넘음' : ''}`,
-    !h.reachable && '말을 보낼 수 없음',
+      `나에 대한 의심도 ${h.suspicion}${h.suspicion >= SUSPICION.threshold ? ', 재판 기준 넘음' : ''}`,
+    !h.reachable && '쪽지를 보낼 수 없음',
   ]
     .filter(Boolean)
     .join(', ')
@@ -502,12 +502,12 @@ function NoteCard({
   const cy = h.y < 300 ? h.y - 54 : h.y - 77
   return (
     <g transform={`translate(${cx},${cy})`}>
-      <g className={`vb-card${left ? ' from-left' : ' from-right'}`} role="group" aria-label={`${h.city}번 집에 쪽지`}>
+      <g className={`vb-card${left ? ' from-left' : ' from-right'}`} role="group" aria-label={`${h.city}번 집에 보낼 쪽지`}>
         <rect x="4" y="5" width="184" height="122" rx="2" fill="#2a1a0c" opacity=".25" />
         <rect width="184" height="122" rx="2" fill="#f6ebcd" stroke="#8a6a3e" strokeWidth="1.5" />
         <circle cx="10" cy="10" r="5" fill="#a8361f" stroke="#4a1a10" />
         <text x="22" y="25" fontSize="15.5" fontWeight="700">
-          {h.city}번 집에 쪽지
+          {h.city}번 집에 보낼 쪽지
         </text>
         {(['evacuate', 'stay'] as const).map((c, i) => {
           const p = preview(c)
@@ -547,16 +547,16 @@ function NoteCard({
   )
 }
 
-const SIGNS = ['1 불빛부터 본다', '2 집마다 쪽지', '3 점선 두 집은 같은 말']
+const SIGNS = ['1 불빛부터 봐요', '2 집마다 쪽지 골라요', '3 점선 두 집엔 같은 쪽지']
 
 // 첫날 안내 표지판 (왼쪽 나무 기둥).
 function Signs() {
   return (
     <g
-      fontSize="15.5"
+      fontSize="15"
       fontWeight="700"
       role="img"
-      aria-label="첫날 안내: 1 창문 불빛부터 본다, 2 집마다 쪽지를 고른다, 3 점선으로 이어진 두 집에는 같은 말을 한다"
+      aria-label="첫날 안내: 1 창문 불빛부터 봐요, 2 집마다 쪽지를 골라요, 3 점선으로 이어진 두 집에는 같은 쪽지를 보내요"
     >
       <rect x="88" y="296" width="9" height="128" fill="#5a3d22" filter="url(#vb-rough)" />
       <text x="18" y="292" className="vb-sign-title">
@@ -565,13 +565,13 @@ function Signs() {
       {SIGNS.map((t, i) => (
         <g key={t} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
-            d={`M10 ${304 + i * 38} H188 L200 ${319 + i * 38} L188 ${334 + i * 38} H10 Z`}
+            d={`M10 ${304 + i * 38} H200 L212 ${319 + i * 38} L200 ${334 + i * 38} H10 Z`}
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
             filter="url(#vb-rough)"
           />
-          <text x="18" y={324 + i * 38}>
+          <text x="16" y={324 + i * 38}>
             {t}
           </text>
         </g>
@@ -665,7 +665,7 @@ export function VillageBoard({
       className={night ? 'vb-board is-playing' : 'vb-board'}
       viewBox="0 0 900 698"
       role="group"
-      aria-label={`${turn}턴 뒤 마을 보드`}
+      aria-label={turn === 0 ? '1일째 낮 마을 보드' : `${turn}일째 밤 뒤 마을 보드`}
       onKeyDown={(e) => e.key === 'Escape' && setOpen(null)}
     >
       <Defs />
@@ -684,8 +684,8 @@ export function VillageBoard({
         </g>
       )}
       {pairs.length > 0 && (
-        <g className="vb-share" role="img" aria-label={`오늘 밤 쪽지 대조: ${pairLabel}`}>
-          <title>{`오늘 밤 쪽지 대조: ${pairLabel}`}</title>
+        <g className="vb-share" role="img" aria-label={`오늘 밤 점선 대조: ${pairLabel}`}>
+          <title>{`오늘 밤 점선 대조: ${pairLabel}`}</title>
           {pairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
             const [mx, my] = pairMid(state.player_city, a, b)
@@ -698,7 +698,7 @@ export function VillageBoard({
                 <g className="vb-share-tag" aria-hidden>
                   <rect x={mx - 82} y={my - 80} width="164" height="25" rx="12.5" strokeWidth="1.5" />
                   <text x={mx} y={my - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
-                    오늘 밤 쪽지 대조
+                    오늘 밤 점선 대조
                   </text>
                 </g>
               </g>
@@ -736,7 +736,7 @@ export function VillageBoard({
             key={`${a}-${b}`}
             x={mx}
             y={my}
-            label={`모순 발견: ${a}번 집과 ${b}번 집, 의심 +${SUSPICION.contradiction}`}
+            label={`모순 발견: ${a}번 집과 ${b}번 집, 의심도 +${SUSPICION.contradiction}`}
             text={`모순 +${SUSPICION.contradiction}`}
           />
         )
@@ -751,7 +751,7 @@ export function VillageBoard({
             key={`${a}-${b}`}
             x={mx}
             y={my}
-            label={`모순 위험: ${a}번 집과 ${b}번 집에 다른 말`}
+            label={`모순 위험: ${a}번 집과 ${b}번 집에 다른 쪽지, 의심도 +${SUSPICION.contradiction}`}
             text={`모순 +${SUSPICION.contradiction}`}
             title
           />
