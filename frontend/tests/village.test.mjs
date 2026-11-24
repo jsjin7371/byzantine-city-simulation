@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, fooledDots, gameSummary, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
+  TRAILS, changedHouses, citizenScales, scaleText, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, villageHouses, villageLines, visibleLines, worsens,
 } from '../src/game/village.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -387,4 +387,26 @@ test('pairLogScales attaches each citizen scale only to their notes quote and ke
   assert.equal(city1Says[0].scale?.who, 1)
   assert.equal(entries.some((e) => e.kind === 'scale' && e.scale.who === 1), false)
   assert.equal(entries.some((e) => e.kind === 'scale' && e.scale.who === 5), true)
+})
+
+test('suspicionLinks returns thicker curves for positive suspicions and hides zero, non-citizen, majority, or pre-turn1', () => {
+  assert.deepEqual(suspicionLinks(villageHouses(state, null), 1), []) // 1일째 전
+  const detailed = {
+    ...result,
+    cities: result.cities.map((c) =>
+      c.city === 1 ? { ...c, suspicion: { 2: 0, 3: 60, 4: 20, 5: 80 } } : c,
+    ),
+  }
+  const houses = villageHouses(state, detailed)
+  const links = suspicionLinks(houses, 1)
+  assert.deepEqual(links.map((l) => [l.to, l.value]), [[3, 60], [4, 20], [5, 80]])
+  assert.ok(links[2].strokeWidth > links[0].strokeWidth && links[0].strokeWidth > links[1].strokeWidth)
+  for (const l of links) {
+    assert.match(l.path, /^M\d+ \d+ Q\d+ \d+ \d+ \d+$/)
+    assert.ok(l.labelX > 80 && l.labelX < 820 && l.labelY > 130 && l.labelY < 580)
+  }
+  // 다수결 주민(5번), 마피아(2번·3번)는 선 없음
+  assert.deepEqual(suspicionLinks(houses, 5), [])
+  assert.deepEqual(suspicionLinks(houses, 2), [])
+  assert.deepEqual(suspicionLinks(houses, 3), [])
 })

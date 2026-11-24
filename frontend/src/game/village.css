@@ -425,8 +425,9 @@
 .vb-board .vb-rust { fill: var(--rust); }
 .vb-board .vb-green { fill: var(--forest); }
 .vb-house[role='button'] { cursor: pointer; outline: none; }
-.vb-hl { fill: #ffd35a; opacity: 0; transition: opacity 150ms ease; }
-@media (hover: hover) and (pointer: fine) { .vb-house[role='button']:hover .vb-hl { opacity: .35; } }
+.vb-house[tabindex='0'] { outline: none; }
+.vb-hl { fill: #ffd35a; opacity: 0; transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (hover: hover) and (pointer: fine) { .vb-house[tabindex='0']:hover .vb-hl { opacity: .35; } }
 .vb-house.is-open .vb-hl, .vb-house:focus-visible .vb-hl { opacity: .6; }
 .vb-house:focus-visible .vb-hl { stroke: var(--ink); stroke-width: 2; }
 
@@ -454,6 +455,15 @@
 
 .vb-knot { transform-box: fill-box; transform-origin: center; animation: vb-knot 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes vb-knot { from { opacity: 0; transform: scale(.6); } }
+
+/* 주민 집에 마우스·초점을 올릴 때 표시되는 의심 선과 숫자 꼬리표 */
+.vb-sus-links { pointer-events: none; animation: vb-fade 180ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-sus-path { fill: none; stroke: #7a2416; stroke-linecap: round; opacity: .88; }
+.vb-sus-link.is-over .vb-sus-path { stroke: var(--rust); opacity: .96; }
+.vb-sus-tag rect { fill: #f6ebcd; stroke: #7a2416; }
+.vb-sus-tag text { fill: #4a1a10; }
+.vb-sus-link.is-over .vb-sus-tag rect { fill: var(--rust); stroke: #4a1a10; }
+.vb-sus-link.is-over .vb-sus-tag text { fill: #f3e7c6; }
 
 .vb-board .vb-sign-title { fill: #f6ebcd; paint-order: stroke; stroke: var(--forest); stroke-width: 3px; }
 .vb-board .vb-plaza-label { paint-order: stroke; stroke: #c8b38a; stroke-width: 4px; stroke-linejoin: round; }
@@ -513,7 +523,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vb-phase { animation: none; }
+  .vb-phase, .vb-sus-links { animation: none; }
   .vb-card, .vb-knot, .vb-sign { animation-name: vb-fade; }
   .vb-spark > path { animation: none; }
   .vb-fly { display: none; }

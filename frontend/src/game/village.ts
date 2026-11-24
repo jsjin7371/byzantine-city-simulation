@@ -139,6 +139,7 @@ export type House = {
   flag: Claim | null // 그 턴의 결정 (1턴 전, 마피아는 null)
   lit: boolean | null // 다음 힌트가 정답과 같은가 (힌트가 없으면 null)
   suspicion: number | null // 그 턴의 나에 대한 의심도 (다수결 시민, 1턴 전은 null)
+  suspicions: Record<string, number> | null // 그 턴의 이 주민이 다른 집(나 포함)을 의심하는 정도
   reachable: boolean // 내가 말을 보낼 수 있는 시민인가 (ring이면 양옆만)
 }
 
@@ -160,9 +161,70 @@ export function villageHouses(
       flag: row?.decision ?? null,
       lit: hint ? hint === state.truth : null,
       suspicion: row?.suspicion?.[me] ?? null,
+      suspicions: row?.suspicion ?? null,
       reachable: targets.includes(h.city),
     }
   })
+}
+
+// 집→집 의심 선 경로표 (슬롯 번호 쌍 a < b 기준).
+// 각 선과 숫자 꼬리표는 게이지·깃발·점선 이름표·광장 글자를 피하는 빈 통로에 놓는다.
+type LinkGeom = { a: [number, number]; b: [number, number]; c: [number, number]; tag: [number, number] }
+const SUSPICION_EDGE: Record<string, LinkGeom> = {
+  '0-1': { a: [412, 494], b: [282, 462], c: [352, 466], tag: [352, 474] },
+  '0-2': { a: [428, 480], b: [266, 260], c: [332, 396], tag: [344, 392] },
+  '0-3': { a: [472, 480], b: [634, 260], c: [568, 396], tag: [556, 392] },
+  '0-4': { a: [488, 494], b: [618, 462], c: [548, 466], tag: [548, 474] },
+  '1-2': { a: [178, 412], b: [178, 252], c: [70, 344], tag: [140, 374] },
+  '1-3': { a: [280, 418], b: [620, 246], c: [450, 434], tag: [450, 383] },
+  '1-4': { a: [282, 424], b: [618, 424], c: [450, 438], tag: [450, 431] },
+  '2-3': { a: [282, 204], b: [618, 204], c: [450, 152], tag: [450, 178] },
+  '2-4': { a: [280, 246], b: [620, 418], c: [450, 434], tag: [450, 383] },
+  '3-4': { a: [722, 252], b: [748, 416], c: [806, 344], tag: [774, 382] },
+}
+
+export type SuspicionLink = {
+  from: number
+  to: number
+  value: number
+  path: string
+  labelX: number
+  labelY: number
+  strokeWidth: number
+}
+
+// 특정 시민 집이 다른 집(나 포함)을 의심하는 선 목록. 0이거나 다수결·값 없음이면 빈 배열.
+export function suspicionLinks(
+  houses: Pick<House, 'city' | 'slot' | 'role' | 'suspicions'>[],
+  fromCity: number,
+): SuspicionLink[] {
+  const from = houses.find((h) => h.city === fromCity)
+  if (!from || from.role !== 'citizen' || !from.suspicions) return []
+  const byCity = new Map(houses.map((h) => [h.city, h]))
+  return Object.entries(from.suspicions)
+    .map(([city, value]) => [Number(city), value] as const)
+    .filter(([, value]) => value > 0)
+    .sort(([a], [b]) => a - b)
+    .flatMap(([toCity, value]) => {
+      const to = byCity.get(toCity)
+      if (!to || to.slot === from.slot) return []
+      const [lo, hi] = from.slot < to.slot ? [from.slot, to.slot] : [to.slot, from.slot]
+      const geom = SUSPICION_EDGE[`${lo}-${hi}`]
+      if (!geom) return []
+      const [start, end] = from.slot < to.slot ? [geom.a, geom.b] : [geom.b, geom.a]
+      const clamped = Math.min(100, Math.max(0, value))
+      return [
+        {
+          from: from.city,
+          to: to.city,
+          value,
+          path: `M${start[0]} ${start[1]} Q${geom.c[0]} ${geom.c[1]} ${end[0]} ${end[1]}`,
+          labelX: geom.tag[0],
+          labelY: geom.tag[1],
+          strokeWidth: Number((1.8 + (clamped / 100) * 4.2).toFixed(2)),
+        },
+      ]
+    })
 }
 
 // HUD "속은 주민 ●●○|○" 계산: 시민 수만큼 점, 속은(틀린) 시민 수만큼 채움, 과반(need) 눈금 위치.
@@ -235,6 +297,7 @@ export function stagedHouses(
       lit: tonight ? tonight === state.truth : null,
       flag: reached(phase, 'flags') ? h.flag : before[i].flag,
       suspicion: reached(phase, 'suspicion') ? h.suspicion : before[i].suspicion,
+      suspicions: reached(phase, 'suspicion') ? h.suspicions : before[i].suspicions,
     }
   })
 }

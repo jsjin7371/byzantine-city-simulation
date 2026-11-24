@@ -5,8 +5,8 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
-import type { House, Phase, Preview, TutorialHighlight } from './village'
+import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
+import type { House, Phase, Preview, SuspicionLink, TutorialHighlight } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
@@ -28,6 +28,9 @@ function Defs() {
       <SharedVillageDefs prefix="vb" />
       <marker id="vb-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
         <path d="M0 0 L10 5 L0 10 Z" fill="#7a2416" />
+      </marker>
+      <marker id="vb-sus-arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto">
+        <path d="M0 1 L9 5 L0 9 Z" fill="#7a2416" />
       </marker>
       {(['evacuate', 'stay'] as const).map((claim) => (
         <g key={claim} id={`vb-flag-${claim}`}>
@@ -267,16 +270,24 @@ function BoardLegend() {
 // 쪽지 하나로 바뀔 의심도 읽기용 문구. 예) "의심도 50에서 70, 재판 열림"
 const previewText = (p: Preview) => `의심도 ${p.from}에서 ${p.next}${p.trial ? ', 재판 열림' : ''}`
 
-function houseLabel(h: House) {
+function houseLabel(h: House, playerCity: number) {
   const name = `${h.city}번 집`
   if (h.role === 'player') return `${name}, 나(마피아)`
   if (h.role === 'colleague') return `${name}, 동료 마피아`
+  const others = h.suspicions
+    ? Object.entries(h.suspicions)
+        .map(([city, value]) => [Number(city), value] as const)
+        .filter(([city, value]) => city !== playerCity && value > 0)
+        .sort(([a], [b]) => a - b)
+        .map(([city, value]) => `${city}번 집 의심도 ${value}`)
+    : []
   return [
     `${name}, 주민`,
     h.flag ? `지난밤 결정 ${decisions[h.flag]}` : '아직 결정 없음',
     h.lit != null && `다음 관측 ${h.lit ? '맞음(불 켜짐)' : '틀림(불 꺼짐)'}`,
     h.suspicion != null &&
       `나에 대한 의심도 ${h.suspicion}${h.suspicion >= SUSPICION.threshold ? ', 재판 기준 넘음' : ''}`,
+    ...others,
     !h.reachable && '쪽지를 보낼 수 없음',
   ]
     .filter(Boolean)
@@ -286,23 +297,28 @@ function houseLabel(h: House) {
 // 집 하나. pick이 있으면 눌러서 쪽지를 여는 버튼이 된다 (명세 1번).
 // changed: 어제와 달라진 점 (힌트 바뀜, 새 점선). 어제 쪽지를 그대로 두었으니 여기만 다시 보면 된다.
 type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
+type InspectHandlers = { onEnter: () => void; onLeave: () => void; onFocus: () => void; onBlur: () => void }
 
 // swayed: 내 쪽지가 없었다면 반대로 골랐을 시민 (작은 불꽃 한 번)
 function HouseView({
   h,
+  playerCity,
   pick,
+  inspect,
   swayed,
   highlight,
   pointed = false,
 }: {
   h: House
+  playerCity: number
   pick?: Pick
+  inspect?: InspectHandlers
   swayed?: boolean
   highlight?: TutorialHighlight | null
   pointed?: boolean
 }) {
   const { x, y } = h
-  const base = `${houseLabel(h)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
+  const base = `${houseLabel(h, playerCity)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
   const label = pick
     ? `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
     : base
@@ -316,17 +332,24 @@ function HouseView({
   const hlSuspicion = highlight === 'suspicion'
   const hlFlag = highlight === 'flags'
   const hlChanged = highlight === 'changed'
+  const focusable = Boolean(pick || inspect)
   return (
     <g
       className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}${hlHouse ? ' vb-tut-hl' : ''}`}
       {...(pick
         ? { role: 'button', tabIndex: 0, 'aria-expanded': pick.open, onClick: pick.onOpen, onKeyDown: onActivateKey(pick.onOpen) }
-        : { role: 'img' })}
+        : focusable
+          ? { role: 'img', tabIndex: 0 }
+          : { role: 'img' })}
+      onMouseEnter={inspect?.onEnter}
+      onMouseLeave={inspect?.onLeave}
+      onFocus={inspect?.onFocus}
+      onBlur={inspect?.onBlur}
       data-city={h.city}
       aria-label={label}
     >
       <title>{label}</title>
-      {pick && <ellipse className="vb-hl" cx={x} cy={y + 2} rx="62" ry="17" />}
+      {focusable && <ellipse className="vb-hl" cx={x} cy={y + 2} rx="62" ry="17" />}
       {hlHouse && <ellipse className="vb-tut-ring" cx={x} cy={y - 30} rx="62" ry="48" filter="url(#vb-rough)" aria-hidden />}
       {h.role === 'player' ? (
         <g filter="url(#vb-rough)" transform={`translate(${x},${y}) scale(.8)`}>
@@ -696,6 +719,36 @@ function ContradictionKnot({ x, y, label, text, title }: { x: number; y: number;
   )
 }
 
+// 시민 집에 마우스를 올리거나 초점을 맞추면 그 주민이 다른 집(나 포함)을 의심하는 정도를 손그림 선과 꼬리표로 보여 준다.
+function SuspicionLines({ links }: { links: SuspicionLink[] }) {
+  if (links.length === 0) return null
+  return (
+    <g className="vb-sus-links" aria-hidden="true">
+      {links.map((link) => {
+        const over = link.value >= SUSPICION.threshold
+        const w = link.value >= 100 ? 44 : 36
+        return (
+          <g key={`${link.from}-${link.to}`} className={over ? 'vb-sus-link is-over' : 'vb-sus-link'}>
+            <path
+              d={link.path}
+              className="vb-sus-path"
+              strokeWidth={link.strokeWidth}
+              markerEnd="url(#vb-sus-arr)"
+              filter="url(#vb-rough)"
+            />
+            <g transform={`translate(${link.labelX},${link.labelY})`} className="vb-sus-tag">
+              <rect x={-w / 2} y="-12" width={w} height="24" rx="12" strokeWidth={over ? 2 : 1.6} />
+              <text y="5.5" fontSize="15" fontWeight="700" textAnchor="middle">
+                {link.value}
+              </text>
+            </g>
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
 type NotePicker = {
   claims: Record<string, Claim>
   onClaim: (city: number, claim: Claim) => void
@@ -730,6 +783,8 @@ export function VillageBoard({
   boardRef?: RefObject<SVGSVGElement | null>
 }) {
   const [open, setOpen] = useState<number | null>(null)
+  const [hovered, setHovered] = useState<number | null>(null)
+  const [focused, setFocused] = useState<number | null>(null)
   const svg = useRef<SVGSVGElement>(null)
   const assignSvg = (node: SVGSVGElement | null) => {
     svg.current = node
@@ -781,6 +836,9 @@ export function VillageBoard({
         null)
       : null
   const cardOpen = Boolean(opened)
+  const inspected = hovered ?? focused
+  const activeSuspicionLinks =
+    !night && !highlight && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
   useEffect(() => {
     onCardOpen?.(cardOpen)
   }, [cardOpen, onCardOpen])
@@ -840,9 +898,20 @@ export function VillageBoard({
         <HouseView
           key={h.city}
           h={h}
+          playerCity={state.player_city}
           swayed={at('flags') && swayed.includes(h.city)}
           highlight={highlight}
           pointed={pointerTarget?.city === h.city}
+          inspect={
+            !night && h.role === 'citizen' && h.suspicions != null
+              ? {
+                  onEnter: () => setHovered(h.city),
+                  onLeave: () => setHovered((cur) => (cur === h.city ? null : cur)),
+                  onFocus: () => setFocused(h.city),
+                  onBlur: () => setFocused((cur) => (cur === h.city ? null : cur)),
+                }
+              : undefined
+          }
           pick={
             picker && h.reachable
               ? {
@@ -856,6 +925,7 @@ export function VillageBoard({
           }
         />
       ))}
+      {activeSuspicionLinks.length > 0 && <SuspicionLines links={activeSuspicionLinks} />}
       {pointerTarget && <HousePointer target={pointerTarget} />}
       {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
       {caught.map(([a, b]) => {
