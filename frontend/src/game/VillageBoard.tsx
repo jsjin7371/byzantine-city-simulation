@@ -320,7 +320,8 @@ function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: 
   })
   const leader = scaleLeader(scale)
   const delays = voteAnimDelays(blockIndex)
-  const targetRow = rows.find((r) => r.claim === leader.side) ?? rows[0]
+  const side = leader.winner === 'tie' ? scale.decision : leader.winner
+  const targetRow = rows.find((r) => r.claim === side) ?? rows[0]
   const pillW = leader.winner === 'tie' ? 172 : 142
   const x0 = 3
   const x1 = Math.min(123, Math.max(56, targetRow.endX + 4))

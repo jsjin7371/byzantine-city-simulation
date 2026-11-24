@@ -468,7 +468,6 @@ export type Line = Said &
 
 export type ScaleLeader = {
   winner: Claim | 'tie'
-  side: Claim
   label: string
   aria: string
 }
@@ -476,17 +475,13 @@ export type ScaleLeader = {
 // 밤 ③ 주민 결정에서 표가 많은 쪽(또는 동점 시 관측대로)의 꼬리표와 낭독 문구.
 export function scaleLeader(scale: Pick<Scale, 'total' | 'decision'>): ScaleLeader {
   if (scale.total > 0) {
-    return { winner: 'evacuate', side: 'evacuate', label: '대피 쪽이 많아요', aria: '대피 쪽이 많아 대피' }
+    return { winner: 'evacuate', label: '대피 쪽이 많아요', aria: '대피 쪽이 많아 대피' }
   }
   if (scale.total < 0) {
-    return { winner: 'stay', side: 'stay', label: '잔류 쪽이 많아요', aria: '잔류 쪽이 많아 잔류' }
+    return { winner: 'stay', label: '잔류 쪽이 많아요', aria: '잔류 쪽이 많아 잔류' }
   }
-  return {
-    winner: 'tie',
-    side: scale.decision,
-    label: `같아서 관측대로 ${said[scale.decision]}`,
-    aria: `같아서 관측대로 ${said[scale.decision]}`,
-  }
+  const text = `같아서 관측대로 ${said[scale.decision]}`
+  return { winner: 'tie', label: text, aria: text }
 }
 
 // 밤 ③ 표 줄(aria-hidden) 대신 낭독기에 읽힐 집별 표 요약 (저울 값 그대로, 소수 없음).
@@ -887,15 +882,23 @@ export type DifficultyStat = {
   majorityBotWinPct: number
 }
 
-// 4명 시민 중 하룻밤 잘못 관측하는 평균 인원 (4p, 소수 첫째 자리 반올림).
-export const expectedWrongCitizens = (p: number) => Math.round(4 * p * 10) / 10
-
-// 4명 시민 중 3명 이상이 함께 잘못 관측할 이항분포 확률 P(X>=3) = 4p^3(1-p) + p^4 (백분율 정수 반올림).
-export const probAtLeastThreeWrong = (p: number) => Math.round((4 * p ** 3 * (1 - p) + p ** 4) * 100)
-
 // 시작 화면 난이도 ? 설명 표 (근거: frontend/src/gameApi.ts 프리셋, docs/spec.md 7.2).
-export const DIFFICULTY_STATS: readonly DifficultyStat[] = [
-  { key: 'easy', label: difficulties.easy.label, errorPct: 48, avgWrong: 1.9, atLeastThreePct: 28, waryBotWinPct: 32, majorityBotWinPct: 87 },
-  { key: 'normal', label: difficulties.normal.label, errorPct: 40, avgWrong: 1.6, atLeastThreePct: 18, waryBotWinPct: 10, majorityBotWinPct: 75 },
-  { key: 'hard', label: difficulties.hard.label, errorPct: 30, avgWrong: 1.2, atLeastThreePct: 8, waryBotWinPct: 1, majorityBotWinPct: 48 },
-]
+// 평균 틀린 수(4p)와 3명 이상 함께 틀릴 확률 P(X>=3) = 4p^3(1-p) + p^4는 프리셋 sensor_error에서 계산한다.
+export const DIFFICULTY_STATS: readonly DifficultyStat[] = (
+  [
+    { key: 'easy', waryBotWinPct: 32, majorityBotWinPct: 87 },
+    { key: 'normal', waryBotWinPct: 10, majorityBotWinPct: 75 },
+    { key: 'hard', waryBotWinPct: 1, majorityBotWinPct: 48 },
+  ] as const
+).map(({ key, waryBotWinPct, majorityBotWinPct }) => {
+  const { label, sensor_error: p } = difficulties[key]
+  return {
+    key,
+    label,
+    errorPct: Math.round(p * 100),
+    avgWrong: Math.round(4 * p * 10) / 10,
+    atLeastThreePct: Math.round((4 * p ** 3 * (1 - p) + p ** 4) * 100),
+    waryBotWinPct,
+    majorityBotWinPct,
+  }
+})
