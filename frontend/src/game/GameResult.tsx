@@ -35,7 +35,7 @@ export function GameResult({ state, history, children }: { state: GameState; his
       </h2>
       <p>
         {state.end_reason && `끝난 이유: ${endReasonLabels[state.end_reason]}`}
-        {state.bot_win_rate != null && ` · 같은 설정의 기준 봇 승률 ${percent(state.bot_win_rate)}`}
+        {state.bot_win_rate != null && ` · 같은 설정의 기본 마피아 봇 승률 ${percent(state.bot_win_rate)}`}
       </p>
       <h3>결정적 순간</h3>
       <ul>
@@ -47,7 +47,7 @@ export function GameResult({ state, history, children }: { state: GameState; his
       <p>{s.lesson}</p>
       {s.peaks.some((v) => v != null) && (
         <>
-          <h3>날짜별 나에 대한 최고 의심도 (점선: 재판 기준 {SUSPICION.threshold})</h3>
+          <h3>날짜별 나에 대한 최고 의심도 (기준선: 재판 기준 {SUSPICION.threshold})</h3>
           <Peaks peaks={s.peaks} />
         </>
       )}

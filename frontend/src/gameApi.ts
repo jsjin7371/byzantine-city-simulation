@@ -106,7 +106,7 @@ export const outcomeLabels: Record<Outcome, string> = {
   win: '승리',
   loss: '패배',
 }
-export const endReasonLabels = { caught: '재판으로 발각', turns_done: `${TOTAL_TURNS}턴 종료` }
+export const endReasonLabels = { caught: '재판으로 발각', turns_done: '마지막 밤까지 진행' }
 
 const record = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -126,9 +126,12 @@ function validState(data: unknown, id?: number): data is GameState {
 export async function createGame(
   difficulty: Difficulty,
   citizenType: CitizenType = 'wary',
-  signal?: AbortSignal): Promise<GameState> {
+  signal?: AbortSignal,
+  seed?: number,
+): Promise<GameState> {
   const { label: _label, ...preset } = difficulties[difficulty]
-  const payload = { ...preset, citizen_type: citizenType }
+  const payload =
+    seed !== undefined ? { ...preset, citizen_type: citizenType, seed } : { ...preset, citizen_type: citizenType }
   const data = await request('/api/games', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

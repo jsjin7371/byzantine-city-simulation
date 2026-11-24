@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Progress } from '../components/ui/progress'
-import { decisions, percent, truths } from '../components/results/resultLabels'
+import { decisions, percent } from '../components/results/resultLabels'
 import { errorMessage } from '../lib/errors'
 import {
   SUSPICION,
@@ -12,10 +12,22 @@ import {
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
 import { GameStart } from '../game/GameStart'
+import { Tutorial } from '../game/Tutorial'
 import { VillageBoard } from '../game/VillageBoard'
 import { VillageLog } from '../game/VillageLog'
 import { GameResult } from '../game/GameResult'
-import { citizenScales, fooledDots, nightSteps, villageLines, visibleLines } from '../game/village'
+import {
+  TUTORIAL_SEED,
+  TUTORIAL_STEPS,
+  citizenScales,
+  fooledDots,
+  nightSteps,
+  tonightVotes,
+  tutorialStep,
+  villageHouses,
+  villageLines,
+  visibleLines,
+} from '../game/village'
 import './GamePage.css'
 
 // 의심도 게이지. 재판 기준(60) 위치에 선을 긋는다.
@@ -28,11 +40,13 @@ function Gauge({ value, label }: { value: number; label: string }) {
   )
 }
 
+const weather = { danger: '태풍', safe: '맑음' } as const
+
 function TurnReport({ result }: { result: TurnResult }) {
   return (
-    <section className="gm-panel" aria-label={`${result.turn}턴 결과`}>
+    <section className="gm-panel" aria-label={`${result.turn}일째 결과`}>
       <h2>
-        {result.turn}턴 결과 · 주민 정확도 {percent(result.accuracy)}
+        {result.turn}일째 결과 · 주민 정확도 {percent(result.accuracy)}
       </h2>
       <div className="gm-citizens">
         {result.cities
@@ -40,7 +54,7 @@ function TurnReport({ result }: { result: TurnResult }) {
           .map((c) => (
             <article key={c.city} className="gm-citizen">
               <h3>
-                주민 {c.city} · 관측 {c.hint ? truths[c.hint] : '—'} ·{' '}
+                {c.city}번 주민 · 관측 {c.hint ? weather[c.hint] : '—'} ·{' '}
                 {c.decision ? decisions[c.decision] : '—'}{' '}
                 <span className={c.correct ? 'rs-correct' : 'rs-incorrect'}>
                   {c.correct ? '정답' : '오답'}
@@ -61,12 +75,12 @@ function TurnReport({ result }: { result: TurnResult }) {
             </article>
           ))}
       </div>
-      <h3>정보 공유</h3>
-      {result.sharing.length === 0 && <p className="gm-muted">이번 턴 공유 없음</p>}
+      <h3>쪽지 비교</h3>
+      {result.sharing.length === 0 && <p className="gm-muted">오늘 밤 쪽지 비교 없음</p>}
       <ul>
         {result.sharing.map((s) => (
           <li key={s.pair.join('-')}>
-            주민 {s.pair[0]} ↔ 주민 {s.pair[1]}:{' '}
+            {s.pair[0]}번 주민 ↔ {s.pair[1]}번 주민:{' '}
             {s.contradictions.length === 0
               ? '모순 없음'
               : s.contradictions
@@ -92,7 +106,7 @@ function TurnReport({ result }: { result: TurnResult }) {
             : `${result.vote.accused}번 집${result.vote.caught ? ' (마피아 발각)' : ' (무고한 주민 지목)'}`}
         </p>
       ) : (
-        <p className="gm-muted">재판이 열리지 않았습니다.</p>
+        <p className="gm-muted">재판이 열리지 않았어요.</p>
       )}
     </section>
   )
@@ -135,8 +149,15 @@ export function GamePage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [step, setStep] = useState<number | null>(null) // 밤 연출 중인 단계. null이면 최종 상태
+  const [tutorial, setTutorial] = useState(false)
+  const [tutorialCursor, setTutorialCursor] = useState(0)
+  const [openCity, setOpenCity] = useState<number | null>(null)
+  const [scaleOpen, setScaleOpen] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const boardRef = useRef<SVGSVGElement>(null)
+  const submitRef = useRef<HTMLButtonElement>(null)
+  const scaleBtnRef = useRef<HTMLButtonElement>(null)
   const inGame = state !== null
   const prevInGame = useRef(inGame)
   useEffect(() => {
@@ -147,7 +168,8 @@ export function GamePage() {
   }, [inGame])
 
   const result = history.at(-1) ?? null
-  const steps = useMemo(() => (result ? nightSteps(result) : []), [result])
+  const withVotes = state?.config.citizen_type !== 'ai'
+  const steps = useMemo(() => (result ? nightSteps(result, withVotes) : []), [result, withVotes])
   // 단계마다 정해진 시간 뒤 다음 단계로. 마지막(다음 날)에 닿으면 연출 끝.
   useEffect(() => {
     if (step == null) return
@@ -174,16 +196,22 @@ export function GamePage() {
     }
   }
 
-  const start = () =>
+  const start = (isTutorial = false) =>
     run(async () => {
       setState(null) // 실패해도 이전 게임을 이어서 진행하지 않게 (God은 새 요청 때 이전 게임을 버린다)
-      const game = await createGame(difficulty, citizenType)
+      const game = isTutorial
+        ? await createGame('easy', 'wary', undefined, TUTORIAL_SEED)
+        : await createGame(difficulty, citizenType)
       setState(game)
+      setTutorial(isTutorial)
+      setTutorialCursor(0)
+      setOpenCity(null)
+      setScaleOpen(false)
       setHistory([])
       setViewed(0)
       setStep(null)
       setClaims(defaultClaims(game))
-    }, '게임을 시작하지 못했습니다.')
+    }, '게임을 시작하지 못했어요.')
 
   const submit = () =>
     run(async () => {
@@ -191,6 +219,7 @@ export function GamePage() {
       const turn = await playTurn(state.game_id, state.turn + 1, claims)
       setHistory([...history, turn])
       setViewed(0)
+      setOpenCity(null)
       // 움직임 줄이기 설정이면 연출 없이 바로 최종 상태
       setStep(matchMedia('(prefers-reduced-motion: reduce)').matches ? null : 0)
       setState({
@@ -204,10 +233,14 @@ export function GamePage() {
       })
       // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다 (실패해도 종료 상태는 위에서 반영됨).
       if (turn.game_over) setState(await getGame(state.game_id))
-    }, '턴을 진행하지 못했습니다.')
+    }, '다음 밤으로 넘기지 못했어요.')
 
   const exit = () => {
     setState(null)
+    setTutorial(false)
+    setTutorialCursor(0)
+    setOpenCity(null)
+    setScaleOpen(false)
     setHistory([])
     setViewed(0)
     setStep(null)
@@ -215,9 +248,44 @@ export function GamePage() {
     setError('')
   }
 
+  const dismissTutorial = () => {
+    setTutorial(false)
+    boardRef.current?.focus({ preventScroll: true })
+  }
+
   const playing = step != null && result != null
   const finished = Boolean(state?.game_over && !playing)
   const shown = playing ? result : (history[viewed - 1] ?? result)
+  const viewingPast = shown !== result
+  const tutContext = state
+    ? {
+        turn: state.turn,
+        playing,
+        cardOpen: openCity != null,
+        scaleOpen,
+        gameOver: state.game_over,
+        viewingPast,
+      }
+    : null
+  const tut = tutorial && tutContext ? tutorialStep(tutorialCursor, tutContext) : null
+  if (tut && tut.cursor !== tutorialCursor) setTutorialCursor(tut.cursor)
+  const tutorialActive = tut != null && tut.cursor < TUTORIAL_STEPS.length
+  const activeTutorial = tut?.step ?? null
+  const highlight = activeTutorial?.highlight ?? null
+  const nextTutorial = () => {
+    if (!tut || !tutContext) return
+    const next = tutorialStep(tut.cursor + 1, tutContext)
+    setTutorialCursor(next.cursor)
+    if (!next.step || next.step.wait || next.step.finish) {
+      if (next.step?.wait === 'turn' && submitRef.current && !submitRef.current.disabled) {
+        submitRef.current.focus({ preventScroll: true })
+      } else if (next.step?.wait === 'scale' && scaleBtnRef.current) {
+        scaleBtnRef.current.focus({ preventScroll: true })
+      } else {
+        boardRef.current?.focus({ preventScroll: true })
+      }
+    }
+  }
   const latest = state != null && !state.game_over && shown === result && !playing // 할 말은 마지막 턴에서만 고른다
   const scales = shown && state ? citizenScales(state, history, history.indexOf(shown)) : {}
   const lines = shown && state ? villageLines(state, shown, scales) : null
@@ -229,6 +297,13 @@ export function GamePage() {
   const wrong = citizens.filter((c) => c.correct === false).length
   const fooled = fooledDots(settled ? wrong : 0, citizenCount)
   const ruled = state?.config.citizen_type === 'wary' // 7.6 규칙을 따르는 시민만 예상을 보인다
+  const tonightScale = useMemo(() => {
+    if (openCity == null || !latest || !state) return null
+    const houses = villageHouses(state, shown)
+    const votes = tonightVotes(state, houses, openCity, claims, history)
+    if (votes.items.length === 0) return null
+    return { city: openCity, votes }
+  }, [openCity, latest, state, shown, claims, history])
 
   useEffect(() => {
     if (finished) scrollIntoView(resultRef.current)
@@ -248,12 +323,13 @@ export function GamePage() {
           headingRef={headingRef}
           onDifficulty={setDifficulty}
           onCitizenType={setCitizenType}
-          onStart={start}
+          onStart={() => start(false)}
+          onTutorial={() => start(true)}
         />
       ) : (
         <div className="gm-workspace gm-play">
           <h1 ref={headingRef} tabIndex={-1} className="sr-only">
-            AI 시민을 속여라
+            AI 주민을 속여라
           </h1>
           <div className="gm-stage">
             <section className="gm-board-zone" aria-label="마을 보드">
@@ -262,6 +338,7 @@ export function GamePage() {
                   <button type="button" className="gm-exit" onClick={exit} disabled={busy}>
                     ← 나가기
                   </button>
+                  {tutorialActive && <span className="gm-tutorial-badge">튜토리얼</span>}
                   <div className="gm-role">
                     <span className="gm-me-dot" aria-hidden="true">
                       나
@@ -290,12 +367,26 @@ export function GamePage() {
                   {error}
                 </p>
               )}
+              {tutorialActive && (
+                <Tutorial
+                  step={activeTutorial}
+                  busy={busy}
+                  onNext={nextTutorial}
+                  onDismiss={dismissTutorial}
+                  onExit={exit}
+                />
+              )}
               <div className="gm-board-frame">
                 <VillageBoard
                   state={state}
                   result={shown}
+                  scales={scales}
                   swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
                   stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
+                  highlight={highlight}
+                  hideSigns={tutorialActive}
+                  onCardOpen={setOpenCity}
+                  boardRef={boardRef}
                   picker={
                     latest
                       ? { claims, ruled, onClaim: (city, claim) => setClaims({ ...claims, [city]: claim }) }
@@ -304,10 +395,19 @@ export function GamePage() {
                 />
               </div>
             </section>
-            <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} day={shown?.turn} live={playing}>
+            <VillageLog
+              lines={lines && playing ? visibleLines(lines, steps[step]) : lines}
+              day={shown?.turn}
+              citizenType={state.config.citizen_type}
+              live={playing}
+              tonightScale={tonightScale}
+              highlight={highlight === 'log' || highlight === 'scale' || highlight === 'votes' ? highlight : null}
+              onScaleOpen={setScaleOpen}
+              scaleBtnRef={scaleBtnRef}
+            >
               {shown && !playing && (
-                <div className="vl-pager" role="group" aria-label="지난 밤 넘겨보기">
-                  <span className="vl-pager-label">지난 밤 넘겨보기</span>
+                <div className="vl-pager" role="group" aria-label="지난밤 넘겨보기">
+                  <span className="vl-pager-label">지난밤 넘겨보기</span>
                   <div className="vl-pager-ctrl">
                     <button
                       type="button"
@@ -343,9 +443,24 @@ export function GamePage() {
                   </Button>
                 </div>
               ) : (
-                <Button onClick={submit} disabled={busy || !latest}>
-                  {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '마지막 턴에서 넘길 수 있습니다'}
-                </Button>
+                <>
+                  {highlight === 'submit' && (
+                    <div className="tut-callout is-down" aria-hidden="true">
+                      <span className="tut-note-tag">여기를 눌러 보세요</span>
+                      <svg className="tut-arrow is-down" viewBox="0 0 36 30" width="36" height="30">
+                        <path d="M18 3 Q16 14 18 25 M11 18 L18 26 L25 18" />
+                      </svg>
+                    </div>
+                  )}
+                  <Button
+                    ref={submitRef}
+                    className={highlight === 'submit' ? 'tut-hl' : undefined}
+                    onClick={submit}
+                    disabled={busy || !latest}
+                  >
+                    {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '가장 최근 날에서만 밤으로 넘길 수 있어요'}
+                  </Button>
+                </>
               )}
             </VillageLog>
           </div>
@@ -355,7 +470,7 @@ export function GamePage() {
               <GameResult state={state} history={history}>
                 {shown && (
                   <details className="gm-details">
-                    <summary>{shown.turn}턴 자세한 표</summary>
+                    <summary>{shown.turn}일째 자세한 표</summary>
                     <TurnReport result={shown} />
                   </details>
                 )}

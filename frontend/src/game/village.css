@@ -34,6 +34,9 @@
   --rust: #a8361f;
   --leave: #35598a;
   --stay: #d9a12e;
+  --scale-hint: #6f8f3e;
+  --scale-note: #d9bb7c;
+  --scale-mine: var(--rust);
 
   --surface: var(--parch);
   --text: var(--ink);
@@ -114,9 +117,31 @@
   fill: var(--ink-soft);
   font-weight: 700;
 }
-.gm-start-scene .vb-opt-item.is-selected .opt-label,
+.gm-start-scene .vb-opt-item.is-selected .opt-label {
+  fill: #2b1a0c;
+}
 .gm-start-scene .vb-role-card.is-selected .card-title {
   fill: var(--ink);
+}
+.gm-start-scene .vb-opt-circle {
+  fill: none;
+  stroke: #6e1a0c;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.gm-start-scene .vb-opt-circle.is-animated {
+  stroke-dasharray: 104;
+  stroke-dashoffset: 0;
+  animation: gs-circle-draw 400ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+@keyframes gs-circle-draw {
+  from {
+    stroke-dashoffset: 104;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 .gm-start-scene .vb-role-card .card-paper {
   fill: #ede0be;
@@ -144,18 +169,175 @@
   font-weight: 700;
 }
 .gm-start-scene .gs-exit.is-busy,
-.gm-start-scene .gs-enter.is-busy {
+.gm-start-scene .gs-enter.is-busy,
+.gm-start-scene .gs-tutorial.is-busy {
   cursor: not-allowed;
   opacity: 0.65;
 }
 .gm-start-scene .gs-exit:focus-visible,
-.gm-start-scene .gs-enter:focus-visible {
+.gm-start-scene .gs-enter:focus-visible,
+.gm-start-scene .gs-tutorial:focus-visible {
   outline: 3px solid #ffd35a;
   outline-offset: 4px;
 }
-.gm-start-scene .vb-opt-item:focus-visible {
-  outline: 3px solid var(--ink);
+.gm-start-scene .vb-opt-item:focus-visible,
+.gm-start-scene .gs-diff-help-btn:focus-visible {
+  outline: 3px solid #2b1a0c;
   outline-offset: 4px;
+}
+.gm-start-scene .gs-diff-help-btn .gs-help-ring {
+  fill: #f6ebcd;
+  stroke: #4a3119;
+  stroke-width: 2;
+}
+.gm-start-scene .gs-diff-help-btn:hover .gs-help-ring,
+.gm-start-scene .gs-diff-help-btn.is-open .gs-help-ring {
+  fill: #ecd9aa;
+  stroke: var(--rust);
+  stroke-width: 2.4;
+}
+.gs-diff-help {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 10;
+  width: min(1180px, calc(100vw - 24px));
+  max-height: calc(100svh - 24px);
+  overflow: auto;
+  padding: 8px 14px 10px;
+  background: var(--ui-background);
+  border: 2px solid var(--wood);
+  border-left: 5px solid var(--wood);
+  border-radius: 5px 10px 10px 5px;
+  box-shadow: 0 8px 24px rgba(27, 45, 24, 0.36);
+  color: var(--ink);
+  word-break: keep-all;
+  animation: gs-help-in 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+.gs-diff-help:focus:not(:focus-visible) {
+  outline: none;
+}
+.gs-diff-help:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+@keyframes gs-help-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.gs-diff-help-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.gs-diff-help-lead {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.gs-diff-help-close {
+  flex: none;
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--wood);
+  background: var(--parch);
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.gs-diff-help-close:hover {
+  background: #e4d2a6;
+}
+.gs-diff-help-close:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+.gs-diff-help-table-wrap {
+  overflow-x: auto;
+}
+.gs-diff-help-table-wrap:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+.gs-diff-help-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--ink);
+}
+.gs-diff-help-table th,
+.gs-diff-help-table td {
+  padding: 3px 8px;
+  border-bottom: 1.5px dotted #b4976a;
+  text-align: center;
+  vertical-align: middle;
+}
+.gs-diff-help-table thead th {
+  border-bottom: 2px solid var(--wood);
+  font-weight: 700;
+  background: rgba(239, 224, 185, 0.72);
+  white-space: nowrap;
+}
+.gs-diff-help-table tbody th {
+  text-align: left;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.gs-diff-help-table .is-active-col {
+  font-weight: 700;
+  background: rgba(201, 154, 91, 0.22);
+}
+.gs-diff-help-table thead .is-active-col {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.gs-diff-help-table .is-current-row th,
+.gs-diff-help-table .is-current-row td {
+  background: rgba(168, 54, 31, 0.08);
+}
+.gs-diff-help-table .is-current-row .is-active-col {
+  background: rgba(168, 54, 31, 0.14);
+}
+.gs-diff-cur-tag {
+  font-weight: 700;
+}
+.gs-diff-term {
+  font-weight: 400;
+  color: var(--ink-soft);
+}
+.gs-diff-help-foot {
+  margin: 6px 0 0;
+  font-size: 18px;
+  line-height: 1.3;
+  color: var(--ink-soft);
+}
+.gs-diff-help-foot + .gs-diff-help-foot {
+  margin-top: 3px;
+}
+.gs-diff-help-foot .is-active-note {
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .gm-start-scene .vb-opt-circle.is-animated,
+  .gs-diff-help {
+    animation: none;
+  }
 }
 .gm-start-error {
   position: absolute;
@@ -181,6 +363,7 @@
   padding: 14px 18px 12px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-rows: minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -210,6 +393,7 @@
 }
 
 .gm-exit {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -224,6 +408,20 @@
   box-shadow: 0 2px 0 rgba(74, 49, 25, 0.2);
 }
 .gm-exit:hover:not(:disabled) { background: var(--ui-background); }
+
+.gm-tutorial-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--forest);
+  border: 1.5px solid #1b2d18;
+  color: var(--ui-background);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.25;
+  box-shadow: 0 2px 0 rgba(27, 45, 24, 0.25);
+}
 
 .gm-role {
   display: inline-flex;
@@ -303,8 +501,9 @@
 }
 
 .gm-board-frame {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 0;
+  container-type: size;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -312,13 +511,15 @@
 
 .vb-board {
   display: block;
-  width: min(100%, calc((100svh - 76px) * 900 / 660));
-  max-height: 100%;
+  width: min(100cqw, calc(100cqh * 900 / 698));
   height: auto;
-  aspect-ratio: 900 / 660;
+  aspect-ratio: 900 / 698;
   border-radius: 8px;
   box-shadow: 0 8px 28px rgba(34, 24, 12, 0.28);
   fill: var(--ink);
+}
+.vb-board:focus:not(:focus-visible) {
+  outline: none;
 }
 
 .gm-below {
@@ -354,10 +555,12 @@
 @keyframes vb-alert { from { transform: scale(1); } to { transform: scale(1.25); } }
 .vb-post path { stroke: var(--rust); stroke-width: 3; }
 .vb-gauge.is-over .vb-post path { stroke: #2b1a0c; }
+.vb-post-label { fill: var(--rust); paint-order: stroke; stroke: #efe0b9; stroke-width: 2.5px; stroke-linejoin: round; }
+.vb-gauge.is-over .vb-post-label { fill: #2b1a0c; }
 
 .vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
 .vb-share-tag rect { fill: #f6ebcd; stroke: #b8861f; }
-/* 두 집에 다른 쪽지: 점선이 붉게 (모순 +20 매듭과 함께 보여 색만으로 구분하지 않는다) */
+/* 두 집에 다른 쪽지: 점선이 붉게 (모순 매듭과 함께 보여 색만으로 구분하지 않는다) */
 .vb-share .is-clash .vb-share-line { stroke: var(--rust); }
 .vb-share .is-clash .vb-share-glow { stroke: #e0703f; }
 .vb-share .is-clash .vb-share-tag rect { stroke: var(--rust); }
@@ -373,8 +576,9 @@
 .vb-board .vb-rust { fill: var(--rust); }
 .vb-board .vb-green { fill: var(--forest); }
 .vb-house[role='button'] { cursor: pointer; outline: none; }
-.vb-hl { fill: #ffd35a; opacity: 0; transition: opacity 150ms ease; }
-@media (hover: hover) and (pointer: fine) { .vb-house[role='button']:hover .vb-hl { opacity: .35; } }
+.vb-house[tabindex='0'] { outline: none; }
+.vb-hl { fill: #ffd35a; opacity: 0; transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (hover: hover) and (pointer: fine) { .vb-house[tabindex='0']:hover .vb-hl { opacity: .35; } }
 .vb-house.is-open .vb-hl, .vb-house:focus-visible .vb-hl { opacity: .6; }
 .vb-house:focus-visible .vb-hl { stroke: var(--ink); stroke-width: 2; }
 
@@ -402,6 +606,15 @@
 
 .vb-knot { transform-box: fill-box; transform-origin: center; animation: vb-knot 320ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 @keyframes vb-knot { from { opacity: 0; transform: scale(.6); } }
+
+/* 주민 집에 마우스·초점을 올릴 때 표시되는 의심 선과 숫자 꼬리표 */
+.vb-sus-links { pointer-events: none; animation: vb-fade 180ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-sus-path { fill: none; stroke: #7a2416; stroke-linecap: butt; opacity: .88; }
+.vb-sus-link.is-over .vb-sus-path { stroke: var(--rust); opacity: .96; }
+.vb-sus-tag rect { fill: #f6ebcd; stroke: #7a2416; }
+.vb-sus-tag text { fill: #4a1a10; }
+.vb-sus-link.is-over .vb-sus-tag rect { fill: var(--rust); stroke: #4a1a10; }
+.vb-sus-link.is-over .vb-sus-tag text { fill: #f3e7c6; }
 
 .vb-board .vb-sign-title { fill: #f6ebcd; paint-order: stroke; stroke: var(--forest); stroke-width: 3px; }
 .vb-board .vb-plaza-label { paint-order: stroke; stroke: #c8b38a; stroke-width: 4px; stroke-linejoin: round; }
@@ -461,7 +674,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .vb-phase { animation: none; }
+  .vb-phase, .vb-sus-links { animation: none; }
   .vb-card, .vb-knot, .vb-sign { animation-name: vb-fade; }
   .vb-spark > path { animation: none; }
   .vb-fly { display: none; }
@@ -475,6 +688,7 @@
 
 /* 오른쪽 종이 일기장 (마을 이야기) */
 .vl-talk {
+  position: relative;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -509,6 +723,18 @@
   border-radius: 4px;
   padding: 2px 8px;
 }
+.vl-intro {
+  margin: -2px 0 6px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  word-break: keep-all;
+}
+.vl-intro.is-ai {
+  margin: -2px 0 10px;
+  font-size: 18px;
+  line-height: 1.35;
+}
 .vl-log {
   flex: 1 1 auto;
   min-height: 0;
@@ -542,6 +768,7 @@
 .vl-tok { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #d9a95f; border: 2px solid var(--wood); font: 700 16px/22px var(--gm-font); text-align: center; }
 .vl-tok.is-quiet { background: transparent; border-style: dashed; }
 .vl-why-btn {
+  position: relative;
   flex: none;
   appearance: none;
   display: inline-flex;
@@ -659,9 +886,198 @@
 .vl-pan .vl-plate { fill: #c99a5b; stroke-width: 1.5; }
 .vl-pivot { fill: var(--wood); }
 .vl-pan rect { stroke: #3b2a1a; stroke-width: .8; }
-.vl-pan .is-hint { fill: #6f8f3e; }
-.vl-pan .is-note { fill: #d9bb7c; }
-.vl-pan .is-mine { fill: var(--rust); }
+.vl-pan-label { fill: var(--ink-soft); }
+.vl-pan .is-hint { fill: var(--scale-hint); }
+.vl-pan .is-note { fill: var(--scale-note); }
+.vl-pan .is-mine { fill: var(--scale-mine); }
+.vl-swatch.is-hint { background: var(--scale-hint); }
+.vl-swatch.is-note { background: var(--scale-note); }
+.vl-swatch.is-mine { background: var(--scale-mine); }
+.vl-legend {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin: 0 0 10px;
+  font-size: 13.5px;
+  line-height: 1.3;
+  color: var(--ink-soft);
+}
+.vl-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.vl-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid #3b2a1a;
+}
+
+/* 쪽지 카드가 열려 있는 동안 마을 이야기 맨 위에 표시되는 오늘 밤 저울 (HTML, 18px 이상) */
+.vl-tonight-live {
+  flex: none;
+}
+.vl-tonight {
+  position: relative;
+  flex: none;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  font-size: 18px;
+  background: var(--ui-background);
+  border: 2px solid var(--wood);
+  border-left: 4px solid var(--rust);
+  border-radius: 5px 9px 9px 5px;
+  box-shadow: 0 2px 8px rgba(59, 42, 26, 0.14);
+  animation: vl-tonight-in 180ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes vl-tonight-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.vl-tonight-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 8px;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+  border-bottom: 1.5px dotted #b4976a;
+}
+.vl-tonight-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.vl-tonight-sub {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink-soft);
+}
+.vl-tonight-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.vl-tonight-row {
+  display: grid;
+  grid-template-columns: minmax(52px, auto) auto minmax(64px, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.vl-tonight-row.is-ai {
+  grid-template-columns: minmax(52px, auto) minmax(16px, 1fr) auto;
+}
+.vl-tonight-who {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.vl-tonight-dots {
+  border-bottom: 2px dotted #b59a6a;
+  height: 1px;
+}
+.vl-claim-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: 2px 9px;
+  border: 1.5px solid transparent;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+.vl-claim-pill.is-evacuate {
+  background: var(--leave);
+  border-color: #1f3554;
+  color: #f3e7c6;
+  border-radius: 999px;
+}
+.vl-claim-pill.is-stay {
+  background: var(--stay);
+  border-color: #7a5512;
+  color: var(--ink);
+  border-radius: 4px;
+}
+.vl-claim-pill.is-pending {
+  background: var(--parch);
+  border-color: #8a6a3e;
+  border-style: dashed;
+  color: var(--ink);
+  border-radius: 4px;
+}
+.vl-tonight-meter {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.vl-tonight-track {
+  display: block;
+  width: 100%;
+  height: 14px;
+  border-radius: 4px;
+  background: #e6d7b2;
+  border: 1.5px solid #9d7f50;
+  overflow: hidden;
+}
+.vl-tonight-fill {
+  display: block;
+  height: 100%;
+  border-right: 1.5px solid #3b2a1a;
+  box-sizing: border-box;
+}
+.vl-tonight-fill.is-hint { background: var(--scale-hint); }
+.vl-tonight-fill.is-note { background: var(--scale-note); }
+.vl-tonight-fill.is-mine { background: var(--scale-mine); }
+.vl-tonight-zero {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.vl-tonight-note {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink-soft);
+  word-break: keep-all;
+}
+.tut-tonight-frame {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+.tut-tonight-stroke {
+  fill: none;
+  stroke: var(--rust);
+  stroke-width: 3.2;
+  stroke-dasharray: 8 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: vb-fade 320ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
 .vl-foot {
   flex: none;
   margin-top: 12px;
@@ -691,9 +1107,10 @@
 .vl-pager-ctrl {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
 }
 .vl-pager-btn {
+  position: relative;
   appearance: none;
   width: 28px;
   height: 26px;
@@ -717,10 +1134,14 @@
   .gm-stage {
     height: auto;
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+  .gm-board-frame {
+    flex: none;
+    container-type: normal;
   }
   .vb-board {
     width: 100%;
-    max-height: none;
   }
   .vl-log { max-height: 360px; }
 }
@@ -732,8 +1153,52 @@
 /* 밤 연출 (목업 A3): 밤빛 → 오솔길로 쪽지 배달 → 깃발 → 의심 게이지 → 재판 한 명씩 → 도장 */
 .vb-night { fill: #2c3d66; opacity: .32; pointer-events: none; animation: vb-fade 400ms ease both; }
 .vb-flag { transform-box: fill-box; transform-origin: left bottom; }
-.vb-board.is-playing .vb-flag { animation: vb-flip 420ms cubic-bezier(0.23, 1, 0.32, 1); }
-@keyframes vb-flip { from { transform: scaleX(.06); } }
+.vb-board.is-playing .vb-flag.is-fresh { animation: vb-flip 170ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+.vb-board.is-playing .vb-flag.is-fresh.after-votes { animation-delay: var(--flag-delay, 0ms); }
+.vb-board.is-playing .vb-spark > path { animation-duration: 145ms; animation-delay: var(--spark-delay, 0ms); }
+@keyframes vb-flip { from { transform: scaleX(.06); opacity: .2; } }
+/* 밤 ③ 주민 결정 단계: 한 집씩 상자 → 표 줄 → 많은 쪽 표시 → 꼬리표 → 깃발 → 불꽃 순으로 연출한다 */
+.vb-votes { pointer-events: none; }
+.vb-votes.is-anim { animation: vb-votes-in 90ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+@keyframes vb-votes-in { from { opacity: 0; transform: translateY(6px); } }
+.vb-votes.is-anim .vb-vote-blk { transform-box: fill-box; transform-origin: left center; animation: vb-blk-in 90ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+@keyframes vb-blk-in { from { opacity: 0; transform: scaleX(0); } }
+.vb-votes-mark {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 102;
+  stroke-dashoffset: 0;
+}
+.vb-votes-mark.is-evacuate { stroke: #1f3554; }
+.vb-votes-mark.is-stay,
+.vb-votes-mark.is-tie { stroke: #7a2416; }
+.vb-votes.is-anim .vb-votes-mark {
+  animation: vb-mark-draw 170ms cubic-bezier(0.23, 1, 0.32, 1) var(--mark-delay, 0ms) backwards;
+}
+@keyframes vb-mark-draw {
+  from { stroke-dashoffset: 102; }
+  to { stroke-dashoffset: 0; }
+}
+.vb-votes-leader rect { fill: #f6ebcd; stroke: #6b4a2a; }
+.vb-votes-leader text { fill: var(--ink); }
+.vb-votes-leader.is-evacuate rect { stroke: #1f3554; }
+.vb-votes-leader.is-evacuate text { fill: #1f3554; }
+.vb-votes-leader.is-stay rect { stroke: #7a5512; }
+.vb-votes.is-anim .vb-votes-leader {
+  animation: vb-leader-in 100ms cubic-bezier(0.23, 1, 0.32, 1) var(--tag-delay, 0ms) backwards;
+}
+@keyframes vb-leader-in {
+  from { opacity: 0; transform: translateY(4px); }
+}
+.vb-votes-tag.is-evacuate rect { fill: var(--leave); stroke: #1f3554; }
+.vb-votes-tag.is-evacuate text { fill: #f3e7c6; }
+.vb-votes-tag.is-stay rect { fill: var(--stay); stroke: #7a5512; }
+.vb-votes-tag.is-stay text { fill: var(--ink); }
+.vb-vote-sq.is-evacuate { fill: var(--leave); stroke: #1f3554; stroke-width: 1.2; }
+.vb-vote-sq.is-stay { fill: var(--stay); stroke: #7a5512; stroke-width: 1.2; }
+.vb-vote-sq.is-mine { stroke: var(--rust); stroke-width: 1.8; }
 .vb-board.is-playing .vb-ballot { animation: vb-fade 300ms cubic-bezier(0.23, 1, 0.32, 1); }
 /* 재판 결과 도장: 떠 있다가 가속해 쾅 찍히고(-4deg) 잉크 테가 번지며 보드가 살짝 흔들린다 */
 .vb-stamp { transform-box: fill-box; transform-origin: center; transform: rotate(-4deg); }
@@ -761,7 +1226,11 @@
 .vl-log.is-live > * { animation: vl-in 240ms cubic-bezier(0.23, 1, 0.32, 1) both; }
 @keyframes vl-in { from { opacity: 0; transform: translateY(4px); } }
 @media (prefers-reduced-motion: reduce) {
-  .vb-board.is-playing .vb-flag,
+  .vb-board.is-playing .vb-flag.is-fresh,
+  .vb-votes.is-anim,
+  .vb-votes.is-anim .vb-vote-blk,
+  .vb-votes.is-anim .vb-votes-mark,
+  .vb-votes.is-anim .vb-votes-leader,
   .vb-board.is-playing .vb-ballot,
   .vb-board.is-playing .vb-stamp,
   .vb-board.is-playing .vb-stamp-ink,
@@ -770,12 +1239,230 @@
 }
 
 /* 결과 화면 (명세 4번) */
-.gr-result h2 { font-size: 22px; margin-bottom: 4px; }
-.gr-result h3 { font: 700 16px/1.3 var(--gm-font); margin: 16px 0 6px; }
-.gr-result ul { margin: 0; padding-left: 20px; line-height: 1.6; }
+.gr-result { word-break: keep-all; overflow-wrap: break-word; }
+.gm-panel.gr-result > h2 { font-size: clamp(22px, 3vw, 25px); font-weight: 700; line-height: 1.3; margin-bottom: 4px; }
+.gm-panel.gr-result > h3 { font: 700 clamp(19px, 2.5vw, 21px)/1.35 var(--gm-font); margin: 16px 0 6px; }
+.gr-result > p,
+.gr-result > ul { font-size: clamp(17.5px, 2.2vw, 19px); font-weight: 700; line-height: 1.55; margin: 0; }
+.gr-result > ul { padding-left: 22px; }
 .gr-peaks { display: block; height: 130px; width: auto; max-width: 100%; }
 .gr-peaks rect { fill: #8aa04c; stroke: var(--ink); stroke-width: 1.2; }
 .gr-peaks rect.is-over { fill: var(--rust); }
 .gr-peaks text { font-size: 13.5px; fill: var(--ink); }
 .gr-line { stroke: var(--rust); stroke-width: 2; stroke-dasharray: 8 5; }
 .gm-details summary { cursor: pointer; font-weight: 700; margin: 12px 0; }
+
+/* 튜토리얼 말풍선 및 대상 강조 */
+.tut-box {
+  flex: none;
+  height: 140px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  background: var(--ui-background);
+  border: 2px solid var(--wood);
+  border-left: 5px solid var(--rust);
+  border-radius: 6px 10px 10px 6px;
+  box-shadow: 0 3px 10px rgba(38, 25, 11, 0.16);
+}
+.tut-box.is-empty {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+.tut-text {
+  flex: 1 1 320px;
+  min-width: 0;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.tut-line {
+  display: block;
+}
+.tut-actions {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tut-actions [data-ui-button] {
+  position: relative;
+}
+
+/* 보이는 크기는 유지하되 누를 영역은 44x44px 이상 확보한다 */
+.gm-exit::before,
+.vl-why-btn::before,
+.vl-pager-btn::before,
+.tut-actions [data-ui-button]::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(44px, 100%);
+  height: max(44px, 100%);
+  transform: translate(-50%, -50%);
+}
+
+.vb-board .vb-tut-ring {
+  fill: none;
+  stroke: #7a2416;
+  stroke-width: 3.5;
+  stroke-dasharray: 8 5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.vb-share.vb-tut-hl .vb-share-glow {
+  opacity: .9;
+  stroke-width: 24;
+}
+.vb-share.vb-tut-hl .vb-share-tag rect {
+  stroke: var(--rust);
+  stroke-width: 3;
+}
+
+/* 튜토리얼 보드 손그림 화살표·쪽지 (한 대상에만 표시, 느리고 작게 3회 까딱임) */
+.vb-tut-pointer {
+  pointer-events: none;
+}
+.vb-tut-arrow {
+  animation: vb-arrow-nudge 1.4s cubic-bezier(0.23, 1, 0.32, 1) 3;
+}
+@keyframes vb-arrow-nudge {
+  0%, 100% { transform: translate(0, 0); }
+  45% { transform: translate(var(--dx, 4px), var(--dy, -4px)); }
+}
+
+/* 튜토리얼 이야기 칸 손그림 상자 및 라벨 */
+.vl-talk.is-tut-log {
+  padding-top: 28px;
+}
+.tut-log-frame {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+.tut-log-stroke {
+  fill: none;
+  stroke: var(--rust);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  animation: vb-fade 320ms cubic-bezier(0.23, 1, 0.32, 1) backwards;
+}
+
+.tut-note-tag {
+  display: inline-block;
+  padding: 2px 11px;
+  background: var(--ui-background);
+  border: 2px solid var(--rust);
+  border-radius: 4px 10px 4px 6px;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.tut-note-tag.is-log {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* 튜토리얼 HTML 행동 단계(밤으로 넘기기 / › 버튼) 화살표·쪽지 */
+.tut-callout {
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+.tut-callout.is-down {
+  flex-direction: column;
+  gap: 2px;
+}
+.tut-callout.is-up-right {
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 6px;
+}
+.tut-arrow {
+  display: block;
+  flex: none;
+  overflow: visible;
+  filter: url(#vb-pencil);
+}
+.tut-arrow path {
+  fill: none;
+  stroke: #7a2416;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tut-arrow.is-down {
+  animation: tut-arrow-down 1.4s cubic-bezier(0.23, 1, 0.32, 1) 3;
+}
+.tut-arrow.is-up {
+  animation: tut-arrow-up 1.4s cubic-bezier(0.23, 1, 0.32, 1) 3;
+}
+@keyframes tut-arrow-down {
+  0%, 100% { transform: translateY(0); }
+  45% { transform: translateY(5px); }
+}
+@keyframes tut-arrow-up {
+  0%, 100% { transform: translate(0, 0); }
+  45% { transform: translate(2px, -4.5px); }
+}
+
+.tut-hl {
+  outline: 3px dashed var(--rust);
+  outline-offset: 3px;
+}
+.tut-hl:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 4px;
+}
+.vl-why-btn.is-tut-target {
+  border-color: var(--rust);
+  outline: 2.5px dashed var(--rust);
+  outline-offset: 2px;
+  color: #7a2416;
+}
+.vl-why-btn.is-tut-target:focus-visible {
+  outline: 2.5px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1100px) {
+  .tut-box {
+    height: auto;
+  }
+  .tut-actions [data-ui-button] {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vb-tut-arrow,
+  .tut-log-stroke,
+  .tut-tonight-stroke,
+  .tut-arrow.is-down,
+  .tut-arrow.is-up,
+  .vl-tonight {
+    animation: none;
+  }
+}
