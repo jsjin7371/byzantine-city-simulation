@@ -306,7 +306,7 @@ test('citizen scale counts remembered past hints (recent: last turn, full: all) 
   assert.deepEqual(citizenScales({ player_city: 1, config: { ...config, citizen_type: 'ai' } }, history, 2), {})
 })
 
-test('scale text reads in plain sentences without numbers and swayed citizens get a "마음을 돌림" line at the flags phase', () => {
+test('scale text reads in plain sentences without numbers and swayed citizens get a "내 쪽지에 넘어옴" line at the flags phase', () => {
   const scale = { parts: [{ from: 'hint', value: 100 }, { from: 2, value: 80 }, { from: 4, value: 100 }, { from: 1, value: -40 }], total: 240, decision: 'evacuate', mine: -40, swayed: false }
   assert.deepEqual(scaleText(scale, 1, 'turn'), [
     '내가 본 하늘은 태풍이었어',
@@ -348,7 +348,7 @@ test('scale text reads in plain sentences without numbers and swayed citizens ge
   const line = lines.find((l) => l.kind === 'scale' && l.who === 4 && l.phase === 'flags')
   assert.equal(line.text, '대피하기로 했어')
   assert.deepEqual(line.detail, scaleText(scale, 3, state.config.memory))
-  assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번 마음을 돌림' && l.phase === 'flags'))
+  assert.ok(lines.some((l) => l.kind === 'event' && l.good && l.text === '4번이 내 쪽지에 넘어옴' && l.phase === 'flags'))
 })
 
 test('fooledDots fills wrong citizens up to total and marks the majority threshold', () => {

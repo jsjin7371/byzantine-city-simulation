@@ -731,7 +731,15 @@ export function VillageBoard({
       {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
       {caught.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
-        return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={`모순 발견: ${a}번 집과 ${b}번 집`} text="모순 발견" />
+        return (
+          <ContradictionKnot
+            key={`${a}-${b}`}
+            x={mx}
+            y={my}
+            label={`모순 발견: ${a}번 집과 ${b}번 집, 의심 +${SUSPICION.contradiction}`}
+            text={`모순 +${SUSPICION.contradiction}`}
+          />
+        )
       })}
       {result?.vote && at('trial') && (
         <Trial vote={result.vote} houses={houses} shown={night?.ballots} verdict={at('verdict')} />

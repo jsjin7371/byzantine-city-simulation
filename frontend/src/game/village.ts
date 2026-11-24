@@ -348,7 +348,7 @@ export function villageLines(
       scale: s,
       me,
     })
-    if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번 마음을 돌림` })
+    if (s.swayed) lines.push({ phase: 'flags', kind: 'event', good: true, text: `${c.city}번이 내 쪽지에 넘어옴` })
   }
 
   // 모순 발견: 만난 두 주민이 내가 한 말을 맞춰 봤다
