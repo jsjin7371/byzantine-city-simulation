@@ -126,6 +126,7 @@ function validState(data: unknown, id?: number): data is GameState {
 export async function createGame(
   difficulty: Difficulty,
   citizenType: CitizenType = 'wary',
+  signal?: AbortSignal,
   seed?: number,
 ): Promise<GameState> {
   const { label: _label, ...preset } = difficulties[difficulty]
@@ -135,6 +136,7 @@ export async function createGame(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
+    signal,
   })
   if (!validState(data)) throw new Error('게임 응답 형식이 올바르지 않습니다.')
   return data

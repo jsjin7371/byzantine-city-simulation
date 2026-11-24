@@ -6,7 +6,7 @@ import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
 import { PHASE_LABEL, TRAILS, changedHouses, clashingPairs, pairMid, reached, sharePath, stagedHouses, suspicionPreview, talkNotes, tally, villageHouses, worsens } from './village'
-import type { House, Phase, Preview } from './village'
+import type { House, Phase, Preview, TutorialHighlight } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
@@ -297,7 +297,7 @@ function HouseView({
   h: House
   pick?: Pick
   swayed?: boolean
-  highlight?: string | null
+  highlight?: TutorialHighlight | null
 }) {
   const { x, y } = h
   const base = `${houseLabel(h)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
@@ -663,7 +663,7 @@ export function VillageBoard({
   picker?: NotePicker
   stage?: Stage
   swayed?: number[] // 내 쪽지가 결정을 뒤집은 시민 (citizenScales)
-  highlight?: string | null // 튜토리얼 강조 대상 이름
+  highlight?: TutorialHighlight | null // 튜토리얼 강조 대상 이름
   hideSigns?: boolean // 튜토리얼에서는 첫날 안내 표지판을 숨긴다
   onCardOpen?: (open: boolean) => void
   boardRef?: RefObject<SVGSVGElement | null>

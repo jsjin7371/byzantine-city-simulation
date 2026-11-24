@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Progress } from '../components/ui/progress'
 import { decisions, percent } from '../components/results/resultLabels'
@@ -195,7 +195,7 @@ export function GamePage() {
     run(async () => {
       setState(null) // 실패해도 이전 게임을 이어서 진행하지 않게 (God은 새 요청 때 이전 게임을 버린다)
       const game = isTutorial
-        ? await createGame('easy', 'wary', TUTORIAL_SEED)
+        ? await createGame('easy', 'wary', undefined, TUTORIAL_SEED)
         : await createGame(difficulty, citizenType)
       setState(game)
       setTutorial(isTutorial)
@@ -224,8 +224,6 @@ export function GamePage() {
         next_hints: turn.next_hints,
         next_share_pairs: turn.next_share_pairs,
       })
-      if (turn.game_over) setTutorial(false)
-      else setTutorialCursor((c) => tutorialStep(c, { turn: turn.turn, playing: false, cardOpen: false, gameOver: false }).cursor)
       // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다 (실패해도 종료 상태는 위에서 반영됨).
       if (turn.game_over) setState(await getGame(state.game_id))
     }, '다음 밤으로 넘기지 못했어요.')
@@ -244,41 +242,30 @@ export function GamePage() {
 
   const dismissTutorial = () => {
     setTutorial(false)
-    setTutorialCursor(TUTORIAL_STEPS.length)
     boardRef.current?.focus({ preventScroll: true })
   }
-
-  const handleCardOpen = useCallback((isOpen: boolean) => {
-    setCardOpen(isOpen)
-    if (isOpen) setTutorialCursor((c) => (c === 2 ? 3 : c))
-  }, [])
 
   const playing = step != null && result != null
   const finished = Boolean(state?.game_over && !playing)
   const shown = playing ? result : (history[viewed - 1] ?? result)
   const viewingPast = shown !== result
-  const tut =
-    tutorial && state
-      ? tutorialStep(tutorialCursor, {
-          turn: state.turn,
-          playing,
-          cardOpen,
-          gameOver: state.game_over,
-          viewingPast,
-        })
-      : null
-  const tutCursor = tut?.cursor
+  const tutContext = state
+    ? {
+        turn: state.turn,
+        playing,
+        cardOpen,
+        gameOver: state.game_over,
+        viewingPast,
+      }
+    : null
+  const tut = tutorial && tutContext ? tutorialStep(tutorialCursor, tutContext) : null
+  if (tut && tut.cursor !== tutorialCursor) setTutorialCursor(tut.cursor)
+  const tutorialActive = tut != null && tut.cursor < TUTORIAL_STEPS.length
   const activeTutorial = tut?.step ?? null
   const highlight = activeTutorial?.highlight ?? null
   const nextTutorial = () => {
-    if (tutCursor == null || !state) return
-    const next = tutorialStep(tutCursor + 1, {
-      turn: state.turn,
-      playing,
-      cardOpen,
-      gameOver: state.game_over,
-      viewingPast,
-    })
+    if (!tut || !tutContext) return
+    const next = tutorialStep(tut.cursor + 1, tutContext)
     setTutorialCursor(next.cursor)
     if (!next.step || next.step.wait || next.step.finish) {
       if (next.step?.wait === 'turn' && submitRef.current && !submitRef.current.disabled) {
@@ -333,7 +320,7 @@ export function GamePage() {
                   <button type="button" className="gm-exit" onClick={exit} disabled={busy}>
                     ← 나가기
                   </button>
-                  {tutorial && !state.game_over && <span className="gm-tutorial-badge">튜토리얼</span>}
+                  {tutorialActive && <span className="gm-tutorial-badge">튜토리얼</span>}
                   <div className="gm-role">
                     <span className="gm-me-dot" aria-hidden="true">
                       나
@@ -362,7 +349,7 @@ export function GamePage() {
                   {error}
                 </p>
               )}
-              {tutorial && !state.game_over && (
+              {tutorialActive && (
                 <Tutorial
                   step={activeTutorial}
                   onNext={nextTutorial}
@@ -377,8 +364,8 @@ export function GamePage() {
                   swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
                   stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
                   highlight={highlight}
-                  hideSigns={tutorial}
-                  onCardOpen={handleCardOpen}
+                  hideSigns={tutorialActive}
+                  onCardOpen={setCardOpen}
                   boardRef={boardRef}
                   picker={
                     latest

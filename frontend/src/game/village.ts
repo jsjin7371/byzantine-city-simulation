@@ -572,6 +572,16 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
 ]
 
+const TUTORIAL_STEP = {
+  cardWait: 2,
+  afterCard: 3,
+  day2Start: 6,
+  finish: 9,
+  done: TUTORIAL_STEPS.length,
+} as const
+
+const TUTORIAL_END_TURN = 3
+
 export type TutorialContext = {
   turn: number
   playing: boolean
@@ -585,15 +595,15 @@ export function tutorialStep(
   cursor: number,
   { turn, playing, cardOpen, gameOver, viewingPast = false }: TutorialContext,
 ): { cursor: number; step: TutorialStep | null } {
-  const done = TUTORIAL_STEPS.length
-  if (gameOver || cursor < 0 || cursor >= done || turn >= 4) return { cursor: done, step: null }
+  const { cardWait, afterCard, day2Start, finish, done } = TUTORIAL_STEP
+  if (gameOver || cursor < 0 || cursor >= done || turn > TUTORIAL_END_TURN) return { cursor: done, step: null }
 
   let next = cursor
-  if (turn === 0 && next === 2 && cardOpen) next = 3
-  else if (turn === 1 && next < 6) next = 6
-  else if (turn >= 2 && next < 9) next = 9
+  if (turn === 0 && next === cardWait && cardOpen) next = afterCard
+  else if (turn === 1 && next < day2Start) next = day2Start
+  else if (turn >= 2 && next < finish) next = finish
 
   if (playing || viewingPast) return { cursor: next, step: null }
-  if (next === 9 && turn < 3) return { cursor: next, step: null }
+  if (next === finish && turn < TUTORIAL_END_TURN) return { cursor: next, step: null }
   return { cursor: next, step: TUTORIAL_STEPS[next] }
 }
