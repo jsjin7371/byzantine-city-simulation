@@ -66,7 +66,7 @@ export type Preview = NonNullable<ReturnType<typeof suspicionPreview>>
 // 불리한 말은 항상 +20 이상이라 next>=from이고 next>0 (100→100도 불리). 유리한 말은 next<from이거나 0→0.
 export const worsens = (p: Pick<Preview, 'from' | 'next'>) => p.next >= p.from && p.next > 0
 
-// 어제와 달라진 집 (쪽지를 다시 볼 곳): 다음 힌트가 이번 턴과 바뀌었거나 새로 점선에 들어온 시민. 첫날은 없다.
+// 어제와 달라진 집 (쪽지를 다시 볼 곳): 다음 힌트가 이번 턴과 바뀌었거나 새로 쪽지 비교에 들어온 시민. 첫날은 없다.
 export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'next_hints' | 'next_share_pairs'>) {
   const met = new Set(result.sharing.flatMap((s) => s.pair))
   const changes: Record<number, string[]> = {}
@@ -74,7 +74,7 @@ export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'n
     const next = result.next_hints?.[c.city]
     const why = [
       c.hint && next && c.hint !== next ? '관측 바뀜' : null,
-      !met.has(c.city) && result.next_share_pairs?.some((p) => p.includes(c.city)) ? '점선 대조' : null,
+      !met.has(c.city) && result.next_share_pairs?.some((p) => p.includes(c.city)) ? '쪽지 비교' : null,
     ].filter((w) => w != null)
     if (why.length) changes[c.city] = why
   }
@@ -478,12 +478,12 @@ export function gameSummary(
   }
   const knots = history.filter((t) => t.sharing.some((s) => s.contradictions.some((c) => c.city === me)))
   if (knots.length)
-    moments.push(`점선 대조에서 다른 쪽지를 보냈다가 ${knots.length}번 들켰어요 (${knots.map((t) => `${t.turn}일째`).join(', ')})`)
+    moments.push(`쪽지 비교에서 다른 쪽지를 보냈다가 ${knots.length}번 들켰어요 (${knots.map((t) => `${t.turn}일째`).join(', ')})`)
   const trials = history.filter((t) => t.vote).length
   if (trials) moments.push(`재판이 ${trials}번 열렸어요`)
 
   const lesson = knots.length
-    ? '점선으로 이어진 두 집에 다른 쪽지를 보내면 모순으로 의심도가 크게 올라요. 같은 쪽지를 보내 보세요.'
+    ? '쪽지 비교로 이어진 두 집에 다른 쪽지를 보내면 모순으로 의심도가 크게 올라요. 같은 쪽지를 보내 보세요.'
     : crossed
       ? '관측과 다른 쪽지를 계속 받으면 의심도가 쌓여요. 의심도가 높은 집에는 가끔 관측에 맞는 쪽지를 보내 낮춰 보세요.'
       : state.outcome === 'loss'
@@ -536,7 +536,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'share',
-    text: '점선으로 이어진 두 집은 오늘 밤 내 쪽지를 서로 맞춰 봐요(점선 대조). 두 집에 다른 쪽지를 보내면 모순이 생겨 의심도가 크게 올라요.',
+    text: '점선으로 이어진 두 집은 오늘 밤 내 쪽지를 서로 비교해요(쪽지 비교). 두 집에 다른 쪽지를 보내면 모순이 생겨 의심도가 크게 올라요.',
   },
   {
     highlight: 'submit',

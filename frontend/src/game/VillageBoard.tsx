@@ -589,7 +589,7 @@ function NoteCard({
   )
 }
 
-const SIGNS = ['1 불빛부터 봐요', '2 집마다 쪽지 골라요', '3 점선 두 집엔 같은 쪽지']
+const SIGNS = ['1 불빛부터 봐요', '2 집마다 쪽지 골라요', '3 쪽지 비교엔 같은 쪽지']
 
 // 첫날 안내 표지판 (왼쪽 나무 기둥).
 function Signs() {
@@ -598,7 +598,7 @@ function Signs() {
       fontSize="14"
       fontWeight="700"
       role="img"
-      aria-label="첫날 안내: 1 창문 불빛부터 봐요, 2 집마다 쪽지를 골라요, 3 점선으로 이어진 두 집에는 같은 쪽지를 보내요"
+      aria-label="첫날 안내: 1 창문 불빛부터 봐요, 2 집마다 쪽지를 골라요, 3 오늘 밤 쪽지 비교로 이어진 두 집에는 같은 쪽지를 보내요"
     >
       <rect x="80" y="302" width="9" height="112" fill="#5a3d22" filter="url(#vb-rough)" />
       <text x="16" y="298" className="vb-sign-title">
@@ -811,8 +811,8 @@ export function VillageBoard({
         </g>
       )}
       {pairs.length > 0 && (
-        <g className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'} role="img" aria-label={`오늘 밤 점선 대조: ${pairLabel}`}>
-          <title>{`오늘 밤 점선 대조: ${pairLabel}`}</title>
+        <g className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'} role="img" aria-label={`오늘 밤 쪽지 비교: ${pairLabel}`}>
+          <title>{`오늘 밤 쪽지 비교: ${pairLabel}`}</title>
           {pairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
             const [mx, my] = pairMid(state.player_city, a, b)
@@ -821,11 +821,11 @@ export function VillageBoard({
                 <path d={d} className="vb-share-glow" />
                 <path d={d} fill="none" stroke="#3b2a1a" strokeWidth="9" strokeLinecap="round" opacity=".35" />
                 <path d={d} className="vb-share-line" fill="none" stroke="#ffd35a" strokeWidth="5" strokeDasharray="11 9" strokeLinecap="round" />
-                {/* 점선 이름표: 이 두 집은 오늘 밤 내가 준 쪽지를 서로 맞춰 본다 */}
+                {/* 점선 이름표: 이 두 집은 오늘 밤 내가 준 쪽지를 서로 비교한다 */}
                 <g className="vb-share-tag" aria-hidden>
                   <rect x={mx - 82} y={my - 80} width="164" height="25" rx="12.5" strokeWidth="1.5" />
                   <text x={mx} y={my - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
-                    오늘 밤 점선 대조
+                    오늘 밤 쪽지 비교
                   </text>
                 </g>
               </g>

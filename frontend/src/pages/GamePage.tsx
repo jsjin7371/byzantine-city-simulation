@@ -73,8 +73,8 @@ function TurnReport({ result }: { result: TurnResult }) {
             </article>
           ))}
       </div>
-      <h3>점선 대조</h3>
-      {result.sharing.length === 0 && <p className="gm-muted">오늘 밤 점선 대조 없음</p>}
+      <h3>쪽지 비교</h3>
+      {result.sharing.length === 0 && <p className="gm-muted">오늘 밤 쪽지 비교 없음</p>}
       <ul>
         {result.sharing.map((s) => (
           <li key={s.pair.join('-')}>

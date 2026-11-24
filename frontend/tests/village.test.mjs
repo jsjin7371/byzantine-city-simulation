@@ -108,7 +108,7 @@ test('changed houses: hint differs from today or newly on a dotted line, nothing
     next_hints: { 1: 'safe', 4: 'safe', 5: 'danger' },
     next_share_pairs: [[4, 5]],
   }
-  assert.deepEqual(changedHouses(day), { 1: ['관측 바뀜'], 5: ['점선 대조'] })
+  assert.deepEqual(changedHouses(day), { 1: ['관측 바뀜'], 5: ['쪽지 비교'] })
   assert.deepEqual(changedHouses({ ...day, next_hints: null, next_share_pairs: null }), {}) // 게임 종료
 })
 
@@ -261,7 +261,7 @@ test('game summary: turn 15 counts fooled citizens, first crossing of 60 and cau
   assert.equal(s.headline, '주민 과반을 끝까지 속였어요')
   assert.ok(s.moments.includes('마지막 15일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
   assert.ok(s.moments.includes('2일째 4번의 의심도가 70까지 올라 처음으로 재판 기준 60을 넘었어요'))
-  assert.ok(s.moments.includes('점선 대조에서 다른 쪽지를 보냈다가 1번 들켰어요 (2일째)'))
+  assert.ok(s.moments.includes('쪽지 비교에서 다른 쪽지를 보냈다가 1번 들켰어요 (2일째)'))
   assert.deepEqual(s.peaks, [10, 70, 50])
   assert.match(s.lesson, /같은 쪽지/)
 
