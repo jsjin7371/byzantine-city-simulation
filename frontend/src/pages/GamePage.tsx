@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Progress } from '../components/ui/progress'
 import { decisions, percent } from '../components/results/resultLabels'
@@ -12,10 +12,20 @@ import {
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
 import { GameStart } from '../game/GameStart'
+import { Tutorial } from '../game/Tutorial'
 import { VillageBoard } from '../game/VillageBoard'
 import { VillageLog } from '../game/VillageLog'
 import { GameResult } from '../game/GameResult'
-import { TUTORIAL_SEED, citizenScales, fooledDots, nightSteps, villageLines, visibleLines } from '../game/village'
+import {
+  TUTORIAL_SEED,
+  TUTORIAL_STEPS,
+  citizenScales,
+  fooledDots,
+  nightSteps,
+  tutorialStep,
+  villageLines,
+  visibleLines,
+} from '../game/village'
 import './GamePage.css'
 
 // 의심도 게이지. 재판 기준(60) 위치에 선을 긋는다.
@@ -138,6 +148,8 @@ export function GamePage() {
   const [error, setError] = useState('')
   const [step, setStep] = useState<number | null>(null) // 밤 연출 중인 단계. null이면 최종 상태
   const [tutorial, setTutorial] = useState(false)
+  const [tutorialCursor, setTutorialCursor] = useState(0)
+  const [cardOpen, setCardOpen] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const inGame = state !== null
@@ -185,6 +197,8 @@ export function GamePage() {
         : await createGame(difficulty, citizenType)
       setState(game)
       setTutorial(isTutorial)
+      setTutorialCursor(0)
+      setCardOpen(false)
       setHistory([])
       setViewed(0)
       setStep(null)
@@ -208,6 +222,8 @@ export function GamePage() {
         next_hints: turn.next_hints,
         next_share_pairs: turn.next_share_pairs,
       })
+      if (turn.game_over) setTutorial(false)
+      else setTutorialCursor((c) => tutorialStep(c, { turn: turn.turn, playing: false, cardOpen: false, gameOver: false }).cursor)
       // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다 (실패해도 종료 상태는 위에서 반영됨).
       if (turn.game_over) setState(await getGame(state.game_id))
     }, '다음 밤으로 넘기지 못했어요.')
@@ -215,6 +231,8 @@ export function GamePage() {
   const exit = () => {
     setState(null)
     setTutorial(false)
+    setTutorialCursor(0)
+    setCardOpen(false)
     setHistory([])
     setViewed(0)
     setStep(null)
@@ -222,8 +240,41 @@ export function GamePage() {
     setError('')
   }
 
+  const dismissTutorial = () => {
+    setTutorial(false)
+    setTutorialCursor(TUTORIAL_STEPS.length)
+  }
+
+  const handleCardOpen = useCallback((isOpen: boolean) => {
+    setCardOpen(isOpen)
+    if (isOpen) setTutorialCursor((c) => (c === 2 ? 3 : c))
+  }, [])
+
   const playing = step != null && result != null
   const finished = Boolean(state?.game_over && !playing)
+  const tut =
+    tutorial && state
+      ? tutorialStep(tutorialCursor, {
+          turn: state.turn,
+          playing,
+          cardOpen,
+          gameOver: state.game_over,
+        })
+      : null
+  const tutCursor = tut?.cursor
+  const activeTutorial = tut?.step ?? null
+  const highlight = activeTutorial?.highlight ?? null
+  const nextTutorial = () => {
+    if (tutCursor == null || !state) return
+    setTutorialCursor(
+      tutorialStep(tutCursor + 1, {
+        turn: state.turn,
+        playing,
+        cardOpen,
+        gameOver: state.game_over,
+      }).cursor,
+    )
+  }
   const shown = playing ? result : (history[viewed - 1] ?? result)
   const latest = state != null && !state.game_over && shown === result && !playing // 할 말은 마지막 턴에서만 고른다
   const scales = shown && state ? citizenScales(state, history, history.indexOf(shown)) : {}
@@ -299,12 +350,23 @@ export function GamePage() {
                   {error}
                 </p>
               )}
+              {tutorial && !state.game_over && (
+                <Tutorial
+                  step={activeTutorial}
+                  onNext={nextTutorial}
+                  onDismiss={dismissTutorial}
+                  onExit={exit}
+                />
+              )}
               <div className="gm-board-frame">
                 <VillageBoard
                   state={state}
                   result={shown}
                   swayed={Object.keys(scales).map(Number).filter((c) => scales[c].swayed)}
                   stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
+                  highlight={highlight}
+                  hideSigns={tutorial}
+                  onCardOpen={handleCardOpen}
                   picker={
                     latest
                       ? { claims, ruled, onClaim: (city, claim) => setClaims({ ...claims, [city]: claim }) }
@@ -313,7 +375,12 @@ export function GamePage() {
                 />
               </div>
             </section>
-            <VillageLog lines={lines && playing ? visibleLines(lines, steps[step]) : lines} day={shown?.turn} live={playing}>
+            <VillageLog
+              lines={lines && playing ? visibleLines(lines, steps[step]) : lines}
+              day={shown?.turn}
+              live={playing}
+              highlight={highlight === 'log'}
+            >
               {shown && !playing && (
                 <div className="vl-pager" role="group" aria-label="지난밤 넘겨보기">
                   <span className="vl-pager-label">지난밤 넘겨보기</span>
@@ -352,7 +419,11 @@ export function GamePage() {
                   </Button>
                 </div>
               ) : (
-                <Button onClick={submit} disabled={busy || !latest}>
+                <Button
+                  className={highlight === 'submit' ? 'tut-hl' : undefined}
+                  onClick={submit}
+                  disabled={busy || !latest}
+                >
                   {latest ? `${state.turn + 1}일째 밤으로 넘기기` : '가장 최근 날에서만 밤으로 넘길 수 있어요'}
                 </Button>
               )}

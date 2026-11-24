@@ -105,9 +105,10 @@ const SKY_SPARKS = [
 ] as const
 
 // 하늘: 정답이 위험이면 태풍 구름, 안전이면 맑은 하늘
-function Sky({ danger }: { danger: boolean }) {
+function Sky({ danger, highlighted = false }: { danger: boolean; highlighted?: boolean }) {
   return (
     <g
+      className={highlighted ? 'vb-sky vb-tut-hl' : 'vb-sky'}
       role="img"
       aria-label={
         danger
@@ -177,6 +178,7 @@ function Sky({ danger }: { danger: boolean }) {
       <text x="450" y="62" fontSize="14.5" textAnchor="middle" aria-hidden>
         {danger ? '내 목표: 주민을 집에 붙잡아 두기' : '내 목표: 주민을 대피시키기'}
       </text>
+      {highlighted && <rect className="vb-tut-ring" x="8" y="6" width="884" height="92" rx="10" aria-hidden />}
     </g>
   )
 }
@@ -285,7 +287,17 @@ function houseLabel(h: House) {
 type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
 
 // swayed: 내 쪽지가 없었다면 반대로 골랐을 시민 (작은 불꽃 한 번)
-function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolean }) {
+function HouseView({
+  h,
+  pick,
+  swayed,
+  highlight,
+}: {
+  h: House
+  pick?: Pick
+  swayed?: boolean
+  highlight?: string | null
+}) {
   const { x, y } = h
   const base = `${houseLabel(h)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
   const label = pick
@@ -296,9 +308,14 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
   // 어긋난 쪽지 한 장이면 재판: 막대가 약하게 두근거린다
   const near = !over && h.suspicion != null && h.suspicion >= SUSPICION.threshold - SUSPICION.disagree
   const postX = -48 + 0.96 * SUSPICION.threshold
+  const hlHouse = Boolean(pick && highlight === 'houses')
+  const hlWindow = highlight === 'windows'
+  const hlSuspicion = highlight === 'suspicion'
+  const hlFlag = highlight === 'flags'
+  const hlChanged = highlight === 'changed'
   return (
     <g
-      className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}`}
+      className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}${hlHouse ? ' vb-tut-hl' : ''}`}
       {...(pick
         ? { role: 'button', tabIndex: 0, 'aria-expanded': pick.open, onClick: pick.onOpen, onKeyDown: onActivateKey(pick.onOpen) }
         : { role: 'img' })}
@@ -307,6 +324,7 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
     >
       <title>{label}</title>
       {pick && <ellipse className="vb-hl" cx={x} cy={y + 2} rx="62" ry="17" />}
+      {hlHouse && <ellipse className="vb-tut-ring" cx={x} cy={y - 30} rx="62" ry="48" aria-hidden />}
       {h.role === 'player' ? (
         <g filter="url(#vb-rough)" transform={`translate(${x},${y}) scale(.8)`}>
           <use href="#vb-hut-dark" />
@@ -335,8 +353,9 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
         </text>
       )}
       {h.flag && (
-        <g key={h.flag} className="vb-flag" transform={`translate(${x + 28},${y - 62})`}>
+        <g key={h.flag} className={hlFlag ? 'vb-flag vb-tut-hl' : 'vb-flag'} transform={`translate(${x + 28},${y - 62})`}>
           <use href={`#vb-flag-${h.flag}`} />
+          {hlFlag && <rect className="vb-tut-ring" x="-6" y="-61" width="60" height="64" rx="8" aria-hidden />}
         </g>
       )}
       {swayed && (
@@ -344,9 +363,18 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
           <path d="M0 -13 L3.5 -3.5 L13 0 L3.5 3.5 L0 13 L-3.5 3.5 L-13 0 L-3.5 -3.5 Z" />
         </g>
       )}
-      {h.lit != null && <use href={h.lit ? '#vb-win-on' : '#vb-win-off'} x={x - 18} y={y - 20} filter="url(#vb-rough)" />}
+      {h.lit != null && (
+        <g className={hlWindow ? 'vb-window vb-tut-hl' : 'vb-window'}>
+          <use href={h.lit ? '#vb-win-on' : '#vb-win-off'} x={x - 18} y={y - 20} filter="url(#vb-rough)" />
+          {hlWindow && <rect className="vb-tut-ring" x={x - 32} y={y - 33} width="28" height="26" rx="6" aria-hidden />}
+        </g>
+      )}
       {h.suspicion != null && (
-        <g transform={`translate(${x - 20},${y + 30})`} className={over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}>
+        <g
+          transform={`translate(${x - 20},${y + 30})`}
+          className={`${over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}${hlSuspicion ? ' vb-tut-hl' : ''}`}
+        >
+          {hlSuspicion && <rect className="vb-tut-ring" x="-56" y="-15" width="146" height="41" rx="8" aria-hidden />}
           <rect x="-50" y="-5" width="100" height="10" rx="5" fill="#5a3d22" />
           <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
           {/* 재판 기준 60 말뚝 */}
@@ -379,11 +407,16 @@ function HouseView({ h, pick, swayed }: { h: House; pick?: Pick; swayed?: boolea
       )}
       {pick?.claim && <use href={`#vb-note-${pick.claim}`} x={x + 70} y={y - 30} />}
       {pick?.changed && (
-        <g className="vb-new" transform={`translate(${x - 10},${y + (h.suspicion != null ? 70 : 54)})`} aria-hidden>
+        <g
+          className={hlChanged ? 'vb-new vb-tut-hl' : 'vb-new'}
+          transform={`translate(${x - 10},${y + (h.suspicion != null ? 70 : 54)})`}
+          aria-hidden
+        >
           <rect x="-92" y="-11.5" width="184" height="23" rx="11.5" />
           <text y="4.5" fontSize="13.5" fontWeight="700" textAnchor="middle" className="vb-light">
             변동: {pick.changed.join('·')}
           </text>
+          {hlChanged && <rect className="vb-tut-ring" x="-96" y="-15.5" width="192" height="31" rx="15.5" />}
         </g>
       )}
     </g>
@@ -491,15 +524,18 @@ function NoteCard({
   claim,
   preview,
   onClaim,
+  highlightSuspicion = false,
 }: {
   h: House
   claim?: Claim
   preview: (c: Claim) => Preview | null
   onClaim: (c: Claim) => void
+  highlightSuspicion?: boolean
 }) {
   const left = h.x < PLAZA.x
   const cx = left ? h.x + 100 : h.x - 284
   const cy = h.y < 300 ? h.y - 54 : h.y - 77
+  const hasPreview = Boolean(preview('evacuate') || preview('stay'))
   return (
     <g transform={`translate(${cx},${cy})`}>
       <g className={`vb-card${left ? ' from-left' : ' from-right'}`} role="group" aria-label={`${h.city}번 집에 보낼 쪽지`}>
@@ -542,6 +578,9 @@ function NoteCard({
             </g>
           )
         })}
+        {highlightSuspicion && hasPreview && (
+          <rect className="vb-tut-ring" x="10" y="74" width="164" height="42" rx="5" aria-hidden />
+        )}
       </g>
     </g>
   )
@@ -613,12 +652,18 @@ export function VillageBoard({
   picker,
   stage,
   swayed = [],
+  highlight = null,
+  hideSigns = false,
+  onCardOpen,
 }: {
   state: GameState
   result: TurnResult | null
   picker?: NotePicker
   stage?: Stage
   swayed?: number[] // 내 쪽지가 결정을 뒤집은 시민 (citizenScales)
+  highlight?: string | null // 튜토리얼 강조 대상 이름
+  hideSigns?: boolean // 튜토리얼에서는 첫날 안내 표지판을 숨긴다
+  onCardOpen?: (open: boolean) => void
 }) {
   const [open, setOpen] = useState<number | null>(null)
   const svg = useRef<SVGSVGElement>(null)
@@ -659,6 +704,10 @@ export function VillageBoard({
     picker?.ruled && claim ? suspicionPreview(h, claim, pairs, picker.claims) : null
   const changed = picker && result ? changedHouses(result) : {}
   const opened = picker ? houses.find((h) => h.city === open && h.reachable) : undefined
+  const cardOpen = Boolean(opened)
+  useEffect(() => {
+    onCardOpen?.(cardOpen)
+  }, [cardOpen, onCardOpen])
   return (
     <svg
       ref={svg}
@@ -672,7 +721,7 @@ export function VillageBoard({
       <Ground />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <BoardLegend />
-      <Sky danger={state.truth === 'danger'} />
+      <Sky danger={state.truth === 'danger'} highlighted={highlight === 'sky'} />
       {night && <rect className="vb-night" width="900" height="598" />}
       {night && (
         // 단계 이름표: 하늘 왼쪽. key로 단계마다 다시 페이드. 스크린리더는 마을 이야기(live)가 읽는다
@@ -684,7 +733,7 @@ export function VillageBoard({
         </g>
       )}
       {pairs.length > 0 && (
-        <g className="vb-share" role="img" aria-label={`오늘 밤 점선 대조: ${pairLabel}`}>
+        <g className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'} role="img" aria-label={`오늘 밤 점선 대조: ${pairLabel}`}>
           <title>{`오늘 밤 점선 대조: ${pairLabel}`}</title>
           {pairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
@@ -709,12 +758,13 @@ export function VillageBoard({
       <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-plaza-label" aria-hidden>
         광장
       </text>
-      {picker && turn === 0 && <Signs />}
+      {picker && turn === 0 && !hideSigns && <Signs />}
       {houses.map((h) => (
         <HouseView
           key={h.city}
           h={h}
           swayed={at('flags') && swayed.includes(h.city)}
+          highlight={highlight}
           pick={
             picker && h.reachable
               ? {
@@ -764,6 +814,7 @@ export function VillageBoard({
           claim={picker.claims[opened.city]}
           preview={(c) => preview(opened, c)}
           onClaim={(c) => picker.onClaim(opened.city, c)}
+          highlightSuspicion={highlight === 'suspicion'}
         />
       )}
     </svg>

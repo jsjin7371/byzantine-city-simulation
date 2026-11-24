@@ -64,11 +64,13 @@ export function VillageLog({
   lines,
   day,
   live = false,
+  highlight = false,
   children,
 }: {
   lines: Line[] | null
   day?: number
   live?: boolean
+  highlight?: boolean
   children?: ReactNode
 }) {
   const log = useRef<HTMLDivElement>(null)
@@ -82,7 +84,7 @@ export function VillageLog({
   const toggle = (key: string) => setOpen((prev) => ({ ...prev, [key]: !prev[key] }))
 
   return (
-    <aside className="vl-talk" aria-label="마을 이야기">
+    <aside className={highlight ? 'vl-talk tut-hl' : 'vl-talk'} aria-label="마을 이야기">
       <div className="vl-head">
         <h2>마을 이야기</h2>
         {day != null && <span className="vl-day">{day}일째 밤</span>}
