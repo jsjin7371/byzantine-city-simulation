@@ -1238,6 +1238,97 @@ export function detectTactics(
   return detected.slice(0, 2)
 }
 
+const TRUST_BROKEN_SUSPICION = 80
+
+function formatHouseGroup(cities: number[]): string {
+  return `${cities.join('·')}번 집`
+}
+
+// 신뢰 끊김: 어떤 주민의 나(플레이어)에 대한 의심도가 처음 80 이상이 된 날. 다수결 주민이면 생략.
+export function detectTrustBrokenMoment(
+  state: Pick<GameState, 'player_city' | 'config'>,
+  history: Pick<TurnResult, 'turn' | 'cities'>[],
+): Moment | null {
+  if (state.config.citizen_type === 'majority') return null
+  const me = state.player_city
+  for (const t of history) {
+    const high = t.cities
+      .filter((c) => c.role === 'citizen' && (c.suspicion?.[me] ?? -1) >= TRUST_BROKEN_SUSPICION)
+      .sort((a, b) => a.city - b.city)
+    if (high.length === 0) continue
+    const houses = formatHouseGroup(high.map((c) => c.city))
+    if (state.config.citizen_type === 'ai') {
+      return {
+        day: t.turn,
+        text: `${t.turn}일째부터 ${houses}은 의심도가 ${TRUST_BROKEN_SUSPICION} 이상이 되어 내 쪽지를 거의 믿지 않았어요.`,
+      }
+    }
+    const allZeroWeight = high.every((c) => (c.suspicion?.[me] ?? 0) >= 100)
+    return {
+      day: t.turn,
+      text: allZeroWeight
+        ? `${t.turn}일째부터 ${houses}은 내 쪽지를 전혀 믿지 않았어요(의심도 100이면 0표예요).`
+        : `${t.turn}일째부터 ${houses}은 내 쪽지를 거의 믿지 않았어요(의심도 ${TRUST_BROKEN_SUSPICION} 이상이면 1/5표 이하예요).`,
+    }
+  }
+  return null
+}
+
+// 한꺼번에 풀림: 속은 주민 수가 전날 과반 이상 → 오늘 과반 미만으로 떨어진 첫날과 그날의 이유.
+export function detectDeceptionDropMoment(
+  state: Pick<GameState, 'player_city' | 'roles' | 'config' | 'truth'>,
+  history: Pick<TurnResult, 'turn' | 'cities'>[],
+  deceived: number[],
+  need: number,
+): Moment | null {
+  const idx = history.findIndex((_, i) => i > 0 && deceived[i - 1] >= need && deceived[i] < need)
+  if (idx < 0) return null
+  const me = state.player_city
+  const t = history[idx]
+  const citizens = t.cities.filter((c) => c.role === 'citizen')
+  const total = citizens.length
+  const correctHints = citizens.filter((c) => c.hint != null && c.hint === state.truth).length
+  const highSus =
+    state.config.citizen_type === 'majority'
+      ? []
+      : citizens
+          .filter((c) => (c.suspicion?.[me] ?? -1) >= TRUST_BROKEN_SUSPICION)
+          .sort((a, b) => a.city - b.city)
+  const followedNeighbors = citizens
+    .filter((c) => {
+      if (c.hint == null || c.hint === state.truth || c.correct !== true || !c.received) return false
+      return Object.entries(c.received).some(
+        ([sender, msg]) =>
+          msg != null && Number(sender) !== me && state.roles[sender] === 'citizen' && agrees(state.truth, msg.claim),
+      )
+    })
+    .map((c) => c.city)
+    .sort((a, b) => a - b)
+
+  const parts = [`${t.turn}일째, 속은 주민이 ${deceived[idx - 1]}명에서 ${deceived[idx]}명으로 줄었어요.`]
+  if (total > 0 && correctHints === total) {
+    parts.push(`그날은 주민 ${total}명 모두 관측이 맞았어요.`)
+  } else if (correctHints > 0) {
+    parts.push(`그날은 주민 ${total}명 중 ${correctHints}명은 관측이 맞았어요.`)
+  } else {
+    parts.push('그날은 관측이 맞은 주민이 없었어요.')
+  }
+  if (highSus.length > 0) {
+    const houses = formatHouseGroup(highSus.map((c) => c.city))
+    const allZeroWeight =
+      state.config.citizen_type !== 'ai' && highSus.every((c) => (c.suspicion?.[me] ?? 0) >= 100)
+    parts.push(
+      allZeroWeight
+        ? `${houses}은 의심도가 100이라 내 쪽지가 아예 안 통했어요.`
+        : `${houses}은 의심도가 ${TRUST_BROKEN_SUSPICION} 이상이라 내 쪽지가 거의 안 통했어요.`,
+    )
+  }
+  if (followedNeighbors.length > 0) {
+    parts.push(`${formatHouseGroup(followedNeighbors)}은 관측이 틀렸는데도 이웃 쪽지를 믿고 돌아섰어요.`)
+  }
+  return { day: t.turn, text: parts.join(' ') }
+}
+
 export function gameSummary(
   state: Pick<GameState, 'player_city' | 'roles' | 'config' | 'truth' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities' | 'sharing' | 'vote'>[],
@@ -1265,6 +1356,11 @@ export function gameSummary(
   const tags = tactics.map((t) => t.tag)
 
   const momentItems: (Moment & { kind?: 'caught' | 'knots' })[] = []
+
+  const trustBroken = detectTrustBrokenMoment(state, history)
+  if (trustBroken) momentItems.push(trustBroken)
+  const deceptionDrop = detectDeceptionDropMoment(state, history, deceived, need)
+  if (deceptionDrop) momentItems.push(deceptionDrop)
 
   if (vote) {
     const voters = Object.entries(vote.ballots)

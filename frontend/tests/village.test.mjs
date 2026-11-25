@@ -1133,3 +1133,221 @@ test('onOffTrajectory oscillates by ±20, clamps at 0..100, and sample stays bel
     [0, 0, 20, 40, 60, 80, 100, 100],
   )
 })
+
+test('gameSummary adds trust-broken and deception-drop moments without tags or chart pins (game 723 pattern)', () => {
+  const g723State = {
+    config: { ...soloConfig, sensor_error: 0.48, seed: 15 },
+    roles: { 1: 'player', 2: 'citizen', 3: 'citizen', 4: 'citizen', 5: 'citizen' },
+    player_city: 1,
+    truth: 'danger',
+    outcome: 'loss',
+    end_reason: 'turns_done',
+  }
+  const row = (city, hint, decision, correct, susP, received = { 1: msg('stay') }) => ({
+    city,
+    role: 'citizen',
+    hint,
+    received,
+    decision,
+    correct,
+    suspicion: susP == null ? null : { 1: susP },
+    reason: null,
+  })
+  const playerRow = { city: 1, role: 'player', hint: null, received: null, decision: null, correct: null, suspicion: null, reason: null }
+
+  // 게임 723 축약 흐름: 7일 4명 속음 → 8일 2·3번 의심도 80/60(3명 속음) → 9일 관측 4명 모두 맞고 2·3번 의심도 100/80(1명 속음) → 15일 패배
+  const g723Hist = [
+    {
+      turn: 7,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'stay', false, 60),
+        row(3, 'safe', 'stay', false, 40),
+        row(4, 'safe', 'stay', false, 0),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 8,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 80),
+        row(3, 'danger', 'stay', false, 60),
+        row(4, 'safe', 'stay', false, 0),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 9,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 100),
+        row(3, 'danger', 'evacuate', true, 80),
+        row(4, 'danger', 'evacuate', true, 0),
+        row(5, 'danger', 'stay', false, 20),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 15,
+      cities: [
+        playerRow,
+        row(2, 'safe', 'stay', false, 80),
+        row(3, 'danger', 'evacuate', true, 100),
+        row(4, 'danger', 'evacuate', true, 60),
+        row(5, 'safe', 'stay', false, 20),
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ]
+
+  const s = gameSummary(g723State, g723Hist)
+  const trustLine = s.moments.find((m) => m.day === 8 && m.text.includes('내 쪽지를 거의 믿지 않았어요'))
+  assert.ok(trustLine, 'trust-broken moment added on day 8')
+  assert.equal(trustLine.tag, undefined)
+  assert.equal(trustLine.text, '8일째부터 2번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요).')
+
+  const dropLine = s.moments.find((m) => m.day === 9 && m.text.includes('속은 주민이'))
+  assert.ok(dropLine, 'deception-drop moment added on day 9')
+  assert.equal(dropLine.tag, undefined)
+  assert.equal(
+    dropLine.text,
+    '9일째, 속은 주민이 3명에서 1명으로 줄었어요. 그날은 주민 4명 모두 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지가 거의 안 통했어요.',
+  )
+  // 날짜순 정렬 유지, 그래프 핀 추가 없음
+  const datedDays = s.moments.filter((m) => m.day != null).map((m) => m.day)
+  assert.deepEqual(datedDays, [...datedDays].sort((a, b) => a - b))
+  assert.equal(s.pins[1], undefined)
+  assert.equal(s.pins[2], undefined)
+
+  // 같은 날 여러 집이 80 이상 도달 + 자기 관측 틀렸는데 이웃 쪽지를 따라 맞힌 집 동반
+  const groupedAndFollowed = [
+    {
+      turn: 4,
+      cities: [
+        playerRow,
+        row(2, 'safe', 'stay', false, 60),
+        row(3, 'safe', 'stay', false, 60),
+        row(4, 'safe', 'stay', false, 0),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 5,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 80, { 1: msg('stay'), 3: msg('evacuate') }),
+        row(3, 'danger', 'evacuate', true, 80, { 1: msg('stay'), 2: msg('evacuate') }),
+        row(4, 'danger', 'evacuate', true, 20, { 1: msg('stay'), 2: msg('evacuate') }),
+        row(5, 'safe', 'evacuate', true, 0, { 1: msg('stay'), 2: msg('evacuate'), 3: msg('evacuate') }),
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  const sGroup = gameSummary(g723State, groupedAndFollowed)
+  assert.ok(
+    sGroup.moments.some(
+      (m) => m.day === 5 && m.text === '5일째부터 2·3번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요).',
+    ),
+  )
+  assert.ok(
+    sGroup.moments.some(
+      (m) =>
+        m.day === 5 &&
+        m.text ===
+          '5일째, 속은 주민이 4명에서 0명으로 줄었어요. 그날은 주민 4명 중 3명은 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지가 거의 안 통했어요. 5번 집은 관측이 틀렸는데도 이웃 쪽지를 믿고 돌아섰어요.',
+    ),
+  )
+
+  // 처음 80 이상이 모두 100으로 바로 오른 경우 (0표 표현)
+  const jumpTo100 = [
+    {
+      turn: 3,
+      cities: [playerRow, row(2, 'danger', 'evacuate', true, 100), row(3, 'danger', 'evacuate', true, 40)],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  assert.ok(
+    gameSummary(g723State, jumpTo100).moments.some(
+      (m) => m.day === 3 && m.text === '3일째부터 2번 집은 내 쪽지를 전혀 믿지 않았어요(의심도 100이면 0표예요).',
+    ),
+  )
+
+  // 다수결 주민(의심도 없음): 신뢰 끊김(a)은 생략, 한꺼번에 풀림(b)은 관측·이웃 쪽지만으로 설명
+  const majHist = [
+    {
+      turn: 2,
+      cities: [
+        playerRow,
+        row(2, 'safe', 'stay', false, null),
+        row(3, 'safe', 'stay', false, null),
+        row(4, 'safe', 'stay', false, null),
+        row(5, 'safe', 'stay', false, null),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 3,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, null, { 1: msg('stay'), 3: msg('evacuate') }),
+        row(3, 'danger', 'evacuate', true, null, { 1: msg('stay'), 2: msg('evacuate') }),
+        row(4, 'safe', 'evacuate', true, null, { 1: msg('stay'), 2: msg('evacuate'), 3: msg('evacuate') }),
+        row(5, 'safe', 'stay', false, null, { 1: msg('stay') }),
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  const sMaj = gameSummary({ ...g723State, config: { ...g723State.config, citizen_type: 'majority' } }, majHist)
+  assert.equal(sMaj.moments.some((m) => m.text.includes('믿지 않았어요')), false)
+  assert.ok(
+    sMaj.moments.some(
+      (m) =>
+        m.day === 3 &&
+        m.text ===
+          '3일째, 속은 주민이 4명에서 1명으로 줄었어요. 그날은 주민 4명 중 2명은 관측이 맞았어요. 4번 집은 관측이 틀렸는데도 이웃 쪽지를 믿고 돌아섰어요.',
+    ),
+  )
+
+  // 해당 없는 판: 의심도 80 미만 유지 + 과반 이상→미만 하락 없음
+  const calmHist = [
+    {
+      turn: 1,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 20),
+        row(3, 'danger', 'evacuate', true, 20),
+        row(4, 'safe', 'stay', false, 0),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 2,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 40),
+        row(3, 'danger', 'evacuate', true, 40),
+        row(4, 'danger', 'evacuate', true, 20),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  const sCalm = gameSummary(g723State, calmHist)
+  assert.equal(sCalm.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('속은 주민이')), false)
+})
