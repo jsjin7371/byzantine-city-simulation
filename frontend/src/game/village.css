@@ -2051,6 +2051,30 @@ dialog.tb-dialog[open] {
 .tb-box p:last-child {
   margin-bottom: 0;
 }
+.tb-figure {
+  margin: 18px 0;
+  padding: 14px 16px 12px;
+  background: #fdfaf1;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.tb-figure svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.tb-figure svg text,
+.tb-figure svg tspan {
+  font-family: var(--gm-book-font);
+}
+.tb-figcaption {
+  margin-top: 10px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--muted);
+  word-break: keep-all;
+  text-wrap: pretty;
+}
 .tb-proof {
   margin-top: 14px;
 }

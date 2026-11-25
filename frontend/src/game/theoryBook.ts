@@ -406,3 +406,45 @@ export function getTacticTip(tag: TagKey): TheoryTip {
     }
   )
 }
+
+export const CONDORCET_NS = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25] as const
+export const CONDORCET_PS = [0.7, 0.6, 0.52] as const
+
+// 콩도르세 배심원 정리: 홀수 n명의 독립 투표자(개별 정답 확률 p)의 다수결 정답 확률 (이항분포 누적합).
+export function condorcetMajorityProb(n: number, p: number): number {
+  const half = Math.floor(n / 2) + 1
+  let sum = 0
+  let comb = 1
+  for (let k = 0; k <= n; k++) {
+    if (k >= half) sum += comb * p ** k * (1 - p) ** (n - k)
+    comb = (comb * (n - k)) / (k + 1)
+  }
+  return sum
+}
+
+export type OnOffAction = 'lie' | 'honest'
+export type OnOffPoint = { day: number; action: 'start' | OnOffAction; suspicion: number }
+
+export const ONOFF_SAMPLE_ACTIONS: readonly OnOffAction[] = [
+  'lie',
+  'lie',
+  'honest',
+  'lie',
+  'honest',
+  'honest',
+  'lie',
+  'lie',
+  'honest',
+  'lie',
+]
+
+// 온오프 공격 의심도 궤적: 거짓(+20)과 정직(-20)을 번갈아 수행하며 0~100 범위로 제한.
+export function onOffTrajectory(actions: readonly OnOffAction[], start = 0): OnOffPoint[] {
+  let cur = Math.min(100, Math.max(0, start))
+  const points: OnOffPoint[] = [{ day: 0, action: 'start', suspicion: cur }]
+  actions.forEach((action, idx) => {
+    cur = Math.min(100, Math.max(0, cur + (action === 'lie' ? 20 : -20)))
+    points.push({ day: idx + 1, action, suspicion: cur })
+  })
+  return points
+}

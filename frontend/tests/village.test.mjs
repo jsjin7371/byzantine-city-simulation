@@ -3,7 +3,15 @@ import test from 'node:test'
 import {
   DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
-import { THEORY_TOPICS, getTacticTip } from '../src/game/theoryBook.ts'
+import {
+  CONDORCET_NS,
+  CONDORCET_PS,
+  ONOFF_SAMPLE_ACTIONS,
+  THEORY_TOPICS,
+  condorcetMajorityProb,
+  getTacticTip,
+  onOffTrajectory,
+} from '../src/game/theoryBook.ts'
 import { difficulties } from '../src/gameApi.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -1002,4 +1010,43 @@ test('resultInfluence counts swayed wrong citizens, shows default no-note rates,
   // AI 주민은 영향력 줄 전체 숨김
   assert.equal(resultInfluence(soloState({ config: { ...soloConfig, citizen_type: 'ai' } }), h), null)
   assert.deepEqual(resultDeceived(h), [2])
+})
+
+test('condorcetMajorityProb computes exact binomial majority probabilities and increases monotonically for p > 0.5', () => {
+  // n=1이면 개별 확률 p와 동일
+  assert.ok(Math.abs(condorcetMajorityProb(1, 0.7) - 0.7) < 1e-12)
+  assert.ok(Math.abs(condorcetMajorityProb(1, 0.52) - 0.52) < 1e-12)
+  // n=3: 3p^2(1-p) + p^3 = 3p^2 - 2p^3
+  assert.ok(Math.abs(condorcetMajorityProb(3, 0.6) - (3 * 0.36 - 2 * 0.216)) < 1e-12)
+  assert.ok(Math.abs(condorcetMajorityProb(3, 0.7) - (3 * 0.49 - 2 * 0.343)) < 1e-12)
+  // p=0.5이면 모든 홀수 n에서 정확히 0.5
+  for (const n of CONDORCET_NS) {
+    assert.ok(Math.abs(condorcetMajorityProb(n, 0.5) - 0.5) < 1e-12)
+  }
+  // p > 0.5이면 홀수 n에 대해 단조 증가하며 p가 클수록 높다
+  for (const p of CONDORCET_PS) {
+    const vals = CONDORCET_NS.map((n) => condorcetMajorityProb(n, p))
+    for (let i = 1; i < vals.length; i++) {
+      assert.ok(vals[i] > vals[i - 1], `p=${p} increases at n=${CONDORCET_NS[i]}`)
+    }
+  }
+  assert.ok(condorcetMajorityProb(25, 0.7) > 0.98)
+  assert.ok(condorcetMajorityProb(25, 0.6) > 0.84 && condorcetMajorityProb(25, 0.6) < 0.85)
+  assert.ok(condorcetMajorityProb(25, 0.52) > 0.57 && condorcetMajorityProb(25, 0.52) < 0.59)
+})
+
+test('onOffTrajectory oscillates by ±20, clamps at 0..100, and sample stays below threshold 60', () => {
+  const sample = onOffTrajectory(ONOFF_SAMPLE_ACTIONS)
+  assert.equal(sample.length, ONOFF_SAMPLE_ACTIONS.length + 1)
+  assert.equal(sample[0].suspicion, 0)
+  assert.ok(sample.every((p) => p.suspicion >= 0 && p.suspicion < 60))
+  assert.deepEqual(
+    sample.map((p) => p.suspicion),
+    [0, 20, 40, 20, 40, 20, 0, 20, 40, 20, 40],
+  )
+  // 하한 0·상한 100 클램프 확인
+  assert.deepEqual(
+    onOffTrajectory(['honest', 'lie', 'lie', 'lie', 'lie', 'lie', 'lie'], 0).map((p) => p.suspicion),
+    [0, 0, 20, 40, 60, 80, 100, 100],
+  )
 })

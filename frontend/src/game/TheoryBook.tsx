@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from 'react'
+import { TheoryFigure } from './TheoryFigures'
 import { THEORY_TOPICS } from './theoryBook'
 import type { TopicKey } from './village'
 
@@ -98,6 +99,7 @@ export function TheoryBook({ topic, onClose }: { topic: TopicKey | null; onClose
               <p>{body}</p>
             </div>
           ))}
+          {topic && <TheoryFigure topic={topic} />}
           {data.proof && (
             <p className="tb-proof">
               <b>왜 그런가.</b> {data.proof}
