@@ -39,8 +39,8 @@ export function GameResult({ state, history, children }: { state: GameState; his
       </p>
       <h3>결정적 순간</h3>
       <ul>
-        {s.moments.map((m) => (
-          <li key={m}>{m}</li>
+        {s.moments.map((m, i) => (
+          <li key={`${m.day ?? 'all'}-${i}`}>{m.text}</li>
         ))}
       </ul>
       <h3>배운 것</h3>

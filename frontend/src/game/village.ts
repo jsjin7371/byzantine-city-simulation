@@ -731,16 +731,494 @@ export function visibleLines(lines: Line[], step: Step) {
   })
 }
 
-// 결과 화면 (명세 4번): 표를 펼치지 않아도 왜 이기고 졌는지.
-type Summary = { headline: string; moments: string[]; lesson: string; peaks: (number | null)[] }
+// 결과 화면 (명세: 결과 해석 확장)
+export type TopicKey = 'byz' | 'equiv' | 'onoff' | 'ring' | 'condorcet' | 'zealot' | 'falsepos' | 'audit'
+export type TagKey = 'audit' | 'onoff' | 'zealot' | 'falsepos' | 'equiv'
+
+export const TAG_LABELS: Record<TagKey, string> = {
+  audit: '감사 회피',
+  onoff: '온오프 공격',
+  zealot: '완고한 행위자',
+  falsepos: '거짓 양성',
+  equiv: '이중 발언',
+}
+
+export const TAG_PIN_LABELS: Record<TagKey, string> = {
+  audit: '완벽한 알리바이',
+  onoff: '의심 세탁',
+  zealot: '고집쟁이 동료',
+  falsepos: '누명 씌우기',
+  equiv: '두 얼굴',
+}
+
+export type Moment = {
+  day: number | null
+  text: string
+  tag?: TagKey
+}
+
+export type BaselineReading = {
+  lines: string[]
+  topic: 'byz' | 'ring'
+  linkTitle: string
+  linkSub: string
+}
+
+export type InfluenceSummary = {
+  count: number
+  noNoteWinRate: string | null
+}
+
+export type ChartPin = {
+  labels: string[]
+  danger: boolean
+}
+
+export type Summary = {
+  headline: string
+  chips: string[]
+  baseline: BaselineReading
+  decisive: string[]
+  moments: Moment[]
+  tags: TagKey[]
+  influence: InfluenceSummary | null
+  deceived: number[]
+  peaks: (number | null)[]
+  pins: Record<number, ChartPin>
+  majorityNeed: number
+  citizenCount: number
+  lesson: string
+}
+
+const DEFAULT_NO_NOTE_RATES: readonly { error: number; rate: string }[] = [
+  { error: 0.3, rate: '98.6%' },
+  { error: 0.4, rate: '79.9%' },
+  { error: 0.48, rate: '41.2%' },
+]
+
+// 이번 마을 칩: 집 수, 마피아 수, 쪽지 비교 방식, 연결 방식, 주민 종류.
+export function resultVillageChips(state: Pick<GameState, 'config' | 'roles'>): string[] {
+  const houseCount = Object.keys(state.roles).length
+  const mafiaChip =
+    state.config.mafia_count === 1
+      ? '마피아는 나 혼자'
+      : state.config.mafia_count === 2
+        ? '마피아 둘'
+        : `마피아 ${state.config.mafia_count}명`
+  const shareChip =
+    state.config.share_mode === 'all'
+      ? '모든 집 쪽지 비교'
+      : state.config.share_mode === 'none'
+        ? '쪽지 비교 없음'
+        : '밤마다 쪽지 비교'
+  const connChip = state.config.connection === 'ring' ? '양옆과만 연결' : '모든 집과 연결'
+  const citizenChip =
+    state.config.citizen_type === 'wary'
+      ? '눈치 보는 주민'
+      : state.config.citizen_type === 'majority'
+        ? '다수결 주민'
+        : 'AI 주민'
+  return [`집 ${houseCount}채`, mafiaChip, shareChip, connChip, citizenChip]
+}
+
+// 날짜별 속은 주민 수 (role==='citizen' && correct===false).
+export function resultDeceived(history: Pick<TurnResult, 'cities'>[]): number[] {
+  return history.map((t) => t.cities.filter((c) => c.role === 'citizen' && c.correct === false).length)
+}
+
+// 판 전체에서 플레이어가 매 턴 모든 주민에게 진짜 날씨만 보냈는지 확인.
+function playerAlwaysHonest(
+  state: Pick<GameState, 'player_city' | 'truth'>,
+  history: Pick<TurnResult, 'cities'>[],
+): boolean {
+  const me = state.player_city
+  let sentCount = 0
+  for (const t of history) {
+    for (const c of t.cities) {
+      if (c.role !== 'citizen') continue
+      const msg = c.received?.[me]
+      if (!msg) continue
+      sentCount++
+      if (!agrees(state.truth, msg.claim)) return false
+    }
+  }
+  return sentCount > 0
+}
+
+// 출발선 문장 (목업 "검토용 7가지" 표 기준). 화면 겉면에는 수식을 쓰지 않는다.
+export function resultBaseline(
+  state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth' | 'outcome' | 'end_reason'>,
+  history: Pick<TurnResult, 'turn' | 'cities' | 'vote'>[],
+): BaselineReading {
+  const n = Object.keys(state.roles).length
+  const f = state.config.mafia_count
+  const citizens = Object.values(state.roles).filter((r) => r === 'citizen').length
+  const need = majority(citizens)
+  const won = state.outcome !== 'loss'
+  const last = history.at(-1)
+  const topic: 'byz' | 'ring' = state.config.connection === 'ring' ? 'ring' : 'byz'
+  const linkTitle = topic === 'ring' ? '연결도 조건' : '비잔틴 장군 문제'
+  const linkSub =
+    topic === 'ring'
+      ? '왜 양옆만 이어지면 불리한지'
+      : n < 3 * f + 1
+        ? '왜 마피아가 둘이면 보장이 사라지는지'
+        : '왜 주민이 유리했는지'
+
+  // 7. 정직했는데 재판
+  if (
+    state.end_reason === 'caught' &&
+    last?.vote?.accused === state.player_city &&
+    playerAlwaysHonest(state, history)
+  ) {
+    return {
+      lines: ['진짜 날씨만 말했는데도 재판에 걸렸어요. 하늘을 잘못 본 주민에게는 사실도 거짓말처럼 들리거든요.'],
+      topic,
+      linkTitle,
+      linkSub,
+    }
+  }
+
+  // 5. 고리 마을 (연결 부족)
+  if (state.config.connection === 'ring') {
+    return {
+      lines: [
+        `양옆 이웃하고만 이야기하는 마을은, 어떤 규칙을 써도 주민이 꼭 지켜 낸다는 보장이 없어요. 그래도 저절로 무너지진 않아서, ${
+          won ? '이번엔 전략이 통했어요.' : '이번엔 주민들이 끝까지 버텨 냈어요.'
+        }`,
+      ],
+      topic,
+      linkTitle,
+      linkSub,
+    }
+  }
+
+  // 6. 마피아 둘 (n < 3f + 1)
+  if (n < 3 * f + 1) {
+    const head =
+      n === 5 && f === 2
+        ? '집 다섯에 마피아 둘이면 주민이 반드시 버틴다는 보장이 사라져요.'
+        : `집 ${n}채에 마피아 ${f}명이면 주민이 반드시 버틴다는 보장이 사라져요.`
+    const tail = won
+      ? ' 수적 우위를 잘 살려 끝까지 흔들어 놓았어요.'
+      : ' 그런데도 어려웠다면, 같은 거짓말만 되풀이한 동료가 먼저 의심받았기 때문이에요.'
+    return { lines: [`${head}${tail}`], topic, linkTitle, linkSub }
+  }
+
+  // n >= 3f + 1 && connection === 'all'
+  let rightHints = 0
+  let wrongHints = 0
+  for (const t of history) {
+    for (const c of t.cities) {
+      if (c.role !== 'citizen' || !c.hint) continue
+      if (c.hint === state.truth) rightHints++
+      else wrongHints++
+    }
+  }
+
+  // 4. 하늘 탓 (관측 절반 초과가 틀렸고 재판으로 끝난 판이 아닐 때)
+  if (state.end_reason !== 'caught' && wrongHints > rightHints) {
+    return {
+      lines: [
+        '주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요. 누가 마피아였어도 주민이 이긴다고 장담하기 어려웠어요.',
+      ],
+      topic,
+      linkTitle,
+      linkSub,
+    }
+  }
+
+  // 1. 주민 유리, 승리
+  if (won) {
+    const dec = resultDeceived(history)
+    const lastWrong = dec.at(-1) ?? 0
+    let streakIdx = dec.length - 1
+    while (streakIdx > 0 && dec[streakIdx - 1] >= need) streakIdx--
+    const streakDay = history[streakIdx]?.turn ?? last?.turn ?? 0
+    const detail =
+      streakDay > 0 && lastWrong > 0
+        ? `밤마다 한 번에 마음을 정하는 주민들의 빈틈을 파고들어, ${streakDay}일째부터 ${lastWrong}집의 마음을 돌렸어요.`
+        : '밤마다 한 번에 마음을 정하는 주민들의 빈틈을 잘 파고들었어요.'
+    return {
+      lines: [`원래 주민에게 유리한 판이었는데도 해냈어요. ${detail}`],
+      topic,
+      linkTitle,
+      linkSub,
+    }
+  }
+
+  // 2. 15일 버텼지만 패배
+  if (state.end_reason === 'turns_done') {
+    return {
+      lines: [
+        '끝까지 정체는 숨겼어요. 다만 마지막 밤, 주민들이 본 하늘이 진짜 날씨 쪽으로 모여 과반의 마음을 돌리지 못했어요.',
+      ],
+      topic,
+      linkTitle,
+      linkSub,
+    }
+  }
+
+  // 3. 재판 패배 (기본)
+  const sub =
+    n === 5 && f === 1
+      ? '다섯 집 중 거짓말하는 집은 하나뿐이라, 주민 넷이 서로 맞춰 보면 가려낼 수 있었거든요.'
+      : `집 ${n}채 중 거짓말하는 집은 ${f}곳뿐이라, 주민들이 서로 맞춰 보면 가려낼 수 있었거든요.`
+  return {
+    lines: ['원래 주민에게 유리한 판이었어요.', sub],
+    topic,
+    linkTitle,
+    linkSub,
+  }
+}
+
+// 결정타: 기존 판정(재판·모순·과반)을 재사용해 한 문장(필요 시 2줄)으로.
+export function resultDecisive(
+  state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'>,
+  history: Pick<TurnResult, 'turn' | 'cities' | 'sharing' | 'vote'>[],
+): string[] {
+  const me = state.player_city
+  const last = history.at(-1)
+  const day = last?.turn ?? 0
+  const citizens = Object.values(state.roles).filter((r) => r === 'citizen').length
+  const need = majority(citizens)
+
+  if (state.end_reason === 'caught' && last?.vote) {
+    const caughtClash = last.sharing.find((s) => s.contradictions.some((c) => c.city === me))
+    if (caughtClash && last.vote.accused === me) {
+      const [a, b] = caughtClash.pair
+      return [
+        `${day}일째 밤, ${a}번 집과 ${b}번 집에 서로 다른 쪽지를 보냈어요.`,
+        '그날 두 집이 쪽지를 비교하면서 들켰어요.',
+      ]
+    }
+    const voters = Object.entries(last.vote.ballots)
+      .filter(([, to]) => to === last.vote!.accused)
+      .map(([from]) => `${from}번`)
+    const who = last.vote.accused === me ? '나를' : `동료 ${last.vote.accused}번을`
+    return [`${day}일째 재판에서 ${voters.join(', ')} 집이 ${who} 지목해 들켰어요 (${voters.length}표, 과반 ${need}표).`]
+  }
+
+  if (last) {
+    const wrong = last.cities.filter((c) => c.role === 'citizen' && c.correct === false).length
+    if (state.outcome === 'perfect_win') {
+      return [`마지막 ${day}일째 밤, 주민 ${citizens}명 모두를 끝까지 속여 완승을 거뒀어요.`]
+    }
+    if (state.outcome === 'win') {
+      return [`마지막 ${day}일째 밤, 주민 ${citizens}명 중 ${wrong}명을 속여 과반(${need}명)을 넘겼어요.`]
+    }
+    return [`마지막 ${day}일째 밤, 주민 ${citizens}명 중 ${wrong}명만 속아 과반(${need}명)에 못 미쳤어요.`]
+  }
+  return ['이번 판이 끝났어요.']
+}
+
+// 영향력: 판 전체에서 citizenScales().swayed && correct===false인 (턴, 주민) 수. AI 주민이면 null.
+export function resultInfluence(
+  state: Pick<GameState, 'player_city' | 'config'>,
+  history: Pick<TurnResult, 'cities'>[],
+): InfluenceSummary | null {
+  if (state.config.citizen_type === 'ai') return null
+  let count = 0
+  for (let i = 0; i < history.length; i++) {
+    const scales = citizenScales(state, history, i)
+    for (const c of history[i].cities) {
+      if (c.role === 'citizen' && c.correct === false && scales[c.city]?.swayed) count++
+    }
+  }
+  const isDefault =
+    state.config.citizen_type === 'wary' &&
+    state.config.mafia_count === 1 &&
+    state.config.connection === 'all'
+  const matched = isDefault
+    ? DEFAULT_NO_NOTE_RATES.find((r) => Math.abs(r.error - state.config.sensor_error) < 1e-6)
+    : undefined
+  return { count, noNoteWinRate: matched?.rate ?? null }
+}
+
+type DetectedTactic = {
+  tag: TagKey
+  day: number
+  text: string
+  attachTo?: 'knots' | 'caught'
+}
+
+// 꼬리표 판정 (아이디어 노트 A2 표 기준 그대로, 최대 2개, 드문 순서).
+// 감사 회피 > 온오프 공격 > 완고한 행위자 > 거짓 양성 > 이중 발언.
+export function detectTactics(
+  state: Pick<GameState, 'player_city' | 'roles' | 'config' | 'truth'>,
+  history: Pick<TurnResult, 'turn' | 'cities' | 'sharing' | 'vote'>[],
+): DetectedTactic[] {
+  const me = state.player_city
+  const detected: DetectedTactic[] = []
+
+  // 각 턴이 이중 발언 턴인지(플레이어가 주민들에게 서로 다른 주장을 2종 이상 보냈는지)
+  const equivTurnIndices: number[] = []
+  for (let i = 0; i < history.length; i++) {
+    const claimsSent = new Set<Claim>()
+    for (const c of history[i].cities) {
+      if (c.role !== 'citizen') continue
+      const msg = c.received?.[me]
+      if (msg) claimsSent.add(msg.claim)
+    }
+    if (claimsSent.size >= 2) equivTurnIndices.push(i)
+  }
+
+  const contradictionTurns = history.filter((t) =>
+    t.sharing.some((s) => s.contradictions.some((c) => c.city === me)),
+  )
+
+  // 1. 감사 회피 (완벽한 알리바이): 이중 발언 5번 이상 & 모순 0번
+  if (equivTurnIndices.length >= 5 && contradictionTurns.length === 0) {
+    const lastEquiv = history[equivTurnIndices.at(-1)!]
+    detected.push({
+      tag: 'audit',
+      day: lastEquiv.turn,
+      text: `집마다 다른 쪽지를 ${equivTurnIndices.length}번이나 보냈지만, 쪽지 비교에서는 한 번도 들키지 않았어요.`,
+    })
+  }
+
+  // 2. 온오프 공격 (의심 세탁): 의심도 >= 40일 때 진실을 보내 <= 20으로 내린 뒤, 다시 거짓을 보내 그 주민이 틀림
+  const citizenIds = Object.entries(state.roles)
+    .filter(([, role]) => role === 'citizen')
+    .map(([id]) => Number(id))
+    .sort((a, b) => a - b)
+
+  let onoffHit: { city: number; fromSus: number; toSus: number; washDay: number; foolDay: number } | null = null
+  for (const cityId of citizenIds) {
+    let phase: 'idle' | 'high' | 'washing' | 'washed' = 'idle'
+    let peakSus = 0
+    let fromSus = 0
+    let toSus = 0
+    let washDay = 0
+
+    for (const t of history) {
+      const c = t.cities.find((x) => x.city === cityId)
+      if (!c || c.role !== 'citizen' || !c.suspicion) continue
+      const sus = c.suspicion[me]
+      if (sus == null) continue
+      const sent = c.received?.[me]?.claim ?? null
+      const sentTruth = sent != null && agrees(state.truth, sent)
+      const sentLie = sent != null && !agrees(state.truth, sent)
+
+      if (phase === 'idle') {
+        if (sus >= 40) {
+          phase = 'high'
+          peakSus = sus
+        }
+      } else if (phase === 'high' || phase === 'washing') {
+        if (sentTruth) {
+          if (sus <= 20) {
+            phase = 'washed'
+            fromSus = peakSus
+            toSus = sus
+            washDay = t.turn
+          } else {
+            phase = 'washing'
+            if (sus >= 40 && sus > peakSus) peakSus = sus
+          }
+        } else if (sus >= 40) {
+          phase = 'high'
+          peakSus = Math.max(peakSus, sus)
+        } else {
+          // 진실을 보내지 않았는데 의심도가 40 미만으로 내려갔다면 세탁 실패로 초기화
+          phase = 'idle'
+          peakSus = 0
+        }
+      } else if (phase === 'washed') {
+        if (sentLie && c.correct === false) {
+          const hit = { city: cityId, fromSus, toSus, washDay, foolDay: t.turn }
+          if (!onoffHit || hit.washDay < onoffHit.washDay) onoffHit = hit
+          break
+        }
+        // 세탁 후 아직 속이지 못한 사이 다시 의심도가 40 이상으로 올라가면 새 고점으로
+        if (sus >= 40) {
+          phase = 'high'
+          peakSus = sus
+        }
+      }
+    }
+  }
+  if (onoffHit) {
+    const nextWhen = onoffHit.foolDay === onoffHit.washDay + 1 ? '다음 날' : `${onoffHit.foolDay}일째`
+    detected.push({
+      tag: 'onoff',
+      day: onoffHit.washDay,
+      text: `나를 의심하던 ${onoffHit.city}번 집(의심도 ${onoffHit.fromSus})에 진짜 날씨를 보내 ${onoffHit.toSus}까지 낮춘 뒤, ${nextWhen} 다시 속였어요.`,
+    })
+  }
+
+  // 3. 완고한 행위자 (고집쟁이 동료): f=2 판에서 동료 때문에 재판이 열림
+  if (state.config.mafia_count === 2) {
+    const colleagueEntry = Object.entries(state.roles).find(([, role]) => role === 'colleague')
+    const colleagueCity = colleagueEntry ? Number(colleagueEntry[0]) : null
+    if (colleagueCity != null) {
+      const colleagueTrial = history.find(
+        (t) =>
+          t.vote != null &&
+          (t.vote.accused === colleagueCity ||
+            t.cities.some((c) => c.role === 'citizen' && (c.suspicion?.[colleagueCity] ?? 0) >= SUSPICION.threshold)),
+      )
+      if (colleagueTrial) {
+        detected.push({
+          tag: 'zealot',
+          day: colleagueTrial.turn,
+          text: `같은 거짓말만 되풀이한 동료(${colleagueCity}번 집) 때문에 광장 재판이 열렸어요.`,
+          attachTo: colleagueTrial.vote?.caught && colleagueTrial.vote.accused === colleagueCity ? 'caught' : undefined,
+        })
+      }
+    }
+  }
+
+  // 4. 거짓 양성 (누명 씌우기): 재판에서 무고한 주민이 지목됨
+  const falsePosTurn = history.find(
+    (t) => t.vote != null && t.vote.accused !== null && !t.vote.caught,
+  )
+  if (falsePosTurn?.vote?.accused != null) {
+    detected.push({
+      tag: 'falsepos',
+      day: falsePosTurn.turn,
+      text: `재판에서 마피아가 아닌 ${falsePosTurn.vote.accused}번 집이 지목됐어요.`,
+    })
+  }
+
+  // 5. 이중 발언 (두 얼굴): 이중 발언한 턴의 내 쪽지가 오답 쪽으로 흔든 주민이 판 전체에서 3명 이상
+  let equivSwayed = 0
+  let bestEquivTurn: number | null = null
+  let bestEquivCount = 0
+  for (const idx of equivTurnIndices) {
+    const scales = citizenScales(state, history, idx)
+    let turnSwayed = 0
+    for (const c of history[idx].cities) {
+      if (c.role === 'citizen' && c.correct === false && scales[c.city]?.swayed) turnSwayed++
+    }
+    equivSwayed += turnSwayed
+    if (turnSwayed > bestEquivCount) {
+      bestEquivCount = turnSwayed
+      bestEquivTurn = history[idx].turn
+    }
+  }
+  if (equivSwayed >= 3) {
+    const targetDay = contradictionTurns.at(-1)?.turn ?? bestEquivTurn ?? history[equivTurnIndices.at(-1)!].turn
+    detected.push({
+      tag: 'equiv',
+      day: targetDay,
+      text: `같은 날 집마다 다른 쪽지를 보내, 판 전체에서 주민의 마음을 ${equivSwayed}번 거짓 쪽으로 흔들었어요.`,
+      attachTo: contradictionTurns.length > 0 ? 'knots' : undefined,
+    })
+  }
+
+  return detected.slice(0, 2)
+}
 
 export function gameSummary(
-  state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'>,
+  state: Pick<GameState, 'player_city' | 'roles' | 'config' | 'truth' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities' | 'sharing' | 'vote'>[],
 ): Summary {
   const me = state.player_city
   const last = history.at(-1)
   const citizens = Object.values(state.roles).filter((r) => r === 'citizen').length
+  const need = majority(citizens)
+  const deceived = resultDeceived(history)
   const peaks = history.map((t) => {
     const values = t.cities.map((c) => c.suspicion?.[me]).filter((v): v is number => v != null)
     return values.length ? Math.max(...values) : null
@@ -755,27 +1233,82 @@ export function gameSummary(
         ? '주민 과반을 끝까지 속였어요'
         : `${day}일째에 주민 과반이 속지 않았어요`
 
-  const moments: string[] = []
+  const tactics = detectTactics(state, history)
+  const tags = tactics.map((t) => t.tag)
+
+  const moments: Moment[] = []
+  let caughtMomentIdx: number | null = null
+  let knotsMomentIdx: number | null = null
+
   if (vote) {
     const voters = Object.entries(vote.ballots)
       .filter(([, to]) => to === vote.accused)
       .map(([from]) => `${from}번`)
     const who = vote.accused === me ? '나를' : `동료 ${vote.accused}번을`
-    moments.push(`${day}일째 재판에서 ${voters.join(', ')}이 ${who} 지목했어요 (${voters.length}표, 과반 ${majority(citizens)}표)`)
+    caughtMomentIdx = moments.length
+    moments.push({
+      day,
+      text: `${day}일째 재판에서 ${voters.join(', ')}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표)`,
+    })
   } else if (last) {
     const wrong = last.cities.filter((c) => c.role === 'citizen' && c.correct === false).length
-    moments.push(`마지막 ${day}일째에 주민 ${citizens}명 중 ${wrong}명이 속았어요 (승리에 ${majority(citizens)}명 필요)`)
+    moments.push({
+      day,
+      text: `마지막 ${day}일째에 주민 ${citizens}명 중 ${wrong}명이 속았어요 (승리에 ${need}명 필요)`,
+    })
   }
   const crossed = history.find((_, i) => (peaks[i] ?? 0) >= SUSPICION.threshold)
   if (crossed) {
     const top = crossed.cities.reduce((a, c) => ((c.suspicion?.[me] ?? 0) > (a.suspicion?.[me] ?? 0) ? c : a))
-    moments.push(`${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold}을 넘었어요`)
+    moments.push({
+      day: crossed.turn,
+      text: `${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold}을 넘었어요`,
+    })
   }
   const knots = history.filter((t) => t.sharing.some((s) => s.contradictions.some((c) => c.city === me)))
-  if (knots.length)
-    moments.push(`쪽지 비교에서 다른 쪽지를 보냈다가 ${knots.length}번 들켰어요 (${knots.map((t) => `${t.turn}일째`).join(', ')})`)
+  if (knots.length) {
+    knotsMomentIdx = moments.length
+    moments.push({
+      day: knots.at(-1)!.turn,
+      text: `쪽지 비교에서 다른 쪽지를 보냈다가 ${knots.length}번 들켰어요 (${knots.map((t) => `${t.turn}일째`).join(', ')})`,
+    })
+  }
+
+  // 꼬리표를 기존 장면에 붙이거나 새 장면으로 추가
+  for (const t of tactics) {
+    if (t.attachTo === 'caught' && caughtMomentIdx != null && !moments[caughtMomentIdx].tag) {
+      moments[caughtMomentIdx] = { ...moments[caughtMomentIdx], tag: t.tag }
+    } else if (t.attachTo === 'knots' && knotsMomentIdx != null && !moments[knotsMomentIdx].tag) {
+      moments[knotsMomentIdx] = { ...moments[knotsMomentIdx], tag: t.tag }
+    } else {
+      moments.push({ day: t.day, text: t.text, tag: t.tag })
+    }
+  }
+
   const trials = history.filter((t) => t.vote).length
-  if (trials) moments.push(`재판이 ${trials}번 열렸어요`)
+  if (trials) moments.push({ day: null, text: `재판이 ${trials}번 열렸어요` })
+
+  // 날짜 순서대로 정렬 (날짜 없는 항목은 뒤로)
+  moments.sort((a, b) => (a.day ?? Infinity) - (b.day ?? Infinity))
+
+  // 그래프 핀: 모순("쪽지 들킴"), 재판("재판"), 꼬리표(꼬리표 쉬운 이름)
+  const pins: Record<number, ChartPin> = {}
+  const addPin = (idx: number, label: string, danger: boolean) => {
+    if (idx < 0 || idx >= history.length) return
+    const cur = pins[idx] ?? { labels: [], danger: false }
+    if (!cur.labels.includes(label)) cur.labels.push(label)
+    if (danger) cur.danger = true
+    pins[idx] = cur
+  }
+  history.forEach((t, i) => {
+    if (t.sharing.some((s) => s.contradictions.some((c) => c.city === me))) addPin(i, '쪽지 들킴', true)
+    if (t.vote) addPin(i, '재판', true)
+  })
+  for (const m of moments) {
+    if (!m.tag || m.day == null) continue
+    const idx = history.findIndex((t) => t.turn === m.day)
+    if (idx >= 0) addPin(idx, TAG_PIN_LABELS[m.tag], m.tag === 'zealot' || m.tag === 'falsepos')
+  }
 
   const lesson = knots.length
     ? '쪽지 비교로 이어진 두 집에 다른 쪽지를 보내면 모순으로 의심도가 크게 올라요. 같은 쪽지를 보내 보세요.'
@@ -786,7 +1319,22 @@ export function gameSummary(
         : peaks.some((v) => v != null)
           ? '의심도가 재판 기준을 넘지 않게 조절하며 끝까지 버텼어요.'
           : '다수결 주민은 의심하지 않아요. 눈치 주민은 의심도가 쌓이면 재판을 열어요.'
-  return { headline, moments, lesson, peaks }
+
+  return {
+    headline,
+    chips: resultVillageChips(state),
+    baseline: resultBaseline(state, history),
+    decisive: resultDecisive(state, history),
+    moments,
+    tags,
+    influence: resultInfluence(state, history),
+    deceived,
+    peaks,
+    pins,
+    majorityNeed: need,
+    citizenCount: citizens,
+    lesson,
+  }
 }
 
 // 튜토리얼 고정 seed (쉬움·눈치): 1일째 점선(2·3번)·꺼진 창문 2곳·주민 4곳·2일째 변동 표시 3곳·기본 쪽지로 3일간 발각 없음.
