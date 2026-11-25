@@ -30,9 +30,9 @@ function ArrowDefs({ prefix }: { prefix: string }) {
 function ByzFigure() {
   return (
     <svg
-      viewBox="0 0 560 322"
+      viewBox="0 0 560 348"
       role="img"
-      aria-label="장군 셋 두 장면 비교: 왼쪽은 충성 사령관이 공격을 보내고 배신자 부관 2가 부관 1에게 후퇴로 바꿔 전한 장면, 오른쪽은 배신자 사령관이 부관 1에게 공격, 부관 2에게 후퇴를 보내고 충성 부관 2가 후퇴를 그대로 전한 장면. 두 장면 모두 부관 1이 받는 메시지가 공격과 후퇴로 같아 구별할 수 없다."
+      aria-label="장군 셋 두 장면 비교: 왼쪽 (가)는 충성 사령관이 공격을 보내고 배신자 부관 2가 부관 1에게 후퇴로 바꿔 전한 장면으로, IC2에 따라 부관 1은 공격을 따라야 한다. 오른쪽 (나)는 배신자 사령관이 부관 1에게 공격, 부관 2에게 후퇴를 보내고 충성 부관 2가 후퇴를 그대로 전한 장면이다. 두 장면 모두 부관 1이 받는 메시지가 공격과 후퇴로 같아 구별할 수 없으므로 (나)에서 부관 1은 공격, 부관 2는 후퇴를 선택해 IC1이 깨진다."
     >
       <ArrowDefs prefix="tf-byz" />
 
@@ -42,7 +42,7 @@ function ByzFigure() {
         (가) 부관 2가 배신자
       </text>
 
-      {/* 화살표 (가) */}
+      {/* 화살표 (가): 공격=실선 파랑, 후퇴=점선 빨강 */}
       <line x1="120" y1="100" x2="80" y2="159" stroke="var(--leave)" strokeWidth="2.2" markerEnd="url(#tf-byz-leave)" />
       <text x="68" y="128" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
         공격
@@ -91,18 +91,9 @@ function ByzFigure() {
         (나) 사령관이 배신자
       </text>
 
-      {/* 화살표 (나) */}
-      <line
-        x1="400"
-        y1="100"
-        x2="360"
-        y2="159"
-        stroke="var(--rust)"
-        strokeWidth="2.2"
-        strokeDasharray="6 4"
-        markerEnd="url(#tf-byz-rust)"
-      />
-      <text x="348" y="128" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      {/* 화살표 (나): 부관 1이 받는 같은 메시지는 (가)와 같은 색·선 모양 */}
+      <line x1="400" y1="100" x2="360" y2="159" stroke="var(--leave)" strokeWidth="2.2" markerEnd="url(#tf-byz-leave)" />
+      <text x="348" y="128" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
         공격
       </text>
       <line
@@ -118,8 +109,17 @@ function ByzFigure() {
       <text x="492" y="128" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         후퇴
       </text>
-      <line x1="466" y1="186" x2="376" y2="186" stroke="var(--leave)" strokeWidth="2.2" markerEnd="url(#tf-byz-leave)" />
-      <text x="420" y="177" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
+      <line
+        x1="466"
+        y1="186"
+        x2="376"
+        y2="186"
+        stroke="var(--rust)"
+        strokeWidth="2.2"
+        strokeDasharray="6 4"
+        markerEnd="url(#tf-byz-rust)"
+      />
+      <text x="420" y="177" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         후퇴 (전달)
       </text>
 
@@ -144,21 +144,24 @@ function ByzFigure() {
       </text>
 
       {/* 하단 요약 */}
-      <rect x="8" y="276" width="544" height="38" rx="5" fill="var(--parch)" stroke="var(--wood)" strokeWidth="1.2" />
+      <rect x="8" y="274" width="544" height="66" rx="5" fill="var(--parch)" stroke="var(--wood)" strokeWidth="1.2" />
       <text x="280" y="300" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
-        부관 1은 두 장면을 구별 못 함 → (나)에서 부관 1은 공격, 부관 2는 후퇴 (IC1 깨짐)
+        (가)는 충성 사령관 → IC2로 부관 1은 ‘공격’을 따라야 함
+      </text>
+      <text x="280" y="324" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+        두 장면 구별 불가 → (나)에서 부관 1 ‘공격’, 부관 2 ‘후퇴’ (IC1 깨짐)
       </text>
     </svg>
   )
 }
 
-// 그림 2: 이중 발언과 맞대조로 드러나는 모순
+// 그림 2: 이중 발언과 서명된 메시지 맞대조로 드러나는 모순
 function EquivFigure() {
   return (
     <svg
       viewBox="0 0 560 248"
       role="img"
-      aria-label="한 발신자가 상대 A에게 대피, 상대 B에게 잔류로 서로 다른 메시지를 보내고, 상대 A와 상대 B가 메시지를 맞대어 보면 같은 시점의 모순이 드러나는 그림."
+      aria-label="한 발신자가 상대 A에게 대피, 상대 B에게 잔류로 서로 다른 서명된 메시지를 보내고, 상대 A와 상대 B가 서명된 메시지를 맞대어 보면 같은 시점의 모순과 발신자의 거짓이 증명되는 그림."
     >
       <ArrowDefs prefix="tf-equiv" />
 
@@ -181,11 +184,11 @@ function EquivFigure() {
         (이중 발언)
       </text>
 
-      {/* 화살표: 대피 (실선) / 잔류 (점선) */}
+      {/* 화살표: 서명된 대피 (실선) / 서명된 잔류 (점선) */}
       <line x1="136" y1="98" x2="274" y2="60" stroke="var(--leave)" strokeWidth="2.4" markerEnd="url(#tf-equiv-leave)" />
-      <rect x="172" y="40" width="66" height="26" rx="13" fill="var(--parch)" stroke="var(--leave)" strokeWidth="1.5" />
-      <text x="205" y="58" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
-        “대피”
+      <rect x="148" y="32" width="114" height="26" rx="13" fill="var(--parch)" stroke="var(--leave)" strokeWidth="1.5" />
+      <text x="205" y="50" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
+        서명 “대피”
       </text>
 
       <line
@@ -198,9 +201,9 @@ function EquivFigure() {
         strokeDasharray="7 4"
         markerEnd="url(#tf-equiv-rust)"
       />
-      <rect x="172" y="158" width="66" height="26" rx="13" fill="var(--cream)" stroke="var(--rust)" strokeWidth="1.5" strokeDasharray="4 2" />
-      <text x="205" y="176" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
-        “잔류”
+      <rect x="148" y="166" width="114" height="26" rx="13" fill="var(--cream)" stroke="var(--rust)" strokeWidth="1.5" strokeDasharray="4 2" />
+      <text x="205" y="184" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+        서명 “잔류”
       </text>
 
       {/* 수신자 A, B */}
@@ -236,7 +239,7 @@ function EquivFigure() {
       {/* 하단 설명 */}
       <line x1="12" y1="208" x2="548" y2="208" stroke="var(--wood)" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
       <text x="280" y="233" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
-        단독 수신: 거짓 여부 모름  |  맞대조: 같은 날 서로 다른 말 증명
+        단독 수신: 모름  |  서명된 메시지 맞대조: 발신자 거짓 증명
       </text>
     </svg>
   )
@@ -245,8 +248,8 @@ function EquivFigure() {
 // 그림 3: 온오프 공격의 날짜별 의심도 톱니 그래프 (실제 ±20 계산)
 function OnOffFigure() {
   const pts = onOffTrajectory(ONOFF_SAMPLE_ACTIONS)
-  const x0 = 64
-  const stepX = 46
+  const x0 = 58
+  const stepX = 45
   const yBot = 216
   const scaleY = 2 // 0..80 -> 160px (yTop=56)
   const xOf = (day: number) => x0 + day * stepX
@@ -257,7 +260,7 @@ function OnOffFigure() {
     <svg
       viewBox="0 0 560 282"
       role="img"
-      aria-label={`날짜별 의심도 톱니 그래프: 0일 의심도 0에서 시작해 거짓(+20)과 정직(-20)을 번갈아 하며 ${pts
+      aria-label={`날짜별 의심도 톱니 그래프: 0일 의심도 0에서 시작해 주민 관측과 다른 말(+20)과 같은 말(−20)을 번갈아 보내며 ${pts
         .slice(1)
         .map((p) => `${p.day}일 ${p.suspicion}`)
         .join(', ')}으로 재판 기준선 60 아래를 오르내린다.`}
@@ -266,18 +269,17 @@ function OnOffFigure() {
       <line x1="22" y1="22" x2="52" y2="22" stroke="var(--rust)" strokeWidth="2.8" />
       <circle cx="37" cy="22" r="4.5" fill="var(--rust)" />
       <text x="60" y="27" fontSize="15" fontWeight="700" fill="var(--rust)">
-        거짓 (+20)
+        다른 말 (+20)
       </text>
 
-      <line x1="168" y1="22" x2="198" y2="22" stroke="var(--forest)" strokeWidth="2.8" strokeDasharray="6 3" />
-      <rect x="179" y="18" width="8" height="8" fill="var(--cream)" stroke="var(--forest)" strokeWidth="2" />
-      <text x="206" y="27" fontSize="15" fontWeight="700" fill="var(--forest)">
-        정직 (−20)
+      <line x1="184" y1="22" x2="214" y2="22" stroke="var(--forest)" strokeWidth="2.8" strokeDasharray="6 3" />
+      <rect x="195" y="18" width="8" height="8" fill="var(--cream)" stroke="var(--forest)" strokeWidth="2" />
+      <text x="222" y="27" fontSize="15" fontWeight="700" fill="var(--forest)">
+        같은 말 (−20)
       </text>
 
-      <line x1="316" y1="22" x2="346" y2="22" stroke="var(--rust)" strokeWidth="1.8" strokeDasharray="5 4" />
-      <text x="354" y="27" fontSize="15" fontWeight="700" fill="var(--wood)">
-        재판 기준 60
+      <text x="348" y="27" fontSize="15" fontWeight="700" fill="var(--wood)">
+        (주민 관측 기준)
       </text>
 
       {/* 수평 보조선 및 Y축 눈금 */}
@@ -346,7 +348,7 @@ function OnOffFigure() {
           </g>
         )
       })}
-      <text x={xOf(10) + 26} y={yBot + 22} fontSize="15" fontWeight="700" fill="var(--wood)">
+      <text x={xOf(10) + 22} y={yBot + 22} fontSize="15" fontWeight="700" fill="var(--wood)">
         일
       </text>
 
@@ -502,10 +504,13 @@ function CondorcetFigure() {
     <svg
       viewBox="0 0 560 288"
       role="img"
-      aria-label={`홀수 투표자 수 n=1부터 25까지의 다수결 정답 확률 곡선(이항분포 계산): ${ariaSummary}.`}
+      aria-label={`서로 독립적으로 판단하는 홀수 투표자 수 n=1부터 25까지의 다수결 정답 확률 곡선(이항분포 계산): ${ariaSummary}.`}
     >
       <text x="14" y="24" fontSize="15" fontWeight="700" fill="var(--wood)">
         다수결 정답 확률
+      </text>
+      <text x="546" y="24" fontSize="15" fontWeight="700" textAnchor="end" fill="var(--wood)">
+        전제: 각자 독립 판단
       </text>
 
       {/* Y축 보조선 및 눈금 */}
@@ -544,7 +549,7 @@ function CondorcetFigure() {
         )
       })}
       <text x={x0 + plotW / 2} y="274" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
-        투표자 수 n (홀수)
+        독립 투표자 수 n (홀수)
       </text>
 
       {/* 곡선 + 마커 + 우측 직접 라벨 */}
@@ -593,41 +598,51 @@ function CondorcetFigure() {
   )
 }
 
-// 그림 6: 완고한 행위자 개념도 (차원 조건 및 양쪽 완고 포함, 과장 없음)
+// 그림 6: 완고한 행위자 개념도 (무한 격자 차원 조건 및 양쪽 완고 포함, 과장 없음)
 function ZealotFigure() {
   const grid = [
-    [76, 80], [140, 80], [204, 80],
-    [76, 134], [140, 134], [204, 134],
-    [76, 188], [140, 188], [204, 188],
+    [76, 92], [140, 92], [204, 92],
+    [76, 144], [140, 144], [204, 144],
+    [76, 196], [140, 196], [204, 196],
+  ] as const
+
+  const farNodes = [
+    { x: 416, y: 68, label: 'A', isA: true },
+    { x: 464, y: 66, label: 'B', isA: false },
+    { x: 438, y: 104, label: 'B', isA: false },
+    { x: 496, y: 96, label: 'A', isA: true },
   ] as const
 
   return (
     <svg
-      viewBox="0 0 560 284"
+      viewBox="0 0 560 344"
       role="img"
-      aria-label="투표자 모형에서 완고한 행위자의 영향 개념도: 왼쪽은 1·2차원 격자에서 한쪽 의견을 유지하는 완고한 행위자 한 명의 영향이 주변으로 번져 전체가 통일되는 모습, 오른쪽 위는 3차원 이상에서 거리가 멀수록 영향이 줄어 전체가 통일되지 않는 모습, 오른쪽 아래는 양쪽 진영에 완고한 행위자가 함께 있어 합의가 영구히 막히는 모습."
+      aria-label="무한 격자 및 완전 그래프의 투표자 모형에서 완고한 행위자의 영향 개념도: 왼쪽은 1·2차원 무한 격자에서 한쪽 의견을 선호하는 완고한 행위자 한 명의 영향이 인접 이웃과 먼 이웃으로 번져 전체가 통일되는 모습, 오른쪽 위는 3차원 이상 무한 격자에서 거리가 멀수록 영향이 줄어 A와 B가 섞인 채 통일되지 않는 모습, 오른쪽 아래는 완전 그래프와 1·2차원 격자에서 의견을 바꾸지 않는 완고한 행위자 f명이 양쪽 진영에 있어 인구 n이 커져도 합의가 막히고 분포 폭이 1/√f에 비례하는 모습."
     >
       <ArrowDefs prefix="tf-zealot" />
 
-      {/* 왼쪽: 1·2차원 격자 */}
-      <rect x="8" y="8" width="264" height="268" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
-      <text x="140" y="33" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
-        1·2차원 격자 (완고 1명)
+      {/* 왼쪽: 1·2차원 무한 격자 */}
+      <rect x="8" y="8" width="264" height="328" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
+      <text x="140" y="31" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+        1·2차원 무한 격자 (완고 1명)
+      </text>
+      <text x="140" y="56" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+        한쪽(A)을 선호하는 완고
       </text>
 
       {/* 격자 연결선 */}
-      {[80, 134, 188].map((y) => (
+      {[92, 144, 196].map((y) => (
         <line key={`h-${y}`} x1="76" y1={y} x2="204" y2={y} stroke="var(--wood)" strokeWidth="1.4" opacity="0.45" />
       ))}
       {[76, 140, 204].map((x) => (
-        <line key={`v-${x}`} x1={x} y1="80" x2={x} y2="188" stroke="var(--wood)" strokeWidth="1.4" opacity="0.45" />
+        <line key={`v-${x}`} x1={x} y1="92" x2={x} y2="196" stroke="var(--wood)" strokeWidth="1.4" opacity="0.45" />
       ))}
 
       {/* 중앙에서 상하좌우로 끌어당기는 화살표 */}
-      <line x1="140" y1="112" x2="140" y2="97" stroke="var(--rust)" strokeWidth="2.2" markerEnd="url(#tf-zealot-rust)" />
-      <line x1="140" y1="156" x2="140" y2="171" stroke="var(--rust)" strokeWidth="2.2" markerEnd="url(#tf-zealot-rust)" />
-      <line x1="118" y1="134" x2="94" y2="134" stroke="var(--rust)" strokeWidth="2.2" markerEnd="url(#tf-zealot-rust)" />
-      <line x1="162" y1="134" x2="186" y2="134" stroke="var(--rust)" strokeWidth="2.2" markerEnd="url(#tf-zealot-rust)" />
+      <line x1="140" y1="122" x2="140" y2="109" stroke="var(--rust)" strokeWidth="2.2" markerEnd="url(#tf-zealot-rust)" />
+      <line x1="140" y1="166" x2="140" y2="179" stroke="var(--rust)" strokeWidth="2.2" markerEnd="url(#tf-zealot-rust)" />
+      <line x1="118" y1="144" x2="94" y2="144" stroke="var(--rust)" strokeWidth="2.2" markerEnd="url(#tf-zealot-rust)" />
+      <line x1="162" y1="144" x2="186" y2="144" stroke="var(--rust)" strokeWidth="2.2" markerEnd="url(#tf-zealot-rust)" />
 
       {grid.map(([x, y], idx) => {
         const isCenter = idx === 4
@@ -642,7 +657,7 @@ function ZealotFigure() {
               cy={y}
               r={isCenter ? 17 : 13}
               fill={isCenter ? 'var(--parch)' : 'var(--cream)'}
-              stroke={isCenter ? 'var(--rust)' : isCorner ? 'var(--wood)' : 'var(--rust)'}
+              stroke={isCorner ? 'var(--wood)' : 'var(--rust)'}
               strokeWidth={isCenter ? 2.4 : 1.8}
               strokeDasharray={isCorner ? '3 3' : undefined}
             />
@@ -659,66 +674,93 @@ function ZealotFigure() {
           </g>
         )
       })}
-      <text x="140" y="232" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+
+      {/* 격자 선 모양 범례 */}
+      <circle cx="38" cy="238" r="9" fill="none" stroke="var(--rust)" strokeWidth="1.4" strokeDasharray="3 2" />
+      <circle cx="38" cy="238" r="5.5" fill="var(--parch)" stroke="var(--rust)" strokeWidth="1.8" />
+      <text x="52" y="243" fontSize="15" fontWeight="700" fill="var(--rust)">
+        완고
+      </text>
+
+      <circle cx="104" cy="238" r="6" fill="var(--cream)" stroke="var(--rust)" strokeWidth="1.8" />
+      <text x="116" y="243" fontSize="15" fontWeight="700" fill="var(--rust)">
+        인접
+      </text>
+
+      <circle cx="168" cy="238" r="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.8" strokeDasharray="3 2" />
+      <text x="180" y="243" fontSize="15" fontWeight="700" fill="var(--wood)">
+        먼 이웃
+      </text>
+
+      <text x="140" y="284" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         영향이 끝까지 번져
       </text>
-      <text x="140" y="254" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <text x="140" y="310" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         시간이 지나면 전체 통일
       </text>
 
-      {/* 오른쪽 위: 3차원 이상 */}
-      <rect x="288" y="8" width="264" height="128" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
-      <text x="420" y="31" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
-        3차원 이상 (거리 감쇠)
+      {/* 오른쪽 위: 3차원 이상 무한 격자 */}
+      <rect x="288" y="8" width="264" height="150" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
+      <text x="420" y="32" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+        3차원 이상 무한 격자
       </text>
-      <circle cx="364" cy="76" r="32" fill="none" stroke="var(--rust)" strokeWidth="1.3" strokeDasharray="3 3" opacity="0.45" />
-      <circle cx="364" cy="76" r="20" fill="none" stroke="var(--rust)" strokeWidth="1.6" strokeDasharray="4 2" />
-      <circle cx="364" cy="76" r="14" fill="var(--parch)" stroke="var(--rust)" strokeWidth="2.2" />
-      <text x="364" y="81" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <circle cx="344" cy="88" r="32" fill="none" stroke="var(--rust)" strokeWidth="1.3" strokeDasharray="3 3" opacity="0.45" />
+      <circle cx="344" cy="88" r="20" fill="none" stroke="var(--rust)" strokeWidth="1.6" strokeDasharray="4 2" />
+      <circle cx="344" cy="88" r="14" fill="var(--parch)" stroke="var(--rust)" strokeWidth="2.2" />
+      <text x="344" y="93" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         A
       </text>
-      {[
-        [434, 62],
-        [480, 74],
-        [454, 94],
-      ].map(([x, y], i) => (
+      {farNodes.map((n, i) => (
         <g key={i}>
-          <circle cx={x} cy={y} r="12" fill="var(--parch)" stroke="var(--leave)" strokeWidth="1.8" />
-          <text x={x} y={y + 5} fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
-            B
+          <circle
+            cx={n.x}
+            cy={n.y}
+            r="12"
+            fill="var(--parch)"
+            stroke={n.isA ? 'var(--rust)' : 'var(--leave)'}
+            strokeWidth="1.8"
+          />
+          <text x={n.x} y={n.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" fill={n.isA ? 'var(--rust)' : 'var(--leave)'}>
+            {n.label}
           </text>
         </g>
       ))}
-      <text x="420" y="124" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
-        멀수록 영향 약화 → 통일 불가
+      <text x="420" y="144" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+        거리 감쇠 → A·B 섞여 통일 불가
       </text>
 
       {/* 오른쪽 아래: 양쪽 완고 */}
-      <rect x="288" y="148" width="264" height="128" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
-      <text x="420" y="171" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
-        양쪽 진영에 모두 완고
+      <rect x="288" y="170" width="264" height="166" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
+      <text x="420" y="192" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+        양쪽 진영에 불변 완고 (f명)
       </text>
-      <circle cx="332" cy="214" r="19" fill="none" stroke="var(--rust)" strokeWidth="1.6" strokeDasharray="4 2" />
-      <circle cx="332" cy="214" r="14" fill="var(--parch)" stroke="var(--rust)" strokeWidth="2.2" />
-      <text x="332" y="219" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <text x="420" y="217" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+        완전 그래프·1·2차원 격자
+      </text>
+      <circle cx="332" cy="257" r="19" fill="none" stroke="var(--rust)" strokeWidth="1.6" strokeDasharray="4 2" />
+      <circle cx="332" cy="257" r="14" fill="var(--parch)" stroke="var(--rust)" strokeWidth="2.2" />
+      <text x="332" y="262" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         A
       </text>
 
-      <line x1="354" y1="214" x2="394" y2="214" stroke="var(--rust)" strokeWidth="2" markerEnd="url(#tf-zealot-rust)" />
-      <circle cx="420" cy="214" r="15" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.8" strokeDasharray="4 3" />
-      <text x="420" y="219" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+      <line x1="354" y1="257" x2="394" y2="257" stroke="var(--rust)" strokeWidth="2" markerEnd="url(#tf-zealot-rust)" />
+      <circle cx="420" cy="257" r="15" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.8" strokeDasharray="4 3" />
+      <text x="420" y="262" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         ?
       </text>
-      <line x1="486" y1="214" x2="446" y2="214" stroke="var(--leave)" strokeWidth="2" markerEnd="url(#tf-zealot-leave)" />
+      <line x1="486" y1="257" x2="446" y2="257" stroke="var(--leave)" strokeWidth="2" markerEnd="url(#tf-zealot-leave)" />
 
-      <circle cx="508" cy="214" r="19" fill="none" stroke="var(--leave)" strokeWidth="1.6" strokeDasharray="4 2" />
-      <circle cx="508" cy="214" r="14" fill="var(--parch)" stroke="var(--leave)" strokeWidth="2.2" />
-      <text x="508" y="219" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
+      <circle cx="508" cy="257" r="19" fill="none" stroke="var(--leave)" strokeWidth="1.6" strokeDasharray="4 2" />
+      <circle cx="508" cy="257" r="14" fill="var(--parch)" stroke="var(--leave)" strokeWidth="2.2" />
+      <text x="508" y="262" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
         B
       </text>
 
-      <text x="420" y="264" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
-        n이 커져도 합의 차단 (폭 ∝ 1/√f)
+      <text x="420" y="299" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+        n이 커져도 합의 차단
+      </text>
+      <text x="420" y="324" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+        분포 폭 ∝ 1/√f (f: 완고 수)
       </text>
     </svg>
   )
@@ -804,7 +846,7 @@ function FalsePosFigure() {
       {/* 하단 요약 */}
       <line x1="12" y1="220" x2="548" y2="220" stroke="var(--wood)" strokeWidth="1" strokeDasharray="3 3" opacity="0.5" />
       <text x="280" y="244" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
-        정직한 쪽지도 주민의 관측이 틀리면 의심이 쌓여 억울한 재판으로 이어짐
+        정직한 쪽지도 주민의 관측 오차가 겹치면 의심이 쌓여 재판에 걸릴 수 있음
       </text>
     </svg>
   )
@@ -816,7 +858,7 @@ function AuditFigure() {
     <svg
       viewBox="0 0 560 302"
       role="img"
-      aria-label="감사 회피 개념도: 1번 집과 2번 집이 오늘 밤 비교 짝임을 미리 알면, 마피아가 두 집에는 같은 말 대피를 보내 모순을 피하고, 비교 대상이 아닌 3번 집과 4번 집에는 다른 말 잔류를 보내 들키지 않는다."
+      aria-label="감사 회피 개념도: 1번 집과 2번 집이 오늘 밤 비교 짝임을 미리 알면, 마피아가 두 집에는 같은 말 대피를 보내 모순을 피하고, 비교 대상이 아닌 3번 집과 4번 집에는 다른 말 잔류를 보내 쪽지 비교 모순에는 걸리지 않는다."
     >
       <ArrowDefs prefix="tf-audit" />
 
@@ -836,7 +878,7 @@ function AuditFigure() {
         비교 안 함
       </text>
       <text x="420" y="53" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
-        검사 없음 (미적발)
+        쪽지 비교에는 안 걸림
       </text>
 
       {/* 집 4채 */}
@@ -916,7 +958,7 @@ function AuditFigure() {
 
       {/* 하단 요약 */}
       <text x="280" y="288" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
-        비교 짝을 미리 알면 짝 밖으로만 이중 발언해 적발 확률이 0이 됨
+        비교 짝을 미리 알면 짝 밖으로만 이중 발언해 쪽지 비교에는 안 걸림
       </text>
     </svg>
   )
@@ -928,11 +970,11 @@ const THEORY_FIGURES: Record<TopicKey, FigureMeta> = {
     render: ByzFigure,
   },
   equiv: {
-    caption: '그림 2. 이중 발언: 두 상대에게 서로 다른 메시지를 보냈을 때 맞대조로 모순이 드러난다.',
+    caption: '그림 2. 이중 발언: 서명된 메시지를 두 상대에게 다르게 보냈을 때 맞대조로 발신자의 거짓을 증명한다.',
     render: EquivFigure,
   },
   onoff: {
-    caption: '그림 3. 온오프 공격의 의심도 톱니 그래프(거짓 +20, 정직 −20, 기준선 60 아래 유지).',
+    caption: '그림 3. 온오프 공격의 의심도 톱니 그래프(주민 관측과 다른 말 +20, 같은 말 −20, 기준선 60 아래 유지).',
     render: OnOffFigure,
   },
   ring: {
@@ -940,11 +982,11 @@ const THEORY_FIGURES: Record<TopicKey, FigureMeta> = {
     render: RingFigure,
   },
   condorcet: {
-    caption: '그림 5. 개별 정답 확률 p별 홀수 투표자 수 n(1~25)에 따른 다수결 정답 확률(이항분포 계산).',
+    caption: '그림 5. 각자 독립적으로 판단할 때 개별 정답 확률 p별 홀수 투표자 수 n(1~25)에 따른 다수결 정답 확률(이항분포 계산).',
     render: CondorcetFigure,
   },
   zealot: {
-    caption: '그림 6. 투표자 모형에서 완고한 행위자의 영향과 차원·양측 대립 조건.',
+    caption: '그림 6. 투표자 모형에서 완고한 행위자의 영향: 무한 격자의 차원 조건과 완전 그래프·1·2차원 격자의 양측 대립 조건(f는 완고한 행위자 수).',
     render: ZealotFigure,
   },
   falsepos: {
