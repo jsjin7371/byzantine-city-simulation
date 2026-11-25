@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialArrowsVisible, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
+import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TrialStampMode, TutorialHighlight } from './village'
 import './village.css'
 
@@ -606,7 +606,7 @@ function Trial({
         <text x={PLAZA.x} y={STAMP.y + 21} fontSize="15.5" fontWeight="700" textAnchor="middle">
           {stamp}
         </text>
-        <rect className="vb-stamp-ink" x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" aria-hidden />
+        <rect className="vb-stamp-ink" x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" />
       </g>
       <g
         className={`vb-stamp-pill${vote.caught ? ' is-caught' : ''}${fullStamp ? ' is-hidden' : ''}${stampMode === 'dimmed' ? ' is-dimmed' : ''}`}
@@ -671,24 +671,24 @@ function Trial({
           </g>
         )
       })}
-      {inspect ? (
-        <g
-          className="vb-trial-trigger"
-          role="img"
-          tabIndex={0}
-          aria-label={label}
-          onMouseEnter={inspect.onEnter}
-          onMouseLeave={inspect.onLeave}
-          onFocus={inspect.onFocus}
-          onBlur={inspect.onBlur}
-        >
-          <title>{label}</title>
-          <ellipse className="vb-trial-plaza-hit" cx={PLAZA.x} cy={PLAZA.y} rx="72" ry="50" />
-          {stampNode}
-        </g>
-      ) : (
-        stampNode
-      )}
+      <g
+        {...(inspect
+          ? {
+              className: 'vb-trial-trigger',
+              role: 'img',
+              tabIndex: 0,
+              'aria-label': label,
+              onMouseEnter: inspect.onEnter,
+              onMouseLeave: inspect.onLeave,
+              onFocus: inspect.onFocus,
+              onBlur: inspect.onBlur,
+            }
+          : {})}
+      >
+        {inspect && <title>{label}</title>}
+        {inspect && <ellipse className="vb-trial-plaza-hit" cx={PLAZA.x} cy={PLAZA.y} rx="72" ry="50" />}
+        {stampNode}
+      </g>
     </g>
   )
 }
@@ -1058,15 +1058,13 @@ export function VillageBoard({
   const inspected = hovered ?? focused
   const activeSuspicionLinks =
     !night && !highlight && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
-  const trialVisibilityArgs = {
+  const currentStampMode = trialStampMode({
     isNight: Boolean(night),
     trialInspect: trialHovered || trialFocused,
     hasSuspicionLines: activeSuspicionLinks.length > 0,
     hasHighlight: Boolean(highlight),
     hasOpenCard: Boolean(opened),
-  }
-  const showTrialArrows = trialArrowsVisible(trialVisibilityArgs)
-  const currentStampMode = trialStampMode(trialVisibilityArgs)
+  })
   useEffect(() => {
     onCardOpen?.(openCity)
   }, [openCity, onCardOpen])
@@ -1182,7 +1180,7 @@ export function VillageBoard({
           houses={houses}
           shown={night?.ballots}
           verdict={at('verdict')}
-          showArrows={showTrialArrows}
+          showArrows={currentStampMode === 'full'}
           stampMode={currentStampMode}
           inspect={
             canInspectTrial

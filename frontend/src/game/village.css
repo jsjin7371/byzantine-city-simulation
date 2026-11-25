@@ -594,7 +594,6 @@
   transform-box: fill-box;
   transform-origin: center;
   transform: rotate(-4deg) scale(1);
-  opacity: 1;
   transition:
     transform 200ms cubic-bezier(0.23, 1, 0.32, 1),
     opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -613,8 +612,6 @@
 .vb-stamp-pill {
   transform-box: fill-box;
   transform-origin: center;
-  transform: translateY(0) scale(1);
-  opacity: 1;
   transition:
     transform 200ms cubic-bezier(0.23, 1, 0.32, 1),
     opacity 200ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -635,7 +632,6 @@
 .vb-trial-plaza-hit { fill: transparent; stroke: transparent; stroke-width: 2.5; transition: stroke 150ms ease; }
 .vb-trial-trigger:focus-visible .vb-trial-plaza-hit { stroke: var(--ink); stroke-dasharray: 5 4; }
 .vb-trial-trigger:focus-visible .vb-stamp rect:first-child { stroke-width: 3.5; }
-.vb-trial-trigger:focus-visible .vb-stamp-pill rect { stroke-width: 2.5; }
 
 /* 쪽지 고르기 (명세 1번) */
 .vb-board .vb-rust { fill: var(--rust); }
@@ -1267,7 +1263,7 @@
 .vb-vote-sq.is-mine { stroke: var(--rust); stroke-width: 1.8; }
 .vb-board.is-playing .vb-ballot { animation: vb-fade 300ms cubic-bezier(0.23, 1, 0.32, 1); }
 /* 재판 결과 도장: 떠 있다가 가속해 쾅 찍히고(-4deg) 잉크 테가 번지며 보드가 살짝 흔들린다 */
-.vb-board.is-playing .vb-stamp { animation: vb-stamp 450ms both; }
+.vb-board.is-playing .vb-stamp { animation: vb-stamp 450ms backwards; }
 @keyframes vb-stamp {
   0% { opacity: 0; transform: rotate(-9deg) scale(1.7); animation-timing-function: cubic-bezier(0.55, 0.05, 0.85, 0.15); }
   18% { opacity: 1; }
