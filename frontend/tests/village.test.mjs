@@ -707,12 +707,34 @@ test('resultBaseline covers all 7 cases, links byz/ring, and never exposes 3f+1 
   assert.equal(bCaught.lines.length, 2)
   assert.match(bCaught.lines[0], /원래 주민에게 유리한 판이었어요/)
 
-  // 4. 하늘 탓 (관측 과반 틀림)
-  const bSky = resultBaseline(
-    soloState({ outcome: 'win', end_reason: 'turns_done' }),
-    [makeDay(15, [cRow(1, 'safe', 'stay', false), cRow(2, 'safe', 'stay', false), cRow(4, 'safe', 'stay', false), cRow(5, 'danger', 'stay', true)])],
+  // 4. 하늘 탓 (노트 증거 조건: 마지막 턴 주민별 mine 기준 정답 <= 오답 + f, 승패별 문구 분기)
+  // f=1에서 2명 정답·2명 오답이면 2 <= 2 + 1 이므로 증거 ✘
+  const skyTieHist = [
+    makeDay(15, [cRow(1, 'danger', 'stay', true), cRow(2, 'danger', 'stay', true), cRow(4, 'safe', 'stay', false), cRow(5, 'safe', 'stay', false)]),
+  ]
+  const bSkyWin = resultBaseline(soloState({ outcome: 'win', end_reason: 'turns_done' }), skyTieHist)
+  assert.match(bSkyWin.lines.join(' '), /주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요\. 하늘도 당신 편이었어요\./)
+  const bSkyLoss = resultBaseline(soloState({ outcome: 'loss', end_reason: 'turns_done' }), skyTieHist)
+  assert.match(bSkyLoss.lines.join(' '), /주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요\. 누가 마피아였어도 주민이 이긴다고 장담하기 어려웠어요\./)
+
+  // memory=full에서는 마지막 턴까지 누적한 주민별 mine 다수로 판정 (마지막 턴 hint가 3:1이어도 누적 mine이 2:2면 증거 ✘)
+  const fullMemorySkyHist = [
+    makeDay(1, [cRow(1, 'safe', 'stay', false), cRow(2, 'danger', 'stay', true), cRow(4, 'safe', 'stay', false), cRow(5, 'danger', 'stay', true)]),
+    makeDay(2, [cRow(1, 'safe', 'stay', false), cRow(2, 'danger', 'stay', true), cRow(4, 'safe', 'stay', false), cRow(5, 'danger', 'stay', true)]),
+    makeDay(3, [cRow(1, 'danger', 'stay', true), cRow(2, 'danger', 'stay', true), cRow(4, 'safe', 'stay', false), cRow(5, 'danger', 'stay', true)]),
+  ]
+  const bSkyFull = resultBaseline(
+    soloState({ config: { ...soloConfig, memory: 'full' }, outcome: 'win', end_reason: 'turns_done' }),
+    fullMemorySkyHist,
   )
-  assert.match(bSky.lines.join(' '), /주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요/)
+  assert.match(bSkyFull.lines.join(' '), /하늘도 당신 편이었어요/)
+
+  // memory=turn이면 같은 3턴 기록이라도 마지막 턴(3:1, 3 > 1 + 1) 기준이라 증거 ✔ → 주민 유리, 승리
+  const bTurnOk = resultBaseline(
+    soloState({ config: { ...soloConfig, memory: 'turn' }, outcome: 'win', end_reason: 'turns_done' }),
+    fullMemorySkyHist,
+  )
+  assert.match(bTurnOk.lines.join(' '), /원래 주민에게 유리한 판이었는데도 해냈어요/)
 
   // 5. 고리 마을 (ring)
   const bRing = resultBaseline(
@@ -747,7 +769,7 @@ test('resultBaseline covers all 7 cases, links byz/ring, and never exposes 3f+1 
   )
   assert.match(bHonest.lines.join(' '), /진짜 날씨만 말했는데도 재판에 걸렸어요/)
 
-  for (const b of [bWin, bTurnsLoss, bCaught, bSky, bRing, bTwo, bHonest]) {
+  for (const b of [bWin, bTurnsLoss, bCaught, bSkyWin, bSkyLoss, bSkyFull, bRing, bTwo, bHonest]) {
     assert.doesNotMatch(b.lines.join(' '), /3f\+1/i)
   }
 })
@@ -796,8 +818,8 @@ test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () =>
     reason: null,
   })
 
-  // 1. 감사 회피: 이중 발언 5회 & 모순 0회
-  const equivTurn = (t) => ({
+  // 1. 감사 회피: share_mode !== 'none'이고 비교가 실제 일어난 턴(sharing.length > 0) 중 이중 발언 5회 & 모순 0회
+  const equivTurn = (t, sharing = [{ pair: [1, 4], contradictions: [] }]) => ({
     turn: t,
     cities: [
       c(1, 'danger', 'stay', { 3: 20 }, false),
@@ -805,19 +827,35 @@ test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () =>
       c(4, 'danger', 'stay', { 3: 20 }, false),
       c(5, 'danger', 'evacuate', { 3: 0 }, true),
     ],
-    sharing: [],
+    sharing,
     vote: null,
   })
   assert.deepEqual(
-    detectTactics(soloState(), [1, 2, 3, 4].map(equivTurn)).map((x) => x.tag),
+    detectTactics(soloState(), [1, 2, 3, 4].map((t) => equivTurn(t))).map((x) => x.tag),
     [],
   )
   assert.deepEqual(
-    detectTactics(soloState(), [1, 2, 3, 4, 5].map(equivTurn)).map((x) => x.tag),
+    detectTactics(soloState(), [1, 2, 3, 4, 5].map((t) => equivTurn(t))).map((x) => x.tag),
     ['audit'],
   )
+  // share_mode === 'none'이면 이중 발언 5회여도 감사 회피 미발동
+  assert.deepEqual(
+    detectTactics(
+      soloState({ config: { ...soloConfig, share_mode: 'none' } }),
+      [1, 2, 3, 4, 5].map((t) => equivTurn(t, [])),
+    ).map((x) => x.tag),
+    [],
+  )
+  // pairs라도 실제 비교가 일어난 턴이 5회 미만이면 미발동
+  assert.deepEqual(
+    detectTactics(
+      soloState(),
+      [equivTurn(1), equivTurn(2), equivTurn(3), equivTurn(4), equivTurn(5, [])],
+    ).map((x) => x.tag),
+    [],
+  )
   // 모순이 1번이라도 있으면 감사 회피 불가
-  const withClash = [1, 2, 3, 4, 5].map(equivTurn)
+  const withClash = [1, 2, 3, 4, 5].map((t) => equivTurn(t))
   withClash[2].sharing = [{ pair: [1, 2], contradictions: [{ city: 3, told: { 1: msg('stay'), 2: msg('evacuate') } }] }]
   assert.equal(detectTactics(soloState(), withClash).some((x) => x.tag === 'audit'), false)
 
@@ -840,8 +878,8 @@ test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () =>
   ]
   assert.deepEqual(detectTactics(soloState(), accidentalDrop), [])
 
-  // 3. 완고한 행위자 + 4. 거짓 양성 + 5. 이중 발언 + 우선순위 최대 2개 확인
-  const multiHist = [
+  // 3. 완고한 행위자(vote.accused === 동료일 때만) + 4. 거짓 양성 + 5. 이중 발언 + 우선순위 최대 2개 확인
+  const noZealotAccusedOther = [
     {
       turn: 1,
       cities: [
@@ -867,6 +905,22 @@ test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () =>
     config: { ...soloConfig, mafia_count: 2 },
     roles: { 1: 'citizen', 2: 'colleague', 3: 'player', 4: 'citizen', 5: 'citizen' },
   })
+  // 동료 의심도가 60이어도 vote.accused !== 동료이면 zealot 미발동
+  assert.deepEqual(detectTactics(f2State, noZealotAccusedOther).map((x) => x.tag), ['falsepos', 'equiv'])
+
+  const multiHist = [
+    ...noZealotAccusedOther,
+    {
+      turn: 3,
+      cities: [
+        c(1, 'danger', 'stay', { 2: 60, 3: 0 }, true),
+        c(4, 'danger', 'evacuate', { 2: 60, 3: 0 }, true),
+        c(5, 'danger', 'stay', { 2: 40, 3: 0 }, true),
+      ],
+      sharing: [],
+      vote: { ballots: { 1: 2, 4: 2, 5: 2 }, accused: 2, caught: true },
+    },
+  ]
   // zealot(3위), falsepos(4위), equiv(5위, 4건 swayed) 모두 충족 → 드문 순서로 상위 2개만 반환
   assert.deepEqual(detectTactics(f2State, multiHist).map((x) => x.tag), ['zealot', 'falsepos'])
 
@@ -924,20 +978,27 @@ test('resultInfluence counts swayed wrong citizens, shows default no-note rates,
   ]
   assert.deepEqual(resultInfluence(soloState({ config: { ...soloConfig, sensor_error: 0.3 } }), h), {
     count: 1,
-    noNoteWinRate: '98.6%',
+    noNoteWinRate: '92%',
   })
   assert.deepEqual(resultInfluence(soloState({ config: { ...soloConfig, sensor_error: 0.4 } }), h), {
     count: 1,
-    noNoteWinRate: '79.9%',
+    noNoteWinRate: '82%',
   })
   assert.deepEqual(resultInfluence(soloState({ config: { ...soloConfig, sensor_error: 0.48 } }), h), {
     count: 1,
-    noNoteWinRate: '41.2%',
+    noNoteWinRate: '72%',
   })
-  // ring이나 다수결, f=2는 보조 확률 생략
+  // 기본 조건(집 5채, 마피아 1, 눈치, all, share_mode/memory 기본값, player human) 벗어나면 보조 확률 생략
   assert.equal(resultInfluence(soloState({ config: { ...soloConfig, connection: 'ring' } }), h)?.noNoteWinRate, null)
   assert.equal(resultInfluence(soloState({ config: { ...soloConfig, mafia_count: 2 } }), h)?.noNoteWinRate, null)
   assert.equal(resultInfluence(soloState({ config: { ...soloConfig, citizen_type: 'majority' } }), h)?.noNoteWinRate, null)
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, share_mode: 'all' } }), h)?.noNoteWinRate, null)
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, memory: 'full' } }), h)?.noNoteWinRate, null)
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, player: 'bot' } }), h)?.noNoteWinRate, null)
+  assert.equal(
+    resultInfluence(soloState({ roles: { 1: 'citizen', 2: 'citizen', 3: 'player' } }), h)?.noNoteWinRate,
+    null,
+  )
   // AI 주민은 영향력 줄 전체 숨김
   assert.equal(resultInfluence(soloState({ config: { ...soloConfig, citizen_type: 'ai' } }), h), null)
   assert.deepEqual(resultDeceived(h), [2])

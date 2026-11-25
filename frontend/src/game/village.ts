@@ -790,35 +790,32 @@ export type Summary = {
   lesson: string
 }
 
-const DEFAULT_NO_NOTE_RATES: readonly { error: number; rate: string }[] = [
-  { error: 0.3, rate: '98.6%' },
-  { error: 0.4, rate: '79.9%' },
-  { error: 0.48, rate: '41.2%' },
-]
+const NO_NOTE_WIN_RATE: Record<number, string> = { 0.3: '92%', 0.4: '82%', 0.48: '72%' }
+
+const MAFIA_CHIPS: Record<GameState['config']['mafia_count'], string> = {
+  1: '마피아는 나 혼자',
+  2: '마피아 둘',
+}
+const SHARE_CHIPS: Record<GameState['config']['share_mode'], string> = {
+  all: '모든 집 쪽지 비교',
+  none: '쪽지 비교 없음',
+  pairs: '밤마다 쪽지 비교',
+}
+const CITIZEN_CHIPS: Record<GameState['config']['citizen_type'], string> = {
+  wary: '눈치 보는 주민',
+  majority: '다수결 주민',
+  ai: 'AI 주민',
+}
 
 // 이번 마을 칩: 집 수, 마피아 수, 쪽지 비교 방식, 연결 방식, 주민 종류.
 export function resultVillageChips(state: Pick<GameState, 'config' | 'roles'>): string[] {
-  const houseCount = Object.keys(state.roles).length
-  const mafiaChip =
-    state.config.mafia_count === 1
-      ? '마피아는 나 혼자'
-      : state.config.mafia_count === 2
-        ? '마피아 둘'
-        : `마피아 ${state.config.mafia_count}명`
-  const shareChip =
-    state.config.share_mode === 'all'
-      ? '모든 집 쪽지 비교'
-      : state.config.share_mode === 'none'
-        ? '쪽지 비교 없음'
-        : '밤마다 쪽지 비교'
-  const connChip = state.config.connection === 'ring' ? '양옆과만 연결' : '모든 집과 연결'
-  const citizenChip =
-    state.config.citizen_type === 'wary'
-      ? '눈치 보는 주민'
-      : state.config.citizen_type === 'majority'
-        ? '다수결 주민'
-        : 'AI 주민'
-  return [`집 ${houseCount}채`, mafiaChip, shareChip, connChip, citizenChip]
+  return [
+    `집 ${Object.keys(state.roles).length}채`,
+    MAFIA_CHIPS[state.config.mafia_count],
+    SHARE_CHIPS[state.config.share_mode],
+    state.config.connection === 'ring' ? '양옆과만 연결' : '모든 집과 연결',
+    CITIZEN_CHIPS[state.config.citizen_type],
+  ]
 }
 
 // 날짜별 속은 주민 수 (role==='citizen' && correct===false).
@@ -854,7 +851,7 @@ export function resultBaseline(
   const f = state.config.mafia_count
   const citizens = Object.values(state.roles).filter((r) => r === 'citizen').length
   const need = majority(citizens)
-  const won = state.outcome !== 'loss'
+  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
   const last = history.at(-1)
   const topic: 'byz' | 'ring' = state.config.connection === 'ring' ? 'ring' : 'byz'
   const linkTitle = topic === 'ring' ? '연결도 조건' : '비잔틴 장군 문제'
@@ -906,25 +903,28 @@ export function resultBaseline(
   }
 
   // n >= 3f + 1 && connection === 'all'
-  let rightHints = 0
-  let wrongHints = 0
-  for (const t of history) {
-    for (const c of t.cities) {
+  // 4. 하늘 탓 (노트 §1-3 ② 증거 조건: 마지막 턴 주민별 기억 관측 다수 mine의 정답 표 <= 오답 표 + f, 재판 종료 제외)
+  if (state.end_reason !== 'caught' && last) {
+    const scales = citizenScales(state, history, history.length - 1)
+    let rightMine = 0
+    let wrongMine = 0
+    for (const c of last.cities) {
       if (c.role !== 'citizen' || !c.hint) continue
-      if (c.hint === state.truth) rightHints++
-      else wrongHints++
+      const hintScore = scales[c.city]?.parts.find((p) => p.from === 'hint')?.value ?? 0
+      if (agrees(state.truth, pick(hintScore, c.hint))) rightMine++
+      else wrongMine++
     }
-  }
-
-  // 4. 하늘 탓 (관측 절반 초과가 틀렸고 재판으로 끝난 판이 아닐 때)
-  if (state.end_reason !== 'caught' && wrongHints > rightHints) {
-    return {
-      lines: [
-        '주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요. 누가 마피아였어도 주민이 이긴다고 장담하기 어려웠어요.',
-      ],
-      topic,
-      linkTitle,
-      linkSub,
+    if (rightMine + wrongMine > 0 && !(rightMine > wrongMine + f)) {
+      return {
+        lines: [
+          won
+            ? '주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요. 하늘도 당신 편이었어요.'
+            : '주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요. 누가 마피아였어도 주민이 이긴다고 장담하기 어려웠어요.',
+        ],
+        topic,
+        linkTitle,
+        linkSub,
+      }
     }
   }
 
@@ -1012,27 +1012,33 @@ export function resultDecisive(
   return ['이번 판이 끝났어요.']
 }
 
+// 해당 턴에서 내 쪽지가 마음을 거짓 쪽으로 뒤집은 주민 수.
+function swayedWrong(
+  state: Pick<GameState, 'player_city' | 'config'>,
+  history: Pick<TurnResult, 'cities'>[],
+  i: number,
+): number {
+  const scales = citizenScales(state, history, i)
+  return history[i].cities.filter((c) => c.role === 'citizen' && c.correct === false && scales[c.city]?.swayed).length
+}
+
 // 영향력: 판 전체에서 citizenScales().swayed && correct===false인 (턴, 주민) 수. AI 주민이면 null.
 export function resultInfluence(
-  state: Pick<GameState, 'player_city' | 'config'>,
+  state: Pick<GameState, 'player_city' | 'config' | 'roles'>,
   history: Pick<TurnResult, 'cities'>[],
 ): InfluenceSummary | null {
   if (state.config.citizen_type === 'ai') return null
   let count = 0
-  for (let i = 0; i < history.length; i++) {
-    const scales = citizenScales(state, history, i)
-    for (const c of history[i].cities) {
-      if (c.role === 'citizen' && c.correct === false && scales[c.city]?.swayed) count++
-    }
-  }
+  for (let i = 0; i < history.length; i++) count += swayedWrong(state, history, i)
   const isDefault =
-    state.config.citizen_type === 'wary' &&
+    Object.keys(state.roles).length === 5 &&
     state.config.mafia_count === 1 &&
-    state.config.connection === 'all'
-  const matched = isDefault
-    ? DEFAULT_NO_NOTE_RATES.find((r) => Math.abs(r.error - state.config.sensor_error) < 1e-6)
-    : undefined
-  return { count, noNoteWinRate: matched?.rate ?? null }
+    state.config.citizen_type === 'wary' &&
+    state.config.connection === 'all' &&
+    state.config.share_mode === 'pairs' &&
+    state.config.memory === 'turn' &&
+    state.config.player === 'human'
+  return { count, noNoteWinRate: isDefault ? (NO_NOTE_WIN_RATE[state.config.sensor_error] ?? null) : null }
 }
 
 type DetectedTactic = {
@@ -1067,14 +1073,17 @@ export function detectTactics(
     t.sharing.some((s) => s.contradictions.some((c) => c.city === me)),
   )
 
-  // 1. 감사 회피 (완벽한 알리바이): 이중 발언 5번 이상 & 모순 0번
-  if (equivTurnIndices.length >= 5 && contradictionTurns.length === 0) {
-    const lastEquiv = history[equivTurnIndices.at(-1)!]
-    detected.push({
-      tag: 'audit',
-      day: lastEquiv.turn,
-      text: `집마다 다른 쪽지를 ${equivTurnIndices.length}번이나 보냈지만, 쪽지 비교에서는 한 번도 들키지 않았어요.`,
-    })
+  // 1. 감사 회피 (완벽한 알리바이): share_mode !== 'none'이고 비교가 실제 일어난 턴 중 이중 발언 5회 이상 & 판 전체 모순 0회
+  if (state.config.share_mode !== 'none' && contradictionTurns.length === 0) {
+    const auditedEquivIndices = equivTurnIndices.filter((i) => history[i].sharing.length > 0)
+    if (auditedEquivIndices.length >= 5) {
+      const lastEquiv = history[auditedEquivIndices.at(-1)!]
+      detected.push({
+        tag: 'audit',
+        day: lastEquiv.turn,
+        text: `집마다 다른 쪽지를 ${auditedEquivIndices.length}번이나 보냈지만, 쪽지 비교에서는 한 번도 들키지 않았어요.`,
+      })
+    }
   }
 
   // 2. 온오프 공격 (의심 세탁): 의심도 >= 40일 때 진실을 보내 <= 20으로 내린 뒤, 다시 거짓을 보내 그 주민이 틀림
@@ -1085,56 +1094,34 @@ export function detectTactics(
 
   let onoffHit: { city: number; fromSus: number; toSus: number; washDay: number; foolDay: number } | null = null
   for (const cityId of citizenIds) {
-    let phase: 'idle' | 'high' | 'washing' | 'washed' = 'idle'
-    let peakSus = 0
-    let fromSus = 0
-    let toSus = 0
-    let washDay = 0
-
-    for (const t of history) {
+    const rows = history.flatMap((t) => {
       const c = t.cities.find((x) => x.city === cityId)
-      if (!c || c.role !== 'citizen' || !c.suspicion) continue
-      const sus = c.suspicion[me]
-      if (sus == null) continue
+      const sus = c?.role === 'citizen' ? c.suspicion?.[me] : null
+      if (!c || sus == null) return []
       const sent = c.received?.[me]?.claim ?? null
-      const sentTruth = sent != null && agrees(state.truth, sent)
-      const sentLie = sent != null && !agrees(state.truth, sent)
-
-      if (phase === 'idle') {
-        if (sus >= 40) {
-          phase = 'high'
-          peakSus = sus
-        }
-      } else if (phase === 'high' || phase === 'washing') {
-        if (sentTruth) {
-          if (sus <= 20) {
-            phase = 'washed'
-            fromSus = peakSus
-            toSus = sus
-            washDay = t.turn
-          } else {
-            phase = 'washing'
-            if (sus >= 40 && sus > peakSus) peakSus = sus
-          }
-        } else if (sus >= 40) {
-          phase = 'high'
-          peakSus = Math.max(peakSus, sus)
-        } else {
-          // 진실을 보내지 않았는데 의심도가 40 미만으로 내려갔다면 세탁 실패로 초기화
-          phase = 'idle'
-          peakSus = 0
-        }
-      } else if (phase === 'washed') {
-        if (sentLie && c.correct === false) {
-          const hit = { city: cityId, fromSus, toSus, washDay, foolDay: t.turn }
-          if (!onoffHit || hit.washDay < onoffHit.washDay) onoffHit = hit
-          break
-        }
-        // 세탁 후 아직 속이지 못한 사이 다시 의심도가 40 이상으로 올라가면 새 고점으로
-        if (sus >= 40) {
-          phase = 'high'
-          peakSus = sus
-        }
+      return [
+        {
+          turn: t.turn,
+          sus,
+          sentTruth: sent != null && agrees(state.truth, sent),
+          sentLie: sent != null && !agrees(state.truth, sent),
+          correct: c.correct,
+        },
+      ]
+    })
+    for (let j = 1; j < rows.length; j++) {
+      if (!rows[j].sentTruth || rows[j].sus > 20) continue
+      let fromSus = 0
+      for (let p = j - 1; p >= 0 && (rows[p].sus >= 40 || (fromSus === 0 && rows[p].sentTruth)); p--) {
+        if (rows[p].sus >= 40) fromSus = Math.max(fromSus, rows[p].sus)
+      }
+      if (fromSus < 40) continue
+      const after = rows.slice(j + 1)
+      const k = after.findIndex((r) => (r.sentLie && r.correct === false) || r.sus >= 40)
+      if (k >= 0 && after[k].sentLie && after[k].correct === false) {
+        const hit = { city: cityId, fromSus, toSus: rows[j].sus, washDay: rows[j].turn, foolDay: after[k].turn }
+        if (!onoffHit || hit.washDay < onoffHit.washDay) onoffHit = hit
+        break
       }
     }
   }
@@ -1147,23 +1134,18 @@ export function detectTactics(
     })
   }
 
-  // 3. 완고한 행위자 (고집쟁이 동료): f=2 판에서 동료 때문에 재판이 열림
+  // 3. 완고한 행위자 (고집쟁이 동료): f=2 판에서 재판에 동료가 지목됨
   if (state.config.mafia_count === 2) {
     const colleagueEntry = Object.entries(state.roles).find(([, role]) => role === 'colleague')
     const colleagueCity = colleagueEntry ? Number(colleagueEntry[0]) : null
     if (colleagueCity != null) {
-      const colleagueTrial = history.find(
-        (t) =>
-          t.vote != null &&
-          (t.vote.accused === colleagueCity ||
-            t.cities.some((c) => c.role === 'citizen' && (c.suspicion?.[colleagueCity] ?? 0) >= SUSPICION.threshold)),
-      )
+      const colleagueTrial = history.find((t) => t.vote?.accused === colleagueCity)
       if (colleagueTrial) {
         detected.push({
           tag: 'zealot',
           day: colleagueTrial.turn,
           text: `같은 거짓말만 되풀이한 동료(${colleagueCity}번 집) 때문에 광장 재판이 열렸어요.`,
-          attachTo: colleagueTrial.vote?.caught && colleagueTrial.vote.accused === colleagueCity ? 'caught' : undefined,
+          attachTo: colleagueTrial.vote?.caught ? 'caught' : undefined,
         })
       }
     }
@@ -1186,11 +1168,7 @@ export function detectTactics(
   let bestEquivTurn: number | null = null
   let bestEquivCount = 0
   for (const idx of equivTurnIndices) {
-    const scales = citizenScales(state, history, idx)
-    let turnSwayed = 0
-    for (const c of history[idx].cities) {
-      if (c.role === 'citizen' && c.correct === false && scales[c.city]?.swayed) turnSwayed++
-    }
+    const turnSwayed = swayedWrong(state, history, idx)
     equivSwayed += turnSwayed
     if (turnSwayed > bestEquivCount) {
       bestEquivCount = turnSwayed
@@ -1236,23 +1214,21 @@ export function gameSummary(
   const tactics = detectTactics(state, history)
   const tags = tactics.map((t) => t.tag)
 
-  const moments: Moment[] = []
-  let caughtMomentIdx: number | null = null
-  let knotsMomentIdx: number | null = null
+  const momentItems: (Moment & { kind?: 'caught' | 'knots' })[] = []
 
   if (vote) {
     const voters = Object.entries(vote.ballots)
       .filter(([, to]) => to === vote.accused)
       .map(([from]) => `${from}번`)
     const who = vote.accused === me ? '나를' : `동료 ${vote.accused}번을`
-    caughtMomentIdx = moments.length
-    moments.push({
+    momentItems.push({
+      kind: 'caught',
       day,
       text: `${day}일째 재판에서 ${voters.join(', ')}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표)`,
     })
   } else if (last) {
     const wrong = last.cities.filter((c) => c.role === 'citizen' && c.correct === false).length
-    moments.push({
+    momentItems.push({
       day,
       text: `마지막 ${day}일째에 주민 ${citizens}명 중 ${wrong}명이 속았어요 (승리에 ${need}명 필요)`,
     })
@@ -1260,15 +1236,15 @@ export function gameSummary(
   const crossed = history.find((_, i) => (peaks[i] ?? 0) >= SUSPICION.threshold)
   if (crossed) {
     const top = crossed.cities.reduce((a, c) => ((c.suspicion?.[me] ?? 0) > (a.suspicion?.[me] ?? 0) ? c : a))
-    moments.push({
+    momentItems.push({
       day: crossed.turn,
       text: `${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold}을 넘었어요`,
     })
   }
   const knots = history.filter((t) => t.sharing.some((s) => s.contradictions.some((c) => c.city === me)))
   if (knots.length) {
-    knotsMomentIdx = moments.length
-    moments.push({
+    momentItems.push({
+      kind: 'knots',
       day: knots.at(-1)!.turn,
       text: `쪽지 비교에서 다른 쪽지를 보냈다가 ${knots.length}번 들켰어요 (${knots.map((t) => `${t.turn}일째`).join(', ')})`,
     })
@@ -1276,20 +1252,18 @@ export function gameSummary(
 
   // 꼬리표를 기존 장면에 붙이거나 새 장면으로 추가
   for (const t of tactics) {
-    if (t.attachTo === 'caught' && caughtMomentIdx != null && !moments[caughtMomentIdx].tag) {
-      moments[caughtMomentIdx] = { ...moments[caughtMomentIdx], tag: t.tag }
-    } else if (t.attachTo === 'knots' && knotsMomentIdx != null && !moments[knotsMomentIdx].tag) {
-      moments[knotsMomentIdx] = { ...moments[knotsMomentIdx], tag: t.tag }
-    } else {
-      moments.push({ day: t.day, text: t.text, tag: t.tag })
-    }
+    const target = t.attachTo ? momentItems.find((m) => m.kind === t.attachTo && !m.tag) : undefined
+    if (target) target.tag = t.tag
+    else momentItems.push({ day: t.day, text: t.text, tag: t.tag })
   }
 
   const trials = history.filter((t) => t.vote).length
-  if (trials) moments.push({ day: null, text: `재판이 ${trials}번 열렸어요` })
+  if (trials) momentItems.push({ day: null, text: `재판이 ${trials}번 열렸어요` })
 
   // 날짜 순서대로 정렬 (날짜 없는 항목은 뒤로)
-  moments.sort((a, b) => (a.day ?? Infinity) - (b.day ?? Infinity))
+  const moments: Moment[] = momentItems
+    .sort((a, b) => (a.day ?? Infinity) - (b.day ?? Infinity))
+    .map(({ day: d, text, tag }) => (tag ? { day: d, text, tag } : { day: d, text }))
 
   // 그래프 핀: 모순("쪽지 들킴"), 재판("재판"), 꼬리표(화면 꼬리표 이름과 동일)
   const pins: Record<number, ChartPin> = {}
