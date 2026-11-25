@@ -653,7 +653,7 @@ export function GameStart({
             textAnchor="middle"
             className="vb-sign-title vb-pencil"
           >
-            열다섯 밤의 거짓말
+            밤의 거짓말
           </text>
 
           <g filter="url(#vs-rough)" fill="#5a3d22" stroke="#3b2a1a" strokeWidth="2">
