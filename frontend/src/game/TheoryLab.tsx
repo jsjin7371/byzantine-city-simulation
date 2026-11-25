@@ -3,31 +3,18 @@ import type { RefObject } from 'react'
 import { BookLink, TheoryBook } from './TheoryBook'
 import type { TopicKey } from './village'
 
-type ScenarioCard =
-  | {
-      id: string
-      chapter: 1
-      title: string
-      brief: string
-      chips: readonly string[]
-      goal: string
-      rule: string
-      rate: string
-      topic: TopicKey
-    }
-  | {
-      id: string
-      chapter: 2
-      title: string
-      village: string
-      goal: string
-      topic: TopicKey
-    }
-
-const SCENARIOS: readonly ScenarioCard[] = [
+const CHAPTER1_SCENARIOS: readonly {
+  id: string
+  title: string
+  brief: string
+  chips: readonly string[]
+  goal: string
+  rule: string
+  rate: string
+  topic: TopicKey
+}[] = [
   {
     id: 'watchful-eye',
-    chapter: 1,
     title: '감시의 눈',
     brief: '"오늘 밤부터 모든 주민이 받은 쪽지를 다 같이 맞춰 봐요."',
     chips: ['집 5채', '모든 집 쪽지 비교', '잘못 볼 확률 45%'],
@@ -38,7 +25,6 @@ const SCENARIOS: readonly ScenarioCard[] = [
   },
   {
     id: 'ring-village',
-    chapter: 1,
     title: '고리 마을',
     brief: '"길이 좁아 양옆 두 집에만 쪽지를 보낼 수 있어요."',
     chips: ['집 5채', '양옆과만 연결', '잘못 볼 확률 45%'],
@@ -49,7 +35,6 @@ const SCENARIOS: readonly ScenarioCard[] = [
   },
   {
     id: 'full-memory',
-    chapter: 1,
     title: '모든 날을 기억하는 마을',
     brief: '"주민들이 지금까지 본 하늘을 모두 기억해요."',
     chips: ['집 5채', '모든 날 기억', '잘못 볼 확률 48%'],
@@ -60,7 +45,6 @@ const SCENARIOS: readonly ScenarioCard[] = [
   },
   {
     id: 'regain-trust',
-    chapter: 1,
     title: '신뢰를 되찾는 법',
     brief: '"재판 직전까지 밀어붙였다가, 맞는 말로 신뢰를 되찾아 보세요."',
     chips: ['기본 마을', '잘못 볼 확률 45%'],
@@ -71,7 +55,6 @@ const SCENARIOS: readonly ScenarioCard[] = [
   },
   {
     id: 'stubborn-ally',
-    chapter: 1,
     title: '고집쟁이 동료',
     brief: '"동료 마피아가 한 명 더 있어요. 그런데 이 동료는 늘 같은 거짓말만 해요."',
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
@@ -80,9 +63,17 @@ const SCENARIOS: readonly ScenarioCard[] = [
     rate: '잘해도 넷에 하나쯤 이겨요',
     topic: 'zealot',
   },
+]
+
+const CHAPTER2_SCENARIOS: readonly {
+  id: string
+  title: string
+  village: string
+  goal: string
+  topic: TopicKey
+}[] = [
   {
     id: 'three-generals',
-    chapter: 2,
     title: '장군 셋의 딜레마',
     village: '집 3채, 쪽지 비교 없음',
     goal: '두 주민이 서로 다른 결정을 내리게 하기',
@@ -90,7 +81,6 @@ const SCENARIOS: readonly ScenarioCard[] = [
   },
   {
     id: 'seven-houses',
-    chapter: 2,
     title: '일곱 집의 마을',
     village: '집 7채, 마피아 둘',
     goal: '주민 과반을 속이기. 고집쟁이 동료와 견주어 보세요.',
@@ -98,7 +88,6 @@ const SCENARIOS: readonly ScenarioCard[] = [
   },
   {
     id: 'unannounced-audit',
-    chapter: 2,
     title: '누가 만날지 모른다',
     village: '쪽지 비교 짝을 미리 알 수 없음',
     goal: '한 번도 재판에 걸리지 않고 이기기',
@@ -113,10 +102,8 @@ export function TheoryLab({
   headingRef?: RefObject<HTMLHeadingElement | null>
   onBack: () => void
 }) {
-  const [book, setBook] = useState<{ topic: TopicKey; opener: HTMLElement | null } | null>(null)
+  const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
   const soonId = useId()
-  const chapter1 = SCENARIOS.filter((s): s is Extract<ScenarioCard, { chapter: 1 }> => s.chapter === 1)
-  const chapter2 = SCENARIOS.filter((s): s is Extract<ScenarioCard, { chapter: 2 }> => s.chapter === 2)
 
   return (
     <div className="gm-workspace gm-lab">
@@ -145,7 +132,7 @@ export function TheoryLab({
           </p>
 
           <div className="tl-cards">
-            {chapter1.map((card) => (
+            {CHAPTER1_SCENARIOS.map((card) => (
               <article key={card.id} className="tl-card">
                 <h3>{card.title}</h3>
                 <p className="tl-brief">{card.brief}</p>
@@ -171,16 +158,12 @@ export function TheoryLab({
                 </dl>
                 <p className="tl-rate">{card.rate}</p>
                 <div className="tl-card-foot">
-                  <BookLink
-                    label="이론 읽기"
-                    onClick={(btn) => setBook({ topic: card.topic, opener: btn })}
-                  />
+                  <BookLink label="이론 읽기" onClick={() => setBookTopic(card.topic)} />
                   <button
                     type="button"
                     className="tl-play"
                     aria-disabled="true"
                     aria-describedby={soonId}
-                    onClick={(e) => e.preventDefault()}
                   >
                     시작 <span className="tl-soon-badge">준비 중</span>
                   </button>
@@ -194,17 +177,16 @@ export function TheoryLab({
           <div className="tl-chapter">
             <h2 id="tl-ch2-title">둘째 장</h2>
             <p>집 수를 바꿀 수 있게 된 뒤</p>
-            <span className="tl-presets" aria-label="집 수 프리셋: 3, 5(현재), 7">
+            <span className="sr-only">집 수 프리셋: 3, 5(현재), 7</span>
+            <span className="tl-presets" aria-hidden="true">
               <span>3</span>
-              <span className="is-on" aria-current="true">
-                5
-              </span>
+              <span className="is-on">5</span>
               <span>7</span>
             </span>
           </div>
 
           <div className="tl-cards">
-            {chapter2.map((card) => (
+            {CHAPTER2_SCENARIOS.map((card) => (
               <article key={card.id} className="tl-card is-locked">
                 <h3>{card.title}</h3>
                 <dl>
@@ -218,10 +200,7 @@ export function TheoryLab({
                   </div>
                 </dl>
                 <div className="tl-card-foot">
-                  <BookLink
-                    label="이론 읽기"
-                    onClick={(btn) => setBook({ topic: card.topic, opener: btn })}
-                  />
+                  <BookLink label="이론 읽기" onClick={() => setBookTopic(card.topic)} />
                   <span className="tl-lock-badge">준비 중</span>
                 </div>
               </article>
@@ -230,7 +209,7 @@ export function TheoryLab({
         </section>
       </div>
 
-      <TheoryBook topic={book?.topic ?? null} opener={book?.opener} onClose={() => setBook(null)} />
+      <TheoryBook topic={bookTopic} onClose={() => setBookTopic(null)} />
     </div>
   )
 }

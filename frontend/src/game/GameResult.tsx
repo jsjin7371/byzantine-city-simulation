@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { percent } from '../components/results/resultLabels'
 import { SUSPICION, endReasonLabels, outcomeLabels } from '../gameApi'
@@ -8,18 +8,8 @@ import { THEORY_TOPICS, getTacticTip } from './theoryBook'
 import { TAG_LABELS, gameSummary } from './village'
 import type { ChartPin, TagKey, TopicKey } from './village'
 
-function Multiline({ lines }: { lines: string[] }) {
-  return (
-    <>
-      {lines.map((line, i) => (
-        <Fragment key={i}>
-          {i > 0 && <br />}
-          {line}
-        </Fragment>
-      ))}
-    </>
-  )
-}
+const SUPPORTS_POPOVER =
+  typeof HTMLElement !== 'undefined' && Object.prototype.hasOwnProperty.call(HTMLElement.prototype, 'popover')
 
 function TacticPopover({
   id,
@@ -28,7 +18,7 @@ function TacticPopover({
 }: {
   id: string
   tag: TagKey
-  onOpenBook: (topic: TopicKey, opener: HTMLElement | null) => void
+  onOpenBook: (topic: TopicKey) => void
 }) {
   const tipRef = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
@@ -57,34 +47,44 @@ function TacticPopover({
 
   return (
     <>
-      <button ref={btnRef} type="button" className="gr-tag" popoverTarget={id}>
+      <button
+        ref={btnRef}
+        type="button"
+        className="gr-tag"
+        popoverTarget={SUPPORTS_POPOVER ? id : undefined}
+        onClick={SUPPORTS_POPOVER ? undefined : () => onOpenBook(tag)}
+      >
         {TAG_LABELS[tag]}
       </button>
-      <div ref={tipRef} id={id} popover="auto" className="gr-tip">
-        <div className="gr-tip-body">
-          <h4>
-            {topic.title}
-            <small>{topic.en}</small>
-          </h4>
-          <p>{tip.easy}</p>
-          <span className="gr-tip-label">이 게임에서는</span>
-          <p>{tip.game}</p>
+      {SUPPORTS_POPOVER && (
+        <div ref={tipRef} id={id} popover="auto" className="gr-tip" aria-label={topic.title}>
+          <div className="gr-tip-body">
+            <h4>
+              {topic.title}
+              <small>{topic.en}</small>
+            </h4>
+            <p>{tip.easy}</p>
+            <span className="gr-tip-label">이 게임에서는</span>
+            <p>{tip.game}</p>
+          </div>
+          <p className="gr-tip-theory">
+            {tip.theory}
+            <cite>{tip.cite}</cite>
+          </p>
+          <footer>
+            <BookLink
+              label="책에서 자세히"
+              onClick={() => {
+                const el = tipRef.current
+                if (el?.matches(':popover-open')) el.hidePopover()
+                // 팝오버가 닫히면 내부 버튼 초점이 사라지므로 showModal() 직전 꼬리표 버튼으로 맞춰 복귀 대상을 유지한다.
+                btnRef.current?.focus({ preventScroll: true })
+                onOpenBook(tag)
+              }}
+            />
+          </footer>
         </div>
-        <p className="gr-tip-theory">
-          {tip.theory}
-          <cite>{tip.cite}</cite>
-        </p>
-        <footer>
-          <BookLink
-            label="책에서 자세히"
-            onClick={() => {
-              const el = tipRef.current
-              if (el?.matches(':popover-open')) el.hidePopover()
-              onOpenBook(tag, btnRef.current)
-            }}
-          />
-        </footer>
-      </div>
+      )}
     </>
   )
 }
@@ -104,54 +104,23 @@ function ResultChart({
   citizenCount: number
   majorityNeed: number
 }) {
-  const svgRef = useRef<SVGSVGElement>(null)
-  const [phase, setPhase] = useState<'armed' | 'play'>(() =>
-    typeof IntersectionObserver === 'undefined' ||
-    (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-      ? 'play'
-      : 'armed',
-  )
-  const [runId, setRunId] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [runId, setRunId] = useState(() => (typeof IntersectionObserver === 'undefined' ? 1 : 0))
   const hasPeaks = peaks.some((v) => v != null)
 
-  const triggerPlay = () => {
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setPhase('play')
-      return
-    }
-    setPhase('armed')
-    setRunId((n) => n + 1)
-  }
-
   useEffect(() => {
-    if (runId === 0) return
-    let raf2 = 0
-    const raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => setPhase('play'))
-    })
-    return () => {
-      cancelAnimationFrame(raf1)
-      cancelAnimationFrame(raf2)
-    }
-  }, [runId])
-
-  useEffect(() => {
-    const svg = svgRef.current
-    if (!svg) return
-    if (typeof IntersectionObserver === 'undefined' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return
-    }
+    const el = scrollRef.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
-          setPhase('armed')
-          setRunId((n) => n + 1)
+          setRunId((n) => (n === 0 ? 1 : n))
           io.disconnect()
         }
       },
       { threshold: 0.2 },
     )
-    io.observe(svg)
+    io.observe(el)
     return () => io.disconnect()
   }, [])
 
@@ -223,14 +192,14 @@ function ResultChart({
     <div className="gr-chart-wrap">
       <div className="gr-chart-head">
         <h3>날짜별 흐름</h3>
-        <button type="button" className="gr-replay" onClick={triggerPlay}>
+        <button type="button" className="gr-replay" onClick={() => setRunId((n) => n + 1)}>
           다시 보기
         </button>
       </div>
-      <div className="gr-chart-scroll">
+      <div ref={scrollRef} className="gr-chart-scroll" tabIndex={0} role="region" aria-label="날짜별 흐름 그래프">
         <svg
-          ref={svgRef}
-          className={`gr-chart ${phase === 'play' ? 'is-play' : 'is-armed'}`}
+          key={runId}
+          className={`gr-chart ${runId > 0 ? 'is-play' : 'is-idle'}`}
           viewBox={`0 0 ${viewW} ${viewH}`}
           role="img"
           aria-label={ariaParts.join(' ')}
@@ -276,7 +245,7 @@ function ResultChart({
             const pinTextY = placed ? placed.textY + botShift : 0
 
             return (
-              <g key={`${runId}-${i}`} style={{ '--i': i } as CSSProperties}>
+              <g key={i} style={{ '--i': i } as CSSProperties}>
                 <rect
                   className="gr-bar"
                   x={x}
@@ -340,22 +309,18 @@ export function GameResult({
   children?: ReactNode
 }) {
   const s = gameSummary(state, history)
-  const won = state.outcome !== 'loss'
+  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
   const stampText = state.outcome ? outcomeLabels[state.outcome] : '종료'
   const idPrefix = useId()
-  const [book, setBook] = useState<{ topic: TopicKey; opener: HTMLElement | null } | null>(null)
-
-  const openBook = (topic: TopicKey, opener: HTMLElement | null) => {
-    setBook({ topic, opener })
-  }
+  const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
 
   return (
-    <section className="gr-sheet" aria-live="polite">
+    <section className="gr-sheet">
       <div className="gr-verdict">
         <div className={won ? 'gr-stamp is-win' : 'gr-stamp'} aria-hidden="true">
           {stampText}
         </div>
-        <h2>
+        <h2 aria-live="polite">
           <span className="sr-only">{stampText}. </span>
           {s.headline}
         </h2>
@@ -382,27 +347,30 @@ export function GameResult({
 
         <div className="gr-step">
           <h3>출발선</h3>
-          <p>
-            <Multiline lines={s.baseline.lines} />
-          </p>
+          <p>{s.baseline.lines.join('\n')}</p>
         </div>
 
         <div className="gr-step">
           <h3>결정타</h3>
-          <p className="gr-lead">
-            <Multiline lines={s.decisive} />
-          </p>
+          <p className="gr-lead">{s.decisive.join('\n')}</p>
         </div>
 
         <div className="gr-step">
           <h3>이론으로</h3>
           <div>
-            <BookLink
-              showIcon
-              label={s.baseline.linkTitle}
-              sub={s.baseline.linkSub}
-              onClick={(btn) => openBook(s.baseline.topic, btn)}
-            />
+            <button type="button" className="tb-book-link" onClick={() => setBookTopic(s.baseline.topic)}>
+              <svg width="26" height="20" viewBox="0 0 26 20" aria-hidden="true">
+                <path
+                  d="M13 4C9 1 5 1 1 2v15c4-1 8-1 12 2 4-3 8-3 12-2V2c-4-1-8-1-12 2zm0 0v15"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="tb-book-link-text">{s.baseline.linkTitle}</span>
+              <small className="tb-book-link-sub">{s.baseline.linkSub}</small>
+            </button>
           </div>
         </div>
       </div>
@@ -418,7 +386,7 @@ export function GameResult({
                   <span className="gr-day">{m.day != null ? `${m.day}일` : '전체'}</span>
                   <span className="gr-moment-text">
                     {m.text}
-                    {m.tag && <TacticPopover id={tipId} tag={m.tag} onOpenBook={openBook} />}
+                    {m.tag && <TacticPopover id={tipId} tag={m.tag} onOpenBook={setBookTopic} />}
                   </span>
                 </li>
               )
@@ -434,7 +402,7 @@ export function GameResult({
             내 쪽지가 주민의 마음을 거짓 쪽으로 뒤집은 횟수예요.
             {s.influence.noNoteWinRate && (
               <small>
-                쪽지 없이 각자 본 하늘만으로 정했다면, 이 난이도에서 주민이 맞힐 확률은 {s.influence.noNoteWinRate}였어요.
+                쪽지 없이 각자 본 하늘만으로 정했다면, 하룻밤에 주민 과반이 맞힐 확률은 {s.influence.noNoteWinRate}예요.
               </small>
             )}
           </p>
@@ -454,7 +422,7 @@ export function GameResult({
 
       {children && <div className="gr-footer">{children}</div>}
 
-      <TheoryBook topic={book?.topic ?? null} opener={book?.opener} onClose={() => setBook(null)} />
+      <TheoryBook topic={bookTopic} onClose={() => setBookTopic(null)} />
     </section>
   )
 }
