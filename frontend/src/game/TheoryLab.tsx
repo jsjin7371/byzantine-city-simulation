@@ -158,7 +158,7 @@ export function TheoryLab({
                 </dl>
                 <p className="tl-rate">{card.rate}</p>
                 <div className="tl-card-foot">
-                  <BookLink label="이론 읽기" onClick={() => setBookTopic(card.topic)} />
+                  <BookLink label="이론 읽기" icon onClick={() => setBookTopic(card.topic)} />
                   <button
                     type="button"
                     className="tl-play"
@@ -200,7 +200,7 @@ export function TheoryLab({
                   </div>
                 </dl>
                 <div className="tl-card-foot">
-                  <BookLink label="이론 읽기" onClick={() => setBookTopic(card.topic)} />
+                  <BookLink label="이론 읽기" icon onClick={() => setBookTopic(card.topic)} />
                   <span className="tl-lock-badge">준비 중</span>
                 </div>
               </article>

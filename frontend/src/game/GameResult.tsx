@@ -337,19 +337,12 @@ export function GameResult({
         <div className="gr-step">
           <h3>이론으로</h3>
           <div>
-            <button type="button" className="tb-book-link" onClick={() => setBookTopic(s.baseline.topic)}>
-              <svg width="26" height="20" viewBox="0 0 26 20" aria-hidden="true">
-                <path
-                  d="M13 4C9 1 5 1 1 2v15c4-1 8-1 12 2 4-3 8-3 12-2V2c-4-1-8-1-12 2zm0 0v15"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <span className="tb-book-link-text">{s.baseline.linkTitle}</span>
-              <small className="tb-book-link-sub">{s.baseline.linkSub}</small>
-            </button>
+            <BookLink
+              label={s.baseline.linkTitle}
+              sub={s.baseline.linkSub}
+              icon
+              onClick={() => setBookTopic(s.baseline.topic)}
+            />
           </div>
         </div>
       </div>

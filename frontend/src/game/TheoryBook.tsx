@@ -2,10 +2,36 @@ import { useEffect, useId, useRef } from 'react'
 import { THEORY_TOPICS } from './theoryBook'
 import type { TopicKey } from './village'
 
-export function BookLink({ label, onClick }: { label: string; onClick: () => void }) {
+export function BookIcon() {
+  return (
+    <svg width="26" height="20" viewBox="0 0 26 20" aria-hidden="true">
+      <path
+        d="M13 4C9 1 5 1 1 2v15c4-1 8-1 12 2 4-3 8-3 12-2V2c-4-1-8-1-12 2zm0 0v15"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+export function BookLink({
+  label,
+  sub,
+  icon = false,
+  onClick,
+}: {
+  label: string
+  sub?: string
+  icon?: boolean
+  onClick: () => void
+}) {
   return (
     <button type="button" className="tb-book-link" onClick={onClick}>
+      {icon && <BookIcon />}
       <span className="tb-book-link-text">{label}</span>
+      {sub && <small className="tb-book-link-sub">{sub}</small>}
     </button>
   )
 }
