@@ -164,7 +164,6 @@ export type House = {
 export type ObservationTag = {
   claim: Claim
   lit: boolean
-  text: string
   aria: string
 }
 
@@ -176,7 +175,6 @@ export function nextObservationTag(h: Pick<House, 'hint' | 'lit'>): ObservationT
   return {
     claim,
     lit: h.lit,
-    text: h.lit ? `오늘 밤 관측: ${word}` : `오늘 밤 관측: ${word}(틀림)`,
     aria: h.lit ? `오늘 밤 관측 ${word}, 맞음, 불 켜짐` : `오늘 밤 관측 ${word}, 틀림, 불 꺼짐`,
   }
 }
@@ -209,19 +207,19 @@ export function villageHouses(
 }
 
 // 집→집 의심 선 경로표 (슬롯 번호 쌍 a < b 기준).
-// 각 선과 숫자 꼬리표는 게이지·깃발·점선 이름표·광장 글자를 피하는 빈 통로에 놓는다.
+// 각 선과 숫자 꼬리표는 게이지·예상 문구·관측/변동 꼬리표·깃발·광장 글자를 피하는 빈 통로에 놓는다.
 type LinkGeom = { a: [number, number]; b: [number, number]; c: [number, number]; tag: [number, number] }
 const SUSPICION_EDGE: Record<string, LinkGeom> = {
   '0-1': { a: [412, 494], b: [282, 462], c: [352, 466], tag: [352, 474] },
-  '0-2': { a: [434, 480], b: [282, 242], c: [424, 336], tag: [418, 404] },
+  '0-2': { a: [432, 480], b: [300, 294], c: [348, 264], tag: [362, 333] }, // 2번 집 예상 문구 아래·쪽지 비교 이름표 아래로
   '0-3': { a: [466, 480], b: [618, 242], c: [476, 336], tag: [482, 404] },
   '0-4': { a: [488, 494], b: [618, 462], c: [548, 466], tag: [548, 474] },
   '1-2': { a: [178, 412], b: [174, 248], c: [44, 344], tag: [124, 372] },
-  '1-3': { a: [280, 418], b: [620, 246], c: [450, 434], tag: [420, 388] }, // 2-4와 곡선이 교차하므로 꼬리표를 좌우로 나눈다 (광장 글씨 y<=355, 도장 y>=399 사이)
+  '1-3': { a: [282, 420], b: [618, 242], c: [450, 420], tag: [424, 386] },
   '1-4': { a: [282, 424], b: [618, 424], c: [450, 438], tag: [450, 431] },
   '2-3': { a: [282, 204], b: [618, 204], c: [450, 152], tag: [450, 178] },
-  '2-4': { a: [280, 246], b: [620, 418], c: [450, 434], tag: [480, 388] },
-  '3-4': { a: [726, 248], b: [748, 416], c: [856, 344], tag: [790, 374] },
+  '2-4': { a: [294, 294], b: [618, 414], c: [484, 306], tag: [499, 345] },
+  '3-4': { a: [726, 246], b: [750, 420], c: [932, 208], tag: [814, 334] },
 }
 
 export type SuspicionLink = {
@@ -1278,21 +1276,17 @@ export function detectTrustBrokenMoment(
 ): Moment | null {
   if (state.config.citizen_type !== 'wary') return null
   const me = state.player_city
+  const sus = (t: Pick<TurnResult, 'cities'>, city: number) =>
+    t.cities.find((c) => c.city === city)?.suspicion?.[me] ?? -1
   for (let i = 0; i < history.length; i++) {
     const t = history[i]
     const high = highSuspicionCitizens(t.cities, me)
     if (high.length === 0) continue
     const houses = formatHouseGroup(high.map((c) => c.city))
-    const rest = history.slice(i + 1)
-    const stayedHigh = high.every((h) =>
-      rest.every((next) => (next.cities.find((c) => c.city === h.city)?.suspicion?.[me] ?? -1) >= TRUST_BROKEN_SUSPICION),
-    )
+    const stayedHigh = high.every((h) => history.slice(i + 1).every((next) => sus(next, h.city) >= TRUST_BROKEN_SUSPICION))
+    const span = stayedHigh ? history.slice(i) : [t]
+    const allZeroWeight = high.every((h) => span.every((next) => sus(next, h.city) >= 100))
     const when = stayedHigh ? `${t.turn}일째부터` : `${t.turn}일째에는`
-    const allZeroWeight = stayedHigh
-      ? high.every((h) =>
-          history.slice(i).every((next) => (next.cities.find((c) => c.city === h.city)?.suspicion?.[me] ?? 0) >= 100),
-        )
-      : high.every((c) => (c.suspicion?.[me] ?? 0) >= 100)
     return {
       day: t.turn,
       text: allZeroWeight

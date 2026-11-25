@@ -73,19 +73,16 @@ test('after a turn houses show decisions, suspicion of me and next hints', () =>
   assert.deepEqual(nextObservationTag(byCity[4]), {
     claim: 'evacuate',
     lit: true,
-    text: '오늘 밤 관측: 대피',
     aria: '오늘 밤 관측 대피, 맞음, 불 켜짐',
   })
   assert.deepEqual(nextObservationTag(byCity[1]), {
     claim: 'stay',
     lit: false,
-    text: '오늘 밤 관측: 잔류(틀림)',
     aria: '오늘 밤 관측 잔류, 틀림, 불 꺼짐',
   })
   assert.deepEqual(nextObservationTag({ hint: 'danger', lit: false }), {
     claim: 'evacuate',
     lit: false,
-    text: '오늘 밤 관측: 대피(틀림)',
     aria: '오늘 밤 관측 대피, 틀림, 불 꺼짐',
   })
   assert.equal(nextObservationTag(byCity[2]), null)

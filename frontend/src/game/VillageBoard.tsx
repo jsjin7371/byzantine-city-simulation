@@ -266,8 +266,7 @@ function BoardLegend() {
         <line x1="576" y1="669" x2="576" y2="689" stroke="#c3a878" strokeWidth="1.5" />
         <g transform="translate(592,679)" className="vb-obs-tag is-lit">
           <rect x="0" y="-10" width="28" height="20" rx="4" strokeWidth="1.6" />
-          <rect x="4" y="-5" width="9" height="10" fill="#ffd35a" stroke="#3b2a1a" strokeWidth="1.2" />
-          <path d="M8.5 -5 V5 M4 0 H13" stroke="#3b2a1a" strokeWidth="0.9" />
+          <use href="#vb-win-on" transform="translate(8.5,0) scale(.56)" />
           <path d="M17 -2 H24 M17 3 H22" stroke="#6b4a2a" strokeWidth="1.6" strokeLinecap="round" />
         </g>
         <text x="628" y="685" fontSize="16.5" fontWeight="700">
@@ -561,18 +560,7 @@ function HouseView({
           aria-hidden="true"
         >
           <rect x={-obsW / 2} y="-13" width={obsW} height="26" rx="4" strokeWidth="1.8" />
-          <g transform={`translate(${-obsW / 2 + 12},0)`}>
-            <rect
-              x="-5.5"
-              y="-5.5"
-              width="11"
-              height="11"
-              fill={obs.lit ? '#ffd35a' : '#3e352c'}
-              stroke="#3b2a1a"
-              strokeWidth="1.4"
-            />
-            <path d="M0 -5.5 V5.5 M-5.5 0 H5.5" stroke={obs.lit ? '#3b2a1a' : '#8d7d69'} strokeWidth="1" />
-          </g>
+          <use href={obs.lit ? '#vb-win-on' : '#vb-win-off'} transform={`translate(${-obsW / 2 + 12},0) scale(.7)`} />
           <text x="9" y="5.5" fontSize="16" fontWeight="700" textAnchor="middle">
             오늘 밤 관측: {decisions[obs.claim]}
             {!obs.lit && <tspan className="vb-obs-wrong">(틀림)</tspan>}
