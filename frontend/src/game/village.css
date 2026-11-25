@@ -1304,11 +1304,9 @@
   word-break: keep-all;
   overflow-wrap: break-word;
   visibility: hidden;
-  pointer-events: none;
 }
 .tut-text.is-active {
   visibility: visible;
-  pointer-events: auto;
 }
 .tut-line {
   display: block;
@@ -1316,6 +1314,7 @@
 .tut-actions {
   flex: none;
   display: grid;
+  margin-left: auto;
 }
 .tut-actions-row {
   grid-area: 1 / 1;
@@ -1326,7 +1325,6 @@
 }
 .tut-actions-row.is-sizer {
   visibility: hidden;
-  pointer-events: none;
 }
 .tut-actions [data-ui-button] {
   position: relative;

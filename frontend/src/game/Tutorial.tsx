@@ -45,11 +45,11 @@ export function Tutorial({
       </div>
       <div className="tut-actions">
         <div className="tut-actions-row is-sizer" aria-hidden="true">
-          <Button asChild size="sm">
-            <span>이어서 하기</span>
+          <Button size="sm" tabIndex={-1}>
+            이어서 하기
           </Button>
-          <Button asChild size="sm" variant="outline">
-            <span>시작 화면으로</span>
+          <Button size="sm" variant="outline" tabIndex={-1}>
+            시작 화면으로
           </Button>
         </div>
         {step && (
