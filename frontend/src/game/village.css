@@ -1555,7 +1555,7 @@
 }
 svg.gr-chart {
   width: 100%;
-  max-width: 760px;
+  max-width: 680px;
   min-width: 360px;
   display: block;
   margin-top: 8px;
@@ -2201,9 +2201,9 @@ dialog.tb-dialog[open] {
   gap: 6px;
   font-weight: 700;
   font-size: 17px;
-  background: #879680;
-  color: var(--cream);
-  border: 1.5px dashed #5d6c57;
+  background: var(--parch);
+  color: var(--muted);
+  border: 1.5px dashed var(--border);
   border-radius: 8px;
   padding: 5px 12px;
   cursor: not-allowed;
@@ -2215,9 +2215,10 @@ dialog.tb-dialog[open] {
 .tl-soon-badge {
   font-size: 15px;
   font-weight: 700;
-  background: rgba(47, 74, 40, 0.25);
+  background: rgba(107, 74, 42, 0.14);
+  color: var(--wood-dark);
   border-radius: 999px;
-  padding: 0 7px;
+  padding: 0 8px;
 }
 .tl-card.is-locked {
   background: rgba(248, 240, 218, 0.45);

@@ -149,18 +149,19 @@ function ResultChart({
           io.disconnect()
         }
       },
-      { threshold: 0.35 },
+      { threshold: 0.2 },
     )
     io.observe(svg)
     return () => io.disconnect()
   }, [])
 
   const count = Math.max(deceived.length, 1)
-  const x0 = 86
-  const step = count <= 8 ? 58 : 42
-  const bw = count <= 8 ? 34 : 26
-  const rightX = x0 + step * count
-  const viewW = rightX + 86
+  const x0 = 92
+  const step = count <= 8 ? 72 : 48
+  const bw = count <= 8 ? 36 : 26
+  const plotRightX = x0 + step * count
+  const minCols = Math.max(count, 6)
+  const viewW = x0 + step * minCols + 88
 
   const topMax = Math.max(citizenCount, majorityNeed, 1)
   const topBase = 114
@@ -168,10 +169,37 @@ function ResultChart({
   const topUnit = topPlotH / topMax
   const majY = topBase - majorityNeed * topUnit
 
-  const botBase = 282
   const botPlotH = 100
+  const baseBotBase = 296
+  const pinLayout: Record<number, { dotY: number; textY: number }> = {}
+  const placedPins: { left: number; right: number; y: number }[] = []
+  let minPinY = topBase + 24
+
+  for (let i = 0; i < deceived.length; i++) {
+    const pin = pins[i]
+    if (!pin) continue
+    const cx = x0 + i * step + bw / 2
+    const hTop = deceived[i] * topUnit
+    const peakVal = peaks[i]
+    const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
+    const dotY = hasPeaks ? baseBotBase - hBot - 11 : topBase - hTop - 11
+    const estW = pin.labels.join(', ').length * 10.5 + 12
+    const left = cx - estW / 2
+    const right = cx + estW / 2
+    let textY = dotY - 10
+    while (placedPins.some((p) => !(right < p.left || left > p.right) && Math.abs(textY - p.y) < 18)) {
+      textY -= 18
+    }
+    placedPins.push({ left, right, y: textY })
+    if (hasPeaks && textY < minPinY) minPinY = textY
+    pinLayout[i] = { dotY, textY }
+  }
+
+  // 핀이 여러 날 연속으로 쌓여 위 칸 기준선과 가까워지면 아래 칸을 그만큼 내려 겹침을 막는다.
+  const botShift = hasPeaks ? Math.max(0, topBase + 26 - minPinY) : 0
+  const botBase = baseBotBase + botShift
   const trialY = botBase - SUSPICION.threshold
-  const viewH = hasPeaks ? 312 : 144
+  const viewH = hasPeaks ? botBase + 30 : 146
 
   const pinEntries = Object.entries(pins)
     .map(([i, p]) => [Number(i), p] as const)
@@ -210,27 +238,27 @@ function ResultChart({
           <text className="gr-axis-label" x="0" y="24">
             속은 주민
           </text>
-          <path d={`M${x0 - 8} ${majY} H${rightX}`} stroke="var(--forest)" strokeWidth="1.6" strokeDasharray="4 4" />
-          <text x={rightX + 6} y={majY + 5} fill="var(--forest)">
+          <path d={`M${x0 - 8} ${majY} H${plotRightX}`} stroke="var(--forest)" strokeWidth="1.6" strokeDasharray="4 4" />
+          <text x={plotRightX + 8} y={majY + 5} fill="var(--forest)">
             과반 {majorityNeed}
           </text>
-          <path d={`M${x0 - 8} ${topBase} H${rightX}`} stroke="var(--border)" strokeWidth="1.5" />
+          <path d={`M${x0 - 8} ${topBase} H${plotRightX}`} stroke="var(--border)" strokeWidth="1.5" />
 
           {hasPeaks && (
             <>
-              <text className="gr-axis-label" x="0" y="164">
+              <text className="gr-axis-label" x="0" y={botBase - botPlotH - 18}>
                 최고 의심도
               </text>
               <path
-                d={`M${x0 - 8} ${trialY} H${rightX}`}
+                d={`M${x0 - 8} ${trialY} H${plotRightX}`}
                 stroke="var(--rust)"
                 strokeWidth="1.6"
                 strokeDasharray="4 4"
               />
-              <text x={rightX + 6} y={trialY + 5} fill="var(--rust)">
+              <text x={plotRightX + 8} y={trialY + 5} fill="var(--rust)">
                 재판 {SUSPICION.threshold}
               </text>
-              <path d={`M${x0 - 8} ${botBase} H${rightX}`} stroke="var(--border)" strokeWidth="1.5" />
+              <path d={`M${x0 - 8} ${botBase} H${plotRightX}`} stroke="var(--border)" strokeWidth="1.5" />
             </>
           )}
 
@@ -243,10 +271,9 @@ function ResultChart({
             const over = peakVal != null && peakVal >= SUSPICION.threshold
             const pin = pins[i]
             const pinColor = pin?.danger ? 'var(--rust)' : 'var(--wood)'
-            const prevHasPin = Boolean(pins[i - 1])
-            const pinLift = prevHasPin && i % 2 === 1 ? 18 : 0
-            const pinDotY = hasPeaks ? botBase - hBot - 12 : topBase - hTop - 12
-            const pinTextY = Math.max(hasPeaks ? topBase + 22 : 16, pinDotY - 10 - pinLift)
+            const placed = pinLayout[i]
+            const pinDotY = placed ? placed.dotY + botShift : 0
+            const pinTextY = placed ? placed.textY + botShift : 0
 
             return (
               <g key={`${runId}-${i}`} style={{ '--i': i } as CSSProperties}>
@@ -273,8 +300,20 @@ function ResultChart({
                 <text className="gr-daylabel" x={cx} y={hasPeaks ? botBase + 22 : topBase + 22} textAnchor="middle">
                   {turns[i]}일
                 </text>
-                {pin && (
+                {pin && placed && (
                   <g className="gr-pin">
+                    {pinDotY - pinTextY > 14 && (
+                      <line
+                        x1={cx}
+                        y1={pinDotY - 5}
+                        x2={cx}
+                        y2={pinTextY + 4}
+                        stroke={pinColor}
+                        strokeWidth="1.2"
+                        strokeDasharray="2 2"
+                        opacity="0.65"
+                      />
+                    )}
                     <circle cx={cx} cy={pinDotY} r="4" fill={pinColor} />
                     <text x={cx} y={pinTextY} textAnchor="middle" fill={pinColor}>
                       {pin.labels.join(', ')}
