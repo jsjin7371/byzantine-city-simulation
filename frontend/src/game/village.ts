@@ -744,11 +744,11 @@ export const TAG_LABELS: Record<TagKey, string> = {
 }
 
 export const TAG_PIN_LABELS: Record<TagKey, string> = {
-  audit: '완벽한 알리바이',
-  onoff: '의심 세탁',
-  zealot: '고집쟁이 동료',
-  falsepos: '누명 씌우기',
-  equiv: '두 얼굴',
+  audit: '감사 회피',
+  onoff: '온오프 공격',
+  zealot: '완고한 행위자',
+  falsepos: '거짓 양성',
+  equiv: '이중 발언',
 }
 
 export type Moment = {
@@ -1291,7 +1291,7 @@ export function gameSummary(
   // 날짜 순서대로 정렬 (날짜 없는 항목은 뒤로)
   moments.sort((a, b) => (a.day ?? Infinity) - (b.day ?? Infinity))
 
-  // 그래프 핀: 모순("쪽지 들킴"), 재판("재판"), 꼬리표(꼬리표 쉬운 이름)
+  // 그래프 핀: 모순("쪽지 들킴"), 재판("재판"), 꼬리표(화면 꼬리표 이름과 동일)
   const pins: Record<number, ChartPin> = {}
   const addPin = (idx: number, label: string, danger: boolean) => {
     if (idx < 0 || idx >= history.length) return

@@ -3,6 +3,7 @@ import test from 'node:test'
 import {
   DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
+import { THEORY_TOPICS, getTacticTip } from '../src/game/theoryBook.ts'
 import { difficulties } from '../src/gameApi.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -872,8 +873,41 @@ test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () =>
   // f=1이면 zealot은 빠지고 falsepos, equiv가 남는다
   const f1NoZealot = detectTactics(soloState({ roles: f2State.roles }), multiHist)
   assert.deepEqual(f1NoZealot.map((x) => x.tag), ['falsepos', 'equiv'])
-  assert.equal(TAG_LABELS.equiv, '이중 발언')
-  assert.equal(TAG_PIN_LABELS.equiv, '두 얼굴')
+  // 그래프 핀 문구도 화면 꼬리표 이름과 동일해야 한다
+  assert.deepEqual(TAG_PIN_LABELS, TAG_LABELS)
+  assert.equal(TAG_PIN_LABELS.equiv, '이중 발언')
+  const pinSummary = gameSummary(soloState({ roles: f2State.roles, outcome: 'win', end_reason: 'turns_done' }), multiHist)
+  assert.ok(pinSummary.pins[0]?.labels.includes('거짓 양성'))
+  assert.ok(pinSummary.pins[0]?.labels.includes('이중 발언'))
+})
+
+test('THEORY_TOPICS has verified content for all 8 topics and concise 2-sentence popover theory tips', () => {
+  const topicKeys = ['byz', 'equiv', 'onoff', 'ring', 'condorcet', 'zealot', 'falsepos', 'audit']
+  assert.deepEqual(Object.keys(THEORY_TOPICS).sort(), [...topicKeys].sort())
+  for (const key of topicKeys) {
+    const topic = THEORY_TOPICS[key]
+    assert.ok(topic.easy.length > 0 && topic.game.length > 0 && topic.proof.length > 0, `${key} has body`)
+    assert.ok(topic.boxes.length >= 2 && topic.refs.length >= 2, `${key} has boxes and refs`)
+    const combined = [
+      topic.easy,
+      topic.game,
+      topic.proof,
+      ...topic.boxes.flat(),
+      ...topic.refs.map((r) => `${r.before}${r.italic ?? ''}${r.after ?? ''}`),
+    ].join(' ')
+    assert.doesNotMatch(combined, /확인 못 함|자리표시/)
+  }
+
+  for (const tag of Object.keys(TAG_LABELS)) {
+    const tip = getTacticTip(tag)
+    assert.ok(tip.easy.length > 0 && tip.game.length > 0 && tip.theory.length > 0 && tip.cite.length > 0)
+    const sentences = tip.theory
+      .trim()
+      .split(/(?<=[.?!])\s+/)
+      .filter(Boolean)
+    assert.ok(sentences.length <= 2, `${tag} tip.theory has ${sentences.length} sentences (max 2)`)
+    assert.doesNotMatch(`${tip.easy} ${tip.game} ${tip.theory} ${tip.cite}`, /확인 못 함|자리표시/)
+  }
 })
 
 test('resultInfluence counts swayed wrong citizens, shows default no-note rates, and hides for AI', () => {
