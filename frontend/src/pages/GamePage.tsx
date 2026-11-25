@@ -12,6 +12,7 @@ import {
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
 import { GameStart } from '../game/GameStart'
+import { TheoryLab } from '../game/TheoryLab'
 import { Tutorial } from '../game/Tutorial'
 import { VillageBoard } from '../game/VillageBoard'
 import { VillageLog } from '../game/VillageLog'
@@ -142,6 +143,7 @@ function scrollIntoView(el: HTMLElement | null) {
 export function GamePage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   const [citizenType, setCitizenType] = useState<CitizenType>('wary')
+  const [screen, setScreen] = useState<'start' | 'lab'>('start')
   const [state, setState] = useState<GameState | null>(null)
   const [claims, setClaims] = useState<Record<string, Claim>>({})
   const [history, setHistory] = useState<TurnResult[]>([])
@@ -158,14 +160,14 @@ export function GamePage() {
   const boardRef = useRef<SVGSVGElement>(null)
   const submitRef = useRef<HTMLButtonElement>(null)
   const scaleBtnRef = useRef<HTMLButtonElement>(null)
-  const inGame = state !== null
-  const prevInGame = useRef(inGame)
+  const view = state !== null ? 'play' : screen
+  const prevView = useRef(view)
   useEffect(() => {
-    if (prevInGame.current !== inGame) {
-      prevInGame.current = inGame
+    if (prevView.current !== view) {
+      prevView.current = view
       headingRef.current?.focus({ preventScroll: true })
     }
-  }, [inGame])
+  }, [view])
 
   const result = history.at(-1) ?? null
   const withVotes = state?.config.citizen_type !== 'ai'
@@ -237,6 +239,7 @@ export function GamePage() {
 
   const exit = () => {
     setState(null)
+    setScreen('start')
     setTutorial(false)
     setTutorialCursor(0)
     setOpenCity(null)
@@ -315,17 +318,22 @@ export function GamePage() {
     <>
       <PencilFilters />
       {!state ? (
-        <GameStart
-          difficulty={difficulty}
-          citizenType={citizenType}
-          busy={busy}
-          error={error}
-          headingRef={headingRef}
-          onDifficulty={setDifficulty}
-          onCitizenType={setCitizenType}
-          onStart={() => start(false)}
-          onTutorial={() => start(true)}
-        />
+        screen === 'lab' ? (
+          <TheoryLab headingRef={headingRef} onBack={() => setScreen('start')} />
+        ) : (
+          <GameStart
+            difficulty={difficulty}
+            citizenType={citizenType}
+            busy={busy}
+            error={error}
+            headingRef={headingRef}
+            onDifficulty={setDifficulty}
+            onCitizenType={setCitizenType}
+            onStart={() => start(false)}
+            onTutorial={() => start(true)}
+            onLab={() => setScreen('lab')}
+          />
+        )
       ) : (
         <div className="gm-workspace gm-play">
           <h1 ref={headingRef} tabIndex={-1} className="sr-only">
