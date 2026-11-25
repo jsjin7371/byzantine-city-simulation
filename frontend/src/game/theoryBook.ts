@@ -25,7 +25,7 @@ export type TheoryTopic = {
   tip?: TheoryTip
 }
 
-export type TaggedTopic = TheoryTopic & { tip: TheoryTip }
+type TaggedTopic = TheoryTopic & { tip: TheoryTip }
 
 // 책 오버레이와 수법 꼬리표 팝오버의 이론 원문 데이터.
 // 원문 검증본(이론기능/3_이론책_원문검증.md) 기준.

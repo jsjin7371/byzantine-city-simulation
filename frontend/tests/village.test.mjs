@@ -971,15 +971,23 @@ test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () =>
   assert.equal(onoffRes[0].day, 2)
   assert.match(onoffRes[0].text, /1번 집\(의심도 40\).*20까지 낮춘 뒤, 다음 날 다시 속였어요/)
 
-  // 주민이 하늘을 잘못 본 날(truth=danger, hint=safe)에도 그 주민이 본 날씨와 같은 쪽지(stay)로 의심도를 낮췄으면 온오프 공격으로 인정
+  // 주민이 하늘을 잘못 본 날(truth=danger, hint=safe)에도 직전과 다른 쪽지(evacuate -> stay)로 의심도를 낮췄으면 온오프 공격으로 인정
   const wrongHintWash = [
-    { turn: 1, cities: [c(1, 'danger', 'stay', { 3: 40 }, true)], sharing: [], vote: null },
+    { turn: 1, cities: [c(1, 'danger', 'evacuate', { 3: 40 }, true)], sharing: [], vote: null },
     { turn: 2, cities: [c(1, 'safe', 'stay', { 3: 20 }, false)], sharing: [], vote: null },
     { turn: 3, cities: [c(1, 'safe', 'stay', { 3: 0 }, false)], sharing: [], vote: null },
   ]
   const wrongHintRes = detectTactics(soloState(), wrongHintWash)
   assert.deepEqual(wrongHintRes.map((x) => x.tag), ['onoff'])
   assert.equal(wrongHintRes[0].day, 2)
+
+  // 항상 같은 거짓 쪽지(stay)만 보냈는데 주민이 하늘을 잘못 봐 의심도가 내려간 판이면 꼬리표가 없어야 한다
+  const sameLieWrongHint = [
+    { turn: 1, cities: [c(1, 'danger', 'stay', { 3: 40 }, true)], sharing: [], vote: null },
+    { turn: 2, cities: [c(1, 'safe', 'stay', { 3: 20 }, false)], sharing: [], vote: null },
+    { turn: 3, cities: [c(1, 'safe', 'stay', { 3: 0 }, false)], sharing: [], vote: null },
+  ]
+  assert.deepEqual(detectTactics(soloState(), sameLieWrongHint), [])
 
   // 진짜 날씨(evacuate)를 보냈더라도 그 주민이 본 날씨(safe)와 다르면 의심 세탁으로 인정하지 않는다
   const mismatchHintTruth = [

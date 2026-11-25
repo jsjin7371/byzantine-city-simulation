@@ -1507,6 +1507,7 @@
   inset: auto;
   padding: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--cream);
   color: var(--ink);
   border: 1px solid var(--wood);

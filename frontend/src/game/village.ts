@@ -942,12 +942,9 @@ export function resultBaseline(
       n === 5 && f === 2
         ? '집 다섯에 마피아 둘이면 주민이 반드시 버틴다는 보장이 사라져요.'
         : `집 ${n}채에 마피아 ${f}명이면 주민이 반드시 버틴다는 보장이 사라져요.`
-    const colleagues = new Set(
-      Object.entries(state.roles)
-        .filter(([, role]) => role === 'colleague')
-        .map(([id]) => Number(id)),
+    const colleagueAccused = history.some(
+      (t) => t.vote?.accused != null && state.roles[t.vote.accused] === 'colleague',
     )
-    const colleagueAccused = history.some((t) => t.vote?.accused != null && colleagues.has(t.vote.accused))
     const tail = won
       ? ' 수적 우위를 잘 살려 끝까지 흔들어 놓았어요.'
       : colleagueAccused
@@ -1157,6 +1154,7 @@ export function detectTactics(
         {
           turn: t.turn,
           sus,
+          sent,
           matchedHint: sent != null && c.hint != null && agrees(c.hint, sent),
           sentLie: sent != null && !agrees(state.truth, sent),
           correct: c.correct,
@@ -1164,7 +1162,7 @@ export function detectTactics(
       ]
     })
     for (let j = 1; j < rows.length; j++) {
-      if (!rows[j].matchedHint || rows[j].sus > 20) continue
+      if (!rows[j].matchedHint || rows[j].sus > 20 || rows[j].sent === rows[j - 1].sent) continue
       let fromSus = 0
       for (let p = j - 1; p >= 0 && (rows[p].sus >= 40 || (fromSus === 0 && rows[p].matchedHint)); p--) {
         if (rows[p].sus >= 40) fromSus = Math.max(fromSus, rows[p].sus)
