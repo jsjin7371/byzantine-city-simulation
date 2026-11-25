@@ -1180,7 +1180,7 @@ export function detectTactics(
     detected.push({
       tag: 'onoff',
       day: onoffHit.washDay,
-      text: `나를 의심하던 ${onoffHit.city}번 집(의심도 ${onoffHit.fromSus})에 진짜 날씨를 보내 ${onoffHit.toSus}까지 낮춘 뒤, ${nextWhen} 다시 속였어요.`,
+      text: `나를 의심하던 ${onoffHit.city}번 집(의심도 ${onoffHit.fromSus})에 그 집이 본 날씨와 같은 쪽지를 보내 ${onoffHit.toSus}까지 낮춘 뒤, ${nextWhen} 다시 속였어요.`,
     })
   }
 
