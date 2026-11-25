@@ -24,7 +24,7 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   assert.equal(tutorialStep(0, day1).step?.highlight, 'sky')
   const windowsStep = tutorialStep(1, day1)
   assert.equal(windowsStep.step?.highlight, 'windows')
-  assert.match(windowsStep.step?.text ?? '', /집 아래 꼬리표.*내일 관측/)
+  assert.match(windowsStep.step?.text ?? '', /집 아래 꼬리표.*오늘 밤 관측/)
   assert.equal(splitSentences(windowsStep.step?.text ?? '').length, 4)
   const waitCard = tutorialStep(2, day1)
   assert.equal(waitCard.step?.highlight, 'houses')

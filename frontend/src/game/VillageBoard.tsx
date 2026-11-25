@@ -238,40 +238,40 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
   )
 }
 
-// 보드 하단 상시 범례: 깃발(지난밤 결정), 창문 불빛(맞음/틀림), 집 아래 꼬리표(내일 관측 값).
+// 보드 하단 상시 범례: 깃발(지난밤 결정), 창문 불빛(맞음/틀림), 집 아래 꼬리표(오늘 밤 관측 값).
 function BoardLegend() {
   return (
     <g
       className="vb-legend"
       role="img"
-      aria-label="보드 범례: 깃발은 지난밤 결정(대피/잔류)이에요. 창문 불이 켜지면 다음 관측이 맞고, 꺼지면 틀려요. 집 아래 꼬리표에 내일 관측 값이 적혀 있어요."
+      aria-label="보드 범례: 깃발은 지난밤 결정(대피/잔류)이에요. 창문 불이 켜지면 오늘 밤 관측이 맞고, 꺼지면 틀려요. 집 아래 꼬리표에 오늘 밤 관측 값이 적혀 있어요."
     >
       <rect x="0" y="660" width="900" height="38" fill="#efe0b9" />
       <line x1="0" y1="660" x2="900" y2="660" stroke="#4a3119" strokeWidth="2" />
       <g aria-hidden>
-        <use href="#vb-flag-evacuate" transform="translate(80,691) scale(.46)" />
-        <use href="#vb-flag-stay" transform="translate(106,691) scale(.46)" />
-        <text x="136" y="684" fontSize="15" fontWeight="700">
+        <use href="#vb-flag-evacuate" transform="translate(42,691) scale(.46)" />
+        <use href="#vb-flag-stay" transform="translate(68,691) scale(.46)" />
+        <text x="96" y="685" fontSize="16.5" fontWeight="700">
           깃발: 지난밤 결정
         </text>
-        <line x1="276" y1="669" x2="276" y2="689" stroke="#c3a878" strokeWidth="1.5" />
-        <use href="#vb-win-on" transform="translate(302,679) scale(.82)" />
-        <text x="320" y="684" fontSize="15" fontWeight="700">
+        <line x1="248" y1="669" x2="248" y2="689" stroke="#c3a878" strokeWidth="1.5" />
+        <use href="#vb-win-on" transform="translate(272,679) scale(.82)" />
+        <text x="290" y="685" fontSize="16.5" fontWeight="700">
           창문 불 켜짐: 맞음
         </text>
-        <use href="#vb-win-off" transform="translate(472,679) scale(.82)" />
-        <text x="488" y="684" fontSize="15" fontWeight="700">
+        <use href="#vb-win-off" transform="translate(456,679) scale(.82)" />
+        <text x="474" y="685" fontSize="16.5" fontWeight="700">
           꺼짐: 틀림
         </text>
-        <line x1="578" y1="669" x2="578" y2="689" stroke="#c3a878" strokeWidth="1.5" />
-        <g transform="translate(594,679)" className="vb-obs-tag is-lit">
+        <line x1="576" y1="669" x2="576" y2="689" stroke="#c3a878" strokeWidth="1.5" />
+        <g transform="translate(592,679)" className="vb-obs-tag is-lit">
           <rect x="0" y="-10" width="28" height="20" rx="4" strokeWidth="1.6" />
           <rect x="4" y="-5" width="9" height="10" fill="#ffd35a" stroke="#3b2a1a" strokeWidth="1.2" />
           <path d="M8.5 -5 V5 M4 0 H13" stroke="#3b2a1a" strokeWidth="0.9" />
           <path d="M17 -2 H24 M17 3 H22" stroke="#6b4a2a" strokeWidth="1.6" strokeLinecap="round" />
         </g>
-        <text x="630" y="684" fontSize="15" fontWeight="700">
-          집 아래 꼬리표: 내일 관측
+        <text x="628" y="685" fontSize="16.5" fontWeight="700">
+          집 아래 꼬리표: 오늘 밤 관측
         </text>
       </g>
     </g>
@@ -426,7 +426,7 @@ function HouseView({
 }) {
   const { x, y } = h
   const obs = !isNight ? nextObservationTag(h) : null
-  const obsW = obs ? (obs.lit ? 136 : 176) : 0
+  const obsW = obs ? (obs.lit ? 162 : 202) : 0
   const obsY = h.suspicion != null ? y + 64 : y + 26
   const base = `${houseLabel(h, playerCity)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
   const label = pick
@@ -574,7 +574,7 @@ function HouseView({
             <path d="M0 -5.5 V5.5 M-5.5 0 H5.5" stroke={obs.lit ? '#3b2a1a' : '#8d7d69'} strokeWidth="1" />
           </g>
           <text x="9" y="5.5" fontSize="16" fontWeight="700" textAnchor="middle">
-            내일 관측: {decisions[obs.claim]}
+            오늘 밤 관측: {decisions[obs.claim]}
             {!obs.lit && <tspan className="vb-obs-wrong">(틀림)</tspan>}
           </text>
           {hlWindow && <rect className="vb-tut-ring" x={-obsW / 2 - 4} y="-17" width={obsW + 8} height="34" rx="8" />}

@@ -168,7 +168,7 @@ export type ObservationTag = {
   aria: string
 }
 
-// 창문 불(h.lit)이 보이는 집 아래에 붙일 다음 관측 꼬리표와 낭독 문구 (danger→대피, safe→잔류).
+// 창문 불(h.lit)이 보이는 집 아래에 붙일 오늘 밤 관측 꼬리표와 낭독 문구 (danger→대피, safe→잔류).
 export function nextObservationTag(h: Pick<House, 'hint' | 'lit'>): ObservationTag | null {
   if (h.lit == null || h.hint == null) return null
   const claim: Claim = h.hint === 'danger' ? 'evacuate' : 'stay'
@@ -176,8 +176,8 @@ export function nextObservationTag(h: Pick<House, 'hint' | 'lit'>): ObservationT
   return {
     claim,
     lit: h.lit,
-    text: h.lit ? `내일 관측: ${word}` : `내일 관측: ${word}(틀림)`,
-    aria: h.lit ? `내일 관측 ${word}, 맞음, 불 켜짐` : `내일 관측 ${word}, 틀림, 불 꺼짐`,
+    text: h.lit ? `오늘 밤 관측: ${word}` : `오늘 밤 관측: ${word}(틀림)`,
+    aria: h.lit ? `오늘 밤 관측 ${word}, 맞음, 불 켜짐` : `오늘 밤 관측 ${word}, 틀림, 불 꺼짐`,
   }
 }
 
@@ -213,15 +213,15 @@ export function villageHouses(
 type LinkGeom = { a: [number, number]; b: [number, number]; c: [number, number]; tag: [number, number] }
 const SUSPICION_EDGE: Record<string, LinkGeom> = {
   '0-1': { a: [412, 494], b: [282, 462], c: [352, 466], tag: [352, 474] },
-  '0-2': { a: [428, 480], b: [266, 260], c: [332, 396], tag: [344, 392] },
-  '0-3': { a: [472, 480], b: [634, 260], c: [568, 396], tag: [556, 392] },
+  '0-2': { a: [434, 480], b: [282, 242], c: [424, 336], tag: [418, 404] },
+  '0-3': { a: [466, 480], b: [618, 242], c: [476, 336], tag: [482, 404] },
   '0-4': { a: [488, 494], b: [618, 462], c: [548, 466], tag: [548, 474] },
-  '1-2': { a: [178, 412], b: [178, 252], c: [70, 344], tag: [140, 374] },
+  '1-2': { a: [178, 412], b: [174, 248], c: [44, 344], tag: [124, 372] },
   '1-3': { a: [280, 418], b: [620, 246], c: [450, 434], tag: [420, 388] }, // 2-4와 곡선이 교차하므로 꼬리표를 좌우로 나눈다 (광장 글씨 y<=355, 도장 y>=399 사이)
   '1-4': { a: [282, 424], b: [618, 424], c: [450, 438], tag: [450, 431] },
   '2-3': { a: [282, 204], b: [618, 204], c: [450, 152], tag: [450, 178] },
   '2-4': { a: [280, 246], b: [620, 418], c: [450, 434], tag: [480, 388] },
-  '3-4': { a: [722, 252], b: [748, 416], c: [806, 344], tag: [774, 382] },
+  '3-4': { a: [726, 248], b: [748, 416], c: [856, 344], tag: [790, 374] },
 }
 
 export type SuspicionLink = {
@@ -1264,43 +1264,53 @@ function formatHouseGroup(cities: number[]): string {
   return `${cities.join('·')}번 집`
 }
 
-// 신뢰 끊김: 어떤 주민의 나(플레이어)에 대한 의심도가 처음 80 이상이 된 날. 다수결 주민이면 생략.
+function highSuspicionCitizens(cities: TurnResult['cities'], me: number) {
+  return cities
+    .filter((c) => c.role === 'citizen' && (c.suspicion?.[me] ?? -1) >= TRUST_BROKEN_SUSPICION)
+    .sort((a, b) => a.city - b.city)
+}
+
+// 신뢰 끊김: 눈치 주민의 나(플레이어)에 대한 의심도가 처음 80 이상이 된 날. 다수결·AI 주민이면 생략.
+// 이후 날이 모두 80 이상일 때만 "N일째부터", 아니면 "N일째에는"으로 적는다.
 export function detectTrustBrokenMoment(
   state: Pick<GameState, 'player_city' | 'config'>,
   history: Pick<TurnResult, 'turn' | 'cities'>[],
 ): Moment | null {
-  if (state.config.citizen_type === 'majority') return null
+  if (state.config.citizen_type !== 'wary') return null
   const me = state.player_city
-  for (const t of history) {
-    const high = t.cities
-      .filter((c) => c.role === 'citizen' && (c.suspicion?.[me] ?? -1) >= TRUST_BROKEN_SUSPICION)
-      .sort((a, b) => a.city - b.city)
+  for (let i = 0; i < history.length; i++) {
+    const t = history[i]
+    const high = highSuspicionCitizens(t.cities, me)
     if (high.length === 0) continue
     const houses = formatHouseGroup(high.map((c) => c.city))
-    if (state.config.citizen_type === 'ai') {
-      return {
-        day: t.turn,
-        text: `${t.turn}일째부터 ${houses}은 의심도가 ${TRUST_BROKEN_SUSPICION} 이상이 되어 내 쪽지를 거의 믿지 않았어요.`,
-      }
-    }
-    const allZeroWeight = high.every((c) => (c.suspicion?.[me] ?? 0) >= 100)
+    const rest = history.slice(i + 1)
+    const stayedHigh = high.every((h) =>
+      rest.every((next) => (next.cities.find((c) => c.city === h.city)?.suspicion?.[me] ?? -1) >= TRUST_BROKEN_SUSPICION),
+    )
+    const when = stayedHigh ? `${t.turn}일째부터` : `${t.turn}일째에는`
+    const allZeroWeight = stayedHigh
+      ? high.every((h) =>
+          history.slice(i).every((next) => (next.cities.find((c) => c.city === h.city)?.suspicion?.[me] ?? 0) >= 100),
+        )
+      : high.every((c) => (c.suspicion?.[me] ?? 0) >= 100)
     return {
       day: t.turn,
       text: allZeroWeight
-        ? `${t.turn}일째부터 ${houses}은 내 쪽지를 전혀 믿지 않았어요(의심도 100이면 0표예요).`
-        : `${t.turn}일째부터 ${houses}은 내 쪽지를 거의 믿지 않았어요(의심도 ${TRUST_BROKEN_SUSPICION} 이상이면 1/5표 이하예요).`,
+        ? `${when} ${houses}은 내 쪽지를 전혀 믿지 않았어요(의심도 100이면 0표예요)`
+        : `${when} ${houses}은 내 쪽지를 거의 믿지 않았어요(의심도 ${TRUST_BROKEN_SUSPICION} 이상이면 1/5표 이하예요)`,
     }
   }
   return null
 }
 
-// 한꺼번에 풀림: 속은 주민 수가 전날 과반 이상 → 오늘 과반 미만으로 떨어진 첫날과 그날의 이유.
+// 한꺼번에 풀림: 속은 주민 수가 전날 과반 이상 → 오늘 과반 미만으로 떨어진 첫날과 그날의 상태. AI 주민이면 생략.
 export function detectDeceptionDropMoment(
   state: Pick<GameState, 'player_city' | 'roles' | 'config' | 'truth'>,
   history: Pick<TurnResult, 'turn' | 'cities'>[],
   deceived: number[],
   need: number,
 ): Moment | null {
+  if (state.config.citizen_type === 'ai') return null
   const idx = history.findIndex((_, i) => i > 0 && deceived[i - 1] >= need && deceived[i] < need)
   if (idx < 0) return null
   const me = state.player_city
@@ -1308,45 +1318,26 @@ export function detectDeceptionDropMoment(
   const citizens = t.cities.filter((c) => c.role === 'citizen')
   const total = citizens.length
   const correctHints = citizens.filter((c) => c.hint != null && c.hint === state.truth).length
-  const highSus =
-    state.config.citizen_type === 'majority'
-      ? []
-      : citizens
-          .filter((c) => (c.suspicion?.[me] ?? -1) >= TRUST_BROKEN_SUSPICION)
-          .sort((a, b) => a.city - b.city)
-  const followedNeighbors = citizens
-    .filter((c) => {
-      if (c.hint == null || c.hint === state.truth || c.correct !== true || !c.received) return false
-      return Object.entries(c.received).some(
-        ([sender, msg]) =>
-          msg != null && Number(sender) !== me && state.roles[sender] === 'citizen' && agrees(state.truth, msg.claim),
-      )
-    })
-    .map((c) => c.city)
-    .sort((a, b) => a - b)
+  const highSus = state.config.citizen_type === 'wary' ? highSuspicionCitizens(t.cities, me) : []
 
-  const parts = [`${t.turn}일째, 속은 주민이 ${deceived[idx - 1]}명에서 ${deceived[idx]}명으로 줄었어요.`]
+  const parts = [`${t.turn}일째, 속은 주민이 ${deceived[idx - 1]}명에서 ${deceived[idx]}명으로 줄었어요`]
   if (total > 0 && correctHints === total) {
-    parts.push(`그날은 주민 ${total}명 모두 관측이 맞았어요.`)
+    parts.push(`그날은 주민 ${total}명 모두 관측이 맞았어요`)
   } else if (correctHints > 0) {
-    parts.push(`그날은 주민 ${total}명 중 ${correctHints}명은 관측이 맞았어요.`)
+    parts.push(`그날은 주민 ${total}명 중 ${correctHints}명은 관측이 맞았어요`)
   } else {
-    parts.push('그날은 관측이 맞은 주민이 없었어요.')
+    parts.push('그날은 관측이 맞은 주민이 없었어요')
   }
   if (highSus.length > 0) {
     const houses = formatHouseGroup(highSus.map((c) => c.city))
-    const allZeroWeight =
-      state.config.citizen_type !== 'ai' && highSus.every((c) => (c.suspicion?.[me] ?? 0) >= 100)
+    const allZeroWeight = highSus.every((c) => (c.suspicion?.[me] ?? 0) >= 100)
     parts.push(
       allZeroWeight
-        ? `${houses}은 의심도가 100이라 내 쪽지가 아예 안 통했어요.`
-        : `${houses}은 의심도가 ${TRUST_BROKEN_SUSPICION} 이상이라 내 쪽지가 거의 안 통했어요.`,
+        ? `${houses}은 의심도가 100이라 내 쪽지를 전혀 믿지 않았어요`
+        : `${houses}은 의심도가 ${TRUST_BROKEN_SUSPICION} 이상이라 내 쪽지를 거의 믿지 않았어요`,
     )
   }
-  if (followedNeighbors.length > 0) {
-    parts.push(`${formatHouseGroup(followedNeighbors)}은 관측이 틀렸는데도 이웃 쪽지를 믿고 돌아섰어요.`)
-  }
-  return { day: t.turn, text: parts.join(' ') }
+  return { day: t.turn, text: parts.join('. ') }
 }
 
 export function gameSummary(
@@ -1508,7 +1499,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'windows',
-    text: '주민은 밤마다 날씨를 직접 관측해요. 창문 불이 켜진 집은 다음 관측이 진짜 날씨와 맞고, 꺼진 집은 틀려요. 집 아래 꼬리표에 내일 관측이 대피인지 잔류인지 적혀 있어요. 불이 꺼진 집이 속이기 쉬워요.',
+    text: '주민은 밤마다 날씨를 직접 관측해요. 창문 불이 켜진 집은 오늘 밤 관측이 진짜 날씨와 맞고, 꺼진 집은 틀려요. 집 아래 꼬리표에 오늘 밤 관측이 대피인지 잔류인지 적혀 있어요. 불이 꺼진 집이 속이기 쉬워요.',
   },
   {
     highlight: 'houses',

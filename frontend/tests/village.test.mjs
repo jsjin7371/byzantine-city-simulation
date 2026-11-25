@@ -69,24 +69,24 @@ test('after a turn houses show decisions, suspicion of me and next hints', () =>
   assert.equal(byCity[2].role, 'colleague')
   assert.equal(villageHouses(state, { ...result, next_hints: null })[0].lit, null) // 게임 종료
 
-  // 다음 관측 꼬리표: danger→대피, safe→잔류, 불 꺼짐이면 (틀림) 표기, 힌트 없으면 null
+  // 오늘 밤 관측 꼬리표: danger→대피, safe→잔류, 불 꺼짐이면 (틀림) 표기, 힌트 없으면 null
   assert.deepEqual(nextObservationTag(byCity[4]), {
     claim: 'evacuate',
     lit: true,
-    text: '내일 관측: 대피',
-    aria: '내일 관측 대피, 맞음, 불 켜짐',
+    text: '오늘 밤 관측: 대피',
+    aria: '오늘 밤 관측 대피, 맞음, 불 켜짐',
   })
   assert.deepEqual(nextObservationTag(byCity[1]), {
     claim: 'stay',
     lit: false,
-    text: '내일 관측: 잔류(틀림)',
-    aria: '내일 관측 잔류, 틀림, 불 꺼짐',
+    text: '오늘 밤 관측: 잔류(틀림)',
+    aria: '오늘 밤 관측 잔류, 틀림, 불 꺼짐',
   })
   assert.deepEqual(nextObservationTag({ hint: 'danger', lit: false }), {
     claim: 'evacuate',
     lit: false,
-    text: '내일 관측: 대피(틀림)',
-    aria: '내일 관측 대피, 틀림, 불 꺼짐',
+    text: '오늘 밤 관측: 대피(틀림)',
+    aria: '오늘 밤 관측 대피, 틀림, 불 꺼짐',
   })
   assert.equal(nextObservationTag(byCity[2]), null)
 })
@@ -1232,14 +1232,14 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
   const trustLine = s.moments.find((m) => m.day === 8 && m.text.includes('내 쪽지를 거의 믿지 않았어요'))
   assert.ok(trustLine, 'trust-broken moment added on day 8')
   assert.equal(trustLine.tag, undefined)
-  assert.equal(trustLine.text, '8일째부터 2번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요).')
+  assert.equal(trustLine.text, '8일째부터 2번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요)')
 
   const dropLine = s.moments.find((m) => m.day === 9 && m.text.includes('속은 주민이'))
   assert.ok(dropLine, 'deception-drop moment added on day 9')
   assert.equal(dropLine.tag, undefined)
   assert.equal(
     dropLine.text,
-    '9일째, 속은 주민이 3명에서 1명으로 줄었어요. 그날은 주민 4명 모두 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지가 거의 안 통했어요.',
+    '9일째, 속은 주민이 3명에서 1명으로 줄었어요. 그날은 주민 4명 모두 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지를 거의 믿지 않았어요',
   )
   // 날짜순 정렬 유지, 그래프 핀 추가 없음
   const datedDays = s.moments.filter((m) => m.day != null).map((m) => m.day)
@@ -1247,8 +1247,8 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
   assert.equal(s.pins[1], undefined)
   assert.equal(s.pins[2], undefined)
 
-  // 같은 날 여러 집이 80 이상 도달 + 자기 관측 틀렸는데 이웃 쪽지를 따라 맞힌 집 동반
-  const groupedAndFollowed = [
+  // 같은 날 여러 집이 80 이상 도달 (이웃 쪽지 분기는 제거되어 관측·의심도 상태만 적는다)
+  const groupedDrop = [
     {
       turn: 4,
       cities: [
@@ -1274,10 +1274,10 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
       vote: null,
     },
   ]
-  const sGroup = gameSummary(g723State, groupedAndFollowed)
+  const sGroup = gameSummary(g723State, groupedDrop)
   assert.ok(
     sGroup.moments.some(
-      (m) => m.day === 5 && m.text === '5일째부터 2·3번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요).',
+      (m) => m.day === 5 && m.text === '5일째부터 2·3번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요)',
     ),
   )
   assert.ok(
@@ -1285,7 +1285,29 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
       (m) =>
         m.day === 5 &&
         m.text ===
-          '5일째, 속은 주민이 4명에서 0명으로 줄었어요. 그날은 주민 4명 중 3명은 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지가 거의 안 통했어요. 5번 집은 관측이 틀렸는데도 이웃 쪽지를 믿고 돌아섰어요.',
+          '5일째, 속은 주민이 4명에서 0명으로 줄었어요. 그날은 주민 4명 중 3명은 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지를 거의 믿지 않았어요',
+    ),
+  )
+  assert.equal(sGroup.moments.some((m) => m.text.includes('이웃 쪽지를 믿고')), false)
+
+  // 의심도가 80 이상에 도달했다가 이후 80 아래로 회복되면 "N일째부터"가 아니라 "N일째에는"으로 적는다
+  const recoveredHist = [
+    {
+      turn: 6,
+      cities: [playerRow, row(2, 'danger', 'evacuate', true, 40), row(3, 'danger', 'evacuate', true, 80)],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 7,
+      cities: [playerRow, row(2, 'danger', 'evacuate', true, 40), row(3, 'danger', 'evacuate', true, 60)],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  assert.ok(
+    gameSummary(g723State, recoveredHist).moments.some(
+      (m) => m.day === 6 && m.text === '6일째에는 3번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요)',
     ),
   )
 
@@ -1300,11 +1322,11 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
   ]
   assert.ok(
     gameSummary(g723State, jumpTo100).moments.some(
-      (m) => m.day === 3 && m.text === '3일째부터 2번 집은 내 쪽지를 전혀 믿지 않았어요(의심도 100이면 0표예요).',
+      (m) => m.day === 3 && m.text === '3일째부터 2번 집은 내 쪽지를 전혀 믿지 않았어요(의심도 100이면 0표예요)',
     ),
   )
 
-  // 다수결 주민(의심도 없음): 신뢰 끊김(a)은 생략, 한꺼번에 풀림(b)은 관측·이웃 쪽지만으로 설명
+  // 다수결 주민(의심도 없음): 신뢰 끊김은 생략, 한꺼번에 풀림은 관측만으로 설명
   const majHist = [
     {
       turn: 2,
@@ -1337,10 +1359,13 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
     sMaj.moments.some(
       (m) =>
         m.day === 3 &&
-        m.text ===
-          '3일째, 속은 주민이 4명에서 1명으로 줄었어요. 그날은 주민 4명 중 2명은 관측이 맞았어요. 4번 집은 관측이 틀렸는데도 이웃 쪽지를 믿고 돌아섰어요.',
+        m.text === '3일째, 속은 주민이 4명에서 1명으로 줄었어요. 그날은 주민 4명 중 2명은 관측이 맞았어요',
     ),
   )
+
+  // AI 주민 판: 신뢰 끊김·한꺼번에 풀림 두 새 순간 줄을 모두 숨긴다
+  const sAi = gameSummary({ ...g723State, config: { ...g723State.config, citizen_type: 'ai' } }, g723Hist)
+  assert.equal(sAi.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('속은 주민이')), false)
 
   // 해당 없는 판: 의심도 80 미만 유지 + 과반 이상→미만 하락 없음
   const calmHist = [
