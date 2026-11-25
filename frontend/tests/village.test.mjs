@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, layoutChartPins, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialArrowsVisible, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialArrowsVisible, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -1081,51 +1081,4 @@ test('onOffTrajectory oscillates by ±20, clamps at 0..100, and sample stays bel
     onOffTrajectory(['honest', 'lie', 'lie', 'lie', 'lie', 'lie', 'lie'], 0).map((p) => p.suspicion),
     [0, 0, 20, 40, 60, 80, 100, 100],
   )
-})
-
-test('layoutChartPins places wide labels above neighboring stems so pin dashed lines never cross pin text', () => {
-  const pins7 = {
-    0: { labels: ['쪽지 들킴'], danger: true },
-    1: { labels: ['재판'], danger: true },
-    2: { labels: ['재판'], danger: true },
-    3: { labels: ['재판'], danger: true },
-    4: { labels: ['재판'], danger: true },
-    5: { labels: ['재판'], danger: true },
-    6: { labels: ['쪽지 들킴', '재판', '이중 발언'], danger: true },
-  }
-  const res7 = layoutChartPins(pins7, { x0: 92, step: 72, bw: 36 })
-  assert.equal(res7.items.length, 7)
-  // 6일(index 5) 점선이 7일(index 6) 긴 라벨을 가로지르지 않도록 7일 라벨이 6일보다 위 줄에 배치된다
-  const day6 = res7.items.find((p) => p.index === 5)
-  const day7 = res7.items.find((p) => p.index === 6)
-  assert.ok(day7.lane > day6.lane)
-
-  // 모든 핀 쌍에 대해: 더 높은 줄 핀의 수직 점선(cx)이 더 낮은 줄 핀의 라벨 가로 범위를 가로지르지 않고, 같은 줄 라벨끼리 겹치지 않는다
-  const checkNoCrossOrOverlap = (items) => {
-    for (const a of items) {
-      for (const b of items) {
-        if (a === b) continue
-        if (a.lane === b.lane) {
-          assert.ok(
-            a.textX + a.width / 2 <= b.textX - b.width / 2 || b.textX + b.width / 2 <= a.textX - a.width / 2,
-            `same-lane overlap: ${a.index} and ${b.index}`,
-          )
-        }
-        if (a.lane > b.lane) {
-          const crosses = a.cx >= b.textX - b.width / 2 && a.cx <= b.textX + b.width / 2
-          assert.equal(crosses, false, `stem ${a.index} (lane ${a.lane}, x=${a.cx}) crosses label ${b.index} (lane ${b.lane})`)
-        }
-      }
-    }
-  }
-  checkNoCrossOrOverlap(res7.items)
-
-  // 15일 좁은 간격(step=48)에서 인접한 두 날 모두 긴 라벨이어도 교차·겹침이 없다
-  const pins15 = {
-    4: { labels: ['쪽지 들킴', '재판'], danger: true },
-    5: { labels: ['쪽지 들킴', '재판', '이중 발언'], danger: true },
-    6: { labels: ['재판'], danger: true },
-  }
-  const res15 = layoutChartPins(pins15, { x0: 92, step: 48, bw: 26 })
-  checkNoCrossOrOverlap(res15.items)
 })

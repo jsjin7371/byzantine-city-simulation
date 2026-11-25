@@ -5,7 +5,7 @@ import { SUSPICION, endReasonLabels, outcomeLabels } from '../gameApi'
 import type { GameState, TurnResult } from '../gameApi'
 import { BookLink, TheoryBook } from './TheoryBook'
 import { THEORY_TOPICS, getTacticTip } from './theoryBook'
-import { TAG_LABELS, gameSummary, layoutChartPins } from './village'
+import { TAG_LABELS, gameSummary } from './village'
 import type { ChartPin, TagKey, TopicKey } from './village'
 
 const SUPPORTS_POPOVER =
@@ -132,7 +132,11 @@ function ResultChart({
   const minCols = Math.max(count, 6)
   const viewW = x0 + step * minCols + 88
 
-  const { items: pinItems, laneCount: usedLanes } = layoutChartPins(pins, { x0, step, bw })
+  const pinEntries = Object.entries(pins)
+    .map(([i, p]) => [Number(i), p] as const)
+    .sort((a, b) => a[0] - b[0])
+  const laneCount = count <= 8 ? 3 : 4
+  const usedLanes = Math.min(pinEntries.length, laneCount)
   const laneGap = 22
   const pinBandH = usedLanes * laneGap
 
@@ -155,9 +159,9 @@ function ResultChart({
       `아래: 날짜별 나에 대한 최고 의심도 ${peaks.map((v, i) => `${turns[i]}일 ${v ?? '없음'}`).join(', ')}. 재판 기준 ${SUSPICION.threshold}.`,
     )
   }
-  if (pinItems.length > 0) {
+  if (pinEntries.length > 0) {
     ariaParts.push(
-      `주요 사건: ${pinItems.map((p) => `${turns[p.index]}일 ${p.text}`).join('; ')}.`,
+      `주요 사건: ${pinEntries.map(([i, p]) => `${turns[i]}일 ${p.labels.join(', ')}`).join('; ')}.`,
     )
   }
 
@@ -241,21 +245,22 @@ function ResultChart({
             )
           })}
 
-          {pinItems.map((p) => {
-            const d = deceived[p.index] ?? 0
-            const peakVal = peaks[p.index]
+          {pinEntries.map(([i, pin], k) => {
+            const cx = x0 + i * step + bw / 2
+            const d = deceived[i] ?? 0
+            const peakVal = peaks[i]
             const hTop = d * topUnit
             const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
-            const pinColor = p.danger ? 'var(--rust)' : 'var(--wood)'
+            const pinColor = pin.danger ? 'var(--rust)' : 'var(--wood)'
             const pinDotY = hasPeaks ? botBase - hBot - 11 : topBase - hTop - 11
-            const pinTextY = (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - p.lane * laneGap
+            const pinTextY = (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - (k % laneCount) * laneGap
             return (
-              <g key={`stem-${p.index}`} className="gr-pin" style={{ '--i': p.index } as CSSProperties}>
+              <g key={`stem-${i}`} className="gr-pin" style={{ '--i': i } as CSSProperties}>
                 {pinDotY - pinTextY > 14 && (
                   <line
-                    x1={p.cx}
+                    x1={cx}
                     y1={pinDotY - 5}
-                    x2={p.cx}
+                    x2={cx}
                     y2={pinTextY + 5}
                     stroke={pinColor}
                     strokeWidth="1.2"
@@ -263,25 +268,26 @@ function ResultChart({
                     opacity="0.45"
                   />
                 )}
-                <circle cx={p.cx} cy={pinDotY} r="4" fill={pinColor} />
+                <circle cx={cx} cy={pinDotY} r="4" fill={pinColor} />
               </g>
             )
           })}
 
-          {pinItems.map((p) => {
-            const pinColor = p.danger ? 'var(--rust)' : 'var(--wood)'
-            const pinTextY = (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - p.lane * laneGap
+          {pinEntries.map(([i, pin], k) => {
+            const cx = x0 + i * step + bw / 2
+            const pinColor = pin.danger ? 'var(--rust)' : 'var(--wood)'
+            const pinTextY = (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - (k % laneCount) * laneGap
             return (
               <text
-                key={`label-${p.index}`}
+                key={`label-${i}`}
                 className="gr-pin gr-pin-label"
-                style={{ '--i': p.index } as CSSProperties}
-                x={p.textX}
+                style={{ '--i': i } as CSSProperties}
+                x={cx}
                 y={pinTextY}
                 textAnchor="middle"
                 fill={pinColor}
               >
-                {p.text}
+                {pin.labels.join(', ')}
               </text>
             )
           })}

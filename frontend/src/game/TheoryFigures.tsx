@@ -607,22 +607,22 @@ function ZealotFigure() {
   ] as const
 
   const farNodes = [
-    { x: 416, y: 68, label: 'A', isA: true },
-    { x: 464, y: 66, label: 'B', isA: false },
-    { x: 438, y: 104, label: 'B', isA: false },
-    { x: 496, y: 96, label: 'A', isA: true },
+    { x: 416, y: 68, label: 'A' },
+    { x: 464, y: 66, label: 'B' },
+    { x: 438, y: 104, label: 'B' },
+    { x: 496, y: 96, label: 'A' },
   ] as const
 
   return (
     <svg
-      viewBox="0 0 560 344"
+      viewBox="0 0 560 368"
       role="img"
-      aria-label="무한 격자 및 완전 그래프의 투표자 모형에서 완고한 행위자의 영향 개념도: 왼쪽은 1·2차원 무한 격자에서 한쪽 의견을 선호하는 완고한 행위자 한 명의 영향이 인접 이웃과 먼 이웃으로 번져 전체가 통일되는 모습, 오른쪽 위는 3차원 이상 무한 격자에서 거리가 멀수록 영향이 줄어 A와 B가 섞인 채 통일되지 않는 모습, 오른쪽 아래는 완전 그래프와 1·2차원 격자에서 의견을 바꾸지 않는 완고한 행위자 f명이 양쪽 진영에 있어 인구 n이 커져도 합의가 막히고 분포 폭이 1/√f에 비례하는 모습."
+      aria-label="무한 격자 및 완전 그래프의 투표자 모형에서 완고한 행위자의 영향 개념도: 왼쪽은 1·2차원 무한 격자에서 한쪽 의견을 선호하는 완고한 행위자 한 명의 영향이 인접 이웃과 먼 이웃으로 번져 전체가 통일되는 모습, 오른쪽 위는 3차원 이상 무한 격자에서 거리가 멀수록 영향이 줄어 A와 B가 섞인 채 통일되지 않는 모습, 오른쪽 아래는 완전 그래프와 1·2차원 격자에서 의견을 바꾸지 않는 완고한 행위자 f명이 양쪽 진영에 있어 인구 n이 커져도 합의가 막히고, 양쪽 완고 수가 같을 때 분포 폭이 1/√f에 비례하는 모습."
     >
       <ArrowDefs prefix="tf-zealot" />
 
       {/* 왼쪽: 1·2차원 무한 격자 */}
-      <rect x="8" y="8" width="264" height="328" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
+      <rect x="8" y="8" width="264" height="352" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
       <text x="140" y="31" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         1·2차원 무한 격자 (완고 1명)
       </text>
@@ -692,10 +692,10 @@ function ZealotFigure() {
         먼 이웃
       </text>
 
-      <text x="140" y="284" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+      <text x="140" y="296" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         영향이 끝까지 번져
       </text>
-      <text x="140" y="310" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <text x="140" y="322" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         시간이 지나면 전체 통일
       </text>
 
@@ -710,56 +710,55 @@ function ZealotFigure() {
       <text x="344" y="93" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         A
       </text>
-      {farNodes.map((n, i) => (
-        <g key={i}>
-          <circle
-            cx={n.x}
-            cy={n.y}
-            r="12"
-            fill="var(--parch)"
-            stroke={n.isA ? 'var(--rust)' : 'var(--leave)'}
-            strokeWidth="1.8"
-          />
-          <text x={n.x} y={n.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" fill={n.isA ? 'var(--rust)' : 'var(--leave)'}>
-            {n.label}
-          </text>
-        </g>
-      ))}
+      {farNodes.map((n, i) => {
+        const color = n.label === 'A' ? 'var(--rust)' : 'var(--leave)'
+        return (
+          <g key={i}>
+            <circle cx={n.x} cy={n.y} r="12" fill="var(--parch)" stroke={color} strokeWidth="1.8" />
+            <text x={n.x} y={n.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" fill={color}>
+              {n.label}
+            </text>
+          </g>
+        )
+      })}
       <text x="420" y="144" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
         거리 감쇠 → A·B 섞여 통일 불가
       </text>
 
       {/* 오른쪽 아래: 양쪽 완고 */}
-      <rect x="288" y="170" width="264" height="166" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
+      <rect x="288" y="170" width="264" height="190" rx="6" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.2" />
       <text x="420" y="192" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         양쪽 진영에 불변 완고 (f명)
       </text>
-      <text x="420" y="217" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+      <text x="420" y="216" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
         완전 그래프·1·2차원 격자
       </text>
-      <circle cx="332" cy="257" r="19" fill="none" stroke="var(--rust)" strokeWidth="1.6" strokeDasharray="4 2" />
-      <circle cx="332" cy="257" r="14" fill="var(--parch)" stroke="var(--rust)" strokeWidth="2.2" />
-      <text x="332" y="262" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <circle cx="332" cy="256" r="19" fill="none" stroke="var(--rust)" strokeWidth="1.6" strokeDasharray="4 2" />
+      <circle cx="332" cy="256" r="14" fill="var(--parch)" stroke="var(--rust)" strokeWidth="2.2" />
+      <text x="332" y="261" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         A
       </text>
 
-      <line x1="354" y1="257" x2="394" y2="257" stroke="var(--rust)" strokeWidth="2" markerEnd="url(#tf-zealot-rust)" />
-      <circle cx="420" cy="257" r="15" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.8" strokeDasharray="4 3" />
-      <text x="420" y="262" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+      <line x1="354" y1="256" x2="394" y2="256" stroke="var(--rust)" strokeWidth="2" markerEnd="url(#tf-zealot-rust)" />
+      <circle cx="420" cy="256" r="15" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.8" strokeDasharray="4 3" />
+      <text x="420" y="261" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         ?
       </text>
-      <line x1="486" y1="257" x2="446" y2="257" stroke="var(--leave)" strokeWidth="2" markerEnd="url(#tf-zealot-leave)" />
+      <line x1="486" y1="256" x2="446" y2="256" stroke="var(--leave)" strokeWidth="2" markerEnd="url(#tf-zealot-leave)" />
 
-      <circle cx="508" cy="257" r="19" fill="none" stroke="var(--leave)" strokeWidth="1.6" strokeDasharray="4 2" />
-      <circle cx="508" cy="257" r="14" fill="var(--parch)" stroke="var(--leave)" strokeWidth="2.2" />
-      <text x="508" y="262" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
+      <circle cx="508" cy="256" r="19" fill="none" stroke="var(--leave)" strokeWidth="1.6" strokeDasharray="4 2" />
+      <circle cx="508" cy="256" r="14" fill="var(--parch)" stroke="var(--leave)" strokeWidth="2.2" />
+      <text x="508" y="261" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
         B
       </text>
 
-      <text x="420" y="299" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+      <text x="420" y="298" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         n이 커져도 합의 차단
       </text>
-      <text x="420" y="324" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+      <text x="420" y="323" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+        양쪽 완고 수가 같을 때
+      </text>
+      <text x="420" y="347" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
         분포 폭 ∝ 1/√f (f: 완고 수)
       </text>
     </svg>
