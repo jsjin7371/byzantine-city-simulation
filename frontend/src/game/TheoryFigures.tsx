@@ -43,18 +43,18 @@ function ByzFigure() {
       </text>
 
       {/* 화살표 (가) */}
-      <line x1="122" y1="98" x2="78" y2="162" stroke="var(--leave)" strokeWidth="2.2" markerEnd="url(#tf-byz-leave)" />
-      <text x="72" y="130" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
+      <line x1="120" y1="100" x2="80" y2="159" stroke="var(--leave)" strokeWidth="2.2" markerEnd="url(#tf-byz-leave)" />
+      <text x="68" y="128" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
         공격
       </text>
-      <line x1="158" y1="98" x2="202" y2="162" stroke="var(--leave)" strokeWidth="2.2" markerEnd="url(#tf-byz-leave)" />
-      <text x="208" y="130" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
+      <line x1="160" y1="100" x2="200" y2="159" stroke="var(--leave)" strokeWidth="2.2" markerEnd="url(#tf-byz-leave)" />
+      <text x="212" y="128" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
         공격
       </text>
       <line
-        x1="188"
+        x1="186"
         y1="186"
-        x2="94"
+        x2="96"
         y2="186"
         stroke="var(--rust)"
         strokeWidth="2.2"
@@ -66,22 +66,22 @@ function ByzFigure() {
       </text>
 
       {/* 노드 (가) */}
-      <circle cx="140" cy="76" r="24" fill="var(--parch)" stroke="var(--forest)" strokeWidth="2.2" />
+      <circle cx="140" cy="76" r="27" fill="var(--parch)" stroke="var(--forest)" strokeWidth="2.2" />
       <text x="140" y="81" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         사령관
       </text>
-      <circle cx="64" cy="186" r="24" fill="var(--parch)" stroke="var(--forest)" strokeWidth="2.2" />
+      <circle cx="64" cy="186" r="27" fill="var(--parch)" stroke="var(--forest)" strokeWidth="2.2" />
       <text x="64" y="191" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         부관 1
       </text>
-      <circle cx="216" cy="186" r="24" fill="var(--cream)" stroke="var(--rust)" strokeWidth="2.2" strokeDasharray="5 3" />
+      <circle cx="216" cy="186" r="27" fill="var(--cream)" stroke="var(--rust)" strokeWidth="2.2" strokeDasharray="5 3" />
       <text x="216" y="191" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         부관 2
       </text>
-      <text x="216" y="227" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <text x="216" y="230" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         (배신)
       </text>
-      <text x="140" y="252" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+      <text x="140" y="253" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
         부관 1 수신: 공격, 후퇴
       </text>
 
@@ -93,53 +93,53 @@ function ByzFigure() {
 
       {/* 화살표 (나) */}
       <line
-        x1="402"
-        y1="98"
-        x2="358"
-        y2="162"
+        x1="400"
+        y1="100"
+        x2="360"
+        y2="159"
         stroke="var(--rust)"
         strokeWidth="2.2"
         strokeDasharray="6 4"
         markerEnd="url(#tf-byz-rust)"
       />
-      <text x="352" y="130" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <text x="348" y="128" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         공격
       </text>
       <line
-        x1="438"
-        y1="98"
-        x2="482"
-        y2="162"
+        x1="440"
+        y1="100"
+        x2="480"
+        y2="159"
         stroke="var(--rust)"
         strokeWidth="2.2"
         strokeDasharray="6 4"
         markerEnd="url(#tf-byz-rust)"
       />
-      <text x="488" y="130" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <text x="492" y="128" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         후퇴
       </text>
-      <line x1="468" y1="186" x2="374" y2="186" stroke="var(--leave)" strokeWidth="2.2" markerEnd="url(#tf-byz-leave)" />
+      <line x1="466" y1="186" x2="376" y2="186" stroke="var(--leave)" strokeWidth="2.2" markerEnd="url(#tf-byz-leave)" />
       <text x="420" y="177" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
         후퇴 (전달)
       </text>
 
       {/* 노드 (나) */}
-      <circle cx="420" cy="76" r="24" fill="var(--cream)" stroke="var(--rust)" strokeWidth="2.2" strokeDasharray="5 3" />
+      <circle cx="420" cy="76" r="27" fill="var(--cream)" stroke="var(--rust)" strokeWidth="2.2" strokeDasharray="5 3" />
       <text x="420" y="81" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         사령관
       </text>
-      <text x="476" y="81" fontSize="15" fontWeight="700" textAnchor="start" fill="var(--rust)">
+      <text x="478" y="81" fontSize="15" fontWeight="700" textAnchor="start" fill="var(--rust)">
         (배신)
       </text>
-      <circle cx="344" cy="186" r="24" fill="var(--parch)" stroke="var(--forest)" strokeWidth="2.2" />
+      <circle cx="344" cy="186" r="27" fill="var(--parch)" stroke="var(--forest)" strokeWidth="2.2" />
       <text x="344" y="191" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         부관 1
       </text>
-      <circle cx="496" cy="186" r="24" fill="var(--parch)" stroke="var(--forest)" strokeWidth="2.2" />
+      <circle cx="496" cy="186" r="27" fill="var(--parch)" stroke="var(--forest)" strokeWidth="2.2" />
       <text x="496" y="191" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         부관 2
       </text>
-      <text x="420" y="252" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+      <text x="420" y="253" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
         부관 1 수신: 공격, 후퇴
       </text>
 
@@ -163,23 +163,33 @@ function EquivFigure() {
       <ArrowDefs prefix="tf-equiv" />
 
       {/* 발신자 */}
-      <circle cx="78" cy="112" r="34" fill="var(--cream)" stroke="var(--rust)" strokeWidth="2.4" strokeDasharray="6 4" />
-      <text x="78" y="108" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+      <rect
+        x="16"
+        y="78"
+        width="116"
+        height="68"
+        rx="34"
+        fill="var(--cream)"
+        stroke="var(--rust)"
+        strokeWidth="2.4"
+        strokeDasharray="6 4"
+      />
+      <text x="74" y="107" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
         발신자
       </text>
-      <text x="78" y="128" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <text x="74" y="129" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         (이중 발언)
       </text>
 
       {/* 화살표: 대피 (실선) / 잔류 (점선) */}
-      <line x1="115" y1="98" x2="274" y2="60" stroke="var(--leave)" strokeWidth="2.4" markerEnd="url(#tf-equiv-leave)" />
-      <rect x="164" y="42" width="66" height="26" rx="13" fill="var(--parch)" stroke="var(--leave)" strokeWidth="1.5" />
-      <text x="197" y="60" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
+      <line x1="136" y1="98" x2="274" y2="60" stroke="var(--leave)" strokeWidth="2.4" markerEnd="url(#tf-equiv-leave)" />
+      <rect x="172" y="40" width="66" height="26" rx="13" fill="var(--parch)" stroke="var(--leave)" strokeWidth="1.5" />
+      <text x="205" y="58" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
         “대피”
       </text>
 
       <line
-        x1="115"
+        x1="136"
         y1="126"
         x2="274"
         y2="164"
@@ -188,8 +198,8 @@ function EquivFigure() {
         strokeDasharray="7 4"
         markerEnd="url(#tf-equiv-rust)"
       />
-      <rect x="164" y="156" width="66" height="26" rx="13" fill="var(--cream)" stroke="var(--rust)" strokeWidth="1.5" strokeDasharray="4 2" />
-      <text x="197" y="174" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <rect x="172" y="158" width="66" height="26" rx="13" fill="var(--cream)" stroke="var(--rust)" strokeWidth="1.5" strokeDasharray="4 2" />
+      <text x="205" y="176" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         “잔류”
       </text>
 
@@ -804,23 +814,29 @@ function FalsePosFigure() {
 function AuditFigure() {
   return (
     <svg
-      viewBox="0 0 560 280"
+      viewBox="0 0 560 302"
       role="img"
       aria-label="감사 회피 개념도: 1번 집과 2번 집이 오늘 밤 비교 짝임을 미리 알면, 마피아가 두 집에는 같은 말 대피를 보내 모순을 피하고, 비교 대상이 아닌 3번 집과 4번 집에는 다른 말 잔류를 보내 들키지 않는다."
     >
       <ArrowDefs prefix="tf-audit" />
 
       {/* 비교 짝 표시 (1번 - 2번) */}
-      <path d="M74 52 Q140 20 206 52" fill="none" stroke="var(--forest)" strokeWidth="2.2" strokeDasharray="6 4" />
-      <rect x="82" y="10" width="116" height="26" rx="13" fill="var(--parch)" stroke="var(--forest)" strokeWidth="1.5" />
-      <text x="140" y="28" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--forest)">
+      <path d="M74 74 Q140 54 206 74" fill="none" stroke="var(--forest)" strokeWidth="2.2" strokeDasharray="6 4" />
+      <rect x="76" y="8" width="128" height="26" rx="13" fill="var(--parch)" stroke="var(--forest)" strokeWidth="1.5" />
+      <text x="140" y="26" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--forest)">
         예고된 비교 짝
+      </text>
+      <text x="140" y="53" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--forest)">
+        일치 (모순 0)
       </text>
 
       {/* 비교 안 함 표시 (3번 - 4번) */}
-      <rect x="366" y="10" width="108" height="26" rx="13" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.4" strokeDasharray="3 3" />
-      <text x="420" y="28" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+      <rect x="362" y="8" width="116" height="26" rx="13" fill="var(--cream)" stroke="var(--wood)" strokeWidth="1.4" strokeDasharray="3 3" />
+      <text x="420" y="26" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
         비교 안 함
+      </text>
+      <text x="420" y="53" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+        검사 없음 (미적발)
       </text>
 
       {/* 집 4채 */}
@@ -833,7 +849,7 @@ function AuditFigure() {
         <g key={h.label}>
           <rect
             x={h.x}
-            y="52"
+            y="74"
             width="92"
             height="46"
             rx="8"
@@ -842,26 +858,26 @@ function AuditFigure() {
             strokeWidth="2"
             strokeDasharray={h.audited ? undefined : '4 3'}
           />
-          <text x={h.x + 46} y="80" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
+          <text x={h.x + 46} y="102" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--ink)">
             {h.label}
           </text>
         </g>
       ))}
 
       {/* 마피아 → 1, 2번 집 (같은 말: 실선 leave) */}
-      <line x1="252" y1="196" x2="84" y2="102" stroke="var(--leave)" strokeWidth="2.3" markerEnd="url(#tf-audit-leave)" />
-      <line x1="268" y1="192" x2="210" y2="102" stroke="var(--leave)" strokeWidth="2.3" markerEnd="url(#tf-audit-leave)" />
-      <rect x="92" y="128" width="116" height="26" rx="13" fill="var(--parch)" stroke="var(--leave)" strokeWidth="1.5" />
-      <text x="150" y="146" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
+      <line x1="252" y1="216" x2="84" y2="124" stroke="var(--leave)" strokeWidth="2.3" markerEnd="url(#tf-audit-leave)" />
+      <line x1="268" y1="212" x2="210" y2="124" stroke="var(--leave)" strokeWidth="2.3" markerEnd="url(#tf-audit-leave)" />
+      <rect x="92" y="152" width="116" height="26" rx="13" fill="var(--parch)" stroke="var(--leave)" strokeWidth="1.5" />
+      <text x="150" y="170" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--leave)">
         같은 말 “대피”
       </text>
 
       {/* 마피아 → 3, 4번 집 (다른 말: 점선 rust) */}
       <line
         x1="292"
-        y1="192"
+        y1="212"
         x2="350"
-        y2="102"
+        y2="124"
         stroke="var(--rust)"
         strokeWidth="2.3"
         strokeDasharray="6 4"
@@ -869,31 +885,23 @@ function AuditFigure() {
       />
       <line
         x1="308"
-        y1="196"
+        y1="216"
         x2="476"
-        y2="102"
+        y2="124"
         stroke="var(--rust)"
         strokeWidth="2.3"
         strokeDasharray="6 4"
         markerEnd="url(#tf-audit-rust)"
       />
-      <rect x="352" y="128" width="116" height="26" rx="13" fill="var(--cream)" stroke="var(--rust)" strokeWidth="1.5" strokeDasharray="4 2" />
-      <text x="410" y="146" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <rect x="352" y="152" width="116" height="26" rx="13" fill="var(--cream)" stroke="var(--rust)" strokeWidth="1.5" strokeDasharray="4 2" />
+      <text x="410" y="170" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         다른 말 “잔류”
-      </text>
-
-      {/* 결과 배지 */}
-      <text x="140" y="116" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--forest)">
-        일치 (모순 0)
-      </text>
-      <text x="420" y="116" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--rust)">
-        검사 없음 (미적발)
       </text>
 
       {/* 마피아 노드 */}
       <rect
         x="228"
-        y="194"
+        y="214"
         width="104"
         height="42"
         rx="21"
@@ -902,12 +910,12 @@ function AuditFigure() {
         strokeWidth="2.2"
         strokeDasharray="5 3"
       />
-      <text x="280" y="220" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--rust)">
+      <text x="280" y="240" fontSize="15.5" fontWeight="700" textAnchor="middle" fill="var(--rust)">
         마피아
       </text>
 
       {/* 하단 요약 */}
-      <text x="280" y="266" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
+      <text x="280" y="288" fontSize="15" fontWeight="700" textAnchor="middle" fill="var(--wood)">
         비교 짝을 미리 알면 짝 밖으로만 이중 발언해 적발 확률이 0이 됨
       </text>
     </svg>
