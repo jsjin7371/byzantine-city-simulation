@@ -13,7 +13,6 @@ const CHAPTER1_SCENARIOS: readonly {
   goal: string
   rule: string
   rate: string
-  rateNote?: string
   topic: TopicKey
 }[] = [
   {
@@ -53,8 +52,7 @@ const CHAPTER1_SCENARIOS: readonly {
     chips: ['기본 마을', '잘못 볼 확률 45%'],
     goal: '의심도 40 넘은 주민에게 진짜 날씨를 보내 20 아래로 낮춘 뒤, 다시 속여 이기기',
     rule: '의심도는 0 아래로 내려가지 않아요. 믿음을 미리 쌓아 둘 수 없으니, 의심도가 쌓인 뒤에 낮춰야 해요.',
-    rate: '잘하면 48% 이겨요',
-    rateNote: `목표까지 달성한 비율 · ${RATE_BASIS}`,
+    rate: '잘하면 목표 달성 48%',
     topic: 'onoff',
   },
   {
@@ -108,7 +106,6 @@ export function TheoryLab({
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
   const soonId = useId()
-  const rateNoteId = useId()
 
   return (
     <div className="gm-workspace gm-lab">
@@ -161,9 +158,7 @@ export function TheoryLab({
                     <dd>{card.rule}</dd>
                   </div>
                 </dl>
-                <p className="tl-rate" title={card.rateNote ?? RATE_BASIS} aria-describedby={rateNoteId}>
-                  {card.rate}
-                </p>
+                <p className="tl-rate">{card.rate}*</p>
                 <div className="tl-card-foot">
                   <BookLink label="이론 읽기" icon onClick={() => setBookTopic(card.topic)} />
                   <button
@@ -178,7 +173,7 @@ export function TheoryLab({
               </article>
             ))}
           </div>
-          <p id={rateNoteId} className="tl-rate-note">
+          <p className="tl-rate-note">
             * 승률은 {RATE_BASIS}이에요. &lsquo;신뢰를 되찾는 법&rsquo;은 목표까지 달성한 비율이에요.
           </p>
         </section>
