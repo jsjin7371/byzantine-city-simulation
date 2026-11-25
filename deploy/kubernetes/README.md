@@ -79,8 +79,8 @@ God 1개와 City 5개가 Ready인지 확인합니다. 호스트 포트, Ingress,
 ## 4. 상태·게임 통신 검사
 
 스크립트를 God 컨테이너의 Python 표준 입력으로 전달하므로 별도 이미지 수정이나 파일 복사가 필요 없습니다.
-God 안에서 City 5개의 `/health`, God `/health`, 게임 생성, 15턴 진행, 최종 상태 조회를 검사합니다.
-다수결 시민은 고발 투표가 없어 15턴 통신을 끝까지 검사할 수 있습니다. 기존 게임 규칙은 바꾸지 않습니다.
+God 안에서 City 5개의 `/health`, God `/health`, 게임 생성, 7턴 진행, 최종 상태 조회를 검사합니다.
+다수결 시민은 고발 투표가 없어 7턴 통신을 끝까지 검사할 수 있습니다. 기존 게임 규칙은 바꾸지 않습니다.
 준비 확인 외에는 실패한 게임·턴을 재전송하지 않으며, 오류는 0이 아닌 종료 코드로 반환됩니다.
 
 ```powershell
@@ -90,7 +90,7 @@ Get-Content -Raw -Encoding UTF8 deploy/kubernetes/game_smoke.py |
 if ($LASTEXITCODE -ne 0) { throw 'Kubernetes 엔진 통신 검사 실패' }
 ```
 
-성공 시 `God-City Kubernetes smoke passed: 5 City health checks, 15 game turns; no backend/DB`를 출력합니다.
+성공 시 `God-City Kubernetes smoke passed: 5 City health checks, 7 game turns; no backend/DB`를 출력합니다.
 전용 God에서 게임 ID 1을 사용하며 실행할 때마다 이전 게임을 대체합니다. 사용자 게임이 있는 God에서 실행하지 않습니다.
 이 검사는 게임 결과의 MySQL 저장이나 Kubernetes 동적 자원 생명주기를 검증하지 않습니다.
 

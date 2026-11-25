@@ -258,7 +258,7 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 
 ## 7. 마피아 게임 (0단계 결정, 11/19)
 
-> 기획서 `AI도시_마피아_기획서.md` 0단계 결정. 의심도 증감 폭, 고발 임계값, 공유 쌍 수는 1단계 파일럿(`experiments/mafia_pilot.py`), 다름 +20과 난이도별 값은 실험 C(`experiments/mafia_strategy.py`)로 정했다.
+> 기획서 `AI도시_마피아_기획서.md` 0단계 결정. 의심도 증감 폭, 고발 임계값, 공유 쌍 수는 1단계 파일럿(`experiments/mafia_pilot.py`), 다름 +20과 난이도별 값은 실험 C(`experiments/mafia_strategy.py`)로 정했다. 이 결정은 15턴 때 한 것이고, 7턴 재실행 결과는 `experiments/README.md`에 있다.
 > 기존 `/run` 실험 API와 1~6절은 그대로 둔다. 게임은 별도 경로(`/games`)를 쓴다.
 
 ### 7.1 용어와 공통 값
@@ -268,7 +268,7 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 | 도시 수 | 5 |
 | 역할 `role` | `"player"`(플레이어 마피아, 1명) / `"colleague"`(자동 마피아 동료, 항상 정답의 반대) / `"citizen"`(시민) |
 | 시민 | `role == "citizen"`인 도시. 마피아가 1명이면 4명, 2명이면 3명 |
-| 턴 수 | 15 (고정) |
+| 턴 수 | 7 (고정) |
 | 누락·조작 | 게임에서는 `drop_rate = flip_rate = 0` 고정 (조작이 가짜 모순을 만들지 않게) |
 | 주장 `claim` | `"evacuate"`(대피, 기획서의 0) / `"stay"`(잔류, 기획서의 1). 기존 `decision`과 같은 값 |
 | 의심도 `suspicion` | 다른 도시 id(문자열) → 0~100 정수. 다수결 시민은 `null` |
@@ -289,23 +289,23 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 | `sensor_error` | 0.0~1.0 | 0.1 | 기존과 같음 |
 | `seed` | int \| null | `null` | 기존과 같음. 정답, 마피아 위치, 힌트, 공유 쌍을 모두 이 seed로 뽑는다 |
 
-난이도는 프론트가 위 값의 묶음(프리셋)으로 고른다. 나머지 값은 기본값. `bot_win_rate`는 1단계 파일럿 값 (`experiments/mafia_pilot.csv` difficulty 행, 10000판).
+난이도는 프론트가 위 값의 묶음(프리셋)으로 고른다. 나머지 값은 기본값. `bot_win_rate`는 실제 엔진으로 잰 값 (`experiments/mafia_botwin.py`, `connection=all`, 시드 0~9999의 1만 판).
 
 | 난이도 | `mafia_count` | `sensor_error` | `citizen_type` | `bot_win_rate` |
 |---|---|---|---|---|
-| 쉬움 | 1 | 0.48 | `"wary"` | 0.32 |
-| 보통 | 1 | 0.4 | `"wary"` | 0.10 |
-| 어려움 | 1 | 0.3 | `"wary"` | 0.01 |
+| 쉬움 | 1 | 0.48 | `"wary"` | 0.57 |
+| 보통 | 1 | 0.4 | `"wary"` | 0.31 |
+| 어려움 | 1 | 0.3 | `"wary"` | 0.08 |
 
-`citizen_type`을 `"majority"`로 바꾸면 `bot_win_rate`는 쉬움 0.873 / 보통 0.748 / 어려움 0.482 (`experiments/mafia_compare.csv`, `connection=all`, 1000판). `"ai"`는 측정값이 없어 `null`.
+`citizen_type`을 `"majority"`로 바꾸면 `bot_win_rate`는 쉬움 0.864 / 보통 0.736 / 어려움 0.490 (같은 스크립트, `connection=all`, 1만 판). `"ai"`는 측정값이 없어 `null`.
 
 ### 7.3 시민의 기억 범위
 
 - 기본값 `"turn"`: 시민은 **이번 턴의 힌트, 이번 턴에 받은 주장, 이번 턴 공유 내용**과 **자기 의심도(직전 턴 값)** 만 본다. 과거 힌트·주장은 보지 않는다. 기억은 의심도에만 누적된다.
 - 파일럿 비교 후보
   1. `"turn"` (기본값)
-  2. `"recent"`: 최근 k턴의 자기 힌트도 본다 (k = 1. 파일럿에서 k ≥ 2면 마피아 1명 봇 승률이 1% 미만)
-  3. `"full"`: 자기 힌트 이력 전체. 게임이 성립하지 않는 것을 확인하는 대조군 (기획서 "제약": 마피아 승률 0% 예상)
+  2. `"recent"`: 최근 k턴의 자기 힌트도 본다 (k = 1. 7턴 파일럿의 눈치 시민·마피아 1명·센서 오류 0.1~0.3에서 봇 승률은 k = 1이면 0~5%, k = 2면 0~2%)
+  3. `"full"`: 자기 힌트 이력 전체. 게임이 성립하지 않는 것을 확인하는 대조군 (기획서 "제약": 마피아 승률 0% 예상. 7턴 파일럿의 마피아 1명·센서 오류 0.1~0.3에서는 눈치 시민 0~1%, 다수결 시민 0~10%)
 - 근거: 정답이 한 판 동안 고정이라 힌트 이력을 보면 대화를 무시해도 맞힌다.
 
 ### 7.4 마피아에게 보이는 정보

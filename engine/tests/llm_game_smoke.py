@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from city import ai
-from god.game import Game, GameConfig
+from god.game import TURNS, Game, GameConfig
 
 
 class CallCounts(logging.Handler):
@@ -60,7 +60,7 @@ def run_game(interval=20, token_budget=100000, progress=None):
             system = ai.build_system_prompt(req["personality"], req["suspicion"])
             prompt = ai.build_prompt(req["personality"], req["hint"], req["received"], req["shared"], req["suspicion"])
             reserve = len((system + prompt).encode("utf-8")) + 1024 + 128
-            if len(requests) >= 60:
+            if len(requests) >= 4 * TURNS:
                 stop_reason = "request_budget"
             elif spent + reserve > token_budget:
                 stop_reason = "token_budget"
@@ -116,7 +116,7 @@ def run_game(interval=20, token_budget=100000, progress=None):
     attempts, successes, fallbacks = (stats.counts[k] for k in ("request", "success", "fallback"))
     return {"real_requests": attempts, "real_success": successes, "fallback": fallbacks,
             "fallback_causes": dict(stats.causes), "turns": game.turn, "game_over": game.game_over,
-            "fifteen_turns": game.turn == 15, "end_reason": game.end_reason, "outcome": game.outcome,
+            "all_turns": game.turn == TURNS, "end_reason": game.end_reason, "outcome": game.outcome,
             "stop_reason": stop_reason, "total_tokens": spent, "requests": requests,
             "real_failures": attempts - successes,
             "usage_complete": attempts == len(requests) and all("total_tokens" in row["usage"] for row in requests),
@@ -128,9 +128,9 @@ def run_game(interval=20, token_budget=100000, progress=None):
 def main(argv=None):
     """실제 호출을 명시한 경우에만 키·주소 확인 후 게임 검사를 실행하는 기능"""
     parser = argparse.ArgumentParser(description="One Groq AI game; no backend, DB or HTTP City server")
-    parser.add_argument("--live", action="store_true", help="allow up to 60 external chat requests")
+    parser.add_argument("--live", action="store_true", help=f"allow up to {4 * TURNS} external chat requests")
     args = parser.parse_args(argv)
-    print("Plan: at most 60 requests; max_tokens=1024 each; token budget=100000; interval >=20s; no retry.")
+    print(f"Plan: at most {4 * TURNS} requests; max_tokens=1024 each; token budget=100000; interval >=20s; no retry.")
     if not args.live:
         print("Plan only: no API calls. Use --live only after checking your account plan and limits.")
         return 0
