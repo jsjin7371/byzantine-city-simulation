@@ -555,8 +555,10 @@
 @keyframes vb-alert { from { transform: scale(1); } to { transform: scale(1.25); } }
 .vb-post path { stroke: var(--rust); stroke-width: 3; }
 .vb-gauge.is-over .vb-post path { stroke: #2b1a0c; }
-.vb-post-label { fill: var(--rust); paint-order: stroke; stroke: #efe0b9; stroke-width: 2.5px; stroke-linejoin: round; }
+.vb-post-tag { fill: #f6ebcd; stroke: var(--rust); stroke-width: 1.5; }
+.vb-post-label { fill: var(--rust); }
 .vb-gauge.is-over .vb-post-label { fill: #2b1a0c; }
+.vb-gauge.is-over .vb-post-tag { stroke: #2b1a0c; }
 
 .vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
 .vb-share-tag rect { fill: #f6ebcd; stroke: #b8861f; }
@@ -1448,13 +1450,24 @@
 }
 
 @media (max-width: 1100px) {
+  /* 폭마다 가장 긴 튜토리얼 문구의 높이를 min-height로 잡아 단계가 바뀌어도 아래가 흔들리지 않게 한다.
+     ponytail: 2026-11 실측값. village.ts 문구가 길어지면 다시 잰다. */
   .tut-box {
     height: auto;
+    min-height: 105px;
   }
   .tut-actions [data-ui-button] {
     min-height: 44px;
   }
 }
+
+@media (max-width: 843px) { .tut-box { min-height: 132px; } }
+@media (max-width: 751px) { .tut-box { min-height: 159px; } }
+@media (max-width: 619px) { .tut-box { min-height: 186px; } }
+@media (max-width: 549px) { .tut-box { min-height: 211px; } }
+@media (max-width: 461px) { .tut-box { min-height: 238px; } }
+@media (max-width: 383px) { .tut-box { min-height: 265px; } }
+@media (max-width: 347px) { .tut-box { min-height: 292px; } }
 
 @media (prefers-reduced-motion: reduce) {
   .vb-tut-arrow,
