@@ -548,7 +548,7 @@ export function GameStart({
 
   useEffect(() => {
     clearHoverTimer()
-    if (helpPinned) {
+    if (helpPinned && !helpPopRef.current?.contains(document.activeElement)) {
       helpPopRef.current?.focus({ preventScroll: true })
     }
   }, [helpPinned, clearHoverTimer])
@@ -590,8 +590,13 @@ export function GameStart({
       setHelpPos({ left: Math.round(left), top: Math.round(top) })
     }
     updatePosition()
+    const observer = new ResizeObserver(updatePosition)
+    if (helpPopRef.current) observer.observe(helpPopRef.current)
     window.addEventListener('resize', updatePosition)
-    return () => window.removeEventListener('resize', updatePosition)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', updatePosition)
+    }
   }, [helpOpen])
 
   const diffItems = diffKeys.map((key) => ({ key, label: difficulties[key].label, rx: DIFF_RX[key] }))
@@ -970,7 +975,7 @@ export function GameStart({
         >
           <div className="gs-diff-help-top">
             <p className="gs-diff-help-lead">
-              난이도는 주민 관측이 틀릴 확률(센서 오류율)만 달라져요. 마피아(비잔틴 도시)는 나 혼자예요.
+              난이도는 주민이 날씨를 잘못 볼 확률이에요. 높을수록 속이기 쉬워요
             </p>
             <button
               type="button"
@@ -986,28 +991,14 @@ export function GameStart({
               <thead>
                 <tr>
                   <th scope="col">난이도</th>
-                  <th scope="col">
-                    관측이 틀릴 확률
-                    <br />
-                    <span className="gs-diff-term">(센서 오류율)</span>
-                  </th>
-                  <th scope="col">
-                    하룻밤 잘못 보는 주민
-                    <br />
-                    <span className="gs-diff-term">(센서 오류 도시 · 4명 평균)</span>
-                  </th>
-                  <th scope="col">
-                    주민 3명 이상 함께 잘못 볼 확률
-                    <br />
-                    <span className="gs-diff-term">(센서 오류 도시 3곳 이상)</span>
-                  </th>
+                  <th scope="col">잘못 볼 확률</th>
                   <th scope="col" className={citizenType === 'wary' ? 'is-active-col' : undefined}>
-                    봇(비잔틴 도시) 승률
+                    봇 승률
                     <br />
                     <span className="gs-diff-term">(눈치 주민{citizenType === 'wary' ? ' · 선택' : ''})</span>
                   </th>
                   <th scope="col" className={citizenType === 'majority' ? 'is-active-col' : undefined}>
-                    봇(비잔틴 도시) 승률
+                    봇 승률
                     <br />
                     <span className="gs-diff-term">(다수결 주민{citizenType === 'majority' ? ' · 선택' : ''})</span>
                   </th>
@@ -1021,8 +1012,6 @@ export function GameStart({
                       {difficulty === row.key && <span className="gs-diff-cur-tag"> (현재)</span>}
                     </th>
                     <td>{row.errorPct}%</td>
-                    <td>{row.avgWrong.toFixed(1)}명</td>
-                    <td>{row.atLeastThreePct}%</td>
                     <td className={citizenType === 'wary' ? 'is-active-col' : undefined}>{row.waryBotWinPct}%</td>
                     <td className={citizenType === 'majority' ? 'is-active-col' : undefined}>
                       {row.majorityBotWinPct}%
@@ -1032,15 +1021,30 @@ export function GameStart({
               </tbody>
             </table>
           </div>
-          <p className="gs-diff-help-foot">
-            봇(비잔틴 도시)은 항상 진짜 날씨의 반대만 말하는 마피아로, 거짓 쪽지는 일부러 하는 메시지 조작이에요. 봇 승률은 모두 대화 조건 시뮬레이션 결과예요(눈치 1만 판, 다수결 1천 판). 3명 이상 확률은 이항분포 계산값이며,{' '}
-            <span className={citizenType === 'ai' ? 'is-active-note' : undefined}>
-              AI 주민은 아직 측정값이 없어요.
-            </span>
-          </p>
-          <p className="gs-diff-help-foot">
-            게임에서는 전송 중 메시지 누락률·조작률이 0%예요(쪽지가 사라지거나 뒤집히지 않아요).
-          </p>
+          {/* 펼치면 마우스가 벗어나도 닫히지 않게 고정한다 */}
+          <details className="gs-diff-help-more" onToggle={(e) => e.currentTarget.open && setHelpPinned(true)}>
+            <summary>자세히 보기</summary>
+            <p className="gs-diff-help-foot">
+              난이도는 주민 관측이 틀릴 확률(센서 오류율)만 달라져요. 마피아(비잔틴 도시)는 나 혼자예요.
+            </p>
+            <ul className="gs-diff-help-foot">
+              {DIFFICULTY_STATS.map((row) => (
+                <li key={row.key}>
+                  {row.label}: 하룻밤에 주민 4명 중 평균 {row.avgWrong.toFixed(1)}명이 잘못 보고, 3명 이상이 함께 잘못 볼 확률은{' '}
+                  {row.atLeastThreePct}%예요.
+                </li>
+              ))}
+            </ul>
+            <p className="gs-diff-help-foot">
+              봇(비잔틴 도시)은 항상 진짜 날씨의 반대만 말하는 마피아로, 거짓 쪽지는 일부러 하는 메시지 조작이에요. 봇 승률은 모두 대화 조건 시뮬레이션 결과예요(눈치 1만 판, 다수결 1천 판). 3명 이상 확률은 이항분포 계산값이며,{' '}
+              <span className={citizenType === 'ai' ? 'is-active-note' : undefined}>
+                AI 주민은 아직 측정값이 없어요.
+              </span>
+            </p>
+            <p className="gs-diff-help-foot">
+              게임에서는 전송 중 메시지 누락률·조작률이 0%예요(쪽지가 사라지거나 뒤집히지 않아요).
+            </p>
+          </details>
         </div>
       )}
 
