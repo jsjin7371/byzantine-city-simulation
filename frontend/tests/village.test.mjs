@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialArrowsVisible, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialArrowsVisible, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -109,6 +109,57 @@ test('trialArrowsVisible shows arrows during night, hides by default in day, rev
   assert.equal(
     trialArrowsVisible({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: true }),
     false,
+  )
+})
+
+test('trialStampCopy preserves full verdict wording and distinguishes caught vs innocent in compact pill text', () => {
+  assert.deepEqual(trialStampCopy({ accused: null, caught: false }), {
+    full: '과반 없음',
+    compact: '과반 없음',
+  })
+  assert.deepEqual(trialStampCopy({ accused: 4, caught: false }), {
+    full: '4번 집 무고한 주민 지목',
+    compact: '4번 집 · 무고',
+  })
+  assert.deepEqual(trialStampCopy({ accused: 3, caught: true }), {
+    full: '3번 집 발각',
+    compact: '3번 집 · 발각',
+  })
+})
+
+test('trialStampMode matches arrows for full stamp, shrinks to compact in day, and dims when suspicion lines are active', () => {
+  // 밤 연출: 원래 크기 도장
+  assert.equal(
+    trialStampMode({ isNight: true, trialInspect: false, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: false }),
+    'full',
+  )
+  // 낮 기본 상태: 작은 꼬리표
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: false, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: false }),
+    'compact',
+  )
+  // 낮 집 호버·포커스로 의심 선 표시: 흐린 작은 꼬리표 (광장 포커스가 겹쳐도 의심 선 우선)
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: false, hasSuspicionLines: true, hasHighlight: false, hasOpenCard: false }),
+    'dimmed',
+  )
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: true, hasSuspicionLines: true, hasHighlight: false, hasOpenCard: false }),
+    'dimmed',
+  )
+  // 낮 광장 호버·포커스: 화살표와 함께 원래 크기 도장 복원
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: false }),
+    'full',
+  )
+  // 튜토리얼 강조·쪽지 카드 열림: 작은 꼬리표 유지
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: true, hasOpenCard: false }),
+    'compact',
+  )
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: true }),
+    'compact',
   )
 })
 

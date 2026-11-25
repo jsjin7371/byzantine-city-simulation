@@ -395,6 +395,35 @@ export function trialArrowsVisible({
   return trialInspect
 }
 
+// 재판 결과 도장 문구: 연출·호버·낭독용 전체 문구(full)와 낮 광장 꼬리표용 짧은 문구(compact).
+// 발각/무고 구분은 색만이 아니라 글자로도 드러낸다.
+export function trialStampCopy(vote: Pick<NonNullable<TurnResult['vote']>, 'accused' | 'caught'>): {
+  full: string
+  compact: string
+} {
+  if (vote.accused === null) return { full: '과반 없음', compact: '과반 없음' }
+  return vote.caught
+    ? { full: `${vote.accused}번 집 발각`, compact: `${vote.accused}번 집 · 발각` }
+    : { full: `${vote.accused}번 집 무고한 주민 지목`, compact: `${vote.accused}번 집 · 무고` }
+}
+
+// 광장 재판 도장 표시 단계:
+// - full: 밤 연출 중이거나 낮에 광장을 호버·포커스했을 때 (화살표와 함께 원래 크기 도장)
+// - dimmed: 낮에 집 호버·포커스로 의심 선이 보일 때 (작은 꼬리표를 흐리게)
+// - compact: 그 외 낮 기본 상태 (광장 위 작은 꼬리표)
+export type TrialStampMode = 'full' | 'compact' | 'dimmed'
+
+export function trialStampMode(args: {
+  isNight: boolean
+  trialInspect: boolean
+  hasSuspicionLines: boolean
+  hasHighlight: boolean
+  hasOpenCard: boolean
+}): TrialStampMode {
+  if (trialArrowsVisible(args)) return 'full'
+  return args.hasSuspicionLines ? 'dimmed' : 'compact'
+}
+
 // 밤 연출 단계 (A3 흐름): 밤 → 쪽지 전달 → 결정 깃발 → 의심 변화 → 재판 지목 한 명씩 → 판정 도장 → 다음 날.
 export type Phase = 'night' | 'notes' | 'flags' | 'suspicion' | 'trial' | 'verdict' | 'day'
 const PHASES: Phase[] = ['night', 'notes', 'flags', 'suspicion', 'trial', 'verdict', 'day']

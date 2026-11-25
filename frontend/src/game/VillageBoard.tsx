@@ -5,12 +5,13 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialArrowsVisible, villageHouses, voteAnimDelays, worsens } from './village'
-import type { House, Phase, Preview, Scale, SuspicionLink, TutorialHighlight } from './village'
+import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialArrowsVisible, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
+import type { House, Phase, Preview, Scale, SuspicionLink, TrialStampMode, TutorialHighlight } from './village'
 import './village.css'
 
 const PLAZA = { x: 450, y: 345 }
 const STAMP = { minW: 136, charW: 13, padX: 28, y: PLAZA.y + 54, h: 32 }
+const STAMP_PILL = { minW: 86, charW: 10.5, padX: 22, y: PLAZA.y + 19, h: 26 }
 const CELL_W = 38
 const TREES = [
   [60, 150], [112, 178], [40, 455], [82, 505], [44, 560], [850, 150], [806, 182], [860, 300], [818, 346], [866, 400],
@@ -558,12 +559,14 @@ function HouseView({
 // 광장 재판: 투표한 시민의 말이 광장에서 지목한 집으로 실을 잇는다.
 // shown: 지금까지 나온 지목 수, verdict: 판정 도장을 찍었는가 (연출 중에는 한 명씩).
 // showArrows: 밤 연출 중이거나 낮 상태에서 광장(도장·표 꼬리표)에 마우스·초점이 올라갔을 때만 투표 화살표를 그린다.
+// stampMode: 'full'(원래 크기 도장), 'compact'(광장 위 작은 꼬리표), 'dimmed'(의심 선 표시 중 흐린 꼬리표).
 function Trial({
   vote,
   houses,
   shown = Infinity,
   verdict = true,
   showArrows,
+  stampMode,
   inspect,
 }: {
   vote: NonNullable<TurnResult['vote']>
@@ -571,6 +574,7 @@ function Trial({
   shown?: number
   verdict?: boolean
   showArrows: boolean
+  stampMode: TrialStampMode
   inspect?: {
     onEnter: () => void
     onLeave: () => void
@@ -581,23 +585,39 @@ function Trial({
   const at = (city: number) => houses.find((h) => h.city === city)!
   const ballots = Object.entries(vote.ballots).slice(0, shown)
   const votes = tally(Object.fromEntries(ballots))
-  const stamp =
-    vote.accused === null ? '과반 없음' : `${vote.accused}번 집 ${vote.caught ? '발각' : '무고한 주민 지목'}`
+  const { full: stamp, compact: compactStamp } = trialStampCopy(vote)
   const stampW = Math.max(STAMP.minW, stamp.length * STAMP.charW + STAMP.padX)
   const stampX = PLAZA.x - stampW / 2
+  const pillW = Math.round(Math.max(STAMP_PILL.minW, compactStamp.length * STAMP_PILL.charW + STAMP_PILL.padX))
+  const pillX = PLAZA.x - pillW / 2
+  const fullStamp = stampMode === 'full'
   // 연출 중에는 지금까지 나온 지목만 읽어 준다
   const label = `광장 재판: ${ballots.map(([from, to]) => `${from}번이 ${to}번 지목`).join(', ')}${
     verdict ? `. 결과 ${stamp}` : ''
   }`
   const stampNode = verdict && (
-    <g className={vote.caught ? 'vb-stamp is-caught' : 'vb-stamp'}>
-      <rect x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" strokeWidth="2.5" />
-      <rect x={stampX + 4} y={STAMP.y + 4} width={stampW - 8} height={STAMP.h - 8} rx="2" fill="none" strokeWidth="1" />
-      <text x={PLAZA.x} y={STAMP.y + 21} fontSize="15.5" fontWeight="700" textAnchor="middle">
-        {stamp}
-      </text>
-      <rect className="vb-stamp-ink" x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" aria-hidden />
-    </g>
+    <>
+      <g
+        className={`vb-stamp${vote.caught ? ' is-caught' : ''}${fullStamp ? '' : ' is-collapsed'}`}
+        aria-hidden="true"
+      >
+        <rect x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" strokeWidth="2.5" />
+        <rect x={stampX + 4} y={STAMP.y + 4} width={stampW - 8} height={STAMP.h - 8} rx="2" fill="none" strokeWidth="1" />
+        <text x={PLAZA.x} y={STAMP.y + 21} fontSize="15.5" fontWeight="700" textAnchor="middle">
+          {stamp}
+        </text>
+        <rect className="vb-stamp-ink" x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" aria-hidden />
+      </g>
+      <g
+        className={`vb-stamp-pill${vote.caught ? ' is-caught' : ''}${fullStamp ? ' is-hidden' : ''}${stampMode === 'dimmed' ? ' is-dimmed' : ''}`}
+        aria-hidden="true"
+      >
+        <rect x={pillX} y={STAMP_PILL.y} width={pillW} height={STAMP_PILL.h} rx={STAMP_PILL.h / 2} strokeWidth="1.4" />
+        <text x={PLAZA.x} y={STAMP_PILL.y + 18} fontSize="15" fontWeight="700" textAnchor="middle">
+          {compactStamp}
+        </text>
+      </g>
+    </>
   )
   return (
     <g className="vb-trial" {...(inspect ? {} : { role: 'img', 'aria-label': label })}>
@@ -1038,13 +1058,15 @@ export function VillageBoard({
   const inspected = hovered ?? focused
   const activeSuspicionLinks =
     !night && !highlight && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
-  const showTrialArrows = trialArrowsVisible({
+  const trialVisibilityArgs = {
     isNight: Boolean(night),
     trialInspect: trialHovered || trialFocused,
     hasSuspicionLines: activeSuspicionLinks.length > 0,
     hasHighlight: Boolean(highlight),
     hasOpenCard: Boolean(opened),
-  })
+  }
+  const showTrialArrows = trialArrowsVisible(trialVisibilityArgs)
+  const currentStampMode = trialStampMode(trialVisibilityArgs)
   useEffect(() => {
     onCardOpen?.(openCity)
   }, [openCity, onCardOpen])
@@ -1147,7 +1169,6 @@ export function VillageBoard({
           />
         )
       })}
-      {activeSuspicionLinks.length > 0 && <SuspicionLines links={activeSuspicionLinks} />}
       {pointerTarget && <HousePointer target={pointerTarget} />}
       {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
       {caught.map(([a, b]) => {
@@ -1162,6 +1183,7 @@ export function VillageBoard({
           shown={night?.ballots}
           verdict={at('verdict')}
           showArrows={showTrialArrows}
+          stampMode={currentStampMode}
           inspect={
             canInspectTrial
               ? {
@@ -1176,6 +1198,7 @@ export function VillageBoard({
           }
         />
       )}
+      {activeSuspicionLinks.length > 0 && <SuspicionLines links={activeSuspicionLinks} />}
       {clashes.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)
         const knot = contradictionKnotCopy(state.config.citizen_type, 'clashes', a, b)
