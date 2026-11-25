@@ -34,10 +34,10 @@ function Balance({ scale, me }: { scale: Scale; me: number }) {
       {pan(1)}
       {pan(-1)}
       <circle cx="60" cy="24" r="2.5" className="vl-pivot" />
-      <text x="18" y="71" fontSize="12.5" fontWeight="700" textAnchor="middle" className="vl-pan-label">
+      <text x="18" y="72" fontSize="15" fontWeight="700" textAnchor="middle" className="vl-pan-label">
         대피
       </text>
-      <text x="102" y="71" fontSize="12.5" fontWeight="700" textAnchor="middle" className="vl-pan-label">
+      <text x="102" y="72" fontSize="15" fontWeight="700" textAnchor="middle" className="vl-pan-label">
         잔류
       </text>
     </svg>

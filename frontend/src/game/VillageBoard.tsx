@@ -508,14 +508,15 @@ function HouseView({
           transform={`translate(${x - 20},${y + 30})`}
           className={`${over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}${hlSuspicion ? ' vb-tut-hl' : ''}`}
         >
-          {hlSuspicion && <rect className="vb-tut-ring" x="-56" y="-15" width="146" height="41" rx="8" aria-hidden />}
+          {hlSuspicion && <rect className="vb-tut-ring" x="-56" y="-15" width="146" height="50" rx="8" aria-hidden />}
           <rect x="-50" y="-5" width="100" height="10" rx="5" fill="#5a3d22" />
           <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
           {/* 재판 기준 60 말뚝 */}
           <g className="vb-post">
             <path d={`M${postX} -9 V10`} />
             <path d={`M${postX - 5} -9 H${postX + 5}`} />
-            <text x={postX} y="22" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-post-label" aria-hidden>
+            <rect x={postX - 31} y="12" width="62" height="19" rx="4" className="vb-post-tag" aria-hidden />
+            <text x={postX} y="26.5" fontSize="15" fontWeight="700" textAnchor="middle" className="vb-post-label" aria-hidden>
               재판 {SUSPICION.threshold}
             </text>
           </g>
@@ -543,7 +544,7 @@ function HouseView({
       {pick?.changed && (
         <g
           className={hlChanged ? 'vb-new vb-tut-hl' : 'vb-new'}
-          transform={`translate(${x - 10},${y + (h.suspicion != null ? 70 : 54)})`}
+          transform={`translate(${x - 10},${y + (h.suspicion != null ? 74 : 54)})`}
           aria-hidden
         >
           <rect x="-92" y="-11.5" width="184" height="23" rx="11.5" />
@@ -737,32 +738,40 @@ function NoteCard({
   )
 }
 
-const SIGNS = ['1 불빛부터 봐요', '2 집마다 쪽지 골라요', '3 쪽지 비교엔 같은 쪽지']
+// 표지판 한 장에 두 줄
+const SIGNS = [
+  ['1 집 창문의', '불빛부터 봐요'],
+  ['2 각 집마다 보낼', '쪽지를 골라요'],
+  ['3 쪽지를 비교하는 집엔', '같은 쪽지를 보내요'],
+]
 
 // 첫날 안내 표지판 (왼쪽 나무 기둥).
 function Signs() {
   return (
     <g
-      fontSize="14"
+      fontSize="15"
       fontWeight="700"
       role="img"
-      aria-label="첫날 안내: 1 창문 불빛부터 봐요, 2 집마다 쪽지를 골라요, 3 오늘 밤 쪽지 비교로 이어진 두 집에는 같은 쪽지를 보내요"
+      aria-label="첫날 안내: 1 집 창문의 불빛부터 봐요, 2 각 집마다 보낼 쪽지를 골라요, 3 쪽지를 비교하는 집엔 같은 쪽지를 보내요"
     >
-      <rect x="80" y="302" width="9" height="112" fill="#5a3d22" filter="url(#vb-rough)" />
-      <text x="16" y="298" className="vb-sign-title">
+      <rect x="80" y="274" width="9" height="146" fill="#5a3d22" filter="url(#vb-rough)" />
+      <text x="16" y="270" className="vb-sign-title">
         첫날 안내
       </text>
-      {SIGNS.map((t, i) => (
-        <g key={t} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
+      {SIGNS.map(([first, second], i) => (
+        <g key={first} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
-            d={`M8 ${308 + i * 33} H174 L184 ${322 + i * 33} L174 ${336 + i * 33} H8 Z`}
+            d={`M8 ${280 + i * 49} H174 L184 ${302 + i * 49} L174 ${324 + i * 49} H8 Z`}
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
             filter="url(#vb-rough)"
           />
-          <text x="14" y={327 + i * 33}>
-            {t}
+          <text x="14" y={298 + i * 49}>
+            {first}
+          </text>
+          <text x="14" y={317 + i * 49}>
+            {second}
           </text>
         </g>
       ))}
