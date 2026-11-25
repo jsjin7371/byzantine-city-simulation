@@ -13,7 +13,7 @@ from god.game import Game, GameConfig  # noqa: E402
 
 DIFFS = {"easy": dict(mafia_count=1, sensor_error=0.48), "normal": dict(mafia_count=1, sensor_error=0.4),
          "hard": dict(mafia_count=1, sensor_error=0.3)}  # spec 7.2 난이도 프리셋
-PILOT_WIN = {"easy": 0.3219, "normal": 0.0979, "hard": 0.0081}  # mafia_pilot.csv difficulty 행 (wary, 10000판)
+PILOT_WIN = {"easy": 0.6013, "normal": 0.3464, "hard": 0.095}  # mafia_pilot.csv difficulty 행 (wary, 10000판)
 METRICS = ["accuracy", "win_rate", "suspicion_hit", "caught_rate", "caught_turn"]
 COLS = ["citizen_type", "connection", "difficulty", "runs"] + [f"{m}{x}" for m in METRICS for x in ("", "_lo", "_hi")]
 
@@ -41,7 +41,7 @@ def play(kind, conn, diff, seed):
             hits.append(len(tied & mafia) / len(tied))
         hit = fmean(hits)
     caught = res["end_reason"] == "caught"
-    # 정확도는 게임 종료 시점 값 (15턴 또는 발각 턴)
+    # 정확도는 게임 종료 시점 값 (TURNS 또는 발각 턴)
     return dict(accuracy=res["accuracy"], win_rate=res["outcome"] in ("win", "perfect_win"), suspicion_hit=hit,
                 caught_rate=caught, caught_turn=res["turn"] if caught else None)
 
