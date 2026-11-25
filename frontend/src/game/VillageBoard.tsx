@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
+import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, nextObservationTag, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TrialStampMode, TutorialHighlight } from './village'
 import './village.css'
 
@@ -238,30 +238,40 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
   )
 }
 
-// 보드 하단 상시 범례: 깃발(지난밤 결정)과 창문 불빛(다음 관측).
+// 보드 하단 상시 범례: 깃발(지난밤 결정), 창문 불빛(맞음/틀림), 집 아래 꼬리표(내일 관측 값).
 function BoardLegend() {
   return (
     <g
       className="vb-legend"
       role="img"
-      aria-label="보드 범례: 깃발은 지난밤 결정(대피/잔류)이에요. 창문 불이 켜지면 다음 관측이 맞고, 꺼지면 틀려요."
+      aria-label="보드 범례: 깃발은 지난밤 결정(대피/잔류)이에요. 창문 불이 켜지면 다음 관측이 맞고, 꺼지면 틀려요. 집 아래 꼬리표에 내일 관측 값이 적혀 있어요."
     >
       <rect x="0" y="660" width="900" height="38" fill="#efe0b9" />
       <line x1="0" y1="660" x2="900" y2="660" stroke="#4a3119" strokeWidth="2" />
       <g aria-hidden>
-        <use href="#vb-flag-evacuate" transform="translate(108,691) scale(.48)" />
-        <use href="#vb-flag-stay" transform="translate(136,691) scale(.48)" />
-        <text x="168" y="684" fontSize="14.5" fontWeight="700">
-          깃발: 지난밤 결정(대피/잔류)
+        <use href="#vb-flag-evacuate" transform="translate(80,691) scale(.46)" />
+        <use href="#vb-flag-stay" transform="translate(106,691) scale(.46)" />
+        <text x="136" y="684" fontSize="15" fontWeight="700">
+          깃발: 지난밤 결정
         </text>
-        <line x1="420" y1="669" x2="420" y2="689" stroke="#c3a878" strokeWidth="1.5" />
-        <use href="#vb-win-on" transform="translate(450,679) scale(.85)" />
-        <text x="468" y="684" fontSize="14.5" fontWeight="700">
-          창문 불 켜짐: 다음 관측 맞음
+        <line x1="276" y1="669" x2="276" y2="689" stroke="#c3a878" strokeWidth="1.5" />
+        <use href="#vb-win-on" transform="translate(302,679) scale(.82)" />
+        <text x="320" y="684" fontSize="15" fontWeight="700">
+          창문 불 켜짐: 맞음
         </text>
-        <use href="#vb-win-off" transform="translate(698,679) scale(.85)" />
-        <text x="714" y="684" fontSize="14.5" fontWeight="700">
+        <use href="#vb-win-off" transform="translate(472,679) scale(.82)" />
+        <text x="488" y="684" fontSize="15" fontWeight="700">
           꺼짐: 틀림
+        </text>
+        <line x1="578" y1="669" x2="578" y2="689" stroke="#c3a878" strokeWidth="1.5" />
+        <g transform="translate(594,679)" className="vb-obs-tag is-lit">
+          <rect x="0" y="-10" width="28" height="20" rx="4" strokeWidth="1.6" />
+          <rect x="4" y="-5" width="9" height="10" fill="#ffd35a" stroke="#3b2a1a" strokeWidth="1.2" />
+          <path d="M8.5 -5 V5 M4 0 H13" stroke="#3b2a1a" strokeWidth="0.9" />
+          <path d="M17 -2 H24 M17 3 H22" stroke="#6b4a2a" strokeWidth="1.6" strokeLinecap="round" />
+        </g>
+        <text x="630" y="684" fontSize="15" fontWeight="700">
+          집 아래 꼬리표: 내일 관측
         </text>
       </g>
     </g>
@@ -275,6 +285,7 @@ function houseLabel(h: House, playerCity: number) {
   const name = `${h.city}번 집`
   if (h.role === 'player') return `${name}, 나(마피아)`
   if (h.role === 'colleague') return `${name}, 동료 마피아`
+  const obs = nextObservationTag(h)
   const others = h.suspicions
     ? Object.entries(h.suspicions)
         .map(([city, value]) => [Number(city), value] as const)
@@ -285,7 +296,7 @@ function houseLabel(h: House, playerCity: number) {
   return [
     `${name}, 주민`,
     h.flag ? `지난밤 결정 ${decisions[h.flag]}` : '아직 결정 없음',
-    h.lit != null && `다음 관측 ${h.lit ? '맞음(불 켜짐)' : '틀림(불 꺼짐)'}`,
+    obs?.aria,
     h.suspicion != null &&
       `나에 대한 의심도 ${h.suspicion}${h.suspicion >= SUSPICION.threshold ? ', 재판 기준 넘음' : ''}`,
     ...others,
@@ -393,6 +404,7 @@ function VoteStack({ x, y, scale, me, animate }: { x: number; y: number; scale: 
 function HouseView({
   h,
   playerCity,
+  isNight = false,
   pick,
   inspect,
   voteBar,
@@ -403,6 +415,7 @@ function HouseView({
 }: {
   h: House
   playerCity: number
+  isNight?: boolean
   pick?: Pick
   inspect?: { onEnter: () => void; onLeave: () => void; onFocus: (e: FocusEvent<SVGGElement>) => void; onBlur: () => void }
   voteBar?: { scale: Scale; me: number; animate: boolean }
@@ -412,6 +425,9 @@ function HouseView({
   pointed?: boolean
 }) {
   const { x, y } = h
+  const obs = !isNight ? nextObservationTag(h) : null
+  const obsW = obs ? (obs.lit ? 136 : 176) : 0
+  const obsY = h.suspicion != null ? y + 64 : y + 26
   const base = `${houseLabel(h, playerCity)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
   const label = pick
     ? `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
@@ -504,7 +520,7 @@ function HouseView({
       )}
       {h.suspicion != null && (
         <g
-          transform={`translate(${x - 20},${y + 30})`}
+          transform={`translate(${x - 20},${y + 24})`}
           className={`${over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}${hlSuspicion ? ' vb-tut-hl' : ''}`}
         >
           {hlSuspicion && <rect className="vb-tut-ring" x="-56" y="-15" width="146" height="41" rx="8" aria-hidden />}
@@ -538,11 +554,37 @@ function HouseView({
           )}
         </g>
       )}
+      {obs && (
+        <g
+          className={`vb-obs-tag ${obs.lit ? 'is-lit' : 'is-dim'}${hlWindow ? ' vb-tut-hl' : ''}`}
+          transform={`translate(${x},${obsY})`}
+          aria-hidden="true"
+        >
+          <rect x={-obsW / 2} y="-13" width={obsW} height="26" rx="4" strokeWidth="1.8" />
+          <g transform={`translate(${-obsW / 2 + 12},0)`}>
+            <rect
+              x="-5.5"
+              y="-5.5"
+              width="11"
+              height="11"
+              fill={obs.lit ? '#ffd35a' : '#3e352c'}
+              stroke="#3b2a1a"
+              strokeWidth="1.4"
+            />
+            <path d="M0 -5.5 V5.5 M-5.5 0 H5.5" stroke={obs.lit ? '#3b2a1a' : '#8d7d69'} strokeWidth="1" />
+          </g>
+          <text x="9" y="5.5" fontSize="16" fontWeight="700" textAnchor="middle">
+            내일 관측: {decisions[obs.claim]}
+            {!obs.lit && <tspan className="vb-obs-wrong">(틀림)</tspan>}
+          </text>
+          {hlWindow && <rect className="vb-tut-ring" x={-obsW / 2 - 4} y="-17" width={obsW + 8} height="34" rx="8" />}
+        </g>
+      )}
       {pick?.claim && <use href={`#vb-note-${pick.claim}`} x={x + 70} y={y - 30} />}
       {pick?.changed && (
         <g
           className={hlChanged ? 'vb-new vb-tut-hl' : 'vb-new'}
-          transform={`translate(${x - 10},${y + (h.suspicion != null ? 70 : 54)})`}
+          transform={`translate(${x - 10},${y + (h.suspicion != null ? 92 : 56)})`}
           aria-hidden
         >
           <rect x="-92" y="-11.5" width="184" height="23" rx="11.5" />
@@ -1132,6 +1174,7 @@ export function VillageBoard({
             key={h.city}
             h={h}
             playerCity={state.player_city}
+            isNight={Boolean(night)}
             voteBar={
               inFlags && h.order <= night.decided && scale
                 ? { scale, me: state.player_city, animate: activeDeciding }

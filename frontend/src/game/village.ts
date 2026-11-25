@@ -161,6 +161,26 @@ export type House = {
   reachable: boolean // 내가 말을 보낼 수 있는 시민인가 (ring이면 양옆만)
 }
 
+export type ObservationTag = {
+  claim: Claim
+  lit: boolean
+  text: string
+  aria: string
+}
+
+// 창문 불(h.lit)이 보이는 집 아래에 붙일 다음 관측 꼬리표와 낭독 문구 (danger→대피, safe→잔류).
+export function nextObservationTag(h: Pick<House, 'hint' | 'lit'>): ObservationTag | null {
+  if (h.lit == null || h.hint == null) return null
+  const claim: Claim = h.hint === 'danger' ? 'evacuate' : 'stay'
+  const word = said[claim]
+  return {
+    claim,
+    lit: h.lit,
+    text: h.lit ? `내일 관측: ${word}` : `내일 관측: ${word}(틀림)`,
+    aria: h.lit ? `내일 관측 ${word}, 맞음, 불 켜짐` : `내일 관측 ${word}, 틀림, 불 꺼짐`,
+  }
+}
+
 // 보드가 그릴 집 상태. result가 없으면 1턴 전 (게임 상태의 힌트만 있음).
 export function villageHouses(
   state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth' | 'next_hints'>,
@@ -1488,7 +1508,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'windows',
-    text: '주민은 밤마다 날씨를 직접 관측해요. 창문 불이 켜진 집은 다음 관측이 진짜 날씨와 맞고, 꺼진 집은 틀려요. 불이 꺼진 집이 속이기 쉬워요.',
+    text: '주민은 밤마다 날씨를 직접 관측해요. 창문 불이 켜진 집은 다음 관측이 진짜 날씨와 맞고, 꺼진 집은 틀려요. 집 아래 꼬리표에 내일 관측이 대피인지 잔류인지 적혀 있어요. 불이 꺼진 집이 속이기 쉬워요.',
   },
   {
     highlight: 'houses',

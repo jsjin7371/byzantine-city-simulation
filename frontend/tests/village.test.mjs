@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialArrowsVisible, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialArrowsVisible, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -68,6 +68,27 @@ test('after a turn houses show decisions, suspicion of me and next hints', () =>
   assert.equal(byCity[5].suspicion, null) // 다수결 주민
   assert.equal(byCity[2].role, 'colleague')
   assert.equal(villageHouses(state, { ...result, next_hints: null })[0].lit, null) // 게임 종료
+
+  // 다음 관측 꼬리표: danger→대피, safe→잔류, 불 꺼짐이면 (틀림) 표기, 힌트 없으면 null
+  assert.deepEqual(nextObservationTag(byCity[4]), {
+    claim: 'evacuate',
+    lit: true,
+    text: '내일 관측: 대피',
+    aria: '내일 관측 대피, 맞음, 불 켜짐',
+  })
+  assert.deepEqual(nextObservationTag(byCity[1]), {
+    claim: 'stay',
+    lit: false,
+    text: '내일 관측: 잔류(틀림)',
+    aria: '내일 관측 잔류, 틀림, 불 꺼짐',
+  })
+  assert.deepEqual(nextObservationTag({ hint: 'danger', lit: false }), {
+    claim: 'evacuate',
+    lit: false,
+    text: '내일 관측: 대피(틀림)',
+    aria: '내일 관측 대피, 틀림, 불 꺼짐',
+  })
+  assert.equal(nextObservationTag(byCity[2]), null)
 })
 
 test('ring connection makes only the two neighbours reachable', () => {
