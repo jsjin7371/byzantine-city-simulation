@@ -1240,19 +1240,383 @@
   .vl-log.is-live > * { animation: none; }
 }
 
-/* 결과 화면 (명세 4번) */
-.gr-result { word-break: keep-all; overflow-wrap: break-word; }
-.gm-panel.gr-result > h2 { font-size: clamp(22px, 3vw, 25px); font-weight: 700; line-height: 1.3; margin-bottom: 4px; }
-.gm-panel.gr-result > h3 { font: 700 clamp(19px, 2.5vw, 21px)/1.35 var(--gm-font); margin: 16px 0 6px; }
-.gr-result > p,
-.gr-result > ul { font-size: clamp(17.5px, 2.2vw, 19px); font-weight: 700; line-height: 1.55; margin: 0; }
-.gr-result > ul { padding-left: 22px; }
-.gr-peaks { display: block; height: 130px; width: auto; max-width: 100%; }
-.gr-peaks rect { fill: #8aa04c; stroke: var(--ink); stroke-width: 1.2; }
-.gr-peaks rect.is-over { fill: var(--rust); }
-.gr-peaks text { font-size: 13.5px; fill: var(--ink); }
-.gr-line { stroke: var(--rust); stroke-width: 2; stroke-dasharray: 8 5; }
-.gm-details summary { cursor: pointer; font-weight: 700; margin: 12px 0; }
+/* 결과 화면 (목업 초안_A결과해석_B시나리오.html A절) */
+.gr-sheet {
+  position: relative;
+  width: 100%;
+  max-width: 940px;
+  margin: 8px auto 0;
+  background: var(--cream);
+  border-radius: 4px 4px 4px 18px;
+  padding: 34px 40px 36px;
+  box-shadow:
+    0 1px 0 var(--border),
+    0 0 0 1px rgba(107, 74, 42, 0.18),
+    6px 8px 0 -2px var(--parch),
+    6px 8px 0 -1px var(--border);
+  font-size: 20px;
+  line-height: 1.55;
+  color: var(--ink);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+@media (max-width: 640px) {
+  .gr-sheet {
+    padding: 24px 20px;
+  }
+}
+.gr-sheet h2,
+.gr-sheet h3,
+.gr-sheet h4 {
+  text-wrap: balance;
+}
+.gr-sheet p,
+.gr-sheet li {
+  text-wrap: pretty;
+}
+.gr-verdict {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 22px;
+  align-items: center;
+}
+.gr-stamp {
+  grid-row: span 2;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  border: 4px double var(--rust);
+  color: var(--rust);
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  font-weight: 700;
+  transform: rotate(-12deg);
+  opacity: 0.92;
+}
+.gr-stamp.is-win {
+  border-color: var(--forest);
+  color: var(--forest);
+}
+.gr-verdict h2 {
+  margin: 0;
+  font-size: clamp(26px, 3.6vw, 32px);
+  font-weight: 700;
+  line-height: 1.2;
+}
+.gr-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 19px;
+}
+
+.gr-reading {
+  margin-top: 28px;
+  display: grid;
+  gap: 0;
+  border-top: 2px dotted var(--border);
+}
+.gr-step {
+  display: grid;
+  grid-template-columns: 7.2em 1fr;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 2px dotted var(--border);
+  align-items: baseline;
+}
+.gr-step > h3 {
+  margin: 0;
+  font-size: 19px;
+  color: var(--muted);
+  font-weight: 700;
+  padding-top: 2px;
+}
+.gr-step p {
+  margin: 0;
+  max-width: 32em;
+  font-size: 20px;
+  font-weight: 700;
+}
+@media (max-width: 640px) {
+  .gr-step {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+.gr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.gr-chip {
+  font-size: 17px;
+  font-weight: 700;
+  background: var(--parch);
+  border-radius: 999px;
+  padding: 2px 12px;
+}
+.gr-lead {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.gr-block-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 34px 0 10px;
+  color: var(--ink);
+}
+.gr-moments {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.gr-moments li {
+  display: grid;
+  grid-template-columns: 3.4em 1fr;
+  gap: 12px;
+  padding: 8px 0;
+  align-items: baseline;
+}
+.gr-day {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--wood);
+}
+.gr-moment-text {
+  max-width: 32em;
+  font-size: 20px;
+  font-weight: 700;
+}
+.gr-tag {
+  display: inline-block;
+  margin-left: 8px;
+  cursor: pointer;
+  vertical-align: 1px;
+  font-family: var(--gm-book-font);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: var(--wood-dark);
+  background: var(--parch);
+  border: 1px solid var(--wood);
+  border-radius: 4px;
+  padding: 0 9px;
+  transition:
+    background-color 160ms ease,
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.gr-tag:hover {
+  background: #e6d29f;
+}
+.gr-tag:active {
+  transform: scale(0.97);
+}
+.gr-tag:focus-visible {
+  outline: 3px solid var(--leave);
+  outline-offset: 2px;
+}
+
+/* 꼬리표 팝오버 */
+[popover].gr-tip {
+  width: min(380px, 92vw);
+  margin: 0;
+  inset: auto;
+  padding: 0;
+  overflow: hidden;
+  background: var(--cream);
+  color: var(--ink);
+  border: 1px solid var(--wood);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px -12px rgba(61, 58, 54, 0.45);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+.gr-tip-body {
+  padding: 16px 18px 6px;
+}
+.gr-tip h4 {
+  margin: 0 0 6px;
+  font-family: var(--gm-book-font);
+  font-size: 19px;
+  font-weight: 700;
+}
+.gr-tip h4 small {
+  font-weight: 400;
+  color: var(--muted);
+  font-size: 15px;
+  margin-left: 6px;
+}
+.gr-tip p {
+  margin: 0 0 10px;
+  font-size: 19px;
+  line-height: 1.45;
+}
+.gr-tip-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.gr-tip-theory {
+  font-family: var(--gm-book-font);
+  font-size: 15.5px;
+  line-height: 1.7;
+  background: var(--parch);
+  margin: 0;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+}
+.gr-tip-theory cite {
+  display: block;
+  font-style: normal;
+  color: var(--muted);
+  font-size: 15px;
+  margin-top: 4px;
+}
+.gr-tip footer {
+  padding: 10px 18px 14px;
+  background: var(--parch);
+}
+
+/* 영향력 한 줄 */
+.gr-influence {
+  margin: 34px 0 0;
+  display: flex;
+  gap: 18px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.gr-influence b {
+  font-size: 46px;
+  line-height: 1;
+  color: var(--rust);
+}
+.gr-influence p {
+  margin: 0;
+  max-width: 28em;
+  font-size: 20px;
+  font-weight: 700;
+}
+.gr-influence small {
+  display: block;
+  color: var(--muted);
+  font-size: 18px;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+/* 2단 그래프 */
+.gr-chart-wrap {
+  margin-top: 34px;
+}
+.gr-chart-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.gr-chart-head h3 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+.gr-replay {
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 700;
+  border-bottom: 1.5px dashed var(--muted);
+}
+.gr-replay:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+.gr-replay:focus-visible {
+  outline: 3px solid var(--leave);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+.gr-chart-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+svg.gr-chart {
+  width: 100%;
+  max-width: 760px;
+  min-width: 360px;
+  display: block;
+  margin-top: 8px;
+  overflow: visible;
+}
+svg.gr-chart text {
+  font-family: var(--gm-font);
+  font-size: 15px;
+  font-weight: 700;
+  fill: var(--ink);
+}
+svg.gr-chart .gr-axis-label {
+  fill: var(--muted);
+  font-size: 15px;
+}
+.gr-bar {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.gr-pin {
+  transition: opacity 300ms ease;
+}
+.gr-chart.is-armed .gr-bar {
+  transform: scaleY(0);
+}
+.gr-chart.is-armed .gr-pin,
+.gr-chart.is-armed .gr-daylabel {
+  opacity: 0;
+}
+.gr-chart.is-play .gr-bar {
+  transform: scaleY(1);
+  transition: transform 420ms cubic-bezier(0.23, 1, 0.32, 1);
+  transition-delay: calc(var(--i) * 260ms);
+}
+.gr-chart.is-play .gr-daylabel {
+  opacity: 1;
+  transition: opacity 200ms ease;
+  transition-delay: calc(var(--i) * 260ms);
+}
+.gr-chart.is-play .gr-pin {
+  opacity: 1;
+  transition-delay: calc(var(--i) * 260ms + 300ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .gr-chart.is-armed .gr-bar {
+    transform: none;
+  }
+  .gr-chart.is-armed .gr-pin,
+  .gr-chart.is-armed .gr-daylabel {
+    opacity: 1;
+  }
+  .gr-chart.is-play .gr-bar,
+  .gr-chart.is-play .gr-daylabel,
+  .gr-chart.is-play .gr-pin,
+  .gr-tag:active {
+    transition: none;
+    transform: none;
+  }
+}
+
+.gr-footer {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 2px dotted var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.gm-details summary { cursor: pointer; font-size: 18px; font-weight: 700; margin: 8px 0; }
 
 /* 튜토리얼 말풍선 및 대상 강조 */
 .tut-box {
