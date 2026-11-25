@@ -25,11 +25,13 @@
 
 .gm-workspace {
   --gm-font: 'Gaegu', cursive;
+  --gm-book-font: 'Gowun Batang', 'Batang', Georgia, serif;
   --ink: #3d3a36;
   --ink-soft: #4c4842;
   --wood: #6b4a2a;
+  --wood-dark: #4e3520;
   --parch: #efe0b9;
-  --cream: #f3ebd4;
+  --cream: #f8f0da;
   --forest: #2f4a28;
   --rust: #a8361f;
   --leave: #35598a;
@@ -1464,5 +1466,201 @@
   .tut-arrow.is-up,
   .vl-tonight {
     animation: none;
+  }
+}
+
+/* =========================================================
+   이론 책 링크 & 오버레이 (목업 초안_A결과해석_B시나리오.html)
+   ========================================================= */
+.tb-book-link {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 4px 2px;
+  font-family: var(--gm-book-font);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--wood-dark);
+  text-align: left;
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.tb-book-link svg {
+  flex: none;
+}
+.tb-book-link-text {
+  border-bottom: 1.5px solid var(--wood);
+}
+.tb-book-link:hover .tb-book-link-text {
+  border-bottom-color: var(--rust);
+  color: var(--ink);
+}
+.tb-book-link-sub {
+  font-family: var(--gm-font);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.tb-book-link:active {
+  transform: scale(0.98);
+}
+.tb-book-link:focus-visible {
+  outline: 3px solid var(--leave);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+dialog.tb-dialog {
+  width: min(720px, 94vw);
+  max-height: 88vh;
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 4px 4px 4px 22px;
+  background: #fbf6e8;
+  color: var(--ink);
+  box-shadow:
+    0 30px 60px -20px rgba(40, 28, 16, 0.55),
+    0 0 0 1px rgba(107, 74, 42, 0.25);
+  overflow: hidden;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+dialog.tb-dialog::backdrop {
+  background: rgba(48, 36, 22, 0.45);
+}
+dialog.tb-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  animation: tb-book-open 280ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes tb-book-open {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+.tb-page {
+  overflow-y: auto;
+  padding: 44px 56px 40px;
+  font-family: var(--gm-book-font);
+  font-size: 17px;
+  line-height: 1.85;
+  color: var(--ink);
+}
+@media (max-width: 640px) {
+  .tb-page {
+    padding: 32px 24px;
+  }
+}
+.tb-close {
+  position: sticky;
+  top: 0;
+  float: right;
+  margin: -24px -28px 0 0;
+  min-width: 44px;
+  min-height: 44px;
+  background: #fbf6e8;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 640px) {
+  .tb-close {
+    margin: -14px -10px 0 0;
+  }
+}
+.tb-close:hover {
+  color: var(--ink);
+  background: var(--parch);
+}
+.tb-close:focus-visible {
+  outline: 3px solid var(--leave);
+  outline-offset: 2px;
+}
+.tb-kicker {
+  font-size: 15px;
+  color: var(--muted);
+  margin: 0;
+}
+.tb-page h2 {
+  font-family: var(--gm-book-font);
+  font-size: 30px;
+  line-height: 1.3;
+  margin: 4px 0 0;
+  font-weight: 700;
+  filter: none;
+  text-wrap: balance;
+}
+.tb-en {
+  margin: 2px 0 28px;
+  color: var(--muted);
+  font-style: italic;
+  font-size: 16px;
+}
+.tb-page h3 {
+  font-family: var(--gm-font);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--wood);
+  margin: 28px 0 6px;
+  text-wrap: balance;
+}
+.tb-page p {
+  margin: 0 0 12px;
+  max-width: 36em;
+  text-wrap: pretty;
+}
+.tb-easy {
+  font-family: var(--gm-font);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.tb-box {
+  margin: 14px 0;
+  padding: 14px 18px;
+  border-left: 3px solid var(--wood);
+  background: var(--cream);
+}
+.tb-box-kind {
+  display: block;
+  font-size: 15px;
+  color: var(--wood);
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+.tb-box p:last-child {
+  margin-bottom: 0;
+}
+.tb-proof {
+  margin-top: 14px;
+}
+.tb-refs {
+  font-size: 15px;
+  color: var(--muted);
+  padding-left: 20px;
+  margin: 8px 0 0;
+  line-height: 1.7;
+}
+.tb-refs li {
+  text-wrap: pretty;
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.tb-dialog[open] {
+    animation: none;
+  }
+  .tb-book-link:active {
+    transform: none;
   }
 }
