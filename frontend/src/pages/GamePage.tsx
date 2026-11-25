@@ -11,6 +11,7 @@ import {
   playTurn,
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
+import { plainAiReason } from '../game/aiReason'
 import { GameStart } from '../game/GameStart'
 import { Tutorial } from '../game/Tutorial'
 import { VillageBoard } from '../game/VillageBoard'
@@ -71,7 +72,7 @@ function TurnReport({ result }: { result: TurnResult }) {
               ) : (
                 <p className="gm-muted">의심도 없음 (다수결 주민)</p>
               )}
-              {c.reason && <p className="gm-reason">{c.reason}</p>}
+              {c.reason && <p className="gm-reason">{plainAiReason(c.reason)}</p>}
             </article>
           ))}
       </div>

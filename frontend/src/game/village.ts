@@ -1,3 +1,4 @@
+import { plainAiReason } from './aiReason.ts'
 import { SUSPICION, claimTargets, difficulties, majority } from '../gameApi.ts'
 import type { Claim, Difficulty, GameState, Role, Truth, TurnResult } from '../gameApi.ts'
 
@@ -599,7 +600,7 @@ export function villageLines(
   // 쪽지를 받은 주민의 반응: 관측과 맞는 말 / 어긋나는 말 (AI 시민은 자기 판단 이유)
   for (const c of citizens) {
     const mine = c.received?.[me]
-    if (ai && c.reason) lines.push({ phase: 'notes', kind: 'say', who: c.city, text: c.reason })
+    if (ai && c.reason) lines.push({ phase: 'notes', kind: 'say', who: c.city, text: plainAiReason(c.reason) })
     else if (mine && c.hint)
       lines.push({
         phase: 'notes',
