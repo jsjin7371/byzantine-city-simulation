@@ -23,16 +23,16 @@ def play(client, state, turn):
 def test_full_game_flow(client):
     state = start(client)
     assert state["status"] == "in_progress" and state["turn"] == 0 and state["bot_win_rate"] is None
-    for t in range(1, 16):
+    for t in range(1, 8):
         r = play(client, state, t)
         assert r.status_code == 200, r.text
         assert r.json()["turn"] == t
     last = r.json()
     assert last["game_over"] and last["end_reason"] == "turns_done" and last["next_hints"] is None
     got = client.get(f"/games/{state['game_id']}").json()
-    assert got["status"] == "finished" and got["turn"] == 15 and got["outcome"] == last["outcome"]
+    assert got["status"] == "finished" and got["turn"] == 7 and got["outcome"] == last["outcome"]
     assert client.get(f"/games/{state['game_id']}/turns/3").json()["turn"] == 3
-    assert play(client, state, 16).status_code == 409  # 끝난 게임
+    assert play(client, state, 8).status_code == 409  # 끝난 게임
 
 
 def test_share_pairs_announced(client):
@@ -40,7 +40,7 @@ def test_share_pairs_announced(client):
     state = start(client, share_pairs=2)
     pairs = state["next_share_pairs"]
     assert len(pairs) == 2 and all(len(p) == 2 for p in pairs)
-    for t in range(1, 16):
+    for t in range(1, 8):
         r = play(client, state, t).json()
         assert [s["pair"] for s in r["sharing"]] == pairs
         pairs = r["next_share_pairs"]
@@ -50,8 +50,8 @@ def test_share_pairs_announced(client):
 
 
 def test_bot_win_rate(client):
-    assert start(client, mafia_count=1, sensor_error=0.48)["bot_win_rate"] == 0.32
-    assert start(client, mafia_count=1, sensor_error=0.4, citizen_type="majority")["bot_win_rate"] == 0.748
+    assert start(client, mafia_count=1, sensor_error=0.48)["bot_win_rate"] == 0.57
+    assert start(client, mafia_count=1, sensor_error=0.4, citizen_type="majority")["bot_win_rate"] == 0.736
     assert start(client, mafia_count=1, sensor_error=0.3, citizen_type="ai")["bot_win_rate"] is None
     assert start(client, sensor_error=0.3, share_mode="none")["bot_win_rate"] is None
 
@@ -125,7 +125,7 @@ def test_stats_empty(client):
     assert len(items) == 6  # 시민 종류 2(wary·majority) × 난이도 3, 판이 없어도 0판으로
     normal = stats_row(client, "wary", "normal")
     assert normal == {"citizen_type": "wary", "difficulty": "normal", "label": "보통", "games": 0, "wins": 0,
-                      "win_rate": None, "bot_win_rate": 0.10}
+                      "win_rate": None, "bot_win_rate": 0.31}
     assert all(i["citizen_type"] != "ai" for i in items)
 
 
@@ -148,13 +148,13 @@ def test_stats_counts_only_human_default_finished(client):
     wary = stats_row(client, "wary", "normal")
     assert (wary["games"], wary["wins"], wary["win_rate"]) == (4, 3, 0.75)
     majority = stats_row(client, "majority", "hard")
-    assert (majority["games"], majority["wins"], majority["win_rate"], majority["bot_win_rate"]) == (1, 0, 0.0, 0.482)
+    assert (majority["games"], majority["wins"], majority["win_rate"], majority["bot_win_rate"]) == (1, 0, 0.0, 0.490)
     assert sum(i["games"] for i in client.get("/games/stats").json()["items"]) == 5
 
 
 def test_stats_from_real_game(client):
     state = start(client, sensor_error=0.48)
-    for t in range(1, 16):
+    for t in range(1, 8):
         r = play(client, state, t).json()
         if r["game_over"]:
             break
@@ -172,5 +172,5 @@ def test_stats_csv(client):
     assert len(rows) == 6
     normal = next(row for row in rows if row["citizen_type"] == "wary" and row["difficulty"] == "normal")
     assert normal == {"citizen_type": "wary", "difficulty": "normal", "label": "보통", "games": "1", "wins": "1",
-                      "win_rate": "1.0", "bot_win_rate": "0.1"}
+                      "win_rate": "1.0", "bot_win_rate": "0.31"}
     assert next(row for row in rows if row["games"] == "0")["win_rate"] == ""  # null은 빈 칸

@@ -329,25 +329,25 @@ test('game summary: caught explains who accused me at which trial', () => {
   assert.ok(s.moments.includes('재판이 1번 열렸어요'))
 })
 
-test('game summary: turn 15 counts fooled citizens, first crossing of 60 and caught contradictions', () => {
+test('game summary: turn 7 counts fooled citizens, first crossing of 60 and caught contradictions', () => {
   const quiet = day(1, { cities: turn.cities.map((c) => (c.suspicion ? { ...c, suspicion: { ...c.suspicion, 3: 10 } } : c)) })
   const hot = day(2, { cities: turn.cities.map((c) => (c.city === 4 ? { ...c, suspicion: { ...c.suspicion, 3: 70 } } : c)), sharing: turn.sharing })
-  const s = gameSummary(over('win', 'turns_done'), [quiet, hot, day(15)])
+  const s = gameSummary(over('win', 'turns_done'), [quiet, hot, day(7)])
   assert.equal(s.headline, '주민 과반을 끝까지 속였어요')
-  assert.ok(s.moments.includes('마지막 15일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
+  assert.ok(s.moments.includes('마지막 7일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
   assert.ok(s.moments.includes('2일째 4번의 의심도가 70까지 올라 처음으로 재판 기준 60을 넘었어요'))
   assert.ok(s.moments.includes('쪽지 비교에서 다른 쪽지를 보냈다가 1번 들켰어요 (2일째)'))
   assert.deepEqual(s.peaks, [10, 70, 50])
   assert.match(s.lesson, /같은 쪽지/)
 
-  const lostDay = day(15, {
+  const lostDay = day(7, {
     cities: turn.cities.map((c) => (c.city === 4 ? { ...c, correct: true } : c)),
   })
   const lost = gameSummary(over('loss', 'turns_done'), [lostDay])
-  assert.equal(lost.headline, '15일째에 주민 과반이 속지 않았어요')
-  assert.ok(lost.moments.includes('마지막 15일째에 주민 3명 중 1명이 속았어요 (승리에 2명 필요)'))
+  assert.equal(lost.headline, '7일째에 주민 과반이 속지 않았어요')
+  assert.ok(lost.moments.includes('마지막 7일째에 주민 3명 중 1명이 속았어요 (승리에 2명 필요)'))
   assert.equal(lost.lesson, '들키지는 않았지만 주민 과반을 속이지 못했어요. 창문 불이 꺼진 집은 관측이 틀려 속이기 쉬워요.')
-  assert.equal(gameSummary(over('perfect_win', 'turns_done'), [day(15)]).headline, '주민 모두를 끝까지 속였어요')
+  assert.equal(gameSummary(over('perfect_win', 'turns_done'), [day(7)]).headline, '주민 모두를 끝까지 속였어요')
 })
 
 const turnOf = (cities) => ({ cities: cities.map((c) => ({ ...empty, ...c })) })
@@ -611,9 +611,9 @@ test('DIFFICULTY_STATS derives expected error%, mean wrong citizens, and >=3 wro
   assert.deepEqual(
     DIFFICULTY_STATS.map((r) => [r.key, r.errorPct, r.avgWrong, r.atLeastThreePct, r.waryBotWinPct, r.majorityBotWinPct]),
     [
-      ['easy', 48, 1.9, 28, 32, 87],
-      ['normal', 40, 1.6, 18, 10, 75],
-      ['hard', 30, 1.2, 8, 1, 48],
+      ['easy', 48, 1.9, 28, 57, 86],
+      ['normal', 40, 1.6, 18, 31, 74],
+      ['hard', 30, 1.2, 8, 8, 49],
     ],
   )
 })

@@ -60,11 +60,11 @@ export type TurnResult = {
   next_share_pairs?: [number, number][] | null
 }
 
-export const TOTAL_TURNS = 15
+export const TOTAL_TURNS = 7
 // 7.6 의심도 규칙 (눈치 시민). engine/city/logic.py와 같은 값.
 export const SUSPICION = { agree: -20, disagree: 20, contradiction: 20, threshold: 60 }
 
-// 시민 과반 (4명이면 3, 3명이면 2). 15턴에 이만큼 오답이면 승리.
+// 시민 과반 (4명이면 3, 3명이면 2). 7턴에 이만큼 오답이면 승리.
 export const majority = (citizens: number) => Math.floor(citizens / 2) + 1
 
 // 7.2 난이도 표. 나머지 값은 백엔드 기본값을 쓴다.
