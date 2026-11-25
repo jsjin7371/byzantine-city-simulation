@@ -57,7 +57,7 @@ function TacticPopover({
         {TAG_LABELS[tag]}
       </button>
       {SUPPORTS_POPOVER && (
-        <div ref={tipRef} id={id} popover="auto" className="gr-tip" aria-label={topic.title}>
+        <div ref={tipRef} id={id} popover="auto" role="group" className="gr-tip" aria-label={topic.title}>
           <div className="gr-tip-body">
             <h4>
               {topic.title}
@@ -132,47 +132,25 @@ function ResultChart({
   const minCols = Math.max(count, 6)
   const viewW = x0 + step * minCols + 88
 
+  const pinEntries = Object.entries(pins)
+    .map(([i, p]) => [Number(i), p] as const)
+    .sort((a, b) => a[0] - b[0])
+  const laneCount = count <= 8 ? 3 : 4
+  const pinLane = new Map(pinEntries.map(([i], k) => [i, k % laneCount]))
+  const usedLanes = Math.min(pinEntries.length, laneCount)
+  const laneGap = 20
+  const pinBandH = usedLanes * laneGap
+
   const topMax = Math.max(citizenCount, majorityNeed, 1)
-  const topBase = 114
   const topPlotH = 84
+  const topBase = 30 + topPlotH + (!hasPeaks && usedLanes > 0 ? pinBandH + 14 : 0)
   const topUnit = topPlotH / topMax
   const majY = topBase - majorityNeed * topUnit
 
   const botPlotH = 100
-  const baseBotBase = 296
-  const pinLayout: Record<number, { dotY: number; textY: number }> = {}
-  const placedPins: { left: number; right: number; y: number }[] = []
-  let minPinY = topBase + 24
-
-  for (let i = 0; i < deceived.length; i++) {
-    const pin = pins[i]
-    if (!pin) continue
-    const cx = x0 + i * step + bw / 2
-    const hTop = deceived[i] * topUnit
-    const peakVal = peaks[i]
-    const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
-    const dotY = hasPeaks ? baseBotBase - hBot - 11 : topBase - hTop - 11
-    const estW = pin.labels.join(', ').length * 10.5 + 12
-    const left = cx - estW / 2
-    const right = cx + estW / 2
-    let textY = dotY - 10
-    while (placedPins.some((p) => !(right < p.left || left > p.right) && Math.abs(textY - p.y) < 18)) {
-      textY -= 18
-    }
-    placedPins.push({ left, right, y: textY })
-    if (hasPeaks && textY < minPinY) minPinY = textY
-    pinLayout[i] = { dotY, textY }
-  }
-
-  // 핀이 여러 날 연속으로 쌓여 위 칸 기준선과 가까워지면 아래 칸을 그만큼 내려 겹침을 막는다.
-  const botShift = hasPeaks ? Math.max(0, topBase + 26 - minPinY) : 0
-  const botBase = baseBotBase + botShift
+  const botBase = topBase + 38 + pinBandH + botPlotH
   const trialY = botBase - SUSPICION.threshold
-  const viewH = hasPeaks ? botBase + 30 : 146
-
-  const pinEntries = Object.entries(pins)
-    .map(([i, p]) => [Number(i), p] as const)
-    .sort((a, b) => a[0] - b[0])
+  const viewH = hasPeaks ? botBase + 30 : topBase + 32
 
   const ariaParts = [
     `위: 날짜별 속은 주민 수 ${deceived.map((d, i) => `${turns[i]}일 ${d}명`).join(', ')}. 과반선 ${majorityNeed}명.`,
@@ -204,7 +182,7 @@ function ResultChart({
           role="img"
           aria-label={ariaParts.join(' ')}
         >
-          <text className="gr-axis-label" x="0" y="24">
+          <text className="gr-axis-label" x="0" y={hasPeaks ? 24 : topBase - topPlotH}>
             속은 주민
           </text>
           <path d={`M${x0 - 8} ${majY} H${plotRightX}`} stroke="var(--forest)" strokeWidth="1.6" strokeDasharray="4 4" />
@@ -215,7 +193,7 @@ function ResultChart({
 
           {hasPeaks && (
             <>
-              <text className="gr-axis-label" x="0" y={botBase - botPlotH - 18}>
+              <text className="gr-axis-label" x="0" y={botBase - botPlotH}>
                 최고 의심도
               </text>
               <path
@@ -240,9 +218,10 @@ function ResultChart({
             const over = peakVal != null && peakVal >= SUSPICION.threshold
             const pin = pins[i]
             const pinColor = pin?.danger ? 'var(--rust)' : 'var(--wood)'
-            const placed = pinLayout[i]
-            const pinDotY = placed ? placed.dotY + botShift : 0
-            const pinTextY = placed ? placed.textY + botShift : 0
+            const lane = pinLane.get(i)
+            const pinDotY = hasPeaks ? botBase - hBot - 11 : topBase - hTop - 11
+            const pinTextY =
+              lane != null ? (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - lane * laneGap : 0
 
             return (
               <g key={i} style={{ '--i': i } as CSSProperties}>
@@ -269,7 +248,7 @@ function ResultChart({
                 <text className="gr-daylabel" x={cx} y={hasPeaks ? botBase + 22 : topBase + 22} textAnchor="middle">
                   {turns[i]}일
                 </text>
-                {pin && placed && (
+                {pin && lane != null && (
                   <g className="gr-pin">
                     {pinDotY - pinTextY > 14 && (
                       <line
@@ -280,7 +259,7 @@ function ResultChart({
                         stroke={pinColor}
                         strokeWidth="1.2"
                         strokeDasharray="2 2"
-                        opacity="0.65"
+                        opacity="0.45"
                       />
                     )}
                     <circle cx={cx} cy={pinDotY} r="4" fill={pinColor} />
@@ -402,7 +381,8 @@ export function GameResult({
             내 쪽지가 주민의 마음을 거짓 쪽으로 뒤집은 횟수예요.
             {s.influence.noNoteWinRate && (
               <small>
-                쪽지 없이 각자 본 하늘만으로 정했다면, 하룻밤에 주민 과반이 맞힐 확률은 {s.influence.noNoteWinRate}예요.
+                쪽지 없이 각자 본 하늘만으로 정했다면, 하룻밤에 마피아가 주민 과반을 속이지 못할 확률은{' '}
+                {s.influence.noNoteWinRate}예요.
               </small>
             )}
           </p>
