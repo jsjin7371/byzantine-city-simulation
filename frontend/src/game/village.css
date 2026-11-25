@@ -1325,6 +1325,7 @@
   font-size: clamp(26px, 3.6vw, 32px);
   font-weight: 700;
   line-height: 1.2;
+  color: var(--wood-dark);
 }
 .gr-sub {
   margin: 0;
@@ -1333,23 +1334,29 @@
 }
 
 .gr-reading {
-  margin-top: 28px;
+  margin-top: 26px;
+  padding: 6px 24px;
   display: grid;
   gap: 0;
-  border-top: 2px dotted var(--border);
+  background: var(--parch);
+  border: 1px solid var(--border);
+  border-radius: 8px;
 }
 .gr-step {
   display: grid;
   grid-template-columns: 7.2em 1fr;
   gap: 16px;
   padding: 14px 0;
-  border-bottom: 2px dotted var(--border);
+  border-bottom: 1.5px dotted var(--border);
   align-items: baseline;
+}
+.gr-step:last-child {
+  border-bottom: 0;
 }
 .gr-step > h3 {
   margin: 0;
   font-size: 19px;
-  color: var(--muted);
+  color: var(--wood-dark);
   font-weight: 700;
   padding-top: 2px;
 }
@@ -1358,9 +1365,13 @@
   max-width: 32em;
   font-size: 20px;
   font-weight: 700;
+  color: var(--ink);
   white-space: pre-line;
 }
 @media (max-width: 640px) {
+  .gr-reading {
+    padding: 4px 16px;
+  }
   .gr-step {
     grid-template-columns: 1fr;
     gap: 4px;
@@ -1374,13 +1385,18 @@
 .gr-chip {
   font-size: 17px;
   font-weight: 700;
+  color: var(--ink);
   background: var(--parch);
   border-radius: 999px;
   padding: 2px 12px;
 }
+.gr-reading .gr-chip {
+  background: var(--cream);
+  border: 1px solid var(--border);
+}
 .gr-lead {
-  font-size: 22px;
-  font-weight: 700;
+  border-left: 4px solid var(--rust);
+  padding-left: 14px;
   line-height: 1.45;
 }
 
@@ -1388,7 +1404,7 @@
   font-size: 24px;
   font-weight: 700;
   margin: 34px 0 10px;
-  color: var(--ink);
+  color: var(--wood-dark);
 }
 .gr-moments {
   list-style: none;
@@ -1503,9 +1519,13 @@
   background: var(--parch);
 }
 
-/* 영향력 한 줄 */
+/* 영향력 한 줄 (강조 띠) */
 .gr-influence {
-  margin: 34px 0 0;
+  margin: 30px 0 0;
+  padding: 16px 22px;
+  background: #f1e2be;
+  border-left: 5px solid var(--rust);
+  border-radius: 0 8px 8px 0;
   display: flex;
   gap: 18px;
   align-items: baseline;
@@ -1521,6 +1541,7 @@
   max-width: 28em;
   font-size: 20px;
   font-weight: 700;
+  color: var(--ink);
 }
 .gr-influence small {
   display: block;
@@ -1530,9 +1551,18 @@
   margin-top: 2px;
 }
 
-/* 2단 그래프 */
+/* 2단 그래프 (밝은 종이 판) */
 .gr-chart-wrap {
-  margin-top: 34px;
+  margin-top: 30px;
+  padding: 20px 24px 18px;
+  background: #fdfaf1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+@media (max-width: 640px) {
+  .gr-chart-wrap {
+    padding: 16px 14px;
+  }
 }
 .gr-chart-head {
   display: flex;
@@ -1544,6 +1574,7 @@
   margin: 0;
   font-size: 24px;
   font-weight: 700;
+  color: var(--wood-dark);
 }
 .gr-replay {
   background: none;
