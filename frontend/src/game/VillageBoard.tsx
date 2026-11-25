@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, villageHouses, voteAnimDelays, worsens } from './village'
+import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialArrowsVisible, villageHouses, voteAnimDelays, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TutorialHighlight } from './village'
 import './village.css'
 
@@ -557,16 +557,26 @@ function HouseView({
 
 // 광장 재판: 투표한 시민의 말이 광장에서 지목한 집으로 실을 잇는다.
 // shown: 지금까지 나온 지목 수, verdict: 판정 도장을 찍었는가 (연출 중에는 한 명씩).
+// showArrows: 밤 연출 중이거나 낮 상태에서 광장(도장·표 꼬리표)에 마우스·초점이 올라갔을 때만 투표 화살표를 그린다.
 function Trial({
   vote,
   houses,
   shown = Infinity,
   verdict = true,
+  showArrows = true,
+  inspect,
 }: {
   vote: NonNullable<TurnResult['vote']>
   houses: House[]
   shown?: number
   verdict?: boolean
+  showArrows?: boolean
+  inspect?: {
+    onEnter: () => void
+    onLeave: () => void
+    onFocus: (e: FocusEvent<SVGGElement>) => void
+    onBlur: () => void
+  }
 }) {
   const at = (city: number) => houses.find((h) => h.city === city)!
   const ballots = Object.entries(vote.ballots).slice(0, shown)
@@ -579,38 +589,61 @@ function Trial({
   const label = `광장 재판: ${ballots.map(([from, to]) => `${from}번이 ${to}번 지목`).join(', ')}${
     verdict ? `. 결과 ${stamp}` : ''
   }`
+  const stampNode = verdict && (
+    <g className={vote.caught ? 'vb-stamp is-caught' : 'vb-stamp'}>
+      <rect x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" strokeWidth="2.5" />
+      <rect x={stampX + 4} y={STAMP.y + 4} width={stampW - 8} height={STAMP.h - 8} rx="2" fill="none" strokeWidth="1" />
+      <text x={PLAZA.x} y={STAMP.y + 21} fontSize="15.5" fontWeight="700" textAnchor="middle">
+        {stamp}
+      </text>
+      <rect className="vb-stamp-ink" x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" aria-hidden />
+    </g>
+  )
   return (
-    <g role="img" aria-label={label}>
-      <title>{label}</title>
-      {ballots.map(([from, to]) => {
-        const v = at(Number(from))
-        const t = at(to)
-        const d = Math.hypot(v.x - PLAZA.x, v.y - PLAZA.y)
-        const px = PLAZA.x + ((v.x - PLAZA.x) / d) * 56
-        const py = PLAZA.y + ((v.y - PLAZA.y) / d) * 40
-        // 지붕 쪽을 겨눠 화살촉이 집 아래 의심 게이지 숫자를 가리지 않게
-        const ty = t.y - 40
-        const e = Math.hypot(t.x - px, ty - py)
-        const ex = t.x - ((t.x - px) / e) * 50
-        const ey = ty - ((ty - py) / e) * 36
-        const cx = (px + ex) / 2 + ((ey - py) / e) * 30
-        const cy = (py + ey) / 2 - ((ex - px) / e) * 30
-        return (
-          <g key={from} className="vb-ballot">
-            <path d={`M${px} ${py - 18} Q${cx} ${cy} ${ex} ${ey}`} fill="none" stroke="#7a2416" strokeWidth="2.6" strokeDasharray="7 5" markerEnd="url(#vb-arr)" />
-            <g transform={`translate(${px},${py})`}>
-              <use href="#vb-pawn" />
-              <text y="-5.5" fontSize="13" fontWeight="700" textAnchor="middle">
-                {from}
-              </text>
-            </g>
-          </g>
-        )
-      })}
+    <g className="vb-trial" {...(inspect ? {} : { role: 'img', 'aria-label': label })}>
+      {!inspect && <title>{label}</title>}
+      {showArrows && (
+        <g className="vb-trial-arrows" aria-hidden="true">
+          {ballots.map(([from, to]) => {
+            const v = at(Number(from))
+            const t = at(to)
+            const d = Math.hypot(v.x - PLAZA.x, v.y - PLAZA.y)
+            const px = PLAZA.x + ((v.x - PLAZA.x) / d) * 56
+            const py = PLAZA.y + ((v.y - PLAZA.y) / d) * 40
+            // 지붕 쪽을 겨눠 화살촉이 집 아래 의심 게이지 숫자를 가리지 않게
+            const ty = t.y - 40
+            const e = Math.hypot(t.x - px, ty - py)
+            const ex = t.x - ((t.x - px) / e) * 50
+            const ey = ty - ((ty - py) / e) * 36
+            const cx = (px + ex) / 2 + ((ey - py) / e) * 30
+            const cy = (py + ey) / 2 - ((ex - px) / e) * 30
+            return (
+              <g key={from} className="vb-ballot">
+                <path d={`M${px} ${py - 18} Q${cx} ${cy} ${ex} ${ey}`} fill="none" stroke="#7a2416" strokeWidth="2.6" strokeDasharray="7 5" markerEnd="url(#vb-arr)" />
+                <g transform={`translate(${px},${py})`}>
+                  <use href="#vb-pawn" />
+                  <text y="-5.5" fontSize="13" fontWeight="700" textAnchor="middle">
+                    {from}
+                  </text>
+                </g>
+              </g>
+            )
+          })}
+        </g>
+      )}
       {Object.entries(votes).map(([city, n]) => {
         const t = at(Number(city))
         return (
-          <g key={city} transform={`translate(${t.x + (t.x > PLAZA.x ? 68 : -108)},${t.y - 14})`} fontSize="14" fontWeight="700">
+          <g
+            key={city}
+            className={inspect ? 'vb-trial-tag is-interactive' : 'vb-trial-tag'}
+            transform={`translate(${t.x + (t.x > PLAZA.x ? 68 : -108)},${t.y - 14})`}
+            fontSize="14"
+            fontWeight="700"
+            onMouseEnter={inspect?.onEnter}
+            onMouseLeave={inspect?.onLeave}
+            aria-hidden={inspect ? true : undefined}
+          >
             <rect width="40" height="22" rx="3" fill="#7a2416" />
             <text x="20" y="15.5" textAnchor="middle" className="vb-light">
               {n}표
@@ -618,15 +651,23 @@ function Trial({
           </g>
         )
       })}
-      {verdict && (
-        <g className={vote.caught ? 'vb-stamp is-caught' : 'vb-stamp'}>
-          <rect x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" strokeWidth="2.5" />
-          <rect x={stampX + 4} y={STAMP.y + 4} width={stampW - 8} height={STAMP.h - 8} rx="2" fill="none" strokeWidth="1" />
-          <text x={PLAZA.x} y={STAMP.y + 21} fontSize="15.5" fontWeight="700" textAnchor="middle">
-            {stamp}
-          </text>
-          <rect className="vb-stamp-ink" x={stampX} y={STAMP.y} width={stampW} height={STAMP.h} rx="3" aria-hidden />
+      {inspect ? (
+        <g
+          className="vb-trial-trigger"
+          role="img"
+          tabIndex={0}
+          aria-label={label}
+          onMouseEnter={inspect.onEnter}
+          onMouseLeave={inspect.onLeave}
+          onFocus={inspect.onFocus}
+          onBlur={inspect.onBlur}
+        >
+          <title>{label}</title>
+          <ellipse className="vb-trial-plaza-hit" cx={PLAZA.x} cy={PLAZA.y} rx="72" ry="50" />
+          {stampNode}
         </g>
+      ) : (
+        stampNode
       )}
     </g>
   )
@@ -911,6 +952,8 @@ export function VillageBoard({
   const [prevHighlight, setPrevHighlight] = useState(highlight)
   const [hovered, setHovered] = useState<number | null>(null)
   const [focused, setFocused] = useState<number | null>(null)
+  const [trialHovered, setTrialHovered] = useState(false)
+  const [trialFocused, setTrialFocused] = useState(false)
   const night = result && stage && stage.phase !== 'day' ? { ...stage, result } : null
   const inspectScope = `${state.game_id}-${Boolean(night)}-${result?.turn ?? 0}`
   const [prevInspectScope, setPrevInspectScope] = useState(inspectScope)
@@ -924,6 +967,8 @@ export function VillageBoard({
     setOpen(null)
     setHovered(null)
     setFocused(null)
+    setTrialHovered(false)
+    setTrialFocused(false)
   }
   const svg = useRef<SVGSVGElement>(null)
   const assignSvg = (node: SVGSVGElement | null) => {
@@ -984,6 +1029,13 @@ export function VillageBoard({
   const inspected = hovered ?? focused
   const activeSuspicionLinks =
     !night && !highlight && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
+  const showTrialArrows = trialArrowsVisible({
+    isNight: Boolean(night),
+    trialInspect: trialHovered || trialFocused,
+    hasSuspicionLines: activeSuspicionLinks.length > 0,
+    hasHighlight: Boolean(highlight),
+    hasOpenCard: Boolean(opened),
+  })
   useEffect(() => {
     onCardOpen?.(openCity)
   }, [openCity, onCardOpen])
@@ -1095,7 +1147,25 @@ export function VillageBoard({
         return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} />
       })}
       {result?.vote && at('trial') && (
-        <Trial vote={result.vote} houses={houses} shown={night?.ballots} verdict={at('verdict')} />
+        <Trial
+          vote={result.vote}
+          houses={houses}
+          shown={night?.ballots}
+          verdict={at('verdict')}
+          showArrows={showTrialArrows}
+          inspect={
+            !night
+              ? {
+                  onEnter: () => setTrialHovered(true),
+                  onLeave: () => setTrialHovered(false),
+                  onFocus: (e) => {
+                    if (e.currentTarget.matches(':focus-visible')) setTrialFocused(true)
+                  },
+                  onBlur: () => setTrialFocused(false),
+                }
+              : undefined
+          }
+        />
       )}
       {clashes.map(([a, b]) => {
         const [mx, my] = pairMid(state.player_city, a, b)

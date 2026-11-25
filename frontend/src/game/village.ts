@@ -374,6 +374,27 @@ export function tally(ballots: Record<string, number>) {
   return votes
 }
 
+// 광장 재판 투표 화살표 표시 규칙:
+// - 밤 연출(투표·판정) 동안은 항상 보인다.
+// - 낮 상태에서는 의심 선·튜토리얼 강조·쪽지 카드가 없을 때, 광장(도장·표 꼬리표)에 마우스나 초점이 올라간 경우에만 보인다.
+export function trialArrowsVisible({
+  isNight,
+  trialInspect,
+  hasSuspicionLines,
+  hasHighlight,
+  hasOpenCard,
+}: {
+  isNight: boolean
+  trialInspect: boolean
+  hasSuspicionLines: boolean
+  hasHighlight: boolean
+  hasOpenCard: boolean
+}): boolean {
+  if (isNight) return true
+  if (hasSuspicionLines || hasHighlight || hasOpenCard) return false
+  return trialInspect
+}
+
 // 밤 연출 단계 (A3 흐름): 밤 → 쪽지 전달 → 결정 깃발 → 의심 변화 → 재판 지목 한 명씩 → 판정 도장 → 다음 날.
 export type Phase = 'night' | 'notes' | 'flags' | 'suspicion' | 'trial' | 'verdict' | 'day'
 const PHASES: Phase[] = ['night', 'notes', 'flags', 'suspicion', 'trial', 'verdict', 'day']

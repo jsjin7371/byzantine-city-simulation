@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TAG_LABELS, TAG_PIN_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialArrowsVisible, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -78,6 +78,38 @@ test('ring connection makes only the two neighbours reachable', () => {
 
 test('tally counts ballots per accused city', () => {
   assert.deepEqual(tally({ 1: 3, 4: 3, 5: 1 }), { 3: 2, 1: 1 })
+})
+
+test('trialArrowsVisible shows arrows during night, hides by default in day, reveals on plaza hover/focus, and always hides when suspicion lines are active', () => {
+  // 밤 연출 중에는 항상 표시
+  assert.equal(
+    trialArrowsVisible({ isNight: true, trialInspect: false, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: false }),
+    true,
+  )
+  // 낮 기본 상태: 숨김
+  assert.equal(
+    trialArrowsVisible({ isNight: false, trialInspect: false, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: false }),
+    false,
+  )
+  // 낮 광장(도장·표 꼬리표) 호버/포커스: 표시
+  assert.equal(
+    trialArrowsVisible({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: false }),
+    true,
+  )
+  // 의심 선이 보일 때는 광장 포커스/호버가 있더라도 항상 숨김 (동시 표시 방지)
+  assert.equal(
+    trialArrowsVisible({ isNight: false, trialInspect: true, hasSuspicionLines: true, hasHighlight: false, hasOpenCard: false }),
+    false,
+  )
+  // 튜토리얼 강조나 쪽지 카드가 열려 있을 때도 숨김
+  assert.equal(
+    trialArrowsVisible({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: true, hasOpenCard: false }),
+    false,
+  )
+  assert.equal(
+    trialArrowsVisible({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: true }),
+    false,
+  )
 })
 
 test('a contradiction knot appears only when the two houses that meet hear different words', () => {
