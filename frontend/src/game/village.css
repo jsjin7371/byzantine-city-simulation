@@ -1270,7 +1270,6 @@
 /* 튜토리얼 말풍선 및 대상 강조 */
 .tut-box {
   flex: none;
-  height: 140px;
   margin-bottom: 8px;
   padding: 10px 14px;
   display: flex;
@@ -1290,9 +1289,13 @@
   box-shadow: none;
   pointer-events: none;
 }
-.tut-text {
+.tut-texts {
   flex: 1 1 320px;
   min-width: 0;
+  display: grid;
+}
+.tut-text {
+  grid-area: 1 / 1;
   margin: 0;
   font-size: 20px;
   font-weight: 700;
@@ -1300,15 +1303,30 @@
   color: var(--ink);
   word-break: keep-all;
   overflow-wrap: break-word;
+  visibility: hidden;
+  pointer-events: none;
+}
+.tut-text.is-active {
+  visibility: visible;
+  pointer-events: auto;
 }
 .tut-line {
   display: block;
 }
 .tut-actions {
   flex: none;
+  display: grid;
+}
+.tut-actions-row {
+  grid-area: 1 / 1;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
+}
+.tut-actions-row.is-sizer {
+  visibility: hidden;
+  pointer-events: none;
 }
 .tut-actions [data-ui-button] {
   position: relative;
@@ -1463,24 +1481,10 @@
 }
 
 @media (max-width: 1100px) {
-  /* 폭마다 가장 긴 튜토리얼 문구의 높이를 min-height로 잡아 단계가 바뀌어도 아래가 흔들리지 않게 한다.
-     ponytail: 2026-11 실측값. village.ts 문구가 길어지면 다시 잰다. */
-  .tut-box {
-    height: auto;
-    min-height: 105px;
-  }
   .tut-actions [data-ui-button] {
     min-height: 44px;
   }
 }
-
-@media (max-width: 843px) { .tut-box { min-height: 132px; } }
-@media (max-width: 751px) { .tut-box { min-height: 159px; } }
-@media (max-width: 619px) { .tut-box { min-height: 186px; } }
-@media (max-width: 549px) { .tut-box { min-height: 211px; } }
-@media (max-width: 461px) { .tut-box { min-height: 238px; } }
-@media (max-width: 383px) { .tut-box { min-height: 265px; } }
-@media (max-width: 347px) { .tut-box { min-height: 292px; } }
 
 @media (prefers-reduced-motion: reduce) {
   .vb-tut-arrow,

@@ -975,7 +975,7 @@ export function GameStart({
         >
           <div className="gs-diff-help-top">
             <p className="gs-diff-help-lead">
-              난이도는 주민이 날씨를 잘못 볼 확률이에요. 높을수록 속이기 쉬워요
+              난이도는 주민이 날씨를 잘못 볼 확률이에요. 확률이 높을수록 속이기 쉬워요.
             </p>
             <button
               type="button"
@@ -1025,7 +1025,7 @@ export function GameStart({
           <details className="gs-diff-help-more" onToggle={(e) => e.currentTarget.open && setHelpPinned(true)}>
             <summary>자세히 보기</summary>
             <p className="gs-diff-help-foot">
-              난이도는 주민 관측이 틀릴 확률(센서 오류율)만 달라져요. 마피아(비잔틴 도시)는 나 혼자예요.
+              난이도에 따라 주민의 관측이 틀릴 확률만 달라져요. 마피아는 나 혼자예요.
             </p>
             <ul className="gs-diff-help-foot">
               {DIFFICULTY_STATS.map((row) => (
@@ -1042,7 +1042,7 @@ export function GameStart({
               </span>
             </p>
             <p className="gs-diff-help-foot">
-              게임에서는 전송 중 메시지 누락률·조작률이 0%예요(쪽지가 사라지거나 뒤집히지 않아요).
+              게임에서는 보낸 쪽지가 중간에 사라지거나 내용이 바뀌지 않아요.
             </p>
           </details>
         </div>

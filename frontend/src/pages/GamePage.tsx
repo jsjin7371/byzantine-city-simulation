@@ -11,7 +11,6 @@ import {
   playTurn,
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
-import { plainAiReason } from '../game/aiReason'
 import { GameStart } from '../game/GameStart'
 import { Tutorial } from '../game/Tutorial'
 import { VillageBoard } from '../game/VillageBoard'
@@ -23,6 +22,7 @@ import {
   citizenScales,
   fooledDots,
   nightSteps,
+  plainAiReason,
   tonightVotes,
   tutorialStep,
   villageHouses,

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { plainAiReason } from '../src/game/aiReason.ts'
+import { plainAiReason } from '../src/game/village.ts'
 
 const plain = 'AI 주민이 답하지 못해 눈치 규칙으로 판단했어요.'
 

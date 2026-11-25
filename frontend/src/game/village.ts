@@ -1,6 +1,9 @@
-import { plainAiReason } from './aiReason.ts'
 import { SUSPICION, claimTargets, difficulties, majority } from '../gameApi.ts'
 import type { Claim, Difficulty, GameState, Role, Truth, TurnResult } from '../gameApi.ts'
+
+// 엔진(engine/city/ai.py)이 AI 응답 실패 때 붙이는 접두어를 화면용 쉬운 문장으로 바꾼다. 오류 종류는 숨긴다.
+export const plainAiReason = (reason: string) =>
+  reason.replace(/^\[AI 응답 실패\([^)]*\)로 눈치 규칙 대체\]/, 'AI 주민이 답하지 못해 눈치 규칙으로 판단했어요.')
 
 // 숲속 보드 좌표 (viewBox 900x698, 목업 A3). 0번 자리는 내 집(아래 가운데), 1~4번은 시계방향.
 // trail: 집 앞 공터에서 광장까지의 오솔길 [시작x, 시작y, 조절x, 조절y, 끝x, 끝y].
@@ -830,11 +833,11 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'suspicion',
-    text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민이 본 날씨와 같은 쪽지를 보내면 의심도가 내려가요, 다르면 올라가요. 재판 기준을 넘으면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
+    text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민이 본 날씨와 같은 쪽지를 보내면 의심도가 내려가고, 다르면 올라가요. 재판 기준을 넘으면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
   },
   {
     highlight: 'votes',
-    text: '주민은 자기가 본 날씨를 한 표, 받은 쪽지를 각각 한 표로 세어 많은 쪽으로 결정해요. 단, 의심하는 집에서 온 쪽지는 더 적게 반영해요. 마을 이야기 위에서 오늘 밤 저울을 볼 수 있어요.',
+    text: "주민은 자기가 본 날씨를 한 표, 받은 쪽지를 각각 한 표로 세어 많은 쪽으로 결정해요. 단, 의심하는 집에서 온 쪽지는 더 적게 반영해요. 어떻게 계산됐는지는 마을 이야기 위 '오늘 밤 저울'에서 볼 수 있어요.",
   },
   {
     highlight: 'share',
@@ -851,7 +854,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: null,
-    text: '주민 집에 마우스를 올리면 그 주민이 다른 집을 의심하는 선이 보여요. 의심도가 높을수록 선이 굵고, 키보드 초점으로도 볼 수 있어요. 지금은 주민끼리 의심도가 없어서 내 집으로 가는 선만 보여요.',
+    text: '주민 집에 마우스를 올리면 그 주민이 다른 집을 의심하는 선이 보여요. 의심도가 높을수록 선이 굵고, 키보드 초점으로도 볼 수 있어요. 나를 의심하는 집에서만, 내 집으로 가는 선이 보여요.',
   },
   {
     highlight: 'log',
@@ -874,7 +877,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     highlight: null,
     finish: true,
-    text: '튜토리얼은 여기까지예요. 재판에서 내가 마피아로 지목되면 지고, 마지막 밤에 주민 과반을 속이면 이겨요. 시작 화면의 이론 실험실에서 이론을 직접 해 보는 시나리오도 있어요.',
+    text: '튜토리얼은 여기까지예요. 재판에서 내가 마피아로 지목되면 지고, 마지막 밤에 주민 과반을 속이면 이겨요.',
   },
 ]
 
