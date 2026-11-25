@@ -4,12 +4,9 @@ import { percent } from '../components/results/resultLabels'
 import { SUSPICION, endReasonLabels, outcomeLabels } from '../gameApi'
 import type { GameState, TurnResult } from '../gameApi'
 import { BookLink, TheoryBook } from './TheoryBook'
-import { THEORY_TOPICS, getTacticTip } from './theoryBook'
+import { THEORY_TOPICS } from './theoryBook'
 import { TAG_LABELS, gameSummary } from './village'
 import type { ChartPin, TagKey, TopicKey } from './village'
-
-const SUPPORTS_POPOVER =
-  typeof HTMLElement !== 'undefined' && Object.prototype.hasOwnProperty.call(HTMLElement.prototype, 'popover')
 
 function TacticPopover({
   id,
@@ -23,14 +20,21 @@ function TacticPopover({
   const tipRef = useRef<HTMLDivElement>(null)
   const btnRef = useRef<HTMLButtonElement>(null)
   const topic = THEORY_TOPICS[tag]
-  const tip = getTacticTip(tag)
+  const tip = topic.tip
 
   useEffect(() => {
     const el = tipRef.current
     if (!el) return
+    const closeOnScroll = (e: Event) => {
+      if (e.target instanceof Node && el.contains(e.target)) return
+      if (el.matches(':popover-open')) el.hidePopover()
+    }
     const onToggle = (e: Event) => {
       const toggleEvent = e as ToggleEvent
-      if (toggleEvent.newState !== 'open') return
+      if (toggleEvent.newState !== 'open') {
+        window.removeEventListener('scroll', closeOnScroll, true)
+        return
+      }
       const btn = btnRef.current
       if (!btn) return
       const r = btn.getBoundingClientRect()
@@ -40,51 +44,47 @@ function TacticPopover({
       const top = Math.max(8, Math.min(r.bottom + 8, window.innerHeight - h - 8))
       el.style.left = `${Math.round(left)}px`
       el.style.top = `${Math.round(top)}px`
+      window.addEventListener('scroll', closeOnScroll, { capture: true, passive: true })
     }
     el.addEventListener('toggle', onToggle)
-    return () => el.removeEventListener('toggle', onToggle)
+    return () => {
+      el.removeEventListener('toggle', onToggle)
+      window.removeEventListener('scroll', closeOnScroll, true)
+    }
   }, [])
 
   return (
     <>
-      <button
-        ref={btnRef}
-        type="button"
-        className="gr-tag"
-        popoverTarget={SUPPORTS_POPOVER ? id : undefined}
-        onClick={SUPPORTS_POPOVER ? undefined : () => onOpenBook(tag)}
-      >
+      <button ref={btnRef} type="button" className="gr-tag" popoverTarget={id}>
         {TAG_LABELS[tag]}
       </button>
-      {SUPPORTS_POPOVER && (
-        <div ref={tipRef} id={id} popover="auto" role="group" className="gr-tip" aria-label={topic.title}>
-          <div className="gr-tip-body">
-            <h4>
-              {topic.title}
-              <small>{topic.en}</small>
-            </h4>
-            <p>{tip.easy}</p>
-            <span className="gr-tip-label">이 게임에서는</span>
-            <p>{tip.game}</p>
-          </div>
-          <p className="gr-tip-theory">
-            {tip.theory}
-            <cite>{tip.cite}</cite>
-          </p>
-          <footer>
-            <BookLink
-              label="책에서 자세히"
-              onClick={() => {
-                const el = tipRef.current
-                if (el?.matches(':popover-open')) el.hidePopover()
-                // 팝오버가 닫히면 내부 버튼 초점이 사라지므로 showModal() 직전 꼬리표 버튼으로 맞춰 복귀 대상을 유지한다.
-                btnRef.current?.focus({ preventScroll: true })
-                onOpenBook(tag)
-              }}
-            />
-          </footer>
+      <div ref={tipRef} id={id} popover="auto" role="group" className="gr-tip" aria-label={topic.title}>
+        <div className="gr-tip-body">
+          <h4>
+            {topic.title}
+            <small>{topic.en}</small>
+          </h4>
+          <p>{tip.easy}</p>
+          <span className="gr-tip-label">이 게임에서는</span>
+          <p>{tip.game}</p>
         </div>
-      )}
+        <p className="gr-tip-theory">
+          {tip.theory}
+          <cite>{tip.cite}</cite>
+        </p>
+        <footer>
+          <BookLink
+            label="책에서 자세히"
+            onClick={() => {
+              const el = tipRef.current
+              if (el?.matches(':popover-open')) el.hidePopover()
+              // 팝오버가 닫히면 내부 버튼 초점이 사라지므로 showModal() 직전 꼬리표 버튼으로 맞춰 복귀 대상을 유지한다.
+              btnRef.current?.focus({ preventScroll: true })
+              onOpenBook(tag)
+            }}
+          />
+        </footer>
+      </div>
     </>
   )
 }
@@ -105,12 +105,12 @@ function ResultChart({
   majorityNeed: number
 }) {
   const scrollRef = useRef<HTMLDivElement>(null)
-  const [runId, setRunId] = useState(() => (typeof IntersectionObserver === 'undefined' ? 1 : 0))
+  const [runId, setRunId] = useState(0)
   const hasPeaks = peaks.some((v) => v != null)
 
   useEffect(() => {
     const el = scrollRef.current
-    if (!el || typeof IntersectionObserver === 'undefined') return
+    if (!el) return
     const io = new IntersectionObserver(
       (entries) => {
         if (entries[0]?.isIntersecting) {
@@ -165,6 +165,22 @@ function ResultChart({
     )
   }
 
+  const pinLayout = pinEntries.map(([i, pin], k) => {
+    const cx = x0 + i * step + bw / 2
+    const d = deceived[i] ?? 0
+    const peakVal = peaks[i]
+    const hTop = d * topUnit
+    const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
+    return {
+      i,
+      pin,
+      cx,
+      color: pin.danger ? 'var(--rust)' : 'var(--wood)',
+      dotY: hasPeaks ? botBase - hBot - 11 : topBase - hTop - 11,
+      textY: (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - (k % laneCount) * laneGap,
+    }
+  })
+
   return (
     <div className="gr-chart-wrap">
       <div className="gr-chart-head">
@@ -178,6 +194,7 @@ function ResultChart({
           key={runId}
           className={`gr-chart ${runId > 0 ? 'is-play' : 'is-idle'}`}
           viewBox={`0 0 ${viewW} ${viewH}`}
+          style={{ minWidth: viewW, maxWidth: Math.max(680, viewW) }}
           role="img"
           aria-label={ariaParts.join(' ')}
         >
@@ -245,52 +262,37 @@ function ResultChart({
             )
           })}
 
-          {pinEntries.map(([i, pin], k) => {
-            const cx = x0 + i * step + bw / 2
-            const d = deceived[i] ?? 0
-            const peakVal = peaks[i]
-            const hTop = d * topUnit
-            const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
-            const pinColor = pin.danger ? 'var(--rust)' : 'var(--wood)'
-            const pinDotY = hasPeaks ? botBase - hBot - 11 : topBase - hTop - 11
-            const pinTextY = (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - (k % laneCount) * laneGap
-            return (
-              <g key={`stem-${i}`} className="gr-pin" style={{ '--i': i } as CSSProperties}>
-                {pinDotY - pinTextY > 14 && (
-                  <line
-                    x1={cx}
-                    y1={pinDotY - 5}
-                    x2={cx}
-                    y2={pinTextY + 5}
-                    stroke={pinColor}
-                    strokeWidth="1.2"
-                    strokeDasharray="2 2"
-                    opacity="0.45"
-                  />
-                )}
-                <circle cx={cx} cy={pinDotY} r="4" fill={pinColor} />
-              </g>
-            )
-          })}
+          {pinLayout.map(({ i, cx, color, dotY, textY }) => (
+            <g key={`stem-${i}`} className="gr-pin" style={{ '--i': i } as CSSProperties}>
+              {dotY - textY > 14 && (
+                <line
+                  x1={cx}
+                  y1={dotY - 5}
+                  x2={cx}
+                  y2={textY + 5}
+                  stroke={color}
+                  strokeWidth="1.2"
+                  strokeDasharray="2 2"
+                  opacity="0.45"
+                />
+              )}
+              <circle cx={cx} cy={dotY} r="4" fill={color} />
+            </g>
+          ))}
 
-          {pinEntries.map(([i, pin], k) => {
-            const cx = x0 + i * step + bw / 2
-            const pinColor = pin.danger ? 'var(--rust)' : 'var(--wood)'
-            const pinTextY = (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - (k % laneCount) * laneGap
-            return (
-              <text
-                key={`label-${i}`}
-                className="gr-pin gr-pin-label"
-                style={{ '--i': i } as CSSProperties}
-                x={cx}
-                y={pinTextY}
-                textAnchor="middle"
-                fill={pinColor}
-              >
-                {pin.labels.join(', ')}
-              </text>
-            )
-          })}
+          {pinLayout.map(({ i, pin, cx, color, textY }) => (
+            <text
+              key={`label-${i}`}
+              className="gr-pin gr-pin-label"
+              style={{ '--i': i } as CSSProperties}
+              x={cx}
+              y={textY}
+              textAnchor="middle"
+              fill={color}
+            >
+              {pin.labels.join(', ')}
+            </text>
+          ))}
         </svg>
       </div>
     </div>

@@ -392,27 +392,6 @@ export function tally(ballots: Record<string, number>) {
   return votes
 }
 
-// 광장 재판 투표 화살표 표시 규칙:
-// - 밤 연출(투표·판정) 동안은 항상 보인다.
-// - 낮 상태에서는 의심 선·튜토리얼 강조·쪽지 카드가 없을 때, 광장(도장·표 꼬리표)에 마우스나 초점이 올라간 경우에만 보인다.
-export function trialArrowsVisible({
-  isNight,
-  trialInspect,
-  hasSuspicionLines,
-  hasHighlight,
-  hasOpenCard,
-}: {
-  isNight: boolean
-  trialInspect: boolean
-  hasSuspicionLines: boolean
-  hasHighlight: boolean
-  hasOpenCard: boolean
-}): boolean {
-  if (isNight) return true
-  if (hasSuspicionLines || hasHighlight || hasOpenCard) return false
-  return trialInspect
-}
-
 // 재판 결과 도장 문구: 연출·호버·낭독용 전체 문구(full)와 낮 광장 꼬리표용 짧은 문구(compact).
 // 발각/무고 구분은 색만이 아니라 글자로도 드러낸다.
 export function trialStampCopy(vote: Pick<NonNullable<TurnResult['vote']>, 'accused' | 'caught'>): {
@@ -425,21 +404,27 @@ export function trialStampCopy(vote: Pick<NonNullable<TurnResult['vote']>, 'accu
     : { full: `${vote.accused}번 집 무고한 주민 지목`, compact: `${vote.accused}번 집 · 무고` }
 }
 
-// 광장 재판 도장 표시 단계:
-// - full: 밤 연출 중이거나 낮에 광장을 호버·포커스했을 때 (화살표와 함께 원래 크기 도장)
+// 광장 재판 도장·화살표 표시 단계:
+// - full: 밤 연출 중이거나 낮에 의심 선·튜토리얼 강조·쪽지 카드가 없을 때 광장을 호버·포커스한 경우 (화살표와 함께 원래 크기 도장)
 // - dimmed: 낮에 집 호버·포커스로 의심 선이 보일 때 (작은 꼬리표를 흐리게)
 // - compact: 그 외 낮 기본 상태 (광장 위 작은 꼬리표)
 export type TrialStampMode = 'full' | 'compact' | 'dimmed'
 
-export function trialStampMode(args: {
+export function trialStampMode({
+  isNight,
+  trialInspect,
+  hasSuspicionLines,
+  hasHighlight,
+  hasOpenCard,
+}: {
   isNight: boolean
   trialInspect: boolean
   hasSuspicionLines: boolean
   hasHighlight: boolean
   hasOpenCard: boolean
 }): TrialStampMode {
-  if (trialArrowsVisible(args)) return 'full'
-  return args.hasSuspicionLines ? 'dimmed' : 'compact'
+  if (isNight || (!hasSuspicionLines && !hasHighlight && !hasOpenCard && trialInspect)) return 'full'
+  return hasSuspicionLines ? 'dimmed' : 'compact'
 }
 
 // 밤 연출 단계 (A3 흐름): 밤 → 쪽지 전달 → 결정 깃발 → 의심 변화 → 재판 지목 한 명씩 → 판정 도장 → 다음 날.
@@ -811,14 +796,6 @@ export const TAG_LABELS: Record<TagKey, string> = {
   equiv: '이중 발언',
 }
 
-export const TAG_PIN_LABELS: Record<TagKey, string> = {
-  audit: '감사 회피',
-  onoff: '온오프 공격',
-  zealot: '완고한 행위자',
-  falsepos: '거짓 양성',
-  equiv: '이중 발언',
-}
-
 export type Moment = {
   day: number | null
   text: string
@@ -848,14 +825,12 @@ export type Summary = {
   baseline: BaselineReading
   decisive: string[]
   moments: Moment[]
-  tags: TagKey[]
   influence: InfluenceSummary | null
   deceived: number[]
   peaks: (number | null)[]
   pins: Record<number, ChartPin>
   majorityNeed: number
   citizenCount: number
-  lesson: string
 }
 
 const NO_NOTE_WIN_RATE: Record<number, string> = { 0.3: '92%', 0.4: '82%', 0.48: '72%' }
@@ -946,11 +921,14 @@ export function resultBaseline(
 
   // 5. 고리 마을 (연결 부족)
   if (state.config.connection === 'ring') {
+    const ending = won
+      ? '이번엔 전략이 통했어요.'
+      : state.end_reason === 'caught'
+        ? '이번엔 재판에서 들켜 일찍 끝났어요.'
+        : '이번엔 주민들이 끝까지 버텨 냈어요.'
     return {
       lines: [
-        `양옆 이웃하고만 이야기하는 마을은, 어떤 규칙을 써도 주민이 꼭 지켜 낸다는 보장이 없어요. 그래도 저절로 무너지진 않아서, ${
-          won ? '이번엔 전략이 통했어요.' : '이번엔 주민들이 끝까지 버텨 냈어요.'
-        }`,
+        `양옆 이웃하고만 이야기하는 마을은, 어떤 규칙을 써도 주민이 꼭 지켜 낸다는 보장이 없어요. 그래도 저절로 무너지진 않아서, ${ending}`,
       ],
       topic,
       linkTitle,
@@ -964,9 +942,17 @@ export function resultBaseline(
       n === 5 && f === 2
         ? '집 다섯에 마피아 둘이면 주민이 반드시 버틴다는 보장이 사라져요.'
         : `집 ${n}채에 마피아 ${f}명이면 주민이 반드시 버틴다는 보장이 사라져요.`
+    const colleagues = new Set(
+      Object.entries(state.roles)
+        .filter(([, role]) => role === 'colleague')
+        .map(([id]) => Number(id)),
+    )
+    const colleagueAccused = history.some((t) => t.vote?.accused != null && colleagues.has(t.vote.accused))
     const tail = won
       ? ' 수적 우위를 잘 살려 끝까지 흔들어 놓았어요.'
-      : ' 그런데도 어려웠다면, 같은 거짓말만 되풀이한 동료가 먼저 의심받았기 때문이에요.'
+      : colleagueAccused
+        ? ' 그런데도 어려웠다면, 같은 거짓말만 되풀이한 동료가 먼저 의심받았기 때문이에요.'
+        : ''
     return { lines: [`${head}${tail}`], topic, linkTitle, linkSub }
   }
 
@@ -1004,8 +990,8 @@ export function resultBaseline(
     while (streakIdx > 0 && dec[streakIdx - 1] >= need) streakIdx--
     const streakDay = history[streakIdx]?.turn ?? last?.turn ?? 0
     const detail =
-      streakDay > 0 && lastWrong > 0
-        ? `밤마다 한 번에 마음을 정하는 주민들의 빈틈을 파고들어, ${streakDay}일째부터 ${lastWrong}집의 마음을 돌렸어요.`
+      streakDay > 0 && lastWrong >= need
+        ? `밤마다 한 번에 마음을 정하는 주민들의 빈틈을 파고들어, ${streakDay}일째부터 과반의 마음을 돌려 놓았어요.`
         : '밤마다 한 번에 마음을 정하는 주민들의 빈틈을 잘 파고들었어요.'
     return {
       lines: [`원래 주민에게 유리한 판이었는데도 해냈어요. ${detail}`],
@@ -1154,7 +1140,7 @@ export function detectTactics(
     }
   }
 
-  // 2. 온오프 공격 (의심 세탁): 의심도 >= 40일 때 진실을 보내 <= 20으로 내린 뒤, 다시 거짓을 보내 그 주민이 틀림
+  // 2. 온오프 공격 (의심 세탁): 의심도 >= 40일 때 그 주민이 본 날씨와 같은 쪽지를 보내 <= 20으로 내린 뒤, 다시 거짓을 보내 그 주민이 틀림
   const citizenIds = Object.entries(state.roles)
     .filter(([, role]) => role === 'citizen')
     .map(([id]) => Number(id))
@@ -1171,16 +1157,16 @@ export function detectTactics(
         {
           turn: t.turn,
           sus,
-          sentTruth: sent != null && agrees(state.truth, sent),
+          matchedHint: sent != null && c.hint != null && agrees(c.hint, sent),
           sentLie: sent != null && !agrees(state.truth, sent),
           correct: c.correct,
         },
       ]
     })
     for (let j = 1; j < rows.length; j++) {
-      if (!rows[j].sentTruth || rows[j].sus > 20) continue
+      if (!rows[j].matchedHint || rows[j].sus > 20) continue
       let fromSus = 0
-      for (let p = j - 1; p >= 0 && (rows[p].sus >= 40 || (fromSus === 0 && rows[p].sentTruth)); p--) {
+      for (let p = j - 1; p >= 0 && (rows[p].sus >= 40 || (fromSus === 0 && rows[p].matchedHint)); p--) {
         if (rows[p].sus >= 40) fromSus = Math.max(fromSus, rows[p].sus)
       }
       if (fromSus < 40) continue
@@ -1213,7 +1199,7 @@ export function detectTactics(
           tag: 'zealot',
           day: colleagueTrial.turn,
           text: `같은 거짓말만 되풀이한 동료(${colleagueCity}번 집) 때문에 광장 재판이 열렸어요.`,
-          attachTo: colleagueTrial.vote?.caught ? 'caught' : undefined,
+          attachTo: 'caught',
         })
       }
     }
@@ -1358,7 +1344,6 @@ export function gameSummary(
         : `${day}일째에 주민 과반이 속지 않았어요`
 
   const tactics = detectTactics(state, history)
-  const tags = tactics.map((t) => t.tag)
 
   const momentItems: (Moment & { kind?: 'caught' | 'knots' })[] = []
 
@@ -1432,18 +1417,8 @@ export function gameSummary(
   for (const m of moments) {
     if (!m.tag || m.day == null) continue
     const idx = history.findIndex((t) => t.turn === m.day)
-    if (idx >= 0) addPin(idx, TAG_PIN_LABELS[m.tag], m.tag === 'zealot' || m.tag === 'falsepos')
+    if (idx >= 0) addPin(idx, TAG_LABELS[m.tag], m.tag === 'zealot' || m.tag === 'falsepos')
   }
-
-  const lesson = knots.length
-    ? '쪽지 비교로 이어진 두 집에 다른 쪽지를 보내면 모순으로 의심도가 크게 올라요. 같은 쪽지를 보내 보세요.'
-    : crossed
-      ? '관측과 다른 쪽지를 계속 받으면 의심도가 쌓여요. 의심도가 높은 집에는 가끔 관측에 맞는 쪽지를 보내 낮춰 보세요.'
-      : state.outcome === 'loss'
-        ? '들키지는 않았지만 주민 과반을 속이지 못했어요. 창문 불이 꺼진 집은 관측이 틀려 속이기 쉬워요.'
-        : peaks.some((v) => v != null)
-          ? '의심도가 재판 기준을 넘지 않게 조절하며 끝까지 버텼어요.'
-          : '다수결 주민은 의심하지 않아요. 눈치 주민은 의심도가 쌓이면 재판을 열어요.'
 
   return {
     headline,
@@ -1451,14 +1426,12 @@ export function gameSummary(
     baseline: resultBaseline(state, history),
     decisive: resultDecisive(state, history),
     moments,
-    tags,
     influence: resultInfluence(state, history),
     deceived,
     peaks,
     pins,
     majorityNeed: need,
     citizenCount: citizens,
-    lesson,
   }
 }
 

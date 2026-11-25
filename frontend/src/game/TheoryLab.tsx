@@ -93,7 +93,7 @@ const CHAPTER2_SCENARIOS: readonly {
     title: '누가 만날지 모른다',
     village: '쪽지 비교 짝을 미리 알 수 없음',
     goal: '한 번도 재판에 걸리지 않고 이기기',
-    topic: 'equiv',
+    topic: 'audit',
   },
 ]
 

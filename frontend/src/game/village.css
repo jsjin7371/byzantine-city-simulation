@@ -73,7 +73,6 @@
 .gm-workspace tspan { font-family: var(--gm-font); }
 /* 연필 질감(정적 효과): 제목·라벨은 #vb-pencil, 작은 라벨은 #vb-pencil-sm. 긴 본문·포커스 가능 상자에는 적용하지 않는다. */
 .gm-workspace h2,
-.gr-result h3,
 .vb-pencil { filter: url(#vb-pencil); }
 .vb-pencil-sm { filter: url(#vb-pencil-sm); }
 .gm-workspace .rs-correct { color: var(--forest); }
@@ -1503,10 +1502,11 @@
 /* 꼬리표 팝오버 */
 [popover].gr-tip {
   width: min(380px, 92vw);
+  max-height: calc(100vh - 16px);
   margin: 0;
   inset: auto;
   padding: 0;
-  overflow: hidden;
+  overflow-y: auto;
   background: var(--cream);
   color: var(--ink);
   border: 1px solid var(--wood);
@@ -1649,8 +1649,6 @@
 }
 svg.gr-chart {
   width: 100%;
-  max-width: 680px;
-  min-width: 360px;
   display: block;
   margin-top: 8px;
   overflow: visible;

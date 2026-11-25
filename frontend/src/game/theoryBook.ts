@@ -25,9 +25,11 @@ export type TheoryTopic = {
   tip?: TheoryTip
 }
 
+export type TaggedTopic = TheoryTopic & { tip: TheoryTip }
+
 // 책 오버레이와 수법 꼬리표 팝오버의 이론 원문 데이터.
 // 원문 검증본(이론기능/3_이론책_원문검증.md) 기준.
-export const THEORY_TOPICS: Record<TopicKey, TheoryTopic> = {
+export const THEORY_TOPICS: Record<TagKey, TaggedTopic> & Record<Exclude<TopicKey, TagKey>, TheoryTopic> = {
   byz: {
     kicker: '분산 합의',
     title: '비잔틴 장군 문제',
@@ -393,18 +395,6 @@ export const THEORY_TOPICS: Record<TopicKey, TheoryTopic> = {
       cite: 'Avenhaus, von Stengel, & Zamir (2002); von Stengel (1991); Haeberlen, Kuznetsov, & Druschel (2007)',
     },
   },
-}
-
-export function getTacticTip(tag: TagKey): TheoryTip {
-  const topic = THEORY_TOPICS[tag]
-  return (
-    topic.tip ?? {
-      easy: topic.easy,
-      game: topic.game,
-      theory: topic.boxes[0]?.[1] ?? '',
-      cite: topic.refs[0]?.before ?? '',
-    }
-  )
 }
 
 export const CONDORCET_NS = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25] as const

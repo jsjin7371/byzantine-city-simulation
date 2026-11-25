@@ -38,10 +38,11 @@ export function BookLink({
 }
 
 // 네이티브 <dialog> + showModal() 기반 책 오버레이.
-// 바깥 클릭·Esc로 닫히며 포커스 이동과 복귀는 브라우저 기본 동작에 맡긴다.
+// 바깥 클릭·Esc로 닫히며, 열 때 닫기 버튼에 초점을 두고 닫을 때 복귀는 브라우저 기본 동작에 맡긴다.
 export function TheoryBook({ topic, onClose }: { topic: TopicKey | null; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const pageRef = useRef<HTMLDivElement>(null)
+  const closeBtnRef = useRef<HTMLButtonElement>(null)
   const backdropDownRef = useRef(false)
   const titleId = useId()
 
@@ -51,6 +52,7 @@ export function TheoryBook({ topic, onClose }: { topic: TopicKey | null; onClose
     if (topic) {
       if (!dialog.open) dialog.showModal()
       if (pageRef.current) pageRef.current.scrollTop = 0
+      closeBtnRef.current?.focus({ preventScroll: true })
     } else if (dialog.open) {
       dialog.close()
     }
@@ -75,6 +77,7 @@ export function TheoryBook({ topic, onClose }: { topic: TopicKey | null; onClose
       {data && (
         <div ref={pageRef} className="tb-page">
           <button
+            ref={closeBtnRef}
             type="button"
             className="tb-close"
             aria-label="이론 책 닫기"
