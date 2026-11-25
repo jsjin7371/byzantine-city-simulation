@@ -63,7 +63,7 @@ function Defs() {
       <g id="vb-pawn">
         <ellipse cy="14" rx="12" ry="4" fill="#2a1a0c" opacity=".35" />
         <path d="M-11 14 Q0 -26 11 14 Z" fill="#d9a95f" stroke="#4a3119" strokeWidth="2" />
-        <circle cy="-10" r="9" fill="#d9a95f" stroke="#4a3119" strokeWidth="2" />
+        <circle cy="-10.5" r="10.5" fill="#d9a95f" stroke="#4a3119" strokeWidth="2" />
       </g>
     </defs>
   )
@@ -563,14 +563,14 @@ function Trial({
   houses,
   shown = Infinity,
   verdict = true,
-  showArrows = true,
+  showArrows,
   inspect,
 }: {
   vote: NonNullable<TurnResult['vote']>
   houses: House[]
   shown?: number
   verdict?: boolean
-  showArrows?: boolean
+  showArrows: boolean
   inspect?: {
     onEnter: () => void
     onLeave: () => void
@@ -619,10 +619,10 @@ function Trial({
             const cy = (py + ey) / 2 - ((ex - px) / e) * 30
             return (
               <g key={from} className="vb-ballot">
-                <path d={`M${px} ${py - 18} Q${cx} ${cy} ${ex} ${ey}`} fill="none" stroke="#7a2416" strokeWidth="2.6" strokeDasharray="7 5" markerEnd="url(#vb-arr)" />
+                <path d={`M${px} ${py - 21} Q${cx} ${cy} ${ex} ${ey}`} fill="none" stroke="#7a2416" strokeWidth="2.6" strokeDasharray="7 5" markerEnd="url(#vb-arr)" />
                 <g transform={`translate(${px},${py})`}>
                   <use href="#vb-pawn" />
-                  <text y="-5.5" fontSize="13" fontWeight="700" textAnchor="middle">
+                  <text y="-5.2" fontSize="15" fontWeight="700" textAnchor="middle">
                     {from}
                   </text>
                 </g>
@@ -637,15 +637,15 @@ function Trial({
           <g
             key={city}
             className={inspect ? 'vb-trial-tag is-interactive' : 'vb-trial-tag'}
-            transform={`translate(${t.x + (t.x > PLAZA.x ? 68 : -108)},${t.y - 14})`}
-            fontSize="14"
+            transform={`translate(${t.x + (t.x > PLAZA.x ? 68 : -110)},${t.y - 14})`}
+            fontSize="15"
             fontWeight="700"
             onMouseEnter={inspect?.onEnter}
             onMouseLeave={inspect?.onLeave}
             aria-hidden={inspect ? true : undefined}
           >
-            <rect width="40" height="22" rx="3" fill="#7a2416" />
-            <text x="20" y="15.5" textAnchor="middle" className="vb-light">
+            <rect width="42" height="24" rx="3" fill="#7a2416" />
+            <text x="21" y="17" textAnchor="middle" className="vb-light">
               {n}표
             </text>
           </g>
@@ -1026,6 +1026,15 @@ export function VillageBoard({
         null)
       : null
   const openCity = opened?.city ?? null
+  const canInspectTrial = !night && !highlight && !opened
+  const [prevCanInspectTrial, setPrevCanInspectTrial] = useState(canInspectTrial)
+  if (prevCanInspectTrial !== canInspectTrial) {
+    setPrevCanInspectTrial(canInspectTrial)
+    if (!canInspectTrial) {
+      setTrialHovered(false)
+      setTrialFocused(false)
+    }
+  }
   const inspected = hovered ?? focused
   const activeSuspicionLinks =
     !night && !highlight && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
@@ -1154,7 +1163,7 @@ export function VillageBoard({
           verdict={at('verdict')}
           showArrows={showTrialArrows}
           inspect={
-            !night
+            canInspectTrial
               ? {
                   onEnter: () => setTrialHovered(true),
                   onLeave: () => setTrialHovered(false),
