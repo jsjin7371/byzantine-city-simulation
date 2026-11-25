@@ -5,7 +5,7 @@ import { SUSPICION, endReasonLabels, outcomeLabels } from '../gameApi'
 import type { GameState, TurnResult } from '../gameApi'
 import { BookLink, TheoryBook } from './TheoryBook'
 import { THEORY_TOPICS, getTacticTip } from './theoryBook'
-import { TAG_LABELS, gameSummary } from './village'
+import { TAG_LABELS, gameSummary, layoutChartPins } from './village'
 import type { ChartPin, TagKey, TopicKey } from './village'
 
 const SUPPORTS_POPOVER =
@@ -132,13 +132,8 @@ function ResultChart({
   const minCols = Math.max(count, 6)
   const viewW = x0 + step * minCols + 88
 
-  const pinEntries = Object.entries(pins)
-    .map(([i, p]) => [Number(i), p] as const)
-    .sort((a, b) => a[0] - b[0])
-  const laneCount = count <= 8 ? 3 : 4
-  const pinLane = new Map(pinEntries.map(([i], k) => [i, k % laneCount]))
-  const usedLanes = Math.min(pinEntries.length, laneCount)
-  const laneGap = 20
+  const { items: pinItems, laneCount: usedLanes } = layoutChartPins(pins, { x0, step, bw })
+  const laneGap = 22
   const pinBandH = usedLanes * laneGap
 
   const topMax = Math.max(citizenCount, majorityNeed, 1)
@@ -160,9 +155,9 @@ function ResultChart({
       `아래: 날짜별 나에 대한 최고 의심도 ${peaks.map((v, i) => `${turns[i]}일 ${v ?? '없음'}`).join(', ')}. 재판 기준 ${SUSPICION.threshold}.`,
     )
   }
-  if (pinEntries.length > 0) {
+  if (pinItems.length > 0) {
     ariaParts.push(
-      `주요 사건: ${pinEntries.map(([i, p]) => `${turns[i]}일 ${p.labels.join(', ')}`).join('; ')}.`,
+      `주요 사건: ${pinItems.map((p) => `${turns[p.index]}일 ${p.text}`).join('; ')}.`,
     )
   }
 
@@ -216,12 +211,6 @@ function ResultChart({
             const peakVal = peaks[i]
             const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
             const over = peakVal != null && peakVal >= SUSPICION.threshold
-            const pin = pins[i]
-            const pinColor = pin?.danger ? 'var(--rust)' : 'var(--wood)'
-            const lane = pinLane.get(i)
-            const pinDotY = hasPeaks ? botBase - hBot - 11 : topBase - hTop - 11
-            const pinTextY =
-              lane != null ? (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - lane * laneGap : 0
 
             return (
               <g key={i} style={{ '--i': i } as CSSProperties}>
@@ -248,27 +237,52 @@ function ResultChart({
                 <text className="gr-daylabel" x={cx} y={hasPeaks ? botBase + 22 : topBase + 22} textAnchor="middle">
                   {turns[i]}일
                 </text>
-                {pin && lane != null && (
-                  <g className="gr-pin">
-                    {pinDotY - pinTextY > 14 && (
-                      <line
-                        x1={cx}
-                        y1={pinDotY - 5}
-                        x2={cx}
-                        y2={pinTextY + 4}
-                        stroke={pinColor}
-                        strokeWidth="1.2"
-                        strokeDasharray="2 2"
-                        opacity="0.45"
-                      />
-                    )}
-                    <circle cx={cx} cy={pinDotY} r="4" fill={pinColor} />
-                    <text x={cx} y={pinTextY} textAnchor="middle" fill={pinColor}>
-                      {pin.labels.join(', ')}
-                    </text>
-                  </g>
-                )}
               </g>
+            )
+          })}
+
+          {pinItems.map((p) => {
+            const d = deceived[p.index] ?? 0
+            const peakVal = peaks[p.index]
+            const hTop = d * topUnit
+            const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
+            const pinColor = p.danger ? 'var(--rust)' : 'var(--wood)'
+            const pinDotY = hasPeaks ? botBase - hBot - 11 : topBase - hTop - 11
+            const pinTextY = (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - p.lane * laneGap
+            return (
+              <g key={`stem-${p.index}`} className="gr-pin" style={{ '--i': p.index } as CSSProperties}>
+                {pinDotY - pinTextY > 14 && (
+                  <line
+                    x1={p.cx}
+                    y1={pinDotY - 5}
+                    x2={p.cx}
+                    y2={pinTextY + 5}
+                    stroke={pinColor}
+                    strokeWidth="1.2"
+                    strokeDasharray="2 2"
+                    opacity="0.45"
+                  />
+                )}
+                <circle cx={p.cx} cy={pinDotY} r="4" fill={pinColor} />
+              </g>
+            )
+          })}
+
+          {pinItems.map((p) => {
+            const pinColor = p.danger ? 'var(--rust)' : 'var(--wood)'
+            const pinTextY = (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - p.lane * laneGap
+            return (
+              <text
+                key={`label-${p.index}`}
+                className="gr-pin gr-pin-label"
+                style={{ '--i': p.index } as CSSProperties}
+                x={p.textX}
+                y={pinTextY}
+                textAnchor="middle"
+                fill={pinColor}
+              >
+                {p.text}
+              </text>
             )
           })}
         </svg>

@@ -1629,6 +1629,12 @@ svg.gr-chart .gr-axis-label {
   fill: var(--muted);
   font-size: 15px;
 }
+svg.gr-chart .gr-pin-label {
+  paint-order: stroke;
+  stroke: #fdfaf1;
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
 .gr-bar {
   transform-box: fill-box;
   transform-origin: 50% 100%;
