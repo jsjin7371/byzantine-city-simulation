@@ -3,6 +3,8 @@ import type { RefObject } from 'react'
 import { BookLink, TheoryBook } from './TheoryBook'
 import type { TopicKey } from './village'
 
+const RATE_BASIS = '매 턴 가능한 쪽지를 모두 계산해 고른 전략 기준(1000판)'
+
 const CHAPTER1_SCENARIOS: readonly {
   id: string
   title: string
@@ -11,6 +13,7 @@ const CHAPTER1_SCENARIOS: readonly {
   goal: string
   rule: string
   rate: string
+  rateNote?: string
   topic: TopicKey
 }[] = [
   {
@@ -20,7 +23,7 @@ const CHAPTER1_SCENARIOS: readonly {
     chips: ['집 5채', '모든 집 쪽지 비교', '잘못 볼 확률 45%'],
     goal: '주민 과반을 속이기',
     rule: '집마다 다른 쪽지는 반드시 들켜요. 들킨 다음 날엔 주민이 본 하늘과 같은 말을 보내 의심도를 낮추세요.',
-    rate: '잘하면 절반쯤 이겨요',
+    rate: '잘하면 51% 이겨요',
     topic: 'equiv',
   },
   {
@@ -30,7 +33,7 @@ const CHAPTER1_SCENARIOS: readonly {
     chips: ['집 5채', '양옆과만 연결', '잘못 볼 확률 45%'],
     goal: '주민 3명을 속이기',
     rule: '직접 말할 수 있는 집은 둘뿐이에요. 나머지 한 집은 이웃이 전하는 소문으로 넘겨야 해요.',
-    rate: '잘하면 열에 넷쯤 이겨요',
+    rate: '잘하면 38% 이겨요',
     topic: 'ring',
   },
   {
@@ -40,7 +43,7 @@ const CHAPTER1_SCENARIOS: readonly {
     chips: ['집 5채', '모든 날 기억', '잘못 볼 확률 48%'],
     goal: '주민 과반을 속이기',
     rule: '날이 갈수록 주민의 판단이 단단해져요. 기억이 얕은 초반에 승부를 거세요.',
-    rate: '잘해도 넷에 하나쯤 이겨요',
+    rate: '잘하면 28% 이겨요',
     topic: 'condorcet',
   },
   {
@@ -50,7 +53,8 @@ const CHAPTER1_SCENARIOS: readonly {
     chips: ['기본 마을', '잘못 볼 확률 45%'],
     goal: '의심도 40 넘은 주민에게 진짜 날씨를 보내 20 아래로 낮춘 뒤, 다시 속여 이기기',
     rule: '의심도는 0 아래로 내려가지 않아요. 믿음을 미리 쌓아 둘 수 없으니, 의심도가 쌓인 뒤에 낮춰야 해요.',
-    rate: '잘하면 절반쯤 이겨요',
+    rate: '잘하면 48% 이겨요',
+    rateNote: `목표까지 달성한 비율 · ${RATE_BASIS}`,
     topic: 'onoff',
   },
   {
@@ -60,7 +64,7 @@ const CHAPTER1_SCENARIOS: readonly {
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
     goal: '동료가 재판에 걸리지 않게 버티며 이기기',
     rule: '동료는 금방 의심을 사요. 동료가 시선을 끄는 동안 맞는 말로 신뢰를 지키세요. 그리고 결정적인 날에만 거짓말을 보태세요.',
-    rate: '잘해도 넷에 하나쯤 이겨요',
+    rate: '잘하면 26% 이겨요',
     topic: 'zealot',
   },
 ]
@@ -104,6 +108,7 @@ export function TheoryLab({
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
   const soonId = useId()
+  const rateNoteId = useId()
 
   return (
     <div className="gm-workspace gm-lab">
@@ -156,7 +161,9 @@ export function TheoryLab({
                     <dd>{card.rule}</dd>
                   </div>
                 </dl>
-                <p className="tl-rate">{card.rate}</p>
+                <p className="tl-rate" title={card.rateNote ?? RATE_BASIS} aria-describedby={rateNoteId}>
+                  {card.rate}
+                </p>
                 <div className="tl-card-foot">
                   <BookLink label="이론 읽기" icon onClick={() => setBookTopic(card.topic)} />
                   <button
@@ -171,6 +178,9 @@ export function TheoryLab({
               </article>
             ))}
           </div>
+          <p id={rateNoteId} className="tl-rate-note">
+            * 승률은 {RATE_BASIS}이에요. &lsquo;신뢰를 되찾는 법&rsquo;은 목표까지 달성한 비율이에요.
+          </p>
         </section>
 
         <section className="tl-section tl-section-next" aria-labelledby="tl-ch2-title">

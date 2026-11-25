@@ -2223,6 +2223,13 @@ dialog.tb-dialog[open] {
   color: var(--muted);
   margin: 12px 0 0;
 }
+.tl-rate-note {
+  margin: 14px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1.45;
+}
 .tl-card-foot {
   margin-top: auto;
   padding-top: 16px;
