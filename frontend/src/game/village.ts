@@ -829,11 +829,11 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'suspicion',
-    text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민의 관측과 다른 쪽지를 보내면 의심도가 올라가요. 재판 기준을 넘으면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
+    text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민이 본 날씨와 같은 쪽지를 보내면 의심도가 내려가요, 다르면 올라가요. 재판 기준을 넘으면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
   },
   {
     highlight: 'votes',
-    text: '주민은 관측 한 표와 받은 쪽지들로 결정을 내려요. 의심하는 집 쪽지일수록 덜 믿어서 저울에 적게 반영돼요. 마을 이야기 위에서 오늘 밤 저울을 볼 수 있어요.',
+    text: '주민은 자기가 본 날씨를 한 표, 받은 쪽지를 각각 한 표로 세어 많은 쪽으로 결정해요. 단, 의심하는 집에서 온 쪽지는 더 적게 반영해요. 마을 이야기 위에서 오늘 밤 저울을 볼 수 있어요.',
   },
   {
     highlight: 'share',
@@ -842,7 +842,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     highlight: 'submit',
     wait: 'turn',
-    text: '다 골랐으면 밤으로 넘겨 보세요.',
+    text: '주민들에게 보낼 쪽지를 다 골랐으면 밤으로 넘겨 보세요.',
   },
   {
     highlight: 'flags',
@@ -850,7 +850,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: null,
-    text: '주민 집에 마우스를 올리면 그 주민이 다른 집을 의심하는 선이 보여요. 의심도가 높을수록 선이 굵고, 키보드 초점으로도 볼 수 있어요.',
+    text: '주민 집에 마우스를 올리면 그 주민이 다른 집을 의심하는 선이 보여요. 의심도가 높을수록 선이 굵고, 키보드 초점으로도 볼 수 있어요. 지금은 주민끼리 의심도가 없어서 내 집으로 가는 선만 보여요.',
   },
   {
     highlight: 'log',
@@ -873,7 +873,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     highlight: null,
     finish: true,
-    text: '튜토리얼은 여기까지예요. 재판에서 내가 마피아로 지목되면 지고, 마지막 밤에 주민 과반을 속이면 이겨요.',
+    text: '튜토리얼은 여기까지예요. 재판에서 내가 마피아로 지목되면 지고, 마지막 밤에 주민 과반을 속이면 이겨요. 시작 화면의 이론 실험실에서 이론을 직접 해 보는 시나리오도 있어요.',
   },
 ]
 

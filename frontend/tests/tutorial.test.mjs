@@ -41,7 +41,7 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   const votesStep = tutorialStep(4, day1)
   assert.equal(votesStep.step?.highlight, 'votes')
   assert.match(votesStep.step?.text ?? '', /마을 이야기.*오늘 밤 저울/)
-  assert.match(votesStep.step?.text ?? '', /덜 믿어서 저울에 적게 반영/)
+  assert.match(votesStep.step?.text ?? '', /의심하는 집에서 온 쪽지는 더 적게 반영/)
   assert.doesNotMatch(votesStep.step?.text ?? '', /카드 아래|블록/)
   assert.equal(splitSentences(votesStep.step?.text ?? '').length, 3)
   const shareStep = tutorialStep(5, day1)
