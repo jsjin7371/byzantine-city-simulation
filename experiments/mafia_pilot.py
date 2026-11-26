@@ -45,21 +45,20 @@ def play(cfg, rng):
                 if s not in (a, b) and rec[a][s] is not None and rec[b][s] is not None and rec[a][s] != rec[b][s]:
                     caught_by[a].add(s)
                     caught_by[b].add(s)
-        # 시민 결정 (7.5-4)
+        # 시민 결정 (7.5-4) — 엔진(engine/city/logic.py)과 같이 정수(1표=100)로 합산해 동점 오차를 없앤다.
         dec = {}
         for r in cits:
             h = hist[r] if memory == "full" else hist[r][-1 - cfg["k_mem"]:] if memory == "recent" else hist[r][-1:]
-            own = sum(1 if x else -1 for x in h)
-            mine = own > 0 if own else hist[r][-1]
-            score = own
+            score = sum(100 if x else -100 for x in h)
+            mine = score > 0 if score else hist[r][-1]
             for s, c in rec[r].items():
                 if c is None:
                     continue
-                w = 1.0
+                w = 100
                 if wary:
                     v = susp[r][s] + (-down if c == mine else up) + (contra if s in caught_by[r] else 0)
                     susp[r][s] = v = max(0, min(100, v))
-                    w = 1 - v / 100  # 의심할수록 덜 믿는다
+                    w = 100 - v  # 의심할수록 덜 믿는다
                 score += w if c else -w
             dec[r] = score > 0 if score else hist[r][-1]
         prev = dec
