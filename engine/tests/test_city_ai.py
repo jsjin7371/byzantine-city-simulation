@@ -243,12 +243,12 @@ class ApiCitizen(unittest.TestCase):
             return {"decision":d, "suspicion":s, "reason":r}
 
         with mock.patch.object(ai.urllib.request, "urlopen", side_effect=provider) as send, self.assertLogs(ai.log, "INFO") as logs:
-            for turn in range(1, 16):
+            for turn in range(1, 8):
                 result = game.play({"turn":turn, "claims":{}}, city)
         self.assertTrue(result["game_over"])
         self.assertEqual(result["end_reason"], "turns_done")
-        self.assertEqual(send.call_count, 60)
-        self.assertEqual(sum(r.ai_outcome == "success" for r in logs.records), 60)
+        self.assertEqual(send.call_count, 28)
+        self.assertEqual(sum(r.ai_outcome == "success" for r in logs.records), 28)
         self.assertFalse(any(r.ai_outcome == "fallback" for r in logs.records))
 
 

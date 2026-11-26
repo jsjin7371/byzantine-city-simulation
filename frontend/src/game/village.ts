@@ -939,9 +939,9 @@ export type DifficultyStat = {
 // 평균 틀린 수(4p)와 3명 이상 함께 틀릴 확률 P(X>=3) = 4p^3(1-p) + p^4는 프리셋 sensor_error에서 계산한다.
 export const DIFFICULTY_STATS: readonly DifficultyStat[] = (
   [
-    { key: 'easy', waryBotWinPct: 32, majorityBotWinPct: 87 },
-    { key: 'normal', waryBotWinPct: 10, majorityBotWinPct: 75 },
-    { key: 'hard', waryBotWinPct: 1, majorityBotWinPct: 48 },
+    { key: 'easy', waryBotWinPct: 57, majorityBotWinPct: 86 },
+    { key: 'normal', waryBotWinPct: 31, majorityBotWinPct: 74 },
+    { key: 'hard', waryBotWinPct: 8, majorityBotWinPct: 49 },
   ] as const
 ).map(({ key, waryBotWinPct, majorityBotWinPct }) => {
   const { label, sensor_error: p } = difficulties[key]

@@ -19,7 +19,8 @@ const TREES = [
 const STONES = [
   [380, 345], [398, 315], [430, 298], [470, 298], [502, 315], [520, 345], [502, 376], [470, 392], [430, 392], [398, 376],
 ]
-const cellX = (day: number) => 150 + 44 * (day - 1)
+const CELL_STEP = Math.floor((654 - CELL_W) / Math.max(1, TOTAL_TURNS - 1))
+const cellX = (day: number) => 150 + CELL_STEP * (day - 1)
 
 // 목업 A3의 공용 그림 (거친 선 필터, 오두막, 깃발, 창문, 말)
 function Defs() {
@@ -187,11 +188,12 @@ function Sky({ danger, highlighted = false }: { danger: boolean; highlighted?: b
   )
 }
 
-// 달력 트랙 15칸. 지난 날은 짙게, 말은 오늘(끝났으면 마지막 날)에 선다.
+// 달력 트랙. 지난 날은 짙게, 말은 오늘(끝났으면 마지막 날)에 선다.
 function Calendar({ turn, over }: { turn: number; over: boolean }) {
   const day = over ? turn : Math.min(turn + 1, TOTAL_TURNS)
   const left = TOTAL_TURNS - turn
   const px = cellX(day) + CELL_W / 2
+  const lastCx = cellX(TOTAL_TURNS) + CELL_W / 2
   return (
     <g role="img" aria-label={`달력: 마지막 밤 D-${left}, ${day}/${TOTAL_TURNS}일`}>
       <rect x="0" y="598" width="900" height="62" fill="#7a5530" />
@@ -211,7 +213,7 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
             fill={d === TOTAL_TURNS ? '#8fa0a8' : d <= turn ? '#b99662' : '#ecd9aa'}
           />
         ))}
-        <path d="M785 629 m0 -1 a3 3 0 1 1 3 3 a7 7 0 1 1 -7 -7 a11 11 0 0 1 11 11" fill="none" stroke="#2c3d4f" strokeWidth="2.4" strokeLinecap="round" />
+        <path d={`M${lastCx} 629 m0 -1 a3 3 0 1 1 3 3 a7 7 0 1 1 -7 -7 a11 11 0 0 1 11 11`} fill="none" stroke="#2c3d4f" strokeWidth="2.4" strokeLinecap="round" />
       </g>
       <g fontSize="13.5" fontWeight="700" textAnchor="middle" className="vb-cal-num" aria-hidden>
         {Array.from({ length: TOTAL_TURNS - 1 }, (_, i) => i + 1)

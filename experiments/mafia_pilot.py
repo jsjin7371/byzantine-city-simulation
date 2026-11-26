@@ -6,7 +6,10 @@ import csv, itertools, os, random, sys, zlib
 from statistics import fmean
 from multiprocessing import Pool
 
-N, TURNS = 5, 15
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine"))
+from god.game import TURNS  # noqa: E402
+
+N = 5
 RUNS = 4000
 
 
@@ -24,7 +27,7 @@ def play(cfg, rng):
     hist = {r: [] for r in cits}
     prev = {r: None for r in cits}
     wrong_accuse = False
-    for t in range(TURNS):
+    for t in range(cfg.get("turns", TURNS)):
         for r in cits:
             hist[r].append(rng.random() >= err)
         # 주장 모으기 (7.5-2). 동료와 봇은 항상 정답의 반대.
@@ -42,21 +45,20 @@ def play(cfg, rng):
                 if s not in (a, b) and rec[a][s] is not None and rec[b][s] is not None and rec[a][s] != rec[b][s]:
                     caught_by[a].add(s)
                     caught_by[b].add(s)
-        # 시민 결정 (7.5-4)
+        # 시민 결정 (7.5-4) — 엔진(engine/city/logic.py)과 같이 정수(1표=100)로 합산해 동점 오차를 없앤다.
         dec = {}
         for r in cits:
             h = hist[r] if memory == "full" else hist[r][-1 - cfg["k_mem"]:] if memory == "recent" else hist[r][-1:]
-            own = sum(1 if x else -1 for x in h)
-            mine = own > 0 if own else hist[r][-1]
-            score = own
+            score = sum(100 if x else -100 for x in h)
+            mine = score > 0 if score else hist[r][-1]
             for s, c in rec[r].items():
                 if c is None:
                     continue
-                w = 1.0
+                w = 100
                 if wary:
                     v = susp[r][s] + (-down if c == mine else up) + (contra if s in caught_by[r] else 0)
                     susp[r][s] = v = max(0, min(100, v))
-                    w = 1 - v / 100  # 의심할수록 덜 믿는다
+                    w = 100 - v  # 의심할수록 덜 믿는다
                 score += w if c else -w
             dec[r] = score > 0 if score else hist[r][-1]
         prev = dec
@@ -94,9 +96,9 @@ def cfg(**kw):
 
 
 def check():
-    # 공유·의심도·고발 없는 다수결 시민 = 기존 exp3 (r=2, 센서 10%, 15턴): 정직 도시 정확도 0.9377 / 0.0105
+    # 공유·의심도·고발 없는 다수결 시민 = 기존 exp3 (r=2, 센서 10%, 15턴). 이 대조만 게임 턴 수와 무관하게 15턴으로 돌린다. 기대값: 정직 도시 정확도 0.9377 / 0.0105
     for m, want in ((1, 0.9377), (2, 0.0105)):
-        r = run(cfg(citizen="majority", share="none", mafia=m, runs=4000, seed=m, silent_t1=True))
+        r = run(cfg(citizen="majority", share="none", mafia=m, runs=4000, seed=m, silent_t1=True, turns=15))
         print(f"majority mafia={m}: accuracy {r['accuracy']:.4f} (exp3 {want})")
         assert abs(r["accuracy"] - want) < 0.02, r
     # 기억 full 대조군: 힌트 이력만으로 거의 다 맞힌다 (기획서 "제약")

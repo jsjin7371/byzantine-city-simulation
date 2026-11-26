@@ -55,8 +55,8 @@ if ($LASTEXITCODE -ne 0) { throw '동적 게임 검사 실패' }
 kubectl --context $kubeContext -n byzantine-engine-dynamic get pods,services
 ```
 
-생성 후 God+City Pod 총 6개, Service 총 6개인지 확인합니다. 15턴 종료 후에는 God만 남아야 합니다.
-같은 설정으로 생성과 검사를 반복하면 출력된 결과 SHA256이 같아야 합니다. 다수결 시민 게임은 고발 없이 15턴을 완료합니다.
+생성 후 God+City Pod 총 6개, Service 총 6개인지 확인합니다. 7턴 종료 후에는 God만 남아야 합니다.
+같은 설정으로 생성과 검사를 반복하면 출력된 결과 SHA256이 같아야 합니다. 다수결 시민 게임은 고발 없이 7턴을 완료합니다.
 실패 시 `logs deployment/god`와 `get events --sort-by=.metadata.creationTimestamp`를 같은 namespace에서 확인합니다.
 
 ```powershell

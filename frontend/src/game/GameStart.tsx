@@ -653,7 +653,7 @@ export function GameStart({
             textAnchor="middle"
             className="vb-sign-title vb-pencil"
           >
-            열다섯 밤의 거짓말
+            밤의 거짓말
           </text>
 
           <g filter="url(#vs-rough)" fill="#5a3d22" stroke="#3b2a1a" strokeWidth="2">
@@ -1033,7 +1033,7 @@ export function GameStart({
             </table>
           </div>
           <p className="gs-diff-help-foot">
-            봇(비잔틴 도시)은 항상 진짜 날씨의 반대만 말하는 마피아로, 거짓 쪽지는 일부러 하는 메시지 조작이에요. 봇 승률은 모두 대화 조건 시뮬레이션 결과예요(눈치 1만 판, 다수결 1천 판). 3명 이상 확률은 이항분포 계산값이며,{' '}
+            봇(비잔틴 도시)은 항상 진짜 날씨의 반대만 말하는 마피아로, 거짓 쪽지는 일부러 하는 메시지 조작이에요. 봇 승률은 모두 대화 조건 시뮬레이션 결과예요(눈치·다수결 각 1만 판). 3명 이상 확률은 이항분포 계산값이며,{' '}
             <span className={citizenType === 'ai' ? 'is-active-note' : undefined}>
               AI 주민은 아직 측정값이 없어요.
             </span>

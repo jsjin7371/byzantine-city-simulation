@@ -90,13 +90,13 @@ python engine/tests/llm_game_smoke.py --live
 ```
 
 검사는 기존 Game → City AI → Groq를 실행하며 Backend·DB·City HTTP 서버는 실행하지 않습니다.
-seed 42, 봇, AI 시민 4명으로 최대 15턴·60회 요청입니다. 간격은 응답 후 최소 20초이고 재시도는 없습니다.
-15턴이면 대기만 약 20분이며 모델 응답 시간이 추가됩니다. 고발로 조기 종료돼도 게임 규칙을 바꾸거나 강제로 15턴을 만들지 않습니다.
+seed 42, 봇, AI 시민 4명으로 최대 7턴·28회 요청입니다. 간격은 응답 후 최소 20초이고 재시도는 없습니다.
+7턴이면 대기만 약 9분이며 모델 응답 시간이 추가됩니다. 고발로 조기 종료돼도 게임 규칙을 바꾸거나 강제로 7턴을 만들지 않습니다.
 첫 fallback 이후에는 나머지 외부 요청을 중단하고 미완료로 보고합니다. 운영 게임의 병렬 City 호출 방식에는 이 검사 간격을 적용하지 않습니다.
 검사 자체의 추가 토큰 예산은 100,000이며, UTF-8 입력 길이와 출력 상한에 여유를 더해 다음 요청의 예산을 보수적으로 검사합니다.
 요청별 토큰·응답 시간·성격·검증된 대사와 허용된 한도 헤더를 집계합니다. 잔여 요청·분당 토큰이 부족하거나 사용량이 누락되면 추가 호출을 중단합니다.
 일일 토큰 잔여량을 확인한 것으로 해석하면 안 됩니다. 조직의 다른 사용량과 별도로 서비스가 반환한 429에도 중단합니다.
-결과의 `real_requests`, `real_success`, `fallback`, `fallback_causes`, `total_tokens`, `requests`, `stop_reason`, `turns`, `game_over`, `fifteen_turns`, `verification_passed`를 확인합니다.
+결과의 `real_requests`, `real_success`, `fallback`, `fallback_causes`, `total_tokens`, `requests`, `stop_reason`, `turns`, `game_over`, `all_turns`, `verification_passed`를 확인합니다.
 모든 호출이 실제 API 검증 성공이고 한 판이 종료된 경우만 `verification_passed=true`입니다. 키가 없으면 요청 없이 종료 코드 2로 중단합니다.
 
 ## Docker와 Ollama
