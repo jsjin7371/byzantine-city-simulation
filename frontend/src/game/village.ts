@@ -1207,14 +1207,14 @@ export function detectTactics(
     }
   }
 
-  // 2. 온오프 공격 (의심 세탁): 의심도 >= 40일 때 그 주민이 본 날씨와 같은 쪽지를 보내 <= 20으로 내린 뒤, 다시 거짓을 보내 그 주민이 틀림
+  // 2. 온오프 공격 (의심 세탁): 의심도 >= 40일 때 그 주민이 본 하늘과 같은 쪽지를 보내 <= 20으로 내린 뒤, 거짓 쪽지를 보내 그 주민이 틀림
   const onoffHit = regainTrustProgress(state, history).refooled
   if (onoffHit) {
     const nextWhen = onoffHit.foolDay === onoffHit.washDay + 1 ? '다음 날' : `${onoffHit.foolDay}일째`
     detected.push({
       tag: 'onoff',
       day: onoffHit.washDay,
-      text: `나를 의심하던 ${onoffHit.city}번 집(의심도 ${onoffHit.fromSus})에 그 집이 본 날씨와 같은 쪽지를 보내 ${onoffHit.toSus}까지 낮춘 뒤, ${nextWhen} 다시 속였어요.`,
+      text: `나를 의심하던 ${onoffHit.city}번 집(의심도 ${onoffHit.fromSus})에 그 집이 본 하늘과 같은 쪽지를 보내 ${onoffHit.toSus}까지 낮춘 뒤, ${nextWhen} 거짓 쪽지를 보냈고 그 집은 틀렸어요.`,
     })
   }
 
@@ -1645,32 +1645,53 @@ export function playerContradictionTurns<T extends Pick<TurnResult, 'turn' | 'sh
 const REGAIN_PEAK = 40
 const REGAIN_LOW = 20
 
-export type OnOffWash = {
+const isWin = (outcome: GameState['outcome']) => outcome === 'win' || outcome === 'perfect_win'
+
+type OnOffWash = {
   city: number
   fromSus: number
   toSus: number
   washDay: number
+  washSentLie: boolean
 }
 
-export type OnOffHit = OnOffWash & {
+type OnOffHit = OnOffWash & {
   foolDay: number
 }
 
-export type RegainTrustProgress = {
+type OnOffSpiked = OnOffWash & {
+  spikeDay: number
+  spikeSus: number
+}
+
+type RegainTrustProgress = {
   reached40: { city: number; sus: number; day: number } | null
   droppedWithoutSwitch: { city: number; fromSus: number; toSus: number; day: number } | null
   washed: OnOffWash | null
+  washedActive: OnOffWash | null
+  washedThenSpiked: OnOffSpiked | null
   refooled: OnOffHit | null
 }
 
-export type GoalStep = {
+type GoalStep = {
   label: string
   done: boolean
 }
 
+const betterWash = (a: OnOffWash, b: OnOffWash | null) =>
+  !b ||
+  Number(a.washSentLie) < Number(b.washSentLie) ||
+  (a.washSentLie === b.washSentLie && a.washDay < b.washDay)
+
+const betterHit = (a: OnOffHit, b: OnOffHit | null) =>
+  !b ||
+  Number(a.washSentLie) < Number(b.washSentLie) ||
+  (a.washSentLie === b.washSentLie &&
+    (a.washDay < b.washDay || (a.washDay === b.washDay && a.foolDay < b.foolDay)))
+
 // 시나리오 '신뢰를 되찾는 법' 및 온오프 공격 꼬리표 공용 판정 (experiments/scenario_rates.py has_onoff와 동일).
-// 어떤 주민의 의심도가 40 이상이 된 뒤, 직전과 다른 쪽지(그 주민 관측과 일치)로 20 이하까지 낮추고(washed),
-// 다시 40 이상이 되기 전에 거짓 쪽지로 그 주민을 속이면(refooled) 온오프가 성립한다.
+// 어떤 주민의 의심도가 40 이상이 된 뒤, 연속 관측 일치 구간 안에서 쪽지를 바꿔 20 이하까지 낮추고(washed),
+// 다시 40 이상이 되기 전에 거짓 쪽지를 보내 그 주민이 틀리면(refooled) 온오프가 성립한다.
 export function regainTrustProgress(
   state: Pick<GameState, 'player_city' | 'roles' | 'truth'>,
   history: Pick<TurnResult, 'turn' | 'cities'>[],
@@ -1684,6 +1705,8 @@ export function regainTrustProgress(
   let reached40: RegainTrustProgress['reached40'] = null
   let droppedWithoutSwitch: RegainTrustProgress['droppedWithoutSwitch'] = null
   let washed: OnOffWash | null = null
+  let washedActive: OnOffWash | null = null
+  let washedThenSpiked: OnOffSpiked | null = null
   let refooled: OnOffHit | null = null
 
   for (const cityId of citizenIds) {
@@ -1723,43 +1746,60 @@ export function regainTrustProgress(
       }
       if (fromSus < REGAIN_PEAK) continue
 
-      if (rows[j].sent === rows[j - 1].sent) {
+      let q = j
+      while (q > 0 && rows[q - 1].matchedHint) q--
+      let switched = false
+      for (let m = Math.max(1, q); m <= j; m++) {
+        if (rows[m].sent !== rows[m - 1].sent) {
+          switched = true
+          break
+        }
+      }
+      if (!switched) {
         if (!droppedWithoutSwitch || rows[j].turn < droppedWithoutSwitch.day) {
           droppedWithoutSwitch = { city: cityId, fromSus, toSus: rows[j].sus, day: rows[j].turn }
         }
         continue
       }
 
-      const wash: OnOffWash = { city: cityId, fromSus, toSus: rows[j].sus, washDay: rows[j].turn }
-      if (!washed || wash.washDay < washed.washDay) washed = wash
+      const wash: OnOffWash = {
+        city: cityId,
+        fromSus,
+        toSus: rows[j].sus,
+        washDay: rows[j].turn,
+        washSentLie: rows[j].sentLie,
+      }
+      if (betterWash(wash, washed)) washed = wash
 
       const after = rows.slice(j + 1)
       const k = after.findIndex((r) => (r.sentLie && r.correct === false) || r.sus >= REGAIN_PEAK)
       if (k >= 0 && after[k].sentLie && after[k].correct === false) {
         const hit: OnOffHit = { ...wash, foolDay: after[k].turn }
-        if (!refooled || hit.washDay < refooled.washDay) refooled = hit
+        if (betterHit(hit, refooled)) refooled = hit
+        if (betterWash(wash, washedActive)) washedActive = wash
         break
+      }
+      if (k >= 0) {
+        const spiked: OnOffSpiked = { ...wash, spikeDay: after[k].turn, spikeSus: after[k].sus }
+        if (betterWash(spiked, washedThenSpiked)) washedThenSpiked = spiked
+      } else if (betterWash(wash, washedActive)) {
+        washedActive = wash
       }
     }
   }
 
-  return { reached40, droppedWithoutSwitch, washed, refooled }
+  return { reached40, droppedWithoutSwitch, washed, washedActive, washedThenSpiked, refooled }
 }
 
 // 시나리오 목표 달성 판정: 신뢰를 되찾는 법은 온오프(40 이상 → 20 이하 전환 → 재기만) + 승리, 나머지는 과반 기만 승리.
 export function scenarioGoalMet(
-  state: Pick<GameState, 'outcome'> & Partial<Pick<GameState, 'player_city' | 'roles' | 'truth'>>,
+  state: Pick<GameState, 'outcome' | 'player_city' | 'roles' | 'truth'>,
   scenarioId?: string,
   history?: Pick<TurnResult, 'turn' | 'cities'>[],
 ): boolean {
-  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
-  if (!won) return false
+  if (!isWin(state.outcome)) return false
   if (scenarioId === 'regain-trust') {
-    if (state.player_city == null || !state.roles || !state.truth || !history) return false
-    return (
-      regainTrustProgress({ player_city: state.player_city, roles: state.roles, truth: state.truth }, history)
-        .refooled != null
-    )
+    return history != null && regainTrustProgress(state, history).refooled != null
   }
   return true
 }
@@ -1772,11 +1812,11 @@ export function scenarioGoalSteps(
 ): GoalStep[] | null {
   if (scenarioId !== 'regain-trust') return null
   const p = regainTrustProgress(state, history)
-  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
   return [
-    { label: '의심도 40 이상', done: p.reached40 != null },
-    { label: '20 이하로 낮추기', done: p.washed != null },
-    { label: '다시 속여 이기기', done: won && p.refooled != null },
+    { label: '의심 40 이상', done: p.reached40 != null },
+    { label: '20 이하로 낮추기', done: p.refooled != null || p.washedActive != null },
+    { label: '다시 속이기', done: p.refooled != null },
+    { label: '이기기', done: isWin(state.outcome) },
   ]
 }
 
@@ -1842,14 +1882,17 @@ export function regainTrustOutcomeNote(
   state: Pick<GameState, 'player_city' | 'roles' | 'truth' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities'>[],
 ): string {
-  const lastDay = history.at(-1)?.turn ?? 0
+  const last = history.at(-1)
+  const lastDay = last?.turn ?? 0
   if (state.end_reason === 'caught') {
-    return lastDay >= TOTAL_TURNS
-      ? '마지막 밤 재판에 걸렸어요. 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.'
-      : '마지막 밤까지 가지 못했어요. 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.'
+    const head = lastDay >= TOTAL_TURNS ? '마지막 밤 재판에 걸렸어요.' : '마지막 밤까지 가지 못했어요.'
+    const maxSus = Math.max(0, ...(last?.cities ?? []).map((c) => c.suspicion?.[state.player_city] ?? 0))
+    return maxSus >= SUSPICION.threshold
+      ? `${head} 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.`
+      : `${head} 다른 집 의심도로 열린 재판에서 주민 과반이 나를 지목했어요. 집마다 의심도를 더 낮게 유지하며 다시 해 보세요.`
   }
   const p = regainTrustProgress(state, history)
-  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
+  const won = isWin(state.outcome)
   if (!p.reached40) {
     return won
       ? '판은 이겼지만, 의심도가 40 이상까지 오른 주민이 없었어요. 일부러 의심도를 올린 뒤 다시 낮춰 보세요.'
@@ -1863,23 +1906,39 @@ export function regainTrustOutcomeNote(
         : `${d.city}번 집 의심도가 ${d.fromSus}에서 ${d.toSus}까지 내려갈 때 같은 쪽지만 보냈고, 마지막 밤 과반도 속이지 못했어요. 쪽지를 바꿔 의심도를 낮춰 보세요.`
     }
     const r = p.reached40
+    if (r.day >= TOTAL_TURNS) {
+      return won
+        ? `판은 이겼지만, 마지막 ${r.day}일째에야 ${r.city}번 집 의심도가 ${r.sus}에 닿아 낮출 날이 남지 않았어요.`
+        : `마지막 ${r.day}일째에야 ${r.city}번 집 의심도가 ${r.sus}에 닿아 낮출 날이 남지 않았고, 마지막 밤 과반도 속이지 못했어요.`
+    }
     return won
       ? `판은 이겼지만, ${r.day}일째에 의심도가 ${r.sus}까지 오른 ${r.city}번 집을 20 이하로 낮추지는 못했어요.`
       : `${r.day}일째에 ${r.city}번 집 의심도가 ${r.sus}까지 올랐지만 20 이하로 낮추지 못했고, 마지막 밤 과반도 속이지 못했어요.`
   }
   if (!p.refooled) {
-    const w = p.washed
+    if (p.washedActive) {
+      const w = p.washedActive
+      if (w.washDay >= TOTAL_TURNS) {
+        return won
+          ? `마지막 ${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮추고 판도 이겼지만, 그 뒤 다시 속일 날이 남지 않았어요.`
+          : `마지막 ${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮췄지만, 그 뒤 다시 속일 날이 남지 않았고 마지막 밤 과반도 채우지 못했어요.`
+      }
+      return won
+        ? `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮추고 판도 이겼지만, 그 뒤 ${w.city}번 집이 내 거짓 쪽지에 틀린 날은 없었어요.`
+        : `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮췄지만, 그 뒤 ${w.city}번 집이 내 거짓 쪽지에 틀린 날은 없었고 마지막 밤 과반도 채우지 못했어요.`
+    }
+    const s = p.washedThenSpiked!
     return won
-      ? `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮추고 판도 이겼지만, 그 뒤 ${w.city}번 집을 다시 속이지는 못했어요.`
-      : `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮췄지만, 그 뒤 ${w.city}번 집을 다시 속이지 못했고 마지막 밤 과반도 채우지 못했어요.`
+      ? `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮추고 판도 이겼지만, ${s.spikeDay}일째에 의심도가 ${s.spikeSus}까지 다시 올랐어요.`
+      : `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮췄지만, ${s.spikeDay}일째에 의심도가 ${s.spikeSus}까지 다시 올랐고 마지막 밤 과반도 채우지 못했어요.`
   }
   const rf = p.refooled
   if (!won) {
-    return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.toSus}까지 낮추고 ${rf.foolDay}일째에 다시 속였지만, 마지막 밤 과반은 속이지 못했어요.`
+    return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸지만, 마지막 밤 과반은 속이지 못했어요.`
   }
   return state.outcome === 'perfect_win'
-    ? `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 다시 속였고, 마지막 밤 주민 모두를 속였어요.`
-    : `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 다시 속였고, 마지막 밤 과반을 넘겼어요.`
+    ? `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 주민 모두를 속였어요.`
+    : `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 과반을 넘겼어요.`
 }
 
 // 시나리오별 결과 한 줄 분기.

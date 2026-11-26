@@ -2061,27 +2061,39 @@ dialog.tb-dialog[open] {
     transform: translateY(10px) scale(0.98);
   }
 }
+.tb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  padding: 20px 24px 10px 56px;
+  background: #fbf6e8;
+  border-bottom: 1px solid rgba(107, 74, 42, 0.14);
+}
 .tb-page {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 44px 56px 40px;
+  padding: 16px 56px 40px;
   font-family: var(--gm-book-font);
   font-size: 17px;
   line-height: 1.85;
   color: var(--ink);
 }
 @media (max-width: 640px) {
+  .tb-head {
+    padding: 14px 14px 8px 24px;
+  }
   .tb-page {
-    padding: 32px 24px;
+    padding: 14px 24px 32px;
   }
 }
 .tb-close {
-  position: sticky;
-  top: 0;
-  float: right;
-  margin: -24px -28px 0 0;
+  flex-shrink: 0;
   min-width: 44px;
   min-height: 44px;
-  background: #fbf6e8;
+  background: transparent;
   border: 0;
   border-radius: 50%;
   cursor: pointer;
@@ -2091,11 +2103,6 @@ dialog.tb-dialog[open] {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-@media (max-width: 640px) {
-  .tb-close {
-    margin: -14px -10px 0 0;
-  }
 }
 .tb-close:hover {
   color: var(--ink);
@@ -2524,23 +2531,23 @@ dialog.tb-dialog[open] {
   color: var(--forest);
 }
 .gm-goal-badge.is-steps {
-  font-size: 15px;
-  padding: 4px 12px;
-  gap: 5px;
+  font-size: 14.5px;
+  padding: 4px 10px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 .gm-goal-steps {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 .gm-goal-step {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   white-space: nowrap;
-  padding: 1px 6px;
+  padding: 1px 5px;
   border-radius: 999px;
   color: var(--ink-soft);
 }

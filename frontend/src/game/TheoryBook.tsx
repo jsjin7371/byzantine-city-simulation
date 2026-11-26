@@ -75,19 +75,22 @@ export function TheoryBook({ topic, onClose }: { topic: TopicKey | null; onClose
       }}
     >
       {data && (
-        <div ref={pageRef} className="tb-page">
-          <button
-            ref={closeBtnRef}
-            type="button"
-            className="tb-close"
-            aria-label="이론 책 닫기"
-            onClick={() => dialogRef.current?.close()}
-          >
-            ×
-          </button>
-          <p className="tb-kicker">{data.kicker}</p>
-          <h2 id={titleId}>{data.title}</h2>
-          <p className="tb-en">{data.en}</p>
+        <>
+          <div className="tb-head">
+            <p className="tb-kicker">{data.kicker}</p>
+            <button
+              ref={closeBtnRef}
+              type="button"
+              className="tb-close"
+              aria-label="이론 책 닫기"
+              onClick={() => dialogRef.current?.close()}
+            >
+              ×
+            </button>
+          </div>
+          <div ref={pageRef} className="tb-page">
+            <h2 id={titleId}>{data.title}</h2>
+            <p className="tb-en">{data.en}</p>
 
           <h3>쉽게 말하면</h3>
           <p className="tb-easy">{data.easy}</p>
@@ -110,16 +113,17 @@ export function TheoryBook({ topic, onClose }: { topic: TopicKey | null; onClose
           )}
 
           <h3>참고 문헌</h3>
-          <ol className="tb-refs">
-            {data.refs.map((ref, i) => (
-              <li key={i}>
-                {ref.before}
-                {ref.italic && <i>{ref.italic}</i>}
-                {ref.after}
-              </li>
-            ))}
-          </ol>
-        </div>
+            <ol className="tb-refs">
+              {data.refs.map((ref, i) => (
+                <li key={i}>
+                  {ref.before}
+                  {ref.italic && <i>{ref.italic}</i>}
+                  {ref.after}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </>
       )}
     </dialog>
   )

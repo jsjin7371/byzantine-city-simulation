@@ -62,17 +62,22 @@ def wash_peak(rows, end, threshold):
 
 def has_onoff(history, player_city, truth, threshold=40, need_fool=True):
     """결과 화면 detectTactics의 온오프 판정(need_fool=False면 세탁 완료까지만 확인).
-    의심도 >= threshold 뒤 힌트와 같은 쪽지(직전과 전환)로 <= 20까지 내린 뒤,
+    의심도 >= threshold 뒤 힌트와 같은 쪽지(연속 일치 구간 내 쪽지 전환 포함)로 <= 20까지 내린 뒤,
     다시 threshold 이상이 되기 전에 거짓 쪽지로 그 주민을 속이면(correct=False) 달성."""
     if not history:
         return False
     for c in (x["city"] for x in history[0]["cities"] if x["role"] == "citizen"):
         rows = citizen_rows(history, player_city, truth, c)
         for j in range(1, len(rows)):
-            sus_j, sent_j, match_j, _, _ = rows[j]
-            if not match_j or sus_j > 20 or sent_j == rows[j - 1][1]:
+            sus_j, _, match_j, _, _ = rows[j]
+            if not match_j or sus_j > 20:
                 continue
             if wash_peak(rows, j, threshold) < threshold:
+                continue
+            q = j
+            while q > 0 and rows[q - 1][2]:
+                q -= 1
+            if not any(rows[m][1] != rows[m - 1][1] for m in range(max(1, q), j + 1)):
                 continue
             if not need_fool:
                 return True
