@@ -1068,7 +1068,7 @@ export function VillageBoard({
   swayed?: number[] // 내 쪽지가 결정을 뒤집은 시민 (citizenScales)
   highlight?: TutorialHighlight | null // 튜토리얼 강조 대상 이름
   hideSigns?: boolean // 튜토리얼에서는 첫날 안내 표지판을 숨긴다
-  neutralShareSign?: boolean // 감시의 눈에서는 3번 표지판을 규칙 사실로 바꾼다
+  neutralShareSign?: boolean // 시나리오 요령과 충돌하지 않게 3번 표지판을 규칙 사실로 바꾼다
   onCardOpen?: (city: number | null) => void
   boardRef?: RefObject<SVGSVGElement | null>
 }) {

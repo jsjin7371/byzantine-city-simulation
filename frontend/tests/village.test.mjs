@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioResultNote, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
+  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, regainTrustOutcomeNote, regainTrustProgress, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioGoalSteps, scenarioResultNote, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -1560,5 +1560,154 @@ test('ringVillageOutcomeNote branches on caught day and far-house observation/ou
       { turn: 7, cities: dayCities(false, false, 'danger', true, 'safe', false), sharing: [] },
     ]),
     '마지막 밤, 먼 3번 집은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요.',
+  )
+})
+
+test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOutcomeNote match scenario_rates on-off rules', () => {
+  const trustState = (outcome, end_reason = 'turns_done') => ({
+    config: { ...soloConfig, sensor_error: 0.45, seed: 2 },
+    roles: { 1: 'player', 2: 'citizen', 3: 'citizen', 4: 'citizen', 5: 'citizen' },
+    player_city: 1,
+    truth: 'danger',
+    outcome,
+    end_reason,
+  })
+  const c = (city, hint, claim, sus, correct) => ({
+    city,
+    role: 'citizen',
+    hint,
+    received: { 1: msg(claim) },
+    decision: correct ? 'evacuate' : 'stay',
+    correct,
+    suspicion: { 1: sus },
+    reason: null,
+  })
+  const t = (turnNum, cities) => ({ turn: turnNum, cities, sharing: [] })
+
+  // 1. 40 이상에 도달한 적 없음 (승리해도 목표 미달성)
+  const no40 = [
+    t(1, [c(2, 'safe', 'stay', 0, false), c(3, 'danger', 'stay', 20, true)]),
+    t(7, [c(2, 'safe', 'stay', 0, false), c(3, 'danger', 'stay', 20, false)]),
+  ]
+  assert.equal(scenarioGoalMet(trustState('perfect_win'), 'regain-trust', no40), false)
+  assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('perfect_win'), no40), [
+    { label: '의심도 40 이상', done: false },
+    { label: '20 이하로 낮추기', done: false },
+    { label: '다시 속여 이기기', done: false },
+  ])
+  assert.equal(scenarioGoalSteps('watchful-eye', trustState('win'), no40), null)
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), no40),
+    '판은 이겼지만, 의심도가 40 이상까지 오른 주민이 없었어요. 일부러 의심도를 올린 뒤 다시 낮춰 보세요.',
+  )
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss'), no40),
+    '의심도가 40 이상까지 오른 주민이 없었고, 마지막 밤 과반도 속이지 못했어요. 의심도를 올렸다 낮추며 다시 해 보세요.',
+  )
+
+  // 2. 40 도달 후 같은 쪽지만 보냈는데 관측 오답으로 우연히 20 이하 하락 (bot 패턴: 세탁 불인정)
+  const botLike = [
+    t(1, [c(2, 'danger', 'stay', 20, true)]),
+    t(2, [c(2, 'danger', 'stay', 40, true)]),
+    t(3, [c(2, 'safe', 'stay', 20, false)]),
+    t(4, [c(2, 'safe', 'stay', 0, false)]),
+  ]
+  const botProg = regainTrustProgress(trustState('win'), botLike)
+  assert.equal(botProg.reached40?.sus, 40)
+  assert.equal(botProg.washed, null)
+  assert.deepEqual(botProg.droppedWithoutSwitch, { city: 2, fromSus: 40, toSus: 20, day: 3 })
+  assert.equal(scenarioGoalMet(trustState('win'), 'regain-trust', botLike), false)
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), botLike),
+    '판은 이겼지만, 2번 집 의심도가 40에서 20까지 내려갈 때 같은 쪽지만 보냈어요. 쪽지를 바꿔 의심도를 낮춰 보세요.',
+  )
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss'), botLike),
+    '2번 집 의심도가 40에서 20까지 내려갈 때 같은 쪽지만 보냈고, 마지막 밤 과반도 속이지 못했어요. 쪽지를 바꿔 의심도를 낮춰 보세요.',
+  )
+
+  // 3. 40 이상 도달했지만 20 이하로 낮추지 못함
+  const stuckHigh = [
+    t(1, [c(2, 'safe', 'evacuate', 40, false)]),
+    t(2, [c(2, 'safe', 'evacuate', 60, true)]),
+  ]
+  assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), stuckHigh), [
+    { label: '의심도 40 이상', done: true },
+    { label: '20 이하로 낮추기', done: false },
+    { label: '다시 속여 이기기', done: false },
+  ])
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), stuckHigh),
+    '판은 이겼지만, 2일째에 의심도가 60까지 오른 2번 집을 20 이하로 낮추지는 못했어요.',
+  )
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss'), stuckHigh),
+    '2일째에 2번 집 의심도가 60까지 올랐지만 20 이하로 낮추지 못했고, 마지막 밤 과반도 속이지 못했어요.',
+  )
+
+  // 4. 40 → 쪽지 전환으로 20 이하 세탁 완료, 그러나 다시 속이지 못함 (7일째 세탁 등)
+  const washedOnly = [
+    t(6, [c(2, 'safe', 'evacuate', 40, true)]),
+    t(7, [c(2, 'safe', 'stay', 20, false)]),
+  ]
+  assert.equal(scenarioGoalMet(trustState('win'), 'regain-trust', washedOnly), false)
+  assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('win'), washedOnly), [
+    { label: '의심도 40 이상', done: true },
+    { label: '20 이하로 낮추기', done: true },
+    { label: '다시 속여 이기기', done: false },
+  ])
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), washedOnly),
+    '7일째에 2번 집 의심도를 20까지 낮추고 판도 이겼지만, 그 뒤 2번 집을 다시 속이지는 못했어요.',
+  )
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss'), washedOnly),
+    '7일째에 2번 집 의심도를 20까지 낮췄지만, 그 뒤 2번 집을 다시 속이지 못했고 마지막 밤 과반도 채우지 못했어요.',
+  )
+
+  // 5. 세탁 후 다시 40 이상이 먼저 되면 이전 세탁의 재기만으로 인정하지 않음
+  const reSpiked = [
+    t(1, [c(2, 'safe', 'evacuate', 40, false)]),
+    t(2, [c(2, 'safe', 'stay', 20, true)]),
+    t(3, [c(2, 'danger', 'stay', 40, true)]),
+    t(4, [c(2, 'safe', 'stay', 20, false)]),
+  ]
+  assert.equal(regainTrustProgress(trustState('win'), reSpiked).refooled, null)
+
+  // 6. 세탁 + 재기만 완료: 패배 / 승리 / 완승
+  const fullOnOff = [
+    t(1, [c(2, 'safe', 'evacuate', 40, false)]),
+    t(2, [c(2, 'safe', 'stay', 20, true)]),
+    t(5, [c(2, 'safe', 'stay', 0, false)]),
+  ]
+  assert.equal(scenarioGoalMet(trustState('loss'), 'regain-trust', fullOnOff), false)
+  assert.equal(scenarioGoalMet(trustState('win'), 'regain-trust', fullOnOff), true)
+  assert.equal(scenarioGoalMet(trustState('perfect_win'), 'regain-trust', fullOnOff), true)
+  assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('win'), fullOnOff), [
+    { label: '의심도 40 이상', done: true },
+    { label: '20 이하로 낮추기', done: true },
+    { label: '다시 속여 이기기', done: true },
+  ])
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss'), fullOnOff),
+    '2일째에 2번 집 의심도를 20까지 낮추고 5일째에 다시 속였지만, 마지막 밤 과반은 속이지 못했어요.',
+  )
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), fullOnOff),
+    '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 다시 속였고, 마지막 밤 과반을 넘겼어요.',
+  )
+  assert.equal(
+    scenarioResultNote('regain-trust', trustState('perfect_win'), fullOnOff),
+    '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 다시 속였고, 마지막 밤 주민 모두를 속였어요.',
+  )
+
+  // 7. 조기 재판 / 7일째 마지막 밤 재판
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss', 'caught'), [t(2, [c(2, 'safe', 'evacuate', 60, true)])]),
+    '마지막 밤까지 가지 못했어요. 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.',
+  )
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss', 'caught'), [t(7, [c(2, 'safe', 'evacuate', 60, true)])]),
+    '마지막 밤 재판에 걸렸어요. 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.',
   )
 })

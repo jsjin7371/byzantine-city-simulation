@@ -75,23 +75,23 @@ const SCENARIOS: readonly Scenario[] = [
   {
     id: 'regain-trust',
     title: '신뢰를 되찾는 법',
-    brief: '"재판 직전까지 밀어붙였다가, 맞는 말로 신뢰를 되찾아 보세요."',
-    shows: '의심도가 오르고 내리는 폭이 같으면, 착한 척과 거짓말을 번갈아 재판을 피할 수 있어요.',
+    brief: '"재판 직전까지 밀어붙였다가, 그 집이 본 하늘에 맞춰 신뢰를 되찾아 보세요."',
+    shows: '의심도가 오르고 내리는 폭이 똑같은 마을에서, 높아진 의심도를 낮추고 다시 속이는 일이 통할까요?',
     chips: ['기본 마을', '잘못 볼 확률 45%'],
-    goal: '의심도 40 넘은 주민에게 그 주민이 본 날씨와 같은 쪽지를 보내 20 이하로 낮춘 뒤, 다시 속여 이기기',
-    rule: '의심도는 0 아래로 내려가지 않아요. 믿음을 미리 쌓아 둘 수 없으니, 의심도가 쌓인 뒤에 낮춰야 해요.',
+    goal: '의심도 40 이상인 주민에게 그 주민이 본 하늘과 같은 쪽지를 보내 20 이하로 낮춘 뒤, 다시 속여 이기기',
+    rule: '의심도는 0 아래로 내려가지 않아요. 의심도가 오른 집을 눌러, 그 집이 본 하늘대로 보낼 때와 계속 거짓 쪽지를 보낼 때의 의심도 미리 보기를 비교해 보세요.',
     rate: '컴퓨터 전략으로 목표 달성 49%',
     seed: 2,
     config: { sensor_error: 0.45 },
     topic: 'onoff',
-    playable: false,
+    playable: true,
     debrief: {
       theory:
-        '착한 행동으로 평판을 회복했다가 다시 속이는 수법을 온오프 공격이라고 해요. 이를 막으려면 나쁜 기록을 더 오래 기억해, 신뢰를 되찾는 데 더 오래 걸리게 해야 해요.',
+        '착한 행동으로 평판을 회복했다가 다시 속이는 수법을 온오프 공격이라고 해요. 좋은 행동과 나쁜 행동을 같은 크기로 반영하면 처벌선 아래를 오갈 수 있어, 나쁜 기록을 더 오래 기억하게 설계해요.',
       network:
         'P2P나 센서 망에서는 정상 작동과 오작동을 번갈아 하며 감시를 피하는 노드가 문제예요. 온라인 장터에서도 정상 거래로 평점을 회복한 뒤 다시 불량 거래를 반복하는 수법이 나타나요.',
       reflect:
-        '이 마을은 의심도가 오를 때와 내릴 때의 폭이 20으로 똑같아요. 신뢰는 천천히 쌓이고 빨리 무너져야 한다는 말은, 이런 틈을 막는 설계 원칙이기도 해요.',
+        '이 마을은 의심도가 오를 때와 내릴 때의 폭이 20으로 똑같았어요. 만약 한 번 의심받았을 때 낮추는 폭이 훨씬 작았다면, 이번 판에서도 다시 신뢰를 되찾을 수 있었을까요?',
     },
   },
   {
@@ -153,7 +153,7 @@ export function TheoryLab({
             <h2 id="tl-scenarios-title">시나리오 넷</h2>
           </div>
           <p id={soonId} className="tl-soon-note">
-            지금은 &lsquo;감시의 눈&rsquo;과 &lsquo;고리 마을&rsquo;을 바로 플레이할 수 있어요. 나머지 마을은 준비 중이고, &ldquo;이론 읽기&rdquo;는 모두 열어 볼 수 있어요.
+            지금은 &lsquo;감시의 눈&rsquo;, &lsquo;고리 마을&rsquo;, &lsquo;신뢰를 되찾는 법&rsquo;을 바로 플레이할 수 있어요. &lsquo;고집쟁이 동료&rsquo;는 준비 중이고, &ldquo;이론 읽기&rdquo;는 모두 열어 볼 수 있어요.
           </p>
 
           <div className="tl-cards">
@@ -323,7 +323,7 @@ export function ScenarioResult({
   onLab: () => void
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
-  const goalMet = scenarioGoalMet(state)
+  const goalMet = scenarioGoalMet(state, scenario.id, history)
   const resultNote = scenarioResultNote(scenario.id, state, history)
   const lastDay = history.at(-1)?.turn ?? state.turn
   const blockedReason =

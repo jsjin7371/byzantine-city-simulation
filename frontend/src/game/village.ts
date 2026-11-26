@@ -1208,45 +1208,7 @@ export function detectTactics(
   }
 
   // 2. 온오프 공격 (의심 세탁): 의심도 >= 40일 때 그 주민이 본 날씨와 같은 쪽지를 보내 <= 20으로 내린 뒤, 다시 거짓을 보내 그 주민이 틀림
-  const citizenIds = Object.entries(state.roles)
-    .filter(([, role]) => role === 'citizen')
-    .map(([id]) => Number(id))
-    .sort((a, b) => a - b)
-
-  let onoffHit: { city: number; fromSus: number; toSus: number; washDay: number; foolDay: number } | null = null
-  for (const cityId of citizenIds) {
-    const rows = history.flatMap((t) => {
-      const c = t.cities.find((x) => x.city === cityId)
-      const sus = c?.role === 'citizen' ? c.suspicion?.[me] : null
-      if (!c || sus == null) return []
-      const sent = c.received?.[me]?.claim ?? null
-      return [
-        {
-          turn: t.turn,
-          sus,
-          sent,
-          matchedHint: sent != null && c.hint != null && agrees(c.hint, sent),
-          sentLie: sent != null && !agrees(state.truth, sent),
-          correct: c.correct,
-        },
-      ]
-    })
-    for (let j = 1; j < rows.length; j++) {
-      if (!rows[j].matchedHint || rows[j].sus > 20 || rows[j].sent === rows[j - 1].sent) continue
-      let fromSus = 0
-      for (let p = j - 1; p >= 0 && (rows[p].sus >= 40 || (fromSus === 0 && rows[p].matchedHint)); p--) {
-        if (rows[p].sus >= 40) fromSus = Math.max(fromSus, rows[p].sus)
-      }
-      if (fromSus < 40) continue
-      const after = rows.slice(j + 1)
-      const k = after.findIndex((r) => (r.sentLie && r.correct === false) || r.sus >= 40)
-      if (k >= 0 && after[k].sentLie && after[k].correct === false) {
-        const hit = { city: cityId, fromSus, toSus: rows[j].sus, washDay: rows[j].turn, foolDay: after[k].turn }
-        if (!onoffHit || hit.washDay < onoffHit.washDay) onoffHit = hit
-        break
-      }
-    }
-  }
+  const onoffHit = regainTrustProgress(state, history).refooled
   if (onoffHit) {
     const nextWhen = onoffHit.foolDay === onoffHit.washDay + 1 ? '다음 날' : `${onoffHit.foolDay}일째`
     detected.push({
@@ -1680,9 +1642,142 @@ export function playerContradictionTurns<T extends Pick<TurnResult, 'turn' | 'sh
   return history.filter((t) => t.sharing.some((s) => s.contradictions.some((c) => c.city === playerCity)))
 }
 
-// 시나리오 목표 달성 판정 (현재 활성 시나리오는 모두 과반 기만 승리 기준).
-export function scenarioGoalMet(state: Pick<GameState, 'outcome'>): boolean {
-  return state.outcome === 'win' || state.outcome === 'perfect_win'
+const REGAIN_PEAK = 40
+const REGAIN_LOW = 20
+
+export type OnOffWash = {
+  city: number
+  fromSus: number
+  toSus: number
+  washDay: number
+}
+
+export type OnOffHit = OnOffWash & {
+  foolDay: number
+}
+
+export type RegainTrustProgress = {
+  reached40: { city: number; sus: number; day: number } | null
+  droppedWithoutSwitch: { city: number; fromSus: number; toSus: number; day: number } | null
+  washed: OnOffWash | null
+  refooled: OnOffHit | null
+}
+
+export type GoalStep = {
+  label: string
+  done: boolean
+}
+
+// 시나리오 '신뢰를 되찾는 법' 및 온오프 공격 꼬리표 공용 판정 (experiments/scenario_rates.py has_onoff와 동일).
+// 어떤 주민의 의심도가 40 이상이 된 뒤, 직전과 다른 쪽지(그 주민 관측과 일치)로 20 이하까지 낮추고(washed),
+// 다시 40 이상이 되기 전에 거짓 쪽지로 그 주민을 속이면(refooled) 온오프가 성립한다.
+export function regainTrustProgress(
+  state: Pick<GameState, 'player_city' | 'roles' | 'truth'>,
+  history: Pick<TurnResult, 'turn' | 'cities'>[],
+): RegainTrustProgress {
+  const me = state.player_city
+  const citizenIds = Object.entries(state.roles)
+    .filter(([, role]) => role === 'citizen')
+    .map(([id]) => Number(id))
+    .sort((a, b) => a - b)
+
+  let reached40: RegainTrustProgress['reached40'] = null
+  let droppedWithoutSwitch: RegainTrustProgress['droppedWithoutSwitch'] = null
+  let washed: OnOffWash | null = null
+  let refooled: OnOffHit | null = null
+
+  for (const cityId of citizenIds) {
+    const rows = history.flatMap((t) => {
+      const c = t.cities.find((x) => x.city === cityId)
+      const sus = c?.role === 'citizen' ? c.suspicion?.[me] : null
+      if (!c || sus == null) return []
+      const sent = c.received?.[me]?.claim ?? null
+      return [
+        {
+          turn: t.turn,
+          sus,
+          sent,
+          matchedHint: sent != null && c.hint != null && agrees(c.hint, sent),
+          sentLie: sent != null && !agrees(state.truth, sent),
+          correct: c.correct,
+        },
+      ]
+    })
+
+    const peakRow = rows.reduce<(typeof rows)[number] | null>(
+      (best, r) => (r.sus >= REGAIN_PEAK && (!best || r.sus > best.sus) ? r : best),
+      null,
+    )
+    if (
+      peakRow &&
+      (!reached40 || peakRow.sus > reached40.sus || (peakRow.sus === reached40.sus && peakRow.turn < reached40.day))
+    ) {
+      reached40 = { city: cityId, sus: peakRow.sus, day: peakRow.turn }
+    }
+
+    for (let j = 1; j < rows.length; j++) {
+      if (!rows[j].matchedHint || rows[j].sus > REGAIN_LOW) continue
+      let fromSus = 0
+      for (let p = j - 1; p >= 0 && (rows[p].sus >= REGAIN_PEAK || (fromSus === 0 && rows[p].matchedHint)); p--) {
+        if (rows[p].sus >= REGAIN_PEAK) fromSus = Math.max(fromSus, rows[p].sus)
+      }
+      if (fromSus < REGAIN_PEAK) continue
+
+      if (rows[j].sent === rows[j - 1].sent) {
+        if (!droppedWithoutSwitch || rows[j].turn < droppedWithoutSwitch.day) {
+          droppedWithoutSwitch = { city: cityId, fromSus, toSus: rows[j].sus, day: rows[j].turn }
+        }
+        continue
+      }
+
+      const wash: OnOffWash = { city: cityId, fromSus, toSus: rows[j].sus, washDay: rows[j].turn }
+      if (!washed || wash.washDay < washed.washDay) washed = wash
+
+      const after = rows.slice(j + 1)
+      const k = after.findIndex((r) => (r.sentLie && r.correct === false) || r.sus >= REGAIN_PEAK)
+      if (k >= 0 && after[k].sentLie && after[k].correct === false) {
+        const hit: OnOffHit = { ...wash, foolDay: after[k].turn }
+        if (!refooled || hit.washDay < refooled.washDay) refooled = hit
+        break
+      }
+    }
+  }
+
+  return { reached40, droppedWithoutSwitch, washed, refooled }
+}
+
+// 시나리오 목표 달성 판정: 신뢰를 되찾는 법은 온오프(40 이상 → 20 이하 전환 → 재기만) + 승리, 나머지는 과반 기만 승리.
+export function scenarioGoalMet(
+  state: Pick<GameState, 'outcome'> & Partial<Pick<GameState, 'player_city' | 'roles' | 'truth'>>,
+  scenarioId?: string,
+  history?: Pick<TurnResult, 'turn' | 'cities'>[],
+): boolean {
+  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
+  if (!won) return false
+  if (scenarioId === 'regain-trust') {
+    if (state.player_city == null || !state.roles || !state.truth || !history) return false
+    return (
+      regainTrustProgress({ player_city: state.player_city, roles: state.roles, truth: state.truth }, history)
+        .refooled != null
+    )
+  }
+  return true
+}
+
+// 시나리오 HUD 단계 진행 배지 (현재 '신뢰를 되찾는 법'만 단계 배지를 쓴다).
+export function scenarioGoalSteps(
+  scenarioId: string,
+  state: Pick<GameState, 'player_city' | 'roles' | 'truth' | 'outcome'>,
+  history: Pick<TurnResult, 'turn' | 'cities'>[],
+): GoalStep[] | null {
+  if (scenarioId !== 'regain-trust') return null
+  const p = regainTrustProgress(state, history)
+  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
+  return [
+    { label: '의심도 40 이상', done: p.reached40 != null },
+    { label: '20 이하로 낮추기', done: p.washed != null },
+    { label: '다시 속여 이기기', done: won && p.refooled != null },
+  ]
 }
 
 // 시나리오 '감시의 눈' 결과 한 줄 분기: 재판 패배 여부·모순 유무에 따라 한 줄을 안내한다.
@@ -1742,6 +1837,51 @@ export function ringVillageOutcomeNote(
   return `마지막 밤, 먼 ${names}은 틀렸어요. ${subj} 그날 하늘도 잘못 봤어요.${suffix}`
 }
 
+// 시나리오 '신뢰를 되찾는 법' 결과 한 줄 분기: 실제 의심도·전환·재기만·승패 기록에 따라 한 줄을 안내한다.
+export function regainTrustOutcomeNote(
+  state: Pick<GameState, 'player_city' | 'roles' | 'truth' | 'outcome' | 'end_reason'>,
+  history: Pick<TurnResult, 'turn' | 'cities'>[],
+): string {
+  const lastDay = history.at(-1)?.turn ?? 0
+  if (state.end_reason === 'caught') {
+    return lastDay >= TOTAL_TURNS
+      ? '마지막 밤 재판에 걸렸어요. 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.'
+      : '마지막 밤까지 가지 못했어요. 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.'
+  }
+  const p = regainTrustProgress(state, history)
+  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
+  if (!p.reached40) {
+    return won
+      ? '판은 이겼지만, 의심도가 40 이상까지 오른 주민이 없었어요. 일부러 의심도를 올린 뒤 다시 낮춰 보세요.'
+      : '의심도가 40 이상까지 오른 주민이 없었고, 마지막 밤 과반도 속이지 못했어요. 의심도를 올렸다 낮추며 다시 해 보세요.'
+  }
+  if (!p.washed) {
+    if (p.droppedWithoutSwitch) {
+      const d = p.droppedWithoutSwitch
+      return won
+        ? `판은 이겼지만, ${d.city}번 집 의심도가 ${d.fromSus}에서 ${d.toSus}까지 내려갈 때 같은 쪽지만 보냈어요. 쪽지를 바꿔 의심도를 낮춰 보세요.`
+        : `${d.city}번 집 의심도가 ${d.fromSus}에서 ${d.toSus}까지 내려갈 때 같은 쪽지만 보냈고, 마지막 밤 과반도 속이지 못했어요. 쪽지를 바꿔 의심도를 낮춰 보세요.`
+    }
+    const r = p.reached40
+    return won
+      ? `판은 이겼지만, ${r.day}일째에 의심도가 ${r.sus}까지 오른 ${r.city}번 집을 20 이하로 낮추지는 못했어요.`
+      : `${r.day}일째에 ${r.city}번 집 의심도가 ${r.sus}까지 올랐지만 20 이하로 낮추지 못했고, 마지막 밤 과반도 속이지 못했어요.`
+  }
+  if (!p.refooled) {
+    const w = p.washed
+    return won
+      ? `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮추고 판도 이겼지만, 그 뒤 ${w.city}번 집을 다시 속이지는 못했어요.`
+      : `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮췄지만, 그 뒤 ${w.city}번 집을 다시 속이지 못했고 마지막 밤 과반도 채우지 못했어요.`
+  }
+  const rf = p.refooled
+  if (!won) {
+    return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.toSus}까지 낮추고 ${rf.foolDay}일째에 다시 속였지만, 마지막 밤 과반은 속이지 못했어요.`
+  }
+  return state.outcome === 'perfect_win'
+    ? `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 다시 속였고, 마지막 밤 주민 모두를 속였어요.`
+    : `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 다시 속였고, 마지막 밤 과반을 넘겼어요.`
+}
+
 // 시나리오별 결과 한 줄 분기.
 export function scenarioResultNote(
   scenarioId: string,
@@ -1750,6 +1890,7 @@ export function scenarioResultNote(
 ): string | null {
   if (scenarioId === 'watchful-eye') return watchfulEyeClashNote(state, history)
   if (scenarioId === 'ring-village') return ringVillageOutcomeNote(state, history)
+  if (scenarioId === 'regain-trust') return regainTrustOutcomeNote(state, history)
   return null
 }
 

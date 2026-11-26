@@ -28,6 +28,7 @@ import {
   plainAiReason,
   saveCompletedScenario,
   scenarioGoalMet,
+  scenarioGoalSteps,
   tonightVotes,
   tutorialStep,
   villageHouses,
@@ -250,15 +251,8 @@ export function GamePage() {
     run(async () => {
       if (!state) return
       const turn = await playTurn(state.game_id, state.turn + 1, claims)
-      if (scenario && turn.game_over && scenarioGoalMet(turn)) {
-        saveCompletedScenario(scenario.id)
-      }
-      setHistory([...history, turn])
-      setViewed(0)
-      setOpenCity(null)
-      // 움직임 줄이기 설정이면 연출 없이 바로 최종 상태
-      setStep(matchMedia('(prefers-reduced-motion: reduce)').matches ? null : 0)
-      setState({
+      const nextHistory = [...history, turn]
+      const nextState = {
         ...state,
         turn: turn.turn,
         game_over: turn.game_over,
@@ -266,7 +260,16 @@ export function GamePage() {
         end_reason: turn.end_reason,
         next_hints: turn.next_hints,
         next_share_pairs: turn.next_share_pairs,
-      })
+      }
+      if (scenario && turn.game_over && scenarioGoalMet(nextState, scenario.id, nextHistory)) {
+        saveCompletedScenario(scenario.id)
+      }
+      setHistory(nextHistory)
+      setViewed(0)
+      setOpenCity(null)
+      // 움직임 줄이기 설정이면 연출 없이 바로 최종 상태
+      setStep(matchMedia('(prefers-reduced-motion: reduce)').matches ? null : 0)
+      setState(nextState)
       // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다 (실패해도 종료 상태는 위에서 반영됨).
       if (turn.game_over) setState(await getGame(state.game_id))
     }, '다음 밤으로 넘기지 못했어요.')
@@ -330,6 +333,8 @@ export function GamePage() {
     : 0
   const wrong = citizens.filter((c) => c.correct === false).length
   const fooled = fooledDots(settled ? wrong : 0, citizenCount)
+  const goalSteps =
+    scenario && state ? scenarioGoalSteps(scenario.id, state, playing ? history.slice(0, -1) : history) : null
   const ruled = state?.config.citizen_type === 'wary' // 7.6 규칙을 따르는 시민만 예상을 보인다
   const tonightScale = useMemo(() => {
     if (openCity == null || !latest || !state) return null
@@ -396,8 +401,32 @@ export function GamePage() {
                   </button>
                   {tutorialActive && <span className="gm-tutorial-badge">튜토리얼</span>}
                   {scenario && (
-                    <span className="gm-goal-badge">
-                      <span className="gm-goal-tag">목표</span> · {scenario.goal}
+                    <span className={goalSteps ? 'gm-goal-badge is-steps' : 'gm-goal-badge'}>
+                      <span className="gm-goal-tag">목표</span> ·{' '}
+                      {goalSteps ? (
+                        <span className="gm-goal-steps">
+                          {goalSteps.map((s, idx) => (
+                            <Fragment key={s.label}>
+                              {idx > 0 && (
+                                <span className="gm-goal-arrow" aria-hidden="true">
+                                  →
+                                </span>
+                              )}
+                              <span className={s.done ? 'gm-goal-step is-done' : 'gm-goal-step'}>
+                                {s.done && (
+                                  <span className="gm-goal-check" aria-hidden="true">
+                                    ✓
+                                  </span>
+                                )}
+                                {s.label}
+                                {s.done && <span className="sr-only"> 완료</span>}
+                              </span>
+                            </Fragment>
+                          ))}
+                        </span>
+                      ) : (
+                        scenario.goal
+                      )}
                     </span>
                   )}
                   <div className="gm-role">
@@ -446,7 +475,7 @@ export function GamePage() {
                   stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
                   highlight={highlight}
                   hideSigns={tutorialActive}
-                  neutralShareSign={scenario?.id === 'watchful-eye'}
+                  neutralShareSign={scenario?.id === 'watchful-eye' || scenario?.id === 'regain-trust'}
                   onCardOpen={setOpenCity}
                   boardRef={boardRef}
                   picker={
