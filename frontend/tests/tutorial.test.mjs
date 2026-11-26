@@ -31,6 +31,7 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   const opened = tutorialStep(2, { ...day1, cardOpen: true })
   assert.equal(opened.cursor, 3)
   assert.equal(opened.step?.highlight, 'suspicion')
+  assert.match(opened.step?.text ?? '', /내려가고, 다르면 올라가요/)
   assert.equal(tutorialStep(opened.cursor, day1).step?.highlight, 'suspicion')
 
   // 카드를 이미 열어 둔 상태면 창문 단계에서 다음으로 넘어갈 때 카드 대기 단계를 건너뛰고 바로 의심도 단계가 된다
@@ -40,8 +41,8 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   // 마을 이야기 위 "오늘 밤 저울" → 점선 → 밤으로 버튼(턴 제출 대기)
   const votesStep = tutorialStep(4, day1)
   assert.equal(votesStep.step?.highlight, 'votes')
-  assert.match(votesStep.step?.text ?? '', /마을 이야기.*오늘 밤 저울/)
-  assert.match(votesStep.step?.text ?? '', /덜 믿어서 저울에 적게 반영/)
+  assert.match(votesStep.step?.text ?? '', /어떻게 계산됐는지는 마을 이야기 위 '오늘 밤 저울'에서 볼 수 있어요\./)
+  assert.match(votesStep.step?.text ?? '', /의심하는 집에서 온 쪽지는 더 적게 반영/)
   assert.doesNotMatch(votesStep.step?.text ?? '', /카드 아래|블록/)
   assert.equal(splitSentences(votesStep.step?.text ?? '').length, 3)
   const shareStep = tutorialStep(5, day1)
@@ -64,6 +65,7 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   assert.equal(splitSentences(flagsStep.step?.text ?? '').length, 2)
   assert.equal(tutorialStep(8, day2).step?.highlight, null)
   assert.match(tutorialStep(8, day2).step?.text ?? '', /의심하는 선/)
+  assert.match(tutorialStep(8, day2).step?.text ?? '', /나를 의심하는 집에서만, 내 집으로 가는 선이 보여요\./)
   assert.equal(tutorialStep(9, day2).step?.highlight, 'log')
   const waitScale = tutorialStep(10, day2)
   assert.equal(waitScale.step?.highlight, 'scale')
@@ -105,6 +107,8 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   const end = tutorialStep(13, day3)
   assert.equal(end.step?.highlight, null)
   assert.equal(end.step?.finish, true)
+  assert.doesNotMatch(end.step?.text ?? '', /이론 실험실|시나리오/)
+  assert.equal(splitSentences(end.step?.text ?? '').length, 2)
 
   // 4일째 이후에는 안내 종료
   assert.equal(tutorialStep(12, { turn: 4, playing: false, cardOpen: false, gameOver: false }).step, null)

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
 import { difficulties } from '../src/gameApi.ts'
 
@@ -275,6 +275,17 @@ test('night steps: night, notes, flags (one per citizen with vote bars, single s
     assert.ok(d.flagDelay >= d.tagDelay + VOTE_ANIM.tagMs, `flag starts after tag for n=${n}`)
     assert.ok(d.sparkDelay >= d.flagDelay + VOTE_ANIM.flagMs, `spark starts after flag for n=${n}`)
     assert.ok(d.totalMs <= VOTE_ANIM.stepMs, `fits in stepMs for n=${n}: ${d.totalMs} <= ${VOTE_ANIM.stepMs}`)
+  }
+})
+
+test('nightStepMs slows only tutorial turn 1 flags steps and keeps all other steps unchanged', () => {
+  const cities = [{ role: 'player', city: 3 }, ...[1, 2, 4, 5].map((city) => ({ role: 'citizen', city }))]
+  const steps = nightSteps({ vote: { ballots: { 1: 3 }, accused: null, caught: false }, cities })
+  for (const s of steps) {
+    assert.equal(nightStepMs(s, true, 1), s.phase === 'flags' ? s.ms * 2.5 : s.ms)
+    assert.equal(nightStepMs(s, true, 2), s.ms)
+    assert.equal(nightStepMs(s, true, undefined), s.ms)
+    assert.equal(nightStepMs(s, false, 1), s.ms)
   }
 })
 
