@@ -326,7 +326,7 @@ test('trial lines: one accusation per voter, then the verdict', () => {
   assert.ok(lines.some((l) => l.who === 4 && l.text === '난 1번을 지목할게'))
   assert.equal(lines.at(-1).text, '과반이 모이지 않아 아무도 지목되지 않았다')
   assert.equal(vote(1, false).at(-1).text, '1번이 지목됐지만 무고한 주민이었다. 마피아는 아직 숨어 있다')
-  assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 마피아가 들켰다')
+  assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 마피아가 재판에 걸렸다')
 })
 
 test('night steps: night, notes, flags (one per citizen with vote bars, single step for AI), suspicion, then ballots, verdict, day', () => {
@@ -423,7 +423,7 @@ const day = (n, extra = {}) => ({ ...turn, turn: n, sharing: [], vote: null, ...
 test('game summary: caught explains who accused me at which trial', () => {
   const caught = day(6, { vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true } })
   const s = gameSummary(over('loss', 'caught'), [day(5), caught])
-  assert.equal(s.headline, '6일째 광장 재판에서 들켰어요')
+  assert.equal(s.headline, '6일째 광장 재판에 걸렸어요')
   assert.ok(s.moments.some((m) => m.day === 6 && m.text === '6일째 재판에서 1번, 4번이 나를 지목했어요 (2표, 과반 2표)'))
   assert.ok(s.moments.some((m) => m.day === null && m.text === '재판이 1번 열렸어요'))
 })
@@ -434,7 +434,7 @@ test('game summary: turn 7 counts fooled citizens, first crossing of 60 and caug
   const s = gameSummary(over('win', 'turns_done'), [quiet, hot, day(7)])
   assert.equal(s.headline, '주민 과반을 끝까지 속였어요')
   assert.ok(s.moments.some((m) => m.day === 7 && m.text === '마지막 7일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
-  assert.ok(s.moments.some((m) => m.day === 2 && m.text === '2일째 4번의 의심도가 70까지 올라 처음으로 재판 기준 60에 닿았어요'))
+  assert.ok(s.moments.some((m) => m.day === 2 && m.text === '2일째 4번의 의심도가 70까지 올라 처음으로 재판 기준 60 이상이 됐어요'))
   assert.ok(s.moments.some((m) => m.day === 2 && m.text === '쪽지 비교에서 모순이 1번 드러났어요 (2일째)'))
   assert.deepEqual(s.peaks, [10, 70, 50])
   assert.deepEqual(s.deceived, [2, 2, 2])
@@ -847,7 +847,7 @@ test('resultBaseline covers all 7 cases, links byz/ring, and never exposes 3f+1 
     soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'loss', end_reason: 'caught' }),
     [makeDay(4, [cRow(1, 'danger', 'stay', true)], { ballots: { 1: 3, 2: 3, 4: 3 }, accused: 3, caught: true })],
   )
-  assert.match(bRingCaught.lines.join(' '), /이번엔 재판에서 들켜 일찍 끝났어요/)
+  assert.match(bRingCaught.lines.join(' '), /이번엔 재판에 걸려 일찍 끝났어요/)
   assert.doesNotMatch(bRingCaught.lines.join(' '), /끝까지 버텨 냈어요/)
   const bRingTurns = resultBaseline(
     soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'loss', end_reason: 'turns_done' }),
@@ -910,7 +910,7 @@ test('resultDecisive explains contradiction catch, trial catch, and final-day ma
   const decClash = resultDecisive(soloState({ outcome: 'loss', end_reason: 'caught' }), [clashDay])
   assert.deepEqual(decClash, [
     '6일째 밤, 2번 집과 4번 집에 서로 다른 쪽지를 보냈어요.',
-    '그날 두 집이 쪽지를 비교하면서 들켰어요.',
+    '그날 쪽지 비교에서 모순이 드러났고, 이어진 재판에서 지목됐어요.',
   ])
 
   const decWin = resultDecisive(soloState({ outcome: 'win', end_reason: 'turns_done' }), [
@@ -1432,7 +1432,7 @@ test('watchfulEyeGoalMet returns true only on win or perfect_win', () => {
   assert.equal(watchfulEyeGoalMet({ outcome: null }), false)
 })
 
-test('watchfulEyeClashNote branches on caught, outcome, and player contradictions', () => {
+test('watchfulEyeClashNote branches on caught and player contradictions', () => {
   const clashTurn = (turnNum, city) => ({
     turn: turnNum,
     sharing: [{ pair: [1, 2], contradictions: [{ city, told: {} }] }],
@@ -1442,27 +1442,23 @@ test('watchfulEyeClashNote branches on caught, outcome, and player contradiction
     sharing: [{ pair: [1, 2], contradictions: [] }],
   })
   assert.equal(
-    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done', outcome: 'win' }, [clashTurn(1, 4), cleanTurn(2)]),
-    '1일째에 거짓이 증명됐지만, 그것만으로 쫓겨나지는 않았어요.',
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done' }, [clashTurn(1, 4), cleanTurn(2)]),
+    '1일째에 집마다 다른 말을 한 게 증명됐지만, 그것만으로 쫓겨나지는 않았어요.',
   )
   assert.equal(
-    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done', outcome: 'win' }, [clashTurn(1, 4), clashTurn(3, 4)]),
-    '1·3일째에 거짓이 증명됐지만, 그것만으로 쫓겨나지는 않았어요.',
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done' }, [clashTurn(1, 4), clashTurn(3, 4)]),
+    '1·3일째에 집마다 다른 말을 한 게 증명됐지만, 그것만으로 쫓겨나지는 않았어요.',
   )
   assert.equal(
-    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done', outcome: 'win' }, [clashTurn(1, 2), cleanTurn(2)]),
-    '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보내 보세요.',
-  )
-  assert.equal(
-    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done', outcome: 'loss' }, [cleanTurn(1), cleanTurn(2)]),
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done' }, [clashTurn(1, 2), cleanTurn(2)]),
     '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보낼 때와 비교해 보세요.',
   )
   assert.equal(
-    watchfulEyeClashNote({ player_city: 4, end_reason: 'caught', outcome: 'loss' }, [clashTurn(1, 4), clashTurn(3, 4)]),
-    '1·3일째에 모순이 드러나 의심도가 올랐고, 결국 재판에 걸렸어요.',
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'caught' }, [clashTurn(1, 4), clashTurn(3, 4)]),
+    '1·3일째에 모순이 드러났고, 이후 의심도가 쌓여 재판에 걸렸어요.',
   )
   assert.equal(
-    watchfulEyeClashNote({ player_city: 4, end_reason: 'caught', outcome: 'loss' }, [cleanTurn(1)]),
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'caught' }, [cleanTurn(1)]),
     '모순은 없었지만, 주민이 본 하늘과 다른 쪽지가 쌓여 재판에 걸렸어요.',
   )
 })

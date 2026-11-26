@@ -747,7 +747,7 @@ export function villageLines(
         a === null
           ? '과반이 모이지 않아 아무도 지목되지 않았다'
           : result.vote.caught
-            ? `${a}번이 지목됐다. 마피아가 들켰다`
+            ? `${a}번이 지목됐다. 마피아가 재판에 걸렸다`
             : `${a}번이 지목됐지만 무고한 주민이었다. 마피아는 아직 숨어 있다`,
     })
   }
@@ -953,7 +953,7 @@ export function resultBaseline(
     const ending = won
       ? '이번엔 전략이 통했어요.'
       : state.end_reason === 'caught'
-        ? '이번엔 재판에서 들켜 일찍 끝났어요.'
+        ? '이번엔 재판에 걸려 일찍 끝났어요.'
         : '이번엔 주민들이 끝까지 버텨 냈어요.'
     return {
       lines: [
@@ -1069,14 +1069,14 @@ export function resultDecisive(
       const [a, b] = caughtClash.pair
       return [
         `${day}일째 밤, ${a}번 집과 ${b}번 집에 서로 다른 쪽지를 보냈어요.`,
-        '그날 두 집이 쪽지를 비교하면서 들켰어요.',
+        '그날 쪽지 비교에서 모순이 드러났고, 이어진 재판에서 지목됐어요.',
       ]
     }
     const voters = Object.entries(last.vote.ballots)
       .filter(([, to]) => to === last.vote!.accused)
       .map(([from]) => `${from}번`)
     const who = last.vote.accused === me ? '나를' : `동료 ${last.vote.accused}번을`
-    return [`${day}일째 재판에서 ${voters.join(', ')} 집이 ${who} 지목해 들켰어요 (${voters.length}표, 과반 ${need}표).`]
+    return [`${day}일째 재판에서 ${voters.join(', ')} 집이 ${who} 마피아로 지목했어요 (${voters.length}표, 과반 ${need}표).`]
   }
 
   if (last) {
@@ -1159,7 +1159,7 @@ export function detectTactics(
       detected.push({
         tag: 'audit',
         day: lastEquiv.turn,
-        text: `집마다 다른 쪽지를 ${auditedEquivIndices.length}번이나 보냈지만, 쪽지 비교에서는 한 번도 들키지 않았어요.`,
+        text: `집마다 다른 쪽지를 ${auditedEquivIndices.length}번이나 보냈지만, 쪽지 비교에서는 모순이 한 번도 드러나지 않았어요.`,
       })
     }
   }
@@ -1361,7 +1361,7 @@ export function gameSummary(
   const vote = state.end_reason === 'caught' ? last?.vote : null
   const day = last?.turn ?? 0
   const headline = vote
-    ? `${day}일째 광장 재판에서 들켰어요`
+    ? `${day}일째 광장 재판에 걸렸어요`
     : state.outcome === 'perfect_win'
       ? '주민 모두를 끝까지 속였어요'
       : state.outcome === 'win'
@@ -1399,7 +1399,7 @@ export function gameSummary(
     const top = crossed.cities.reduce((a, c) => ((c.suspicion?.[me] ?? 0) > (a.suspicion?.[me] ?? 0) ? c : a))
     momentItems.push({
       day: crossed.turn,
-      text: `${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold}에 닿았어요`,
+      text: `${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold} 이상이 됐어요`,
     })
   }
   const knots = playerContradictionTurns(me, history)
@@ -1642,25 +1642,22 @@ export function watchfulEyeGoalMet(state: Pick<GameState, 'outcome'>): boolean {
   return state.outcome === 'win' || state.outcome === 'perfect_win'
 }
 
-// 시나리오 '감시의 눈' 결과 한 줄 분기: 재판 패배 여부·승패·모순 유무에 따라 한 줄을 안내한다.
+// 시나리오 '감시의 눈' 결과 한 줄 분기: 재판 패배 여부·모순 유무에 따라 한 줄을 안내한다.
 export function watchfulEyeClashNote(
-  state: Pick<GameState, 'player_city' | 'end_reason' | 'outcome'>,
+  state: Pick<GameState, 'player_city' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'sharing'>[],
 ): string {
   const days = playerContradictionTurns(state.player_city, history).map((t) => t.turn)
   if (state.end_reason === 'caught') {
     if (days.length > 0) {
-      return `${days.join('·')}일째에 모순이 드러나 의심도가 올랐고, 결국 재판에 걸렸어요.`
+      return `${days.join('·')}일째에 모순이 드러났고, 이후 의심도가 쌓여 재판에 걸렸어요.`
     }
     return '모순은 없었지만, 주민이 본 하늘과 다른 쪽지가 쌓여 재판에 걸렸어요.'
   }
   if (days.length > 0) {
-    return `${days.join('·')}일째에 거짓이 증명됐지만, 그것만으로 쫓겨나지는 않았어요.`
+    return `${days.join('·')}일째에 집마다 다른 말을 한 게 증명됐지만, 그것만으로 쫓겨나지는 않았어요.`
   }
-  if (state.outcome === 'loss') {
-    return '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보낼 때와 비교해 보세요.'
-  }
-  return '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보내 보세요.'
+  return '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보낼 때와 비교해 보세요.'
 }
 
 export function loadCompletedScenarios(): string[] {
