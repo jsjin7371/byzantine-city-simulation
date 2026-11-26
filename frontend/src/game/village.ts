@@ -73,7 +73,7 @@ export function shareBadgeLabel(
   const base = shareMode === 'all' ? '모든 집 쪽지 비교' : '오늘 밤 쪽지 비교'
   if (clashCount <= 0) return base
   if (citizenType === 'ai') return `${base} · 모순 ${clashCount}쌍`
-  return `${base} · 모순 ${clashCount}쌍 (각 +${SUSPICION.contradiction})`
+  return `${base} · 모순 ${clashCount}쌍 (집마다 +${SUSPICION.contradiction})`
 }
 
 const agrees = (hint: Truth, claim: Claim) => (hint === 'danger') === (claim === 'evacuate')

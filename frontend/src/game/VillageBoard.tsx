@@ -869,26 +869,24 @@ function NoteCard({
 }
 
 // 표지판 한 장에 두 줄
-const SIGNS = [
+const SIGNS: readonly (readonly [string, string])[] = [
   ['1 집 창문의', '불빛부터 봐요'],
   ['2 각 집마다 보낼', '쪽지를 골라요'],
   ['3 쪽지를 비교하는 집엔', '같은 쪽지를 보내요'],
 ]
+const NEUTRAL_SHARE_SIGN: readonly [string, string] = ['3 다르게 말하면 비교에서', '모순이 드러나요']
 
 // 첫날 안내 표지판 (왼쪽 나무 기둥). 1일째 왼쪽 위 집의 관측 꼬리표(y 291까지) 아래에서 시작한다.
-function Signs() {
+function Signs({ neutralShareSign = false }: { neutralShareSign?: boolean }) {
+  const signs = neutralShareSign ? [SIGNS[0], SIGNS[1], NEUTRAL_SHARE_SIGN] : SIGNS
+  const ariaLabel = `첫날 안내: ${signs.map(([a, b]) => `${a} ${b}`).join(', ')}`
   return (
-    <g
-      fontSize="15"
-      fontWeight="700"
-      role="img"
-      aria-label="첫날 안내: 1 집 창문의 불빛부터 봐요, 2 각 집마다 보낼 쪽지를 골라요, 3 쪽지를 비교하는 집엔 같은 쪽지를 보내요"
-    >
+    <g fontSize="15" fontWeight="700" role="img" aria-label={ariaLabel}>
       <rect x="80" y="274" width="9" height="146" fill="#5a3d22" filter="url(#vb-rough)" />
       <text x="16" y="270" className="vb-sign-title">
         첫날 안내
       </text>
-      {SIGNS.map(([first, second], i) => (
+      {signs.map(([first, second], i) => (
         <g key={first} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
             d={`M8 ${293 + i * 44} H174 L184 ${313 + i * 44} L174 ${333 + i * 44} H8 Z`}
@@ -1034,6 +1032,7 @@ export function VillageBoard({
   swayed = [],
   highlight = null,
   hideSigns = false,
+  neutralShareSign = false,
   onCardOpen,
   boardRef,
 }: {
@@ -1045,6 +1044,7 @@ export function VillageBoard({
   swayed?: number[] // 내 쪽지가 결정을 뒤집은 시민 (citizenScales)
   highlight?: TutorialHighlight | null // 튜토리얼 강조 대상 이름
   hideSigns?: boolean // 튜토리얼에서는 첫날 안내 표지판을 숨긴다
+  neutralShareSign?: boolean // 감시의 눈에서는 3번 표지판을 규칙 사실로 바꾼다
   onCardOpen?: (city: number | null) => void
   boardRef?: RefObject<SVGSVGElement | null>
 }) {
@@ -1124,7 +1124,7 @@ export function VillageBoard({
         ? {
             pos: [PLAZA.x, PLAZA.y - 22] as const,
             label: badgeText,
-            w: redPairs.length > 0 ? (state.config.citizen_type === 'ai' ? 216 : 274) : 164,
+            w: redPairs.length > 0 ? (state.config.citizen_type === 'ai' ? 216 : 304) : 164,
           }
         : null
   const preview = (h: House, claim?: Claim) =>
@@ -1219,7 +1219,7 @@ export function VillageBoard({
       <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-plaza-label" aria-hidden>
         광장
       </text>
-      {picker && turn === 0 && !hideSigns && <Signs />}
+      {picker && turn === 0 && !hideSigns && <Signs neutralShareSign={neutralShareSign} />}
       {houses.map((h) => {
         const inFlags = night?.phase === 'flags' && h.order > 0
         const decided = !night || reached(night.phase, 'suspicion') || (inFlags && h.order <= night.decided)

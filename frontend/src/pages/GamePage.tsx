@@ -446,6 +446,7 @@ export function GamePage() {
                   stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
                   highlight={highlight}
                   hideSigns={tutorialActive}
+                  neutralShareSign={scenario?.id === 'watchful-eye'}
                   onCardOpen={setOpenCity}
                   boardRef={boardRef}
                   picker={
