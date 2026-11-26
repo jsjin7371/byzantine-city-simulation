@@ -875,7 +875,7 @@ const SIGNS = [
   ['3 쪽지를 비교하는 집엔', '같은 쪽지를 보내요'],
 ]
 
-// 첫날 안내 표지판 (왼쪽 나무 기둥).
+// 첫날 안내 표지판 (왼쪽 나무 기둥). 1일째 왼쪽 위 집의 관측 꼬리표(y 291까지) 아래에서 시작한다.
 function Signs() {
   return (
     <g
@@ -891,16 +891,16 @@ function Signs() {
       {SIGNS.map(([first, second], i) => (
         <g key={first} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
-            d={`M8 ${280 + i * 49} H174 L184 ${302 + i * 49} L174 ${324 + i * 49} H8 Z`}
+            d={`M8 ${293 + i * 44} H174 L184 ${313 + i * 44} L174 ${333 + i * 44} H8 Z`}
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
             filter="url(#vb-rough)"
           />
-          <text x="14" y={298 + i * 49}>
+          <text x="14" y={310 + i * 44}>
             {first}
           </text>
-          <text x="14" y={317 + i * 49}>
+          <text x="14" y={328 + i * 44}>
             {second}
           </text>
         </g>
