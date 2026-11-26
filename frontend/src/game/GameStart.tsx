@@ -246,6 +246,9 @@ function StartDefs() {
       <clipPath id="vs-clip-exit-sign">
         <path d="M50 26 H208 V64 H50 L28 45 Z" />
       </clipPath>
+      <clipPath id="vs-clip-lab-sign">
+        <path d="M1214 26 H1390 L1412 45 L1390 64 H1214 Z" />
+      </clipPath>
       <clipPath id="vs-clip-hill-mid">
         <path d="M-240 432 Q200 398 440 438 Q720 482 1000 434 Q1240 392 1680 426 V920 H-240 Z" />
       </clipPath>
@@ -488,6 +491,7 @@ export function GameStart({
   onCitizenType,
   onStart,
   onTutorial,
+  onLab,
 }: {
   difficulty: Difficulty
   citizenType: CitizenType
@@ -498,6 +502,7 @@ export function GameStart({
   onCitizenType: (value: CitizenType) => void
   onStart: () => void
   onTutorial: () => void
+  onLab: () => void
 }) {
   const diffKeys = Object.keys(difficulties) as Difficulty[]
   const citizenKeys = Object.keys(citizenTypes) as CitizenType[]
@@ -649,6 +654,35 @@ export function GameStart({
             ← 실험 설정
           </text>
         </a>
+
+        {/* 오른쪽 위 "이론 실험실 →" 나무 화살표 표지 */}
+        <g
+          className={busy ? 'gs-lab is-busy' : 'vb-clickable gs-lab'}
+          role="button"
+          tabIndex={0}
+          aria-disabled={busy || undefined}
+          aria-label="이론 실험실"
+          onClick={() => {
+            if (!busy) onLab()
+          }}
+          onKeyDown={onActivateKey(() => {
+            if (!busy) onLab()
+          })}
+        >
+          <rect x="1234" y="18" width="9" height="68" fill="#5a3d22" stroke="#3b2a1a" strokeWidth="1.6" filter="url(#vs-rough)" />
+          <path
+            d="M1214 26 H1390 L1412 45 L1390 64 H1214 Z"
+            fill="#c99a5b"
+            stroke="#4a3119"
+            strokeWidth="2"
+            filter="url(#vs-rough)"
+          />
+          <rect x="1212" y="24" width="202" height="42" filter="url(#vs-grain)" clipPath="url(#vs-clip-lab-sign)" />
+          <circle cx="1238" cy="45" r="2.8" fill="#4a3119" />
+          <text x="1318" y="52" fontSize="21" fontWeight="700" textAnchor="middle" className="vb-pencil">
+            이론 실험실 →
+          </text>
+        </g>
 
         {/* 제목 나무 간판 */}
         <g aria-hidden="true">
