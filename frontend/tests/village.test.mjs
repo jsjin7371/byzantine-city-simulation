@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
+import {
+  CONDORCET_NS,
+  CONDORCET_PS,
+  ONOFF_SAMPLE_ACTIONS,
+  THEORY_TOPICS,
+  condorcetMajorityProb,
+  onOffTrajectory,
+} from '../src/game/theoryBook.ts'
 import { difficulties } from '../src/gameApi.ts'
 
 const config = { connection: 'all', citizen_type: 'wary', memory: 'turn', share_mode: 'pairs', share_pairs: 1, mafia_count: 2, player: 'human', sensor_error: 0.4, seed: 1 }
@@ -59,6 +67,24 @@ test('after a turn houses show decisions, suspicion of me and next hints', () =>
   assert.equal(byCity[5].suspicion, null) // 다수결 주민
   assert.equal(byCity[2].role, 'colleague')
   assert.equal(villageHouses(state, { ...result, next_hints: null })[0].lit, null) // 게임 종료
+
+  // 오늘 밤 관측 꼬리표: danger→대피, safe→잔류, 불 꺼짐이면 (틀림) 표기, 힌트 없으면 null
+  assert.deepEqual(nextObservationTag(byCity[4]), {
+    claim: 'evacuate',
+    lit: true,
+    aria: '오늘 밤 관측 대피, 맞음, 불 켜짐',
+  })
+  assert.deepEqual(nextObservationTag(byCity[1]), {
+    claim: 'stay',
+    lit: false,
+    aria: '오늘 밤 관측 잔류, 틀림, 불 꺼짐',
+  })
+  assert.deepEqual(nextObservationTag({ hint: 'danger', lit: false }), {
+    claim: 'evacuate',
+    lit: false,
+    aria: '오늘 밤 관측 대피, 틀림, 불 꺼짐',
+  })
+  assert.equal(nextObservationTag(byCity[2]), null)
 })
 
 test('ring connection makes only the two neighbours reachable', () => {
@@ -69,6 +95,57 @@ test('ring connection makes only the two neighbours reachable', () => {
 
 test('tally counts ballots per accused city', () => {
   assert.deepEqual(tally({ 1: 3, 4: 3, 5: 1 }), { 3: 2, 1: 1 })
+})
+
+test('trialStampCopy preserves full verdict wording and distinguishes caught vs innocent in compact pill text', () => {
+  assert.deepEqual(trialStampCopy({ accused: null, caught: false }), {
+    full: '과반 없음',
+    compact: '과반 없음',
+  })
+  assert.deepEqual(trialStampCopy({ accused: 4, caught: false }), {
+    full: '4번 집 무고한 주민 지목',
+    compact: '4번 집 · 무고',
+  })
+  assert.deepEqual(trialStampCopy({ accused: 3, caught: true }), {
+    full: '3번 집 발각',
+    compact: '3번 집 · 발각',
+  })
+})
+
+test('trialStampMode matches arrows for full stamp, shrinks to compact in day, and dims when suspicion lines are active', () => {
+  // 밤 연출: 원래 크기 도장
+  assert.equal(
+    trialStampMode({ isNight: true, trialInspect: false, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: false }),
+    'full',
+  )
+  // 낮 기본 상태: 작은 꼬리표
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: false, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: false }),
+    'compact',
+  )
+  // 낮 집 호버·포커스로 의심 선 표시: 흐린 작은 꼬리표 (광장 포커스가 겹쳐도 의심 선 우선)
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: false, hasSuspicionLines: true, hasHighlight: false, hasOpenCard: false }),
+    'dimmed',
+  )
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: true, hasSuspicionLines: true, hasHighlight: false, hasOpenCard: false }),
+    'dimmed',
+  )
+  // 낮 광장 호버·포커스: 화살표와 함께 원래 크기 도장 복원
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: false }),
+    'full',
+  )
+  // 튜토리얼 강조·쪽지 카드 열림: 작은 꼬리표 유지
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: true, hasOpenCard: false }),
+    'compact',
+  )
+  assert.equal(
+    trialStampMode({ isNight: false, trialInspect: true, hasSuspicionLines: false, hasHighlight: false, hasOpenCard: true }),
+    'compact',
+  )
 })
 
 test('a contradiction knot appears only when the two houses that meet hear different words', () => {
@@ -325,8 +402,8 @@ test('game summary: caught explains who accused me at which trial', () => {
   const caught = day(6, { vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true } })
   const s = gameSummary(over('loss', 'caught'), [day(5), caught])
   assert.equal(s.headline, '6일째 광장 재판에서 들켰어요')
-  assert.ok(s.moments.includes('6일째 재판에서 1번, 4번이 나를 지목했어요 (2표, 과반 2표)'))
-  assert.ok(s.moments.includes('재판이 1번 열렸어요'))
+  assert.ok(s.moments.some((m) => m.day === 6 && m.text === '6일째 재판에서 1번, 4번이 나를 지목했어요 (2표, 과반 2표)'))
+  assert.ok(s.moments.some((m) => m.day === null && m.text === '재판이 1번 열렸어요'))
 })
 
 test('game summary: turn 7 counts fooled citizens, first crossing of 60 and caught contradictions', () => {
@@ -334,19 +411,19 @@ test('game summary: turn 7 counts fooled citizens, first crossing of 60 and caug
   const hot = day(2, { cities: turn.cities.map((c) => (c.city === 4 ? { ...c, suspicion: { ...c.suspicion, 3: 70 } } : c)), sharing: turn.sharing })
   const s = gameSummary(over('win', 'turns_done'), [quiet, hot, day(7)])
   assert.equal(s.headline, '주민 과반을 끝까지 속였어요')
-  assert.ok(s.moments.includes('마지막 7일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
-  assert.ok(s.moments.includes('2일째 4번의 의심도가 70까지 올라 처음으로 재판 기준 60을 넘었어요'))
-  assert.ok(s.moments.includes('쪽지 비교에서 다른 쪽지를 보냈다가 1번 들켰어요 (2일째)'))
+  assert.ok(s.moments.some((m) => m.day === 7 && m.text === '마지막 7일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
+  assert.ok(s.moments.some((m) => m.day === 2 && m.text === '2일째 4번의 의심도가 70까지 올라 처음으로 재판 기준 60을 넘었어요'))
+  assert.ok(s.moments.some((m) => m.day === 2 && m.text === '쪽지 비교에서 다른 쪽지를 보냈다가 1번 들켰어요 (2일째)'))
   assert.deepEqual(s.peaks, [10, 70, 50])
-  assert.match(s.lesson, /같은 쪽지/)
+  assert.deepEqual(s.deceived, [2, 2, 2])
+  assert.deepEqual(s.pins[1]?.labels, ['쪽지 들킴'])
 
   const lostDay = day(7, {
     cities: turn.cities.map((c) => (c.city === 4 ? { ...c, correct: true } : c)),
   })
   const lost = gameSummary(over('loss', 'turns_done'), [lostDay])
   assert.equal(lost.headline, '7일째에 주민 과반이 속지 않았어요')
-  assert.ok(lost.moments.includes('마지막 7일째에 주민 3명 중 1명이 속았어요 (승리에 2명 필요)'))
-  assert.equal(lost.lesson, '들키지는 않았지만 주민 과반을 속이지 못했어요. 창문 불이 꺼진 집은 관측이 틀려 속이기 쉬워요.')
+  assert.ok(lost.moments.some((m) => m.day === 7 && m.text === '마지막 7일째에 주민 3명 중 1명이 속았어요 (승리에 2명 필요)'))
   assert.equal(gameSummary(over('perfect_win', 'turns_done'), [day(7)]).headline, '주민 모두를 끝까지 속였어요')
 })
 
@@ -616,4 +693,712 @@ test('DIFFICULTY_STATS derives expected error%, mean wrong citizens, and >=3 wro
       ['hard', 30, 1.2, 8, 8, 49],
     ],
   )
+})
+
+const soloConfig = {
+  connection: 'all',
+  citizen_type: 'wary',
+  memory: 'turn',
+  share_mode: 'pairs',
+  share_pairs: 1,
+  mafia_count: 1,
+  player: 'human',
+  sensor_error: 0.4,
+  seed: 1,
+}
+const soloRoles = { 1: 'citizen', 2: 'citizen', 3: 'player', 4: 'citizen', 5: 'citizen' }
+const soloState = (extra = {}) => ({
+  config: soloConfig,
+  roles: soloRoles,
+  player_city: 3,
+  truth: 'danger',
+  outcome: 'loss',
+  end_reason: 'caught',
+  ...extra,
+})
+
+test('resultVillageChips summarizes houses, mafia count, share mode, connection and citizen type', () => {
+  assert.deepEqual(resultVillageChips(soloState()), [
+    '집 5채',
+    '마피아는 나 혼자',
+    '밤마다 쪽지 비교',
+    '모든 집과 연결',
+    '눈치 보는 주민',
+  ])
+  assert.deepEqual(
+    resultVillageChips(
+      soloState({
+        config: { ...soloConfig, mafia_count: 2, share_mode: 'all', connection: 'ring', citizen_type: 'majority' },
+      }),
+    ),
+    ['집 5채', '마피아 둘', '모든 집 쪽지 비교', '양옆과만 연결', '다수결 주민'],
+  )
+  assert.deepEqual(
+    resultVillageChips(
+      soloState({
+        config: { ...soloConfig, share_mode: 'none', citizen_type: 'ai' },
+      }),
+    ),
+    ['집 5채', '마피아는 나 혼자', '쪽지 비교 없음', '모든 집과 연결', 'AI 주민'],
+  )
+})
+
+test('resultBaseline covers all 7 cases, links byz/ring, and never exposes 3f+1 formula', () => {
+  const cRow = (city, hint, claim, correct) => ({
+    city,
+    role: 'citizen',
+    hint,
+    received: { 3: msg(claim) },
+    decision: correct ? 'evacuate' : 'stay',
+    correct,
+    suspicion: { 3: 20 },
+    reason: null,
+  })
+  const makeDay = (t, rows, vote = null) => ({ turn: t, cities: rows, sharing: [], vote })
+
+  // 1. 주민 유리, 승리 (마지막 날 인원 수 대신 "과반의 마음을 돌려 놓았어요")
+  const winHist = [
+    makeDay(1, [cRow(1, 'danger', 'stay', true), cRow(2, 'danger', 'stay', true), cRow(4, 'danger', 'stay', false), cRow(5, 'safe', 'stay', false)]),
+    makeDay(2, [cRow(1, 'danger', 'stay', false), cRow(2, 'danger', 'stay', false), cRow(4, 'danger', 'stay', false), cRow(5, 'danger', 'stay', true)]),
+    makeDay(3, [cRow(1, 'danger', 'stay', false), cRow(2, 'danger', 'stay', false), cRow(4, 'danger', 'stay', false), cRow(5, 'danger', 'stay', false)]),
+  ]
+  const bWin = resultBaseline(soloState({ outcome: 'win', end_reason: 'turns_done' }), winHist)
+  assert.equal(bWin.topic, 'byz')
+  assert.match(bWin.lines.join(' '), /원래 주민에게 유리한 판이었는데도 해냈어요/)
+  assert.match(bWin.lines.join(' '), /2일째부터 과반의 마음을 돌려 놓았어요/)
+  assert.doesNotMatch(bWin.lines.join(' '), /4집의 마음/)
+
+  // 2. 15일 버텼지만 패배
+  const bTurnsLoss = resultBaseline(
+    soloState({ outcome: 'loss', end_reason: 'turns_done' }),
+    [makeDay(15, [cRow(1, 'danger', 'stay', true), cRow(2, 'danger', 'stay', true), cRow(4, 'danger', 'stay', true), cRow(5, 'safe', 'stay', false)])],
+  )
+  assert.match(bTurnsLoss.lines.join(' '), /끝까지 정체는 숨겼어요/)
+
+  // 3. 재판 패배
+  const bCaught = resultBaseline(
+    soloState({ outcome: 'loss', end_reason: 'caught' }),
+    [makeDay(6, [cRow(1, 'danger', 'stay', false), cRow(2, 'danger', 'stay', true)], { ballots: { 1: 3, 2: 3, 4: 3 }, accused: 3, caught: true })],
+  )
+  assert.equal(bCaught.lines.length, 2)
+  assert.match(bCaught.lines[0], /원래 주민에게 유리한 판이었어요/)
+
+  // 4. 하늘 탓 (노트 증거 조건: 마지막 턴 주민별 mine 기준 정답 <= 오답 + f, 승패별 문구 분기)
+  // f=1에서 2명 정답·2명 오답이면 2 <= 2 + 1 이므로 증거 ✘
+  const skyTieHist = [
+    makeDay(15, [cRow(1, 'danger', 'stay', true), cRow(2, 'danger', 'stay', true), cRow(4, 'safe', 'stay', false), cRow(5, 'safe', 'stay', false)]),
+  ]
+  const bSkyWin = resultBaseline(soloState({ outcome: 'win', end_reason: 'turns_done' }), skyTieHist)
+  assert.match(bSkyWin.lines.join(' '), /주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요\. 하늘도 당신 편이었어요\./)
+  const bSkyLoss = resultBaseline(soloState({ outcome: 'loss', end_reason: 'turns_done' }), skyTieHist)
+  assert.match(bSkyLoss.lines.join(' '), /주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요\. 누가 마피아였어도 주민이 이긴다고 장담하기 어려웠어요\./)
+
+  // memory=full에서는 마지막 턴까지 누적한 주민별 mine 다수로 판정 (마지막 턴 hint가 3:1이어도 누적 mine이 2:2면 증거 ✘)
+  const fullMemorySkyHist = [
+    makeDay(1, [cRow(1, 'safe', 'stay', false), cRow(2, 'danger', 'stay', true), cRow(4, 'safe', 'stay', false), cRow(5, 'danger', 'stay', true)]),
+    makeDay(2, [cRow(1, 'safe', 'stay', false), cRow(2, 'danger', 'stay', true), cRow(4, 'safe', 'stay', false), cRow(5, 'danger', 'stay', true)]),
+    makeDay(3, [cRow(1, 'danger', 'stay', true), cRow(2, 'danger', 'stay', true), cRow(4, 'safe', 'stay', false), cRow(5, 'danger', 'stay', true)]),
+  ]
+  const bSkyFull = resultBaseline(
+    soloState({ config: { ...soloConfig, memory: 'full' }, outcome: 'win', end_reason: 'turns_done' }),
+    fullMemorySkyHist,
+  )
+  assert.match(bSkyFull.lines.join(' '), /하늘도 당신 편이었어요/)
+
+  // memory=turn이면 같은 3턴 기록이라도 마지막 턴(3:1, 3 > 1 + 1) 기준이라 증거 ✔ → 주민 유리, 승리
+  const bTurnOk = resultBaseline(
+    soloState({ config: { ...soloConfig, memory: 'turn' }, outcome: 'win', end_reason: 'turns_done' }),
+    fullMemorySkyHist,
+  )
+  assert.match(bTurnOk.lines.join(' '), /원래 주민에게 유리한 판이었는데도 해냈어요/)
+
+  // 5. 고리 마을 (ring): 승리 / 재판 패배 / 끝까지 버팀 패배 구분
+  const bRing = resultBaseline(
+    soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'win', end_reason: 'turns_done' }),
+    winHist,
+  )
+  assert.equal(bRing.topic, 'ring')
+  assert.equal(bRing.linkTitle, '연결도 조건')
+  assert.match(bRing.lines.join(' '), /양옆 이웃하고만 이야기하는 마을은/)
+  assert.match(bRing.lines.join(' '), /전략이 통했어요/)
+  const bRingCaught = resultBaseline(
+    soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'loss', end_reason: 'caught' }),
+    [makeDay(4, [cRow(1, 'danger', 'stay', true)], { ballots: { 1: 3, 2: 3, 4: 3 }, accused: 3, caught: true })],
+  )
+  assert.match(bRingCaught.lines.join(' '), /이번엔 재판에서 들켜 일찍 끝났어요/)
+  assert.doesNotMatch(bRingCaught.lines.join(' '), /끝까지 버텨 냈어요/)
+  const bRingTurns = resultBaseline(
+    soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'loss', end_reason: 'turns_done' }),
+    [makeDay(15, [cRow(1, 'danger', 'stay', true)])],
+  )
+  assert.match(bRingTurns.lines.join(' '), /이번엔 주민들이 끝까지 버텨 냈어요/)
+
+  // 6. 마피아 둘 (n < 3f+1): 동료가 실제로 재판에 지목된 패배에서만 동료 원인 문구를 붙인다
+  const twoState = (extra = {}) =>
+    soloState({
+      config: { ...soloConfig, mafia_count: 2 },
+      roles: { 1: 'citizen', 2: 'colleague', 3: 'player', 4: 'citizen', 5: 'citizen' },
+      outcome: 'loss',
+      end_reason: 'caught',
+      ...extra,
+    })
+  const bTwo = resultBaseline(
+    twoState(),
+    [makeDay(4, [cRow(1, 'danger', 'stay', true)], { ballots: { 1: 2, 4: 2 }, accused: 2, caught: true })],
+  )
+  assert.equal(bTwo.topic, 'byz')
+  assert.match(bTwo.lines.join(' '), /집 다섯에 마피아 둘이면/)
+  assert.match(bTwo.lines.join(' '), /동료가 먼저 의심받았기 때문이에요/)
+  const bTwoPlayerCaught = resultBaseline(
+    twoState(),
+    [makeDay(4, [cRow(1, 'danger', 'stay', true)], { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true })],
+  )
+  assert.equal(bTwoPlayerCaught.lines[0], '집 다섯에 마피아 둘이면 주민이 반드시 버틴다는 보장이 사라져요.')
+  const bTwoTurnsLoss = resultBaseline(
+    twoState({ end_reason: 'turns_done' }),
+    [makeDay(15, [cRow(1, 'danger', 'stay', true)])],
+  )
+  assert.equal(bTwoTurnsLoss.lines[0], '집 다섯에 마피아 둘이면 주민이 반드시 버틴다는 보장이 사라져요.')
+
+  // 7. 정직했는데 재판
+  const bHonest = resultBaseline(
+    soloState({ outcome: 'loss', end_reason: 'caught' }),
+    [
+      makeDay(1, [cRow(1, 'safe', 'evacuate', false), cRow(2, 'safe', 'evacuate', false)]),
+      makeDay(2, [cRow(1, 'safe', 'evacuate', false), cRow(2, 'safe', 'evacuate', false)], { ballots: { 1: 3, 2: 3, 4: 3 }, accused: 3, caught: true }),
+    ],
+  )
+  assert.match(bHonest.lines.join(' '), /진짜 날씨만 말했는데도 재판에 걸렸어요/)
+
+  for (const b of [bWin, bTurnsLoss, bCaught, bSkyWin, bSkyLoss, bSkyFull, bRing, bRingCaught, bRingTurns, bTwo, bTwoPlayerCaught, bTwoTurnsLoss, bHonest]) {
+    assert.doesNotMatch(b.lines.join(' '), /3f\+1/i)
+  }
+})
+
+test('resultDecisive explains contradiction catch, trial catch, and final-day majority result', () => {
+  const clashDay = {
+    turn: 6,
+    cities: [
+      { ...empty, city: 2, correct: true },
+      { ...empty, city: 4, correct: true },
+    ],
+    sharing: [{ pair: [2, 4], contradictions: [{ city: 3, told: { 2: msg('stay'), 4: msg('evacuate') } }] }],
+    vote: { ballots: { 1: 3, 2: 3, 4: 3 }, accused: 3, caught: true },
+  }
+  const decClash = resultDecisive(soloState({ outcome: 'loss', end_reason: 'caught' }), [clashDay])
+  assert.deepEqual(decClash, [
+    '6일째 밤, 2번 집과 4번 집에 서로 다른 쪽지를 보냈어요.',
+    '그날 두 집이 쪽지를 비교하면서 들켰어요.',
+  ])
+
+  const decWin = resultDecisive(soloState({ outcome: 'win', end_reason: 'turns_done' }), [
+    {
+      turn: 15,
+      cities: [
+        { ...empty, city: 1, correct: false },
+        { ...empty, city: 2, correct: false },
+        { ...empty, city: 4, correct: false },
+        { ...empty, city: 5, correct: true },
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ])
+  assert.match(decWin[0], /마지막 15일째 밤, 주민 4명 중 3명을 속여 과반\(3명\)을 넘겼어요/)
+})
+
+test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () => {
+  const c = (city, hint, claim, sus, correct, receivedExtra = {}) => ({
+    city,
+    role: 'citizen',
+    hint,
+    received: { 3: msg(claim), ...receivedExtra },
+    decision: correct ? 'evacuate' : 'stay',
+    correct,
+    suspicion: sus,
+    reason: null,
+  })
+
+  // 1. 감사 회피: share_mode !== 'none'이고 비교가 실제 일어난 턴(sharing.length > 0) 중 이중 발언 5회 & 모순 0회
+  const equivTurn = (t, sharing = [{ pair: [1, 4], contradictions: [] }]) => ({
+    turn: t,
+    cities: [
+      c(1, 'danger', 'stay', { 3: 20 }, false),
+      c(2, 'danger', 'evacuate', { 3: 0 }, true),
+      c(4, 'danger', 'stay', { 3: 20 }, false),
+      c(5, 'danger', 'evacuate', { 3: 0 }, true),
+    ],
+    sharing,
+    vote: null,
+  })
+  assert.deepEqual(
+    detectTactics(soloState(), [1, 2, 3, 4].map((t) => equivTurn(t))).map((x) => x.tag),
+    [],
+  )
+  assert.deepEqual(
+    detectTactics(soloState(), [1, 2, 3, 4, 5].map((t) => equivTurn(t))).map((x) => x.tag),
+    ['audit'],
+  )
+  // share_mode === 'none'이면 이중 발언 5회여도 감사 회피 미발동
+  assert.deepEqual(
+    detectTactics(
+      soloState({ config: { ...soloConfig, share_mode: 'none' } }),
+      [1, 2, 3, 4, 5].map((t) => equivTurn(t, [])),
+    ).map((x) => x.tag),
+    [],
+  )
+  // pairs라도 실제 비교가 일어난 턴이 5회 미만이면 미발동
+  assert.deepEqual(
+    detectTactics(
+      soloState(),
+      [equivTurn(1), equivTurn(2), equivTurn(3), equivTurn(4), equivTurn(5, [])],
+    ).map((x) => x.tag),
+    [],
+  )
+  // 모순이 1번이라도 있으면 감사 회피 불가
+  const withClash = [1, 2, 3, 4, 5].map((t) => equivTurn(t))
+  withClash[2].sharing = [{ pair: [1, 2], contradictions: [{ city: 3, told: { 1: msg('stay'), 2: msg('evacuate') } }] }]
+  assert.equal(detectTactics(soloState(), withClash).some((x) => x.tag === 'audit'), false)
+
+  // 2. 온오프 공격: 의심도 >= 40 -> 그 주민이 본 날씨와 같은 쪽지로 <= 20 낮춤 -> 다시 거짓 보내 그 주민이 틀림
+  const onoffHist = [
+    { turn: 1, cities: [c(1, 'danger', 'stay', { 3: 40 }, true)], sharing: [], vote: null },
+    { turn: 2, cities: [c(1, 'danger', 'evacuate', { 3: 20 }, true)], sharing: [], vote: null },
+    { turn: 3, cities: [c(1, 'safe', 'stay', { 3: 0 }, false)], sharing: [], vote: null },
+  ]
+  const onoffRes = detectTactics(soloState(), onoffHist)
+  assert.deepEqual(onoffRes.map((x) => x.tag), ['onoff'])
+  assert.equal(onoffRes[0].day, 2)
+  assert.match(onoffRes[0].text, /1번 집\(의심도 40\).*20까지 낮춘 뒤, 다음 날 다시 속였어요/)
+
+  // 주민이 하늘을 잘못 본 날(truth=danger, hint=safe)에도 직전과 다른 쪽지(evacuate -> stay)로 의심도를 낮췄으면 온오프 공격으로 인정
+  const wrongHintWash = [
+    { turn: 1, cities: [c(1, 'danger', 'evacuate', { 3: 40 }, true)], sharing: [], vote: null },
+    { turn: 2, cities: [c(1, 'safe', 'stay', { 3: 20 }, false)], sharing: [], vote: null },
+    { turn: 3, cities: [c(1, 'safe', 'stay', { 3: 0 }, false)], sharing: [], vote: null },
+  ]
+  const wrongHintRes = detectTactics(soloState(), wrongHintWash)
+  assert.deepEqual(wrongHintRes.map((x) => x.tag), ['onoff'])
+  assert.equal(wrongHintRes[0].day, 2)
+
+  // 항상 같은 거짓 쪽지(stay)만 보냈는데 주민이 하늘을 잘못 봐 의심도가 내려간 판이면 꼬리표가 없어야 한다
+  const sameLieWrongHint = [
+    { turn: 1, cities: [c(1, 'danger', 'stay', { 3: 40 }, true)], sharing: [], vote: null },
+    { turn: 2, cities: [c(1, 'safe', 'stay', { 3: 20 }, false)], sharing: [], vote: null },
+    { turn: 3, cities: [c(1, 'safe', 'stay', { 3: 0 }, false)], sharing: [], vote: null },
+  ]
+  assert.deepEqual(detectTactics(soloState(), sameLieWrongHint), [])
+
+  // 진짜 날씨(evacuate)를 보냈더라도 그 주민이 본 날씨(safe)와 다르면 의심 세탁으로 인정하지 않는다
+  const mismatchHintTruth = [
+    { turn: 1, cities: [c(1, 'danger', 'stay', { 3: 40 }, true)], sharing: [], vote: null },
+    { turn: 2, cities: [c(1, 'safe', 'evacuate', { 3: 20 }, true)], sharing: [], vote: null },
+    { turn: 3, cities: [c(1, 'safe', 'stay', { 3: 0 }, false)], sharing: [], vote: null },
+  ]
+  assert.deepEqual(detectTactics(soloState(), mismatchHintTruth), [])
+
+  // 3. 완고한 행위자(vote.accused === 동료일 때만) + 4. 거짓 양성 + 5. 이중 발언 + 우선순위 최대 2개 확인
+  const noZealotAccusedOther = [
+    {
+      turn: 1,
+      cities: [
+        c(1, 'danger', 'stay', { 2: 60, 3: 0 }, false, { 4: msg('stay') }),
+        c(4, 'danger', 'evacuate', { 2: 40, 3: 0 }, true),
+        c(5, 'danger', 'stay', { 2: 20, 3: 0 }, false, { 4: msg('stay') }),
+      ],
+      sharing: [],
+      vote: { ballots: { 1: 4, 4: 2, 5: 4 }, accused: 4, caught: false },
+    },
+    {
+      turn: 2,
+      cities: [
+        c(1, 'danger', 'stay', { 2: 40, 3: 40 }, false, { 4: msg('stay') }),
+        c(4, 'danger', 'evacuate', { 2: 40, 3: 0 }, true),
+        c(5, 'danger', 'stay', { 2: 20, 3: 20 }, false, { 4: msg('stay') }),
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  const f2State = soloState({
+    config: { ...soloConfig, mafia_count: 2 },
+    roles: { 1: 'citizen', 2: 'colleague', 3: 'player', 4: 'citizen', 5: 'citizen' },
+  })
+  // 동료 의심도가 60이어도 vote.accused !== 동료이면 zealot 미발동
+  assert.deepEqual(detectTactics(f2State, noZealotAccusedOther).map((x) => x.tag), ['falsepos', 'equiv'])
+
+  const multiHist = [
+    ...noZealotAccusedOther,
+    {
+      turn: 3,
+      cities: [
+        c(1, 'danger', 'stay', { 2: 60, 3: 0 }, true),
+        c(4, 'danger', 'evacuate', { 2: 60, 3: 0 }, true),
+        c(5, 'danger', 'stay', { 2: 40, 3: 0 }, true),
+      ],
+      sharing: [],
+      vote: { ballots: { 1: 2, 4: 2, 5: 2 }, accused: 2, caught: true },
+    },
+  ]
+  // zealot(3위), falsepos(4위), equiv(5위, 4건 swayed) 모두 충족 → 드문 순서로 상위 2개만 반환
+  assert.deepEqual(detectTactics(f2State, multiHist).map((x) => x.tag), ['zealot', 'falsepos'])
+
+  // f=1이면 zealot은 빠지고 falsepos, equiv가 남는다
+  const f1NoZealot = detectTactics(soloState({ roles: f2State.roles }), multiHist)
+  assert.deepEqual(f1NoZealot.map((x) => x.tag), ['falsepos', 'equiv'])
+  // 그래프 핀 문구도 화면 꼬리표 이름(TAG_LABELS)과 동일해야 한다
+  const pinSummary = gameSummary(soloState({ roles: f2State.roles, outcome: 'win', end_reason: 'turns_done' }), multiHist)
+  assert.ok(pinSummary.pins[0]?.labels.includes(TAG_LABELS.falsepos))
+  assert.ok(pinSummary.pins[0]?.labels.includes(TAG_LABELS.equiv))
+})
+
+test('THEORY_TOPICS has verified content for all 8 topics and concise 2-sentence popover theory tips', () => {
+  const topicKeys = ['byz', 'equiv', 'onoff', 'ring', 'condorcet', 'zealot', 'falsepos', 'audit']
+  assert.deepEqual(Object.keys(THEORY_TOPICS).sort(), [...topicKeys].sort())
+  for (const key of topicKeys) {
+    const topic = THEORY_TOPICS[key]
+    assert.ok(topic.easy.length > 0 && topic.game.length > 0 && topic.proof.length > 0, `${key} has body`)
+    assert.ok(topic.boxes.length >= 2 && topic.refs.length >= 2, `${key} has boxes and refs`)
+    const combined = [
+      topic.easy,
+      topic.game,
+      topic.proof,
+      ...topic.boxes.flat(),
+      ...topic.refs.map((r) => `${r.before}${r.italic ?? ''}${r.after ?? ''}`),
+    ].join(' ')
+    assert.doesNotMatch(combined, /확인 못 함|자리표시/)
+  }
+
+  for (const tag of Object.keys(TAG_LABELS)) {
+    const tip = THEORY_TOPICS[tag].tip
+    assert.ok(tip.easy.length > 0 && tip.game.length > 0 && tip.theory.length > 0 && tip.cite.length > 0)
+    const sentences = tip.theory
+      .trim()
+      .split(/(?<=[.?!])\s+/)
+      .filter(Boolean)
+    assert.ok(sentences.length <= 2, `${tag} tip.theory has ${sentences.length} sentences (max 2)`)
+    assert.doesNotMatch(`${tip.easy} ${tip.game} ${tip.theory} ${tip.cite}`, /확인 못 함|자리표시/)
+  }
+})
+
+test('resultInfluence counts swayed wrong citizens, shows default no-note rates, and hides for AI', () => {
+  // truth=danger(evacuate가 정답). 1번은 hint=danger(+100), 4번 stay(-100), 내(3번) stay(-100) → -100(stay, 오답, swayed=true)
+  // 2번은 hint=safe(-100), 4번 evacuate(+100), 내(3번) evacuate(+100) → +100(evacuate, 정답, swayed=true → 제외!)
+  const h = [
+    {
+      cities: [
+        { ...empty, city: 1, hint: 'danger', decision: 'stay', correct: false, received: { 3: msg('stay'), 4: msg('stay') }, suspicion: { 3: 0, 4: 0 } },
+        { ...empty, city: 2, hint: 'safe', decision: 'evacuate', correct: true, received: { 3: msg('evacuate'), 4: msg('evacuate') }, suspicion: { 3: 0, 4: 0 } },
+        { ...empty, city: 4, hint: 'safe', decision: 'stay', correct: false, received: { 3: msg('stay') }, suspicion: { 3: 0 } }, // 내 쪽지 빼도 -100 stay → swayed=false
+      ],
+    },
+  ]
+  assert.deepEqual(resultInfluence(soloState({ config: { ...soloConfig, sensor_error: 0.3 } }), h), {
+    count: 1,
+    noNoteWinRate: '92%',
+  })
+  assert.deepEqual(resultInfluence(soloState({ config: { ...soloConfig, sensor_error: 0.4 } }), h), {
+    count: 1,
+    noNoteWinRate: '82%',
+  })
+  assert.deepEqual(resultInfluence(soloState({ config: { ...soloConfig, sensor_error: 0.48 } }), h), {
+    count: 1,
+    noNoteWinRate: '72%',
+  })
+  // 기본 조건(집 5채, 마피아 1, 눈치, all, share_mode/memory 기본값, player human) 벗어나면 보조 확률 생략
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, connection: 'ring' } }), h)?.noNoteWinRate, null)
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, mafia_count: 2 } }), h)?.noNoteWinRate, null)
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, citizen_type: 'majority' } }), h)?.noNoteWinRate, null)
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, share_mode: 'all' } }), h)?.noNoteWinRate, null)
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, memory: 'full' } }), h)?.noNoteWinRate, null)
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, player: 'bot' } }), h)?.noNoteWinRate, null)
+  assert.equal(
+    resultInfluence(soloState({ roles: { 1: 'citizen', 2: 'citizen', 3: 'player' } }), h)?.noNoteWinRate,
+    null,
+  )
+  // AI 주민은 영향력 줄 전체 숨김
+  assert.equal(resultInfluence(soloState({ config: { ...soloConfig, citizen_type: 'ai' } }), h), null)
+  assert.deepEqual(resultDeceived(h), [2])
+})
+
+test('condorcetMajorityProb computes exact binomial majority probabilities and increases monotonically for p > 0.5', () => {
+  // n=1이면 개별 확률 p와 동일
+  assert.ok(Math.abs(condorcetMajorityProb(1, 0.7) - 0.7) < 1e-12)
+  assert.ok(Math.abs(condorcetMajorityProb(1, 0.52) - 0.52) < 1e-12)
+  // n=3: 3p^2(1-p) + p^3 = 3p^2 - 2p^3
+  assert.ok(Math.abs(condorcetMajorityProb(3, 0.6) - (3 * 0.36 - 2 * 0.216)) < 1e-12)
+  assert.ok(Math.abs(condorcetMajorityProb(3, 0.7) - (3 * 0.49 - 2 * 0.343)) < 1e-12)
+  // p=0.5이면 모든 홀수 n에서 정확히 0.5
+  for (const n of CONDORCET_NS) {
+    assert.ok(Math.abs(condorcetMajorityProb(n, 0.5) - 0.5) < 1e-12)
+  }
+  // p > 0.5이면 홀수 n에 대해 단조 증가하며 p가 클수록 높다
+  for (const p of CONDORCET_PS) {
+    const vals = CONDORCET_NS.map((n) => condorcetMajorityProb(n, p))
+    for (let i = 1; i < vals.length; i++) {
+      assert.ok(vals[i] > vals[i - 1], `p=${p} increases at n=${CONDORCET_NS[i]}`)
+    }
+  }
+  assert.ok(condorcetMajorityProb(25, 0.7) > 0.98)
+  assert.ok(condorcetMajorityProb(25, 0.6) > 0.84 && condorcetMajorityProb(25, 0.6) < 0.85)
+  assert.ok(condorcetMajorityProb(25, 0.52) > 0.57 && condorcetMajorityProb(25, 0.52) < 0.59)
+})
+
+test('onOffTrajectory oscillates by ±20, clamps at 0..100, and sample stays below threshold 60', () => {
+  const sample = onOffTrajectory(ONOFF_SAMPLE_ACTIONS)
+  assert.equal(sample.length, ONOFF_SAMPLE_ACTIONS.length + 1)
+  assert.equal(sample[0].suspicion, 0)
+  assert.ok(sample.every((p) => p.suspicion >= 0 && p.suspicion < 60))
+  assert.deepEqual(
+    sample.map((p) => p.suspicion),
+    [0, 20, 40, 20, 40, 20, 0, 20, 40, 20, 40],
+  )
+  // 하한 0·상한 100 클램프 확인
+  assert.deepEqual(
+    onOffTrajectory(['honest', 'lie', 'lie', 'lie', 'lie', 'lie', 'lie'], 0).map((p) => p.suspicion),
+    [0, 0, 20, 40, 60, 80, 100, 100],
+  )
+})
+
+test('gameSummary adds trust-broken and deception-drop moments without tags or chart pins (game 723 pattern)', () => {
+  const g723State = {
+    config: { ...soloConfig, sensor_error: 0.48, seed: 15 },
+    roles: { 1: 'player', 2: 'citizen', 3: 'citizen', 4: 'citizen', 5: 'citizen' },
+    player_city: 1,
+    truth: 'danger',
+    outcome: 'loss',
+    end_reason: 'turns_done',
+  }
+  const row = (city, hint, decision, correct, susP, received = { 1: msg('stay') }) => ({
+    city,
+    role: 'citizen',
+    hint,
+    received,
+    decision,
+    correct,
+    suspicion: susP == null ? null : { 1: susP },
+    reason: null,
+  })
+  const playerRow = { city: 1, role: 'player', hint: null, received: null, decision: null, correct: null, suspicion: null, reason: null }
+
+  // 게임 723 축약 흐름: 7일 4명 속음 → 8일 2·3번 의심도 80/60(3명 속음) → 9일 관측 4명 모두 맞고 2·3번 의심도 100/80(1명 속음) → 15일 패배
+  const g723Hist = [
+    {
+      turn: 7,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'stay', false, 60),
+        row(3, 'safe', 'stay', false, 40),
+        row(4, 'safe', 'stay', false, 0),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 8,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 80),
+        row(3, 'danger', 'stay', false, 60),
+        row(4, 'safe', 'stay', false, 0),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 9,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 100),
+        row(3, 'danger', 'evacuate', true, 80),
+        row(4, 'danger', 'evacuate', true, 0),
+        row(5, 'danger', 'stay', false, 20),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 15,
+      cities: [
+        playerRow,
+        row(2, 'safe', 'stay', false, 80),
+        row(3, 'danger', 'evacuate', true, 100),
+        row(4, 'danger', 'evacuate', true, 60),
+        row(5, 'safe', 'stay', false, 20),
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ]
+
+  const s = gameSummary(g723State, g723Hist)
+  const trustLine = s.moments.find((m) => m.day === 8 && m.text.includes('내 쪽지를 거의 믿지 않았어요'))
+  assert.ok(trustLine, 'trust-broken moment added on day 8')
+  assert.equal(trustLine.tag, undefined)
+  assert.equal(trustLine.text, '8일째부터 2번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요)')
+
+  const dropLine = s.moments.find((m) => m.day === 9 && m.text.includes('속은 주민이'))
+  assert.ok(dropLine, 'deception-drop moment added on day 9')
+  assert.equal(dropLine.tag, undefined)
+  assert.equal(
+    dropLine.text,
+    '9일째, 속은 주민이 3명에서 1명으로 줄었어요. 그날은 주민 4명 모두 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지를 거의 믿지 않았어요',
+  )
+  // 날짜순 정렬 유지, 그래프 핀 추가 없음
+  const datedDays = s.moments.filter((m) => m.day != null).map((m) => m.day)
+  assert.deepEqual(datedDays, [...datedDays].sort((a, b) => a - b))
+  assert.equal(s.pins[1], undefined)
+  assert.equal(s.pins[2], undefined)
+
+  // 같은 날 여러 집이 80 이상 도달 (이웃 쪽지 분기는 제거되어 관측·의심도 상태만 적는다)
+  const groupedDrop = [
+    {
+      turn: 4,
+      cities: [
+        playerRow,
+        row(2, 'safe', 'stay', false, 60),
+        row(3, 'safe', 'stay', false, 60),
+        row(4, 'safe', 'stay', false, 0),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 5,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 80, { 1: msg('stay'), 3: msg('evacuate') }),
+        row(3, 'danger', 'evacuate', true, 80, { 1: msg('stay'), 2: msg('evacuate') }),
+        row(4, 'danger', 'evacuate', true, 20, { 1: msg('stay'), 2: msg('evacuate') }),
+        row(5, 'safe', 'evacuate', true, 0, { 1: msg('stay'), 2: msg('evacuate'), 3: msg('evacuate') }),
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  const sGroup = gameSummary(g723State, groupedDrop)
+  assert.ok(
+    sGroup.moments.some(
+      (m) => m.day === 5 && m.text === '5일째부터 2·3번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요)',
+    ),
+  )
+  assert.ok(
+    sGroup.moments.some(
+      (m) =>
+        m.day === 5 &&
+        m.text ===
+          '5일째, 속은 주민이 4명에서 0명으로 줄었어요. 그날은 주민 4명 중 3명은 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지를 거의 믿지 않았어요',
+    ),
+  )
+  assert.equal(sGroup.moments.some((m) => m.text.includes('이웃 쪽지를 믿고')), false)
+
+  // 의심도가 80 이상에 도달했다가 이후 80 아래로 회복되면 "N일째부터"가 아니라 "N일째에는"으로 적는다
+  const recoveredHist = [
+    {
+      turn: 6,
+      cities: [playerRow, row(2, 'danger', 'evacuate', true, 40), row(3, 'danger', 'evacuate', true, 80)],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 7,
+      cities: [playerRow, row(2, 'danger', 'evacuate', true, 40), row(3, 'danger', 'evacuate', true, 60)],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  assert.ok(
+    gameSummary(g723State, recoveredHist).moments.some(
+      (m) => m.day === 6 && m.text === '6일째에는 3번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요)',
+    ),
+  )
+
+  // 처음 80 이상이 모두 100으로 바로 오른 경우 (0표 표현)
+  const jumpTo100 = [
+    {
+      turn: 3,
+      cities: [playerRow, row(2, 'danger', 'evacuate', true, 100), row(3, 'danger', 'evacuate', true, 40)],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  assert.ok(
+    gameSummary(g723State, jumpTo100).moments.some(
+      (m) => m.day === 3 && m.text === '3일째부터 2번 집은 내 쪽지를 전혀 믿지 않았어요(의심도 100이면 0표예요)',
+    ),
+  )
+
+  // 다수결 주민(의심도 없음): 신뢰 끊김은 생략, 한꺼번에 풀림은 관측만으로 설명
+  const majHist = [
+    {
+      turn: 2,
+      cities: [
+        playerRow,
+        row(2, 'safe', 'stay', false, null),
+        row(3, 'safe', 'stay', false, null),
+        row(4, 'safe', 'stay', false, null),
+        row(5, 'safe', 'stay', false, null),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 3,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, null, { 1: msg('stay'), 3: msg('evacuate') }),
+        row(3, 'danger', 'evacuate', true, null, { 1: msg('stay'), 2: msg('evacuate') }),
+        row(4, 'safe', 'evacuate', true, null, { 1: msg('stay'), 2: msg('evacuate'), 3: msg('evacuate') }),
+        row(5, 'safe', 'stay', false, null, { 1: msg('stay') }),
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  const sMaj = gameSummary({ ...g723State, config: { ...g723State.config, citizen_type: 'majority' } }, majHist)
+  assert.equal(sMaj.moments.some((m) => m.text.includes('믿지 않았어요')), false)
+  assert.ok(
+    sMaj.moments.some(
+      (m) =>
+        m.day === 3 &&
+        m.text === '3일째, 속은 주민이 4명에서 1명으로 줄었어요. 그날은 주민 4명 중 2명은 관측이 맞았어요',
+    ),
+  )
+
+  // AI 주민 판: 신뢰 끊김·한꺼번에 풀림 두 새 순간 줄을 모두 숨긴다
+  const sAi = gameSummary({ ...g723State, config: { ...g723State.config, citizen_type: 'ai' } }, g723Hist)
+  assert.equal(sAi.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('속은 주민이')), false)
+
+  // 해당 없는 판: 의심도 80 미만 유지 + 과반 이상→미만 하락 없음
+  const calmHist = [
+    {
+      turn: 1,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 20),
+        row(3, 'danger', 'evacuate', true, 20),
+        row(4, 'safe', 'stay', false, 0),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+    {
+      turn: 2,
+      cities: [
+        playerRow,
+        row(2, 'danger', 'evacuate', true, 40),
+        row(3, 'danger', 'evacuate', true, 40),
+        row(4, 'danger', 'evacuate', true, 20),
+        row(5, 'safe', 'stay', false, 0),
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ]
+  const sCalm = gameSummary(g723State, calmHist)
+  assert.equal(sCalm.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('속은 주민이')), false)
 })
