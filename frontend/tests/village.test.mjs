@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, regainTrustOutcomeNote, regainTrustProgress, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioGoalSteps, scenarioResultNote, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
+  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, regainTrustOutcomeNote, regainTrustProgress, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioGoalSteps, scenarioResultNote, shareBadgeLabel, stubbornAllyOutcomeNote, stubbornAllyStatus, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -1789,5 +1789,105 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.equal(
     regainTrustOutcomeNote(trustState('loss', 'caught'), [t(5, [c(2, 'safe', 'evacuate', 40, true)])]),
     '마지막 밤까지 가지 못했어요. 다른 집 의심도로 열린 재판에서 주민 과반이 나를 지목했어요. 집마다 의심도를 더 낮게 유지하며 다시 해 보세요.',
+  )
+})
+
+test('stubbornAllyStatus and stubbornAllyOutcomeNote track colleague survival, peak suspicion, and all 4 outcome branches', () => {
+  const allyState = (outcome, end_reason = 'turns_done') => ({
+    config: { ...soloConfig, mafia_count: 2, sensor_error: 0.48, seed: 222 },
+    roles: { 1: 'citizen', 2: 'player', 3: 'colleague', 4: 'citizen', 5: 'citizen' },
+    player_city: 2,
+    truth: 'danger',
+    outcome,
+    end_reason,
+  })
+  const c = (city, pSus, colSus, correct = false) => ({
+    city,
+    role: 'citizen',
+    hint: 'danger',
+    received: { 2: msg('stay'), 3: msg('stay') },
+    decision: correct ? 'evacuate' : 'stay',
+    correct,
+    suspicion: { 2: pSus, 3: colSus },
+    reason: null,
+  })
+  const turn = (n, cities, vote = null) => ({ turn: n, cities, sharing: [], vote })
+
+  // HUD 동료 상태 배지: 0 → 의심 상승(ok) → 60 이상(warn) → 재판 발각(caught)
+  assert.deepEqual(stubbornAllyStatus(allyState(null), []), {
+    city: 3,
+    maxSus: 0,
+    caught: false,
+    label: '동료 무사',
+    tone: 'ok',
+  })
+  assert.deepEqual(stubbornAllyStatus(allyState(null), [turn(2, [c(1, 20, 40)])]), {
+    city: 3,
+    maxSus: 40,
+    caught: false,
+    label: '동료 무사 · 의심도 40',
+    tone: 'ok',
+  })
+  assert.deepEqual(stubbornAllyStatus(allyState(null), [turn(4, [c(1, 20, 60)])]), {
+    city: 3,
+    maxSus: 60,
+    caught: false,
+    label: '동료 무사 · 의심도 60',
+    tone: 'warn',
+  })
+  const colCaughtTurn = turn(6, [c(1, 60, 60)], { ballots: { 1: 3, 4: 3, 5: 2 }, accused: 3, caught: true })
+  assert.deepEqual(stubbornAllyStatus(allyState('loss', 'caught'), [colCaughtTurn]), {
+    city: 3,
+    maxSus: 60,
+    caught: true,
+    label: '동료 재판에 걸림',
+    tone: 'caught',
+  })
+
+  // 1. 동료가 재판에 걸려 끝남 (조기 / 마지막 밤)
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('loss', 'caught'), [colCaughtTurn]),
+    '마지막 밤까지 가지 못했어요. 같은 거짓말만 되풀이한 동료(3번 집)가 재판에서 지목돼 판이 끝났어요.',
+  )
+  const colCaughtDay7 = turn(7, [c(1, 60, 60)], { ballots: { 1: 3, 4: 3, 5: 2 }, accused: 3, caught: true })
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('loss', 'caught'), [colCaughtDay7]),
+    '마지막 밤 재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 지목돼 판이 끝났어요.',
+  )
+
+  // 2. 내가 재판에 걸려 끝남 (조기 / 마지막 밤)
+  const meCaughtEarly = turn(3, [c(4, 60, 40)], { ballots: { 1: 2, 4: 2, 5: 3 }, accused: 2, caught: true })
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('loss', 'caught'), [meCaughtEarly]),
+    '마지막 밤까지 가지 못했어요. 재판에서 동료(3번 집)가 아니라 내 집이 지목됐어요. 각 집이 본 하늘에 맞춰 의심도를 살피며 다시 해 보세요.',
+  )
+  const meCaughtDay7 = turn(7, [c(4, 60, 80)], { ballots: { 1: 5, 4: 2, 5: 2 }, accused: 2, caught: true })
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('loss', 'caught'), [meCaughtDay7]),
+    '마지막 밤 재판에서 동료(3번 집)가 아니라 내 집이 지목됐어요. 각 집이 본 하늘에 맞춰 의심도를 살피며 다시 해 보세요.',
+  )
+
+  // 3. 7일 버텼지만 과반 못 속임 (동료 60 이상 / 미만 구분)
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('loss'), [turn(7, [c(1, 40, 80, true)])]),
+    '동료(3번 집) 의심도가 최고 80까지 오르는 동안 7일을 버텼지만, 마지막 밤 주민 과반(2명)은 속이지 못했어요.',
+  )
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('loss'), [turn(7, [c(1, 20, 40, true)])]),
+    '동료(3번 집)도 나도 7일 동안 재판에 걸리지 않았지만, 마지막 밤 주민 과반(2명)은 속이지 못했어요.',
+  )
+
+  // 4. 승리 / 완승 (동료 60+ 먼저 의심 / 동료 더 높음 / 동률 이하)
+  assert.equal(
+    scenarioResultNote('stubborn-ally', allyState('perfect_win'), [turn(4, [c(5, 20, 60)]), turn(7, [c(1, 40, 80)])]),
+    '동료(3번 집) 의심도가 최고 80까지 오르는 동안 내 의심도는 40 이하로 버텼고, 동료도 무사히 남아 마지막 밤 주민 모두를 속였어요.',
+  )
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('win'), [turn(7, [c(1, 20, 40)])]),
+    '동료(3번 집)가 더 높은 의심(최고 40)을 받는 동안 내 의심도는 20 이하로 유지했고, 동료도 무사히 남아 마지막 밤 주민 과반을 넘겼어요.',
+  )
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('win'), [turn(7, [c(1, 20, 20)])]),
+    '동료(3번 집)와 나 모두 끝까지 재판에 걸리지 않았고, 마지막 밤 주민 과반을 넘겼어요.',
   )
 })

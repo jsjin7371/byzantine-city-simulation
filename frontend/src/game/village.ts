@@ -1941,15 +1941,93 @@ export function regainTrustOutcomeNote(
     : `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 과반을 넘겼어요.`
 }
 
+type AllyStatus = {
+  city: number
+  maxSus: number
+  caught: boolean
+  label: string
+  tone: 'ok' | 'warn' | 'caught'
+}
+
+function colleagueCityOf(roles: GameState['roles']): number | null {
+  const entry = Object.entries(roles).find(([, role]) => role === 'colleague')
+  return entry ? Number(entry[0]) : null
+}
+
+// 시나리오 '고집쟁이 동료' HUD 동료 상태 배지: 동료 무사 여부와 최신 최고 의심도(또는 재판 발각)를 표시한다.
+export function stubbornAllyStatus(
+  state: Pick<GameState, 'roles'>,
+  history: Pick<TurnResult, 'cities' | 'vote'>[],
+): AllyStatus | null {
+  const city = colleagueCityOf(state.roles)
+  if (city == null) return null
+  const caught = history.some((t) => t.vote?.accused === city)
+  const last = history.at(-1)
+  const maxSus = Math.max(
+    0,
+    ...(last?.cities ?? []).filter((c) => c.role === 'citizen').map((c) => c.suspicion?.[city] ?? 0),
+  )
+  if (caught) return { city, maxSus, caught: true, label: '동료 재판에 걸림', tone: 'caught' }
+  const label = maxSus > 0 ? `동료 무사 · 의심도 ${maxSus}` : '동료 무사'
+  return { city, maxSus, caught: false, label, tone: maxSus >= SUSPICION.threshold ? 'warn' : 'ok' }
+}
+
+// 시나리오 '고집쟁이 동료' 결과 한 줄 분기: 동료/내 재판 여부, 최고 의심도, 7일 승패 기록에 따라 한 줄을 안내한다.
+export function stubbornAllyOutcomeNote(
+  state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'>,
+  history: Pick<TurnResult, 'turn' | 'cities' | 'vote'>[],
+): string {
+  const col = colleagueCityOf(state.roles)
+  const colLabel = col != null ? `동료(${col}번 집)` : '동료'
+  const last = history.at(-1)
+  const lastDay = last?.turn ?? 0
+  if (state.end_reason === 'caught') {
+    if (col != null && last?.vote?.accused === col) {
+      return lastDay >= TOTAL_TURNS
+        ? `마지막 밤 재판에서 같은 거짓말만 되풀이한 ${colLabel}가 지목돼 판이 끝났어요.`
+        : `마지막 밤까지 가지 못했어요. 같은 거짓말만 되풀이한 ${colLabel}가 재판에서 지목돼 판이 끝났어요.`
+    }
+    const head = lastDay >= TOTAL_TURNS ? '마지막 밤 재판에서' : '마지막 밤까지 가지 못했어요. 재판에서'
+    return `${head} ${colLabel}가 아니라 내 집이 지목됐어요. 각 집이 본 하늘에 맞춰 의심도를 살피며 다시 해 보세요.`
+  }
+  const citizens = Object.values(state.roles).filter((r) => r === 'citizen').length
+  const need = majority(citizens)
+  const peakOf = (target: number | null) =>
+    target == null
+      ? 0
+      : Math.max(
+          0,
+          ...history.flatMap((t) =>
+            t.cities.filter((c) => c.role === 'citizen').map((c) => c.suspicion?.[target] ?? 0),
+          ),
+        )
+  const colPeak = peakOf(col)
+  const playerPeak = peakOf(state.player_city)
+  if (!isWin(state.outcome)) {
+    return colPeak >= SUSPICION.threshold
+      ? `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 7일을 버텼지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.`
+      : `${colLabel}도 나도 7일 동안 재판에 걸리지 않았지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.`
+  }
+  const winEnd = state.outcome === 'perfect_win' ? '주민 모두를 속였어요.' : '주민 과반을 넘겼어요.'
+  if (colPeak >= SUSPICION.threshold && colPeak > playerPeak) {
+    return `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 내 의심도는 ${playerPeak} 이하로 버텼고, 동료도 무사히 남아 마지막 밤 ${winEnd}`
+  }
+  if (colPeak > playerPeak) {
+    return `${colLabel}가 더 높은 의심(최고 ${colPeak})을 받는 동안 내 의심도는 ${playerPeak} 이하로 유지했고, 동료도 무사히 남아 마지막 밤 ${winEnd}`
+  }
+  return `${colLabel}와 나 모두 끝까지 재판에 걸리지 않았고, 마지막 밤 ${winEnd}`
+}
+
 // 시나리오별 결과 한 줄 분기.
 export function scenarioResultNote(
   scenarioId: string,
   state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth' | 'outcome' | 'end_reason'>,
-  history: Pick<TurnResult, 'turn' | 'cities' | 'sharing'>[],
+  history: Pick<TurnResult, 'turn' | 'cities' | 'sharing' | 'vote'>[],
 ): string | null {
   if (scenarioId === 'watchful-eye') return watchfulEyeClashNote(state, history)
   if (scenarioId === 'ring-village') return ringVillageOutcomeNote(state, history)
   if (scenarioId === 'regain-trust') return regainTrustOutcomeNote(state, history)
+  if (scenarioId === 'stubborn-ally') return stubbornAllyOutcomeNote(state, history)
   return null
 }
 

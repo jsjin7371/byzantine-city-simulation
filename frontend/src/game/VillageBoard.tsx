@@ -497,6 +497,14 @@ function HouseView({
           </text>
         </g>
       )}
+      {h.role === 'colleague' && (
+        <g className="vb-ally-tag" transform={`translate(${x + 14},${y - 80})`} aria-hidden="true">
+          <rect x="-48" y="-11" width="96" height="22" rx="11" strokeWidth="1.5" />
+          <text y="4.5" fontSize="13" fontWeight="700" textAnchor="middle">
+            동료 · 늘 거짓
+          </text>
+        </g>
+      )}
       {h.role === 'player' ? (
         <g>
           <circle cx={x - 52} cy={y - 28} r="15" className="vb-badge is-mafia" strokeWidth="2.5" />

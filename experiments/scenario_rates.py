@@ -237,6 +237,60 @@ def ring_far_varies(seed, samples=128):
     return all(0.15 <= far_wrong[c] / done7 <= 0.85 for c in far)
 
 
+def stubborn_ally_shows(seed):
+    """고집쟁이 동료 고정 시드 조건: '동료가 먼저 의심받는 동안 내가 버팀'과 4개 결과 분기를 수에 따라 보여 주는지 확인.
+    1) smart 승리 시 동료 의심도가 6일째 이전에 60 이상에 닿는 동안 내 의심도는 60 미만으로 유지,
+    2) bot(늘 거짓) 패배 시 동료가 재판에서 지목됨,
+    3) 정직(진짜 날씨) 패배 시 내가 재판에서 지목됨,
+    4) 안전 정직(의심도 60 미만 유지 + 최대한 정직)으로 7일 버텼지만 과반 미달 패배 도달 가능."""
+    cfg = GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["stubborn-ally"])
+
+    def run_fn(fn):
+        g = Game(1, cfg)
+        col = next(c for c, r in g.roles.items() if r == "colleague")
+        hist = []
+        while not g.game_over:
+            chosen = fn(g)
+            res = g.play({"turn": g.turn + 1, "claims": {r: {"claim": c, "note": ""} for r, c in chosen.items()}}, city_turn)
+            hist.append(res)
+        return g, col, hist
+
+    gs, col, hs = run_fn(ms.smart)
+    if hs[-1]["outcome"] not in ("win", "perfect_win"):
+        return False
+    col_peaks = [max(c["suspicion"][str(col)] for c in r["cities"] if c["role"] == "citizen") for r in hs]
+    p_peaks = [max(c["suspicion"][str(gs.player)] for c in r["cities"] if c["role"] == "citizen") for r in hs]
+    first_col60 = next((i + 1 for i, v in enumerate(col_peaks) if v >= game.THRESHOLD), None)
+    if first_col60 is None or first_col60 > 6 or max(p_peaks) >= game.THRESHOLD:
+        return False
+
+    _, _, hb = run_fn(ms.bot)
+    if hb[-1]["end_reason"] != "caught" or hb[-1]["vote"]["accused"] != col:
+        return False
+
+    ans = DECISION_OF[gs.truth]
+    lie = OPPOSITE[ans]
+    _, _, hhon = run_fn(lambda g: {str(r): ans for r in ms.targets(g)})
+    if hhon[-1]["end_reason"] != "caught" or hhon[-1]["vote"]["accused"] != gs.player:
+        return False
+
+    def safe_lose(g):
+        cs = ms.targets(g)
+        best = None
+        for combo in itertools.product((True, False), repeat=len(cs)):
+            claim = {str(r): ans if x else lie for r, x in zip(cs, combo)}
+            after = ms.predict(g, claim)
+            vals = list(after.values())
+            safe = max(vals) < game.THRESHOLD
+            key = (safe, sum(combo) if safe else -max(vals), -sum(vals))
+            if best is None or key > best[0]:
+                best = (key, claim)
+        return best[1]
+
+    _, _, hsl = run_fn(safe_lose)
+    return hsl[-1]["end_reason"] == "turns_done" and hsl[-1]["outcome"] == "loss"
+
+
 def run_job(job):
     scenario_id, strategy, threshold, runs = job
     outcomes = [play_scenario(scenario_id, strategy, seed, threshold) for seed in range(runs)]
@@ -313,6 +367,12 @@ def main(runs):
             sm_g = by_key[(scenario_id, "smart", "")]["goals"]
             fixed_seeds[(scenario_id, "smart", "")] = next(
                 (s for s in range(runs) if sm_g[s] and not bot_g[s] and ring_far_varies(s)), ""
+            )
+        elif scenario_id == "stubborn-ally":
+            bot_g = by_key[(scenario_id, "bot", "")]["goals"]
+            sm_g = by_key[(scenario_id, "smart", "")]["goals"]
+            fixed_seeds[(scenario_id, "smart", "")] = next(
+                (s for s in range(runs) if sm_g[s] and not bot_g[s] and stubborn_ally_shows(s)), ""
             )
         else:
             bot_g = by_key[(scenario_id, "bot", "")]["goals"]

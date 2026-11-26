@@ -2562,6 +2562,34 @@ dialog.tb-dialog[open] {
   color: var(--wood);
   opacity: 0.7;
 }
+.gm-ally-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 14.5px;
+  white-space: nowrap;
+  margin-left: 2px;
+}
+.gm-ally-pill.is-ok {
+  background: rgba(47, 74, 40, 0.14);
+  color: var(--forest);
+}
+.gm-ally-pill.is-warn {
+  background: rgba(168, 54, 31, 0.14);
+  color: var(--rust);
+}
+.gm-ally-pill.is-caught {
+  background: var(--rust);
+  color: var(--parch);
+}
+.vb-ally-tag rect {
+  fill: #3d342c;
+  stroke: #f6ebcd;
+}
+.vb-ally-tag text {
+  fill: #f6ebcd;
+}
 
 /* 시나리오 브리핑 & 결과 블록 */
 .sc-kicker {

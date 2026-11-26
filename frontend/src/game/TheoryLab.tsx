@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import type { RefObject } from 'react'
 import type { GameConfig, GameState, TurnResult } from '../gameApi'
 import { BookIcon, BookLink, TheoryBook } from './TheoryBook'
@@ -98,18 +98,18 @@ const SCENARIOS: readonly Scenario[] = [
     id: 'stubborn-ally',
     title: '고집쟁이 동료',
     brief: '"동료 마피아가 한 명 더 있어요. 그런데 이 동료는 늘 같은 거짓말만 해요."',
-    shows: '마피아가 둘로 늘어도, 눈치 없이 거짓말만 반복하는 동료는 오히려 먼저 재판에 걸려요.',
+    shows: '마피아가 둘로 늘어난 마을에서, 늘 같은 거짓말만 반복하는 동료는 힘이 될까요, 약점이 될까요?',
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
     goal: '주민 과반을 속이기',
-    rule: '동료는 금방 의심을 사요. 동료가 시선을 끄는 동안 맞는 말로 신뢰를 지키세요. 그리고 결정적인 날에만 거짓말을 보태세요.',
+    rule: '동료는 매일 주민 모두에게 같은 거짓 쪽지만 보내요. 주민 집에 마우스를 올려 동료에 대한 의심도 선을 보며, 나도 동료처럼 늘 거짓만 보낼 때와 집이 본 하늘에 맞춰 섞어 보낼 때를 비교해 보세요.',
     rate: '컴퓨터 전략으로 41% 이겨요',
-    seed: 1,
+    seed: 222,
     config: { mafia_count: 2, sensor_error: 0.48 },
     topic: 'zealot',
-    playable: false,
+    playable: true,
     debrief: {
       theory:
-        '의견을 바꾸지 않는 소수가 집단의 합의를 끌어가거나 막을 수 있어요. 마피아 둘은 집 5채의 이론상 방어선 밖이지만, 고집만 부리면 의심도와 재판에 먼저 걸려요.',
+        '의견을 바꾸지 않는 소수가 집단의 합의를 끌어가거나 막을 수 있어요. 마피아 둘이면 집 5채는 방어 보장의 경계(3f+1)를 넘지만, 이는 보장의 경계일 뿐 승패를 정하지는 않아요.',
       network:
         'SNS에서 같은 말만 단순하게 반복하는 봇은 눈에 띄어 탐지 시스템에 먼저 걸려요. 그래서 요즘 여론 조작 봇은 정상 글도 섞어 올리며 평범한 사람처럼 숨으려 해요.',
       reflect:
@@ -129,7 +129,6 @@ export function TheoryLab({
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
   const [completed] = useState<string[]>(loadCompletedScenarios)
-  const soonId = useId()
 
   return (
     <div className="gm-workspace gm-lab">
@@ -152,9 +151,6 @@ export function TheoryLab({
           <div className="tl-section-head">
             <h2 id="tl-scenarios-title">시나리오 넷</h2>
           </div>
-          <p id={soonId} className="tl-soon-note">
-            지금은 &lsquo;감시의 눈&rsquo;, &lsquo;고리 마을&rsquo;, &lsquo;신뢰를 되찾는 법&rsquo;을 바로 플레이할 수 있어요. &lsquo;고집쟁이 동료&rsquo;는 준비 중이고, &ldquo;이론 읽기&rdquo;는 모두 열어 볼 수 있어요.
-          </p>
 
           <div className="tl-cards">
             {SCENARIOS.map((card) => {
@@ -209,12 +205,7 @@ export function TheoryLab({
                         시작
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        className="tl-play"
-                        aria-disabled="true"
-                        aria-describedby={soonId}
-                      >
+                      <button type="button" className="tl-play" aria-disabled="true">
                         시작 <span className="tl-soon-badge">준비 중</span>
                       </button>
                     )}
@@ -326,9 +317,13 @@ export function ScenarioResult({
   const goalMet = scenarioGoalMet(state, scenario.id, history)
   const resultNote = scenarioResultNote(scenario.id, state, history)
   const lastDay = history.at(-1)?.turn ?? state.turn
+  const accused = history.at(-1)?.vote?.accused
+  const colleagueCaught = accused != null && state.roles[accused] === 'colleague'
   const blockedReason =
     state.end_reason === 'caught'
-      ? `${lastDay}일째 재판에 걸렸어요.`
+      ? colleagueCaught
+        ? `${lastDay}일째 동료가 재판에 걸렸어요.`
+        : `${lastDay}일째 재판에 걸렸어요.`
       : '이번 판에서 목표를 이루지 못했어요.'
 
   return (
