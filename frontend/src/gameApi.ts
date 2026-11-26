@@ -92,10 +92,13 @@ export function claimTargets(state: Pick<GameState, 'config' | 'roles' | 'player
   )
 }
 
-// 처음 고르는 값은 정답의 반대(기준 봇 전략). 플레이어가 시민마다 바꾼다.
-export function defaultClaims(state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth'>) {
-  const lie: Claim = state.truth === 'danger' ? 'stay' : 'evacuate'
-  return Object.fromEntries(claimTargets(state).map((city) => [String(city), lie])) as Record<
+// 처음 고르는 값은 정답의 반대(기준 봇 전략). 시나리오(honest=true)는 진짜 날씨로 시작한다.
+export function defaultClaims(
+  state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth'>,
+  honest = false,
+) {
+  const claim: Claim = (state.truth === 'danger') === honest ? 'evacuate' : 'stay'
+  return Object.fromEntries(claimTargets(state).map((city) => [String(city), claim])) as Record<
     string,
     Claim
   >

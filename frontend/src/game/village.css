@@ -2250,12 +2250,6 @@ dialog.tb-dialog[open] {
   font-weight: 700;
   color: var(--wood-dark);
 }
-.tl-section-head p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 19px;
-  font-weight: 700;
-}
 .tl-soon-note {
   margin: 0 0 18px;
   padding: 8px 14px;
@@ -2269,8 +2263,13 @@ dialog.tb-dialog[open] {
 }
 .tl-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(276px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+}
+@media (max-width: 720px) {
+  .tl-cards {
+    grid-template-columns: 1fr;
+  }
 }
 .tl-card {
   background: var(--cream);

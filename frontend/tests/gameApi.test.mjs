@@ -16,6 +16,8 @@ test('claim targets are neighbouring citizens only', () => {
   assert.deepEqual(claimTargets(ring3), [4])
   assert.deepEqual(defaultClaims(state), { 2: 'stay', 3: 'stay', 5: 'stay' })
   assert.deepEqual(defaultClaims({ ...state, truth: 'safe' }), { 2: 'evacuate', 3: 'evacuate', 5: 'evacuate' })
+  assert.deepEqual(defaultClaims(state, true), { 2: 'evacuate', 3: 'evacuate', 5: 'evacuate' })
+  assert.deepEqual(defaultClaims({ ...state, truth: 'safe' }, true), { 2: 'stay', 3: 'stay', 5: 'stay' })
 })
 
 test('createGame posts the difficulty preset and validates the state', async (context) => {

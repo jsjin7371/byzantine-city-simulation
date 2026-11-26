@@ -24,11 +24,13 @@ import {
   citizenScales,
   fooledDots,
   nightSteps,
+  saveCompletedScenario,
   tonightVotes,
   tutorialStep,
   villageHouses,
   villageLines,
   visibleLines,
+  watchfulEyeGoalMet,
 } from '../game/village'
 import './GamePage.css'
 
@@ -167,6 +169,7 @@ export function GamePage() {
   useEffect(() => {
     if (prevView.current !== view) {
       prevView.current = view
+      window.scrollTo(0, 0)
       headingRef.current?.focus({ preventScroll: true })
     }
   }, [view])
@@ -200,21 +203,28 @@ export function GamePage() {
     }
   }
 
+  const resetPlay = () => {
+    setState(null)
+    setTutorial(false)
+    setTutorialCursor(0)
+    setOpenCity(null)
+    setScaleOpen(false)
+    setHistory([])
+    setViewed(0)
+    setStep(null)
+    setClaims({})
+    setError('')
+  }
+
   const start = (isTutorial = false) =>
     run(async () => {
-      setState(null) // 실패해도 이전 게임을 이어서 진행하지 않게 (God은 새 요청 때 이전 게임을 버린다)
+      resetPlay() // 실패해도 이전 게임을 이어서 진행하지 않게 (God은 새 요청 때 이전 게임을 버린다)
       setScenario(null)
       const game = isTutorial
         ? await createGame('easy', 'wary', undefined, TUTORIAL_SEED)
         : await createGame(difficulty, citizenType)
       setState(game)
       setTutorial(isTutorial)
-      setTutorialCursor(0)
-      setOpenCity(null)
-      setScaleOpen(false)
-      setHistory([])
-      setViewed(0)
-      setStep(null)
       setClaims(defaultClaims(game))
     }, '게임을 시작하지 못했어요.')
 
@@ -227,17 +237,10 @@ export function GamePage() {
   const startScenario = () => {
     if (!scenario) return
     void run(async () => {
-      setState(null)
+      resetPlay()
       const game = await createGame('normal', 'wary', undefined, scenario.seed, scenario.config)
       setState(game)
-      setTutorial(false)
-      setTutorialCursor(0)
-      setOpenCity(null)
-      setScaleOpen(false)
-      setHistory([])
-      setViewed(0)
-      setStep(null)
-      setClaims(defaultClaims(game))
+      setClaims(defaultClaims(game, true))
     }, '시나리오를 시작하지 못했어요.')
   }
 
@@ -245,6 +248,9 @@ export function GamePage() {
     run(async () => {
       if (!state) return
       const turn = await playTurn(state.game_id, state.turn + 1, claims)
+      if (scenario && turn.game_over && watchfulEyeGoalMet(turn)) {
+        saveCompletedScenario(scenario.id)
+      }
       setHistory([...history, turn])
       setViewed(0)
       setOpenCity(null)
@@ -263,27 +269,10 @@ export function GamePage() {
       if (turn.game_over) setState(await getGame(state.game_id))
     }, '다음 밤으로 넘기지 못했어요.')
 
-  const resetPlay = () => {
-    setState(null)
-    setTutorial(false)
-    setTutorialCursor(0)
-    setOpenCity(null)
-    setScaleOpen(false)
-    setHistory([])
-    setViewed(0)
-    setStep(null)
-    setClaims({})
-    setError('')
-  }
-
   const exit = () => {
     resetPlay()
-    if (scenario) {
-      setScenario(null)
-      setScreen('lab')
-    } else {
-      setScreen('start')
-    }
+    setScenario(null)
+    setScreen(scenario ? 'lab' : 'start')
   }
 
   const retryScenario = () => {

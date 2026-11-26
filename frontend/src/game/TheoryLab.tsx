@@ -1,12 +1,11 @@
-import { useEffect, useId, useState } from 'react'
+import { useId, useState } from 'react'
 import type { RefObject } from 'react'
 import type { GameConfig, GameState, TurnResult } from '../gameApi'
 import { BookIcon, BookLink, TheoryBook } from './TheoryBook'
-import { watchfulEyeGoalMet } from './village'
+import { loadCompletedScenarios, watchfulEyeGoalMet } from './village'
 import type { TopicKey } from './village'
 
 const RATE_BASIS = '시나리오마다 찾은 전략 중 가장 잘 이긴 것 기준(1000판)'
-const COMPLETED_STORAGE_KEY = 'byzantine:completed-scenarios'
 
 export type Scenario = {
   id: string
@@ -40,7 +39,7 @@ const SCENARIOS: readonly Scenario[] = [
     shows: '모든 집이 쪽지 비교를 해도, 들킨 마피아를 바로 빼내지 못하면 거짓말이 통할 수 있어요.',
     chips: ['집 5채', '모든 집 쪽지 비교', '잘못 볼 확률 45%'],
     goal: '주민 과반을 속이기',
-    rule: '집마다 다른 쪽지는 쪽지 비교에서 반드시 들켜요. 모든 주민에게 같은 말을 보내 보세요.',
+    rule: '집마다 다른 쪽지는 쪽지 비교에서 반드시 들켜요. 모든 주민에게 같은 말을 보내 보세요. 들키진 않아도 의심도는 쌓여요.',
     rate: '잘하면 45% 이겨요',
     seed: 0,
     config: { share_mode: 'all', sensor_error: 0.45 },
@@ -129,29 +128,6 @@ const SCENARIOS: readonly Scenario[] = [
   },
 ]
 
-function loadCompletedScenarios(): string[] {
-  try {
-    const raw = localStorage.getItem(COMPLETED_STORAGE_KEY)
-    if (!raw) return []
-    const parsed: unknown = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
-  } catch {
-    return []
-  }
-}
-
-function saveCompletedScenario(id: string): string[] {
-  const prev = loadCompletedScenarios()
-  if (prev.includes(id)) return prev
-  const next = [...prev, id]
-  try {
-    localStorage.setItem(COMPLETED_STORAGE_KEY, JSON.stringify(next))
-  } catch {
-    // 저장소 접근 불가 환경에서는 메모리 상태만 유지한다.
-  }
-  return next
-}
-
 export function TheoryLab({
   headingRef,
   onBack,
@@ -159,7 +135,7 @@ export function TheoryLab({
 }: {
   headingRef?: RefObject<HTMLHeadingElement | null>
   onBack: () => void
-  onStartScenario?: (scenario: Scenario) => void
+  onStartScenario: (scenario: Scenario) => void
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
   const [completed] = useState<string[]>(loadCompletedScenarios)
@@ -184,8 +160,7 @@ export function TheoryLab({
 
         <section className="tl-section" aria-labelledby="tl-scenarios-title">
           <div className="tl-section-head">
-            <h2 id="tl-scenarios-title">시나리오</h2>
-            <p>지금 엔진으로 바로 열 수 있는 마을 넷</p>
+            <h2 id="tl-scenarios-title">시나리오 넷</h2>
           </div>
           <p id={soonId} className="tl-soon-note">
             지금은 &lsquo;감시의 눈&rsquo;을 바로 플레이할 수 있어요. 나머지 마을은 준비 중이고, &ldquo;이론 읽기&rdquo;는 모두 열어 볼 수 있어요.
@@ -231,7 +206,7 @@ export function TheoryLab({
                       <dd>{card.goal}</dd>
                     </div>
                     <div>
-                      <dt>이 마을에서는</dt>
+                      <dt>요령</dt>
                       <dd>{card.rule}</dd>
                     </div>
                   </dl>
@@ -242,7 +217,7 @@ export function TheoryLab({
                       <button
                         type="button"
                         className="tl-play is-ready"
-                        onClick={() => onStartScenario?.(card)}
+                        onClick={() => onStartScenario(card)}
                       >
                         시작
                       </button>
@@ -362,9 +337,6 @@ export function ScenarioResult({
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
   const goalMet = watchfulEyeGoalMet(state)
-  useEffect(() => {
-    if (goalMet) saveCompletedScenario(scenario.id)
-  }, [goalMet, scenario.id])
   const lastDay = history.at(-1)?.turn ?? state.turn
   const blockedReason =
     state.end_reason === 'caught'

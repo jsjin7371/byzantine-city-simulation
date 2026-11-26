@@ -1600,7 +1600,30 @@ export const DIFFICULTY_STATS: readonly DifficultyStat[] = (
   }
 })
 
+const COMPLETED_SCENARIOS_KEY = 'byzantine:completed-scenarios'
+
 // 시나리오 '감시의 눈' 목표 판정: 주민 과반을 속여 이겼는지.
 export function watchfulEyeGoalMet(state: Pick<GameState, 'outcome'>): boolean {
   return state.outcome === 'win' || state.outcome === 'perfect_win'
+}
+
+export function loadCompletedScenarios(): string[] {
+  try {
+    const raw = localStorage.getItem(COMPLETED_SCENARIOS_KEY)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+export function saveCompletedScenario(id: string): void {
+  const prev = loadCompletedScenarios()
+  if (prev.includes(id)) return
+  try {
+    localStorage.setItem(COMPLETED_SCENARIOS_KEY, JSON.stringify([...prev, id]))
+  } catch {
+    // 저장소 접근 불가 환경에서는 무시한다.
+  }
 }
