@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeGoalMet, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -1401,4 +1401,11 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
   ]
   const sCalm = gameSummary(g723State, calmHist)
   assert.equal(sCalm.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('속은 주민이')), false)
+})
+
+test('watchfulEyeGoalMet returns true only on win or perfect_win', () => {
+  assert.equal(watchfulEyeGoalMet({ outcome: 'win' }), true)
+  assert.equal(watchfulEyeGoalMet({ outcome: 'perfect_win' }), true)
+  assert.equal(watchfulEyeGoalMet({ outcome: 'loss' }), false)
+  assert.equal(watchfulEyeGoalMet({ outcome: null }), false)
 })

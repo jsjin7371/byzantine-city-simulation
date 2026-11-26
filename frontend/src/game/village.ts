@@ -1599,3 +1599,8 @@ export const DIFFICULTY_STATS: readonly DifficultyStat[] = (
     majorityBotWinPct,
   }
 })
+
+// 시나리오 '감시의 눈' 목표 판정: 주민 과반을 속여 이겼는지.
+export function watchfulEyeGoalMet(state: Pick<GameState, 'outcome'>): boolean {
+  return state.outcome === 'win' || state.outcome === 'perfect_win'
+}

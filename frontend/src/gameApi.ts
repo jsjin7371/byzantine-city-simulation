@@ -128,10 +128,15 @@ export async function createGame(
   citizenType: CitizenType = 'wary',
   signal?: AbortSignal,
   seed?: number,
+  overrides?: Partial<GameConfig>,
 ): Promise<GameState> {
   const { label: _label, ...preset } = difficulties[difficulty]
-  const payload =
-    seed !== undefined ? { ...preset, citizen_type: citizenType, seed } : { ...preset, citizen_type: citizenType }
+  const payload = {
+    ...preset,
+    citizen_type: citizenType,
+    ...overrides,
+    ...(seed !== undefined ? { seed } : {}),
+  }
   const data = await request('/api/games', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
