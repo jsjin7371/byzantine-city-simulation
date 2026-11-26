@@ -98,7 +98,9 @@ function Ground({ ring = false }: { ring?: boolean }) {
         <g fill="#9f9886" stroke="#5f5a4c" strokeWidth="1.5">
           {STONES.map(([x, y]) => <ellipse key={`${x}-${y}`} cx={x} cy={y} rx="9" ry="6" />)}
         </g>
-        {TREES.map(([x, y]) => <use key={`${x}-${y}`} href="#vb-tree" x={x} y={y} />)}
+        {TREES.filter(([x, y]) => !(ring && y >= 225 && y <= 238 && x >= 360 && x <= 540)).map(([x, y]) => (
+          <use key={`${x}-${y}`} href="#vb-tree" x={x} y={y} />
+        ))}
       </g>
     </g>
   )
