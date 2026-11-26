@@ -22,7 +22,9 @@ import {
   TUTORIAL_STEPS,
   citizenScales,
   fooledDots,
+  nightStepMs,
   nightSteps,
+  plainAiReason,
   tonightVotes,
   tutorialStep,
   villageHouses,
@@ -72,7 +74,7 @@ function TurnReport({ result }: { result: TurnResult }) {
               ) : (
                 <p className="gm-muted">의심도 없음 (다수결 주민)</p>
               )}
-              {c.reason && <p className="gm-reason">{c.reason}</p>}
+              {c.reason && <p className="gm-reason">{plainAiReason(c.reason)}</p>}
             </article>
           ))}
       </div>
@@ -176,9 +178,9 @@ export function GamePage() {
   useEffect(() => {
     if (step == null) return
     const next = steps[step + 1]?.phase === 'day' ? null : step + 1
-    const timer = setTimeout(() => setStep(next), steps[step].ms)
+    const timer = setTimeout(() => setStep(next), nightStepMs(steps[step], tutorial, result?.turn))
     return () => clearTimeout(timer)
-  }, [step, steps])
+  }, [step, steps, tutorial, result])
   useEffect(() => {
     if (step == null) return
     const skip = (e: KeyboardEvent) => e.key === 'Escape' && setStep(null)

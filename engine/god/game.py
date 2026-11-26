@@ -12,7 +12,7 @@ from dataclasses import asdict, dataclass
 from common.http import HttpError
 from god.simulation import DECISION_OF, OPPOSITE_TRUTH, neighbors
 
-N, TURNS, THRESHOLD = 5, 15, 60  # 도시 수, 턴 수, 투표가 열리는 의심도
+N, TURNS, THRESHOLD = 5, 7, 60  # 도시 수, 턴 수, 투표가 열리는 의심도
 OPPOSITE = {"evacuate": "stay", "stay": "evacuate"}
 CHOICES = {"connection": ("all", "ring"), "citizen_type": ("majority", "wary", "ai"),
            "memory": ("turn", "recent", "full"), "share_mode": ("all", "pairs", "none"), "player": ("human", "bot")}

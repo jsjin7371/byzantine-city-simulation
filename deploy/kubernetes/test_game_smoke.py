@@ -13,7 +13,7 @@ sys.path.insert(0, str(ENGINE))
 sys.path.insert(0, str(ENGINE / "tests"))
 
 from city.logic import game_turn
-from god.game import Game, GameConfig
+from god.game import TURNS, Game, GameConfig
 from game_smoke import run
 
 
@@ -55,7 +55,7 @@ class Transport:
             return result
         result = self.game.state()
         if self.fault == "final":
-            result["turn"] = 14
+            result["turn"] = TURNS - 1
         return result
 
 
@@ -65,7 +65,7 @@ class SmokeTests(unittest.TestCase):
         with contextlib.redirect_stdout(io.StringIO()):
             run(transport.request)
         self.assertEqual(transport.health_checks, [1, 2, 3, 4, 5])
-        self.assertEqual(transport.turns, 15)
+        self.assertEqual(transport.turns, TURNS)
 
     def test_wrong_city_and_unhealthy_god_fail_before_game(self):
         for fault in ("city", "god"):
@@ -112,7 +112,7 @@ class LocalHttpSmokeTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()):
                 run(transport)
             city_turns = [host for host, path in calls if host.startswith("city-") and path == "/turn"]
-            self.assertEqual(len(city_turns), 60)
+            self.assertEqual(len(city_turns), 4 * TURNS)
             self.assertEqual(len(set(city_turns)), 4)
 
 

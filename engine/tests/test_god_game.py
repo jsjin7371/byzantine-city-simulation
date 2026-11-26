@@ -105,7 +105,7 @@ class GameRuleTests(unittest.TestCase):
     def test_share_pairs_announced_before_turn(self):
         """next_share_pairs로 공개한 쌍이 그 턴 공유 쌍이다. 같은 seed면 같고, none은 [], all은 모든 쌍, 끝나면 null."""
         g, seen = new_game(share_pairs=2, citizen_type="majority"), []
-        for _ in range(15):
+        for _ in range(7):
             announced = g.state()["next_share_pairs"]
             result = play(g, fixed_city())
             self.assertEqual([s["pair"] for s in result["sharing"]], announced)
@@ -114,7 +114,7 @@ class GameRuleTests(unittest.TestCase):
         self.assertIsNone(result["next_share_pairs"])
         self.assertGreater(len({str(x) for x in seen}), 1)  # 턴마다 새로 뽑는다
         g2, again = new_game(share_pairs=2, citizen_type="majority"), []
-        for _ in range(15):
+        for _ in range(7):
             again.append(g2.state()["next_share_pairs"])
             play(g2, fixed_city())
         self.assertEqual(again, seen)
@@ -196,27 +196,27 @@ class GameRuleTests(unittest.TestCase):
         self.assertEqual(caught.exception.status, 409)
 
     def test_final_outcomes(self):
-        """15턴 시민 결정으로 완승/승리/패배. 4명 2:2는 패배."""
+        """7턴 시민 결정으로 완승/승리/패배. 4명 2:2는 패배."""
         for wrong_count, outcome in ((4, "perfect_win"), (3, "win"), (2, "loss"), (0, "loss")):
             g = new_game(citizen_type="majority")
             wrong = set(g.citizens[:wrong_count])
             answer = DECISION_OF[g.truth]
             city = fixed_city(decision=lambda c, req: {"evacuate": "stay", "stay": "evacuate"}[answer]
                               if c in wrong else answer)
-            for t in range(1, 16):
+            for t in range(1, 8):
                 result = play(g, city)
                 self.assertEqual(result["turn"], t)
-                self.assertEqual(result["game_over"], t == 15)
+                self.assertEqual(result["game_over"], t == 7)
             self.assertEqual((result["outcome"], result["end_reason"], result["next_hints"]),
                              (outcome, "turns_done", None))
             self.assertEqual(result["accuracy"], 1 - wrong_count / 4)
-            self.assertEqual(g.state()["turn"], 15)
+            self.assertEqual(g.state()["turn"], 7)
         g = new_game(mafia_count=2, citizen_type="majority")  # 시민 3명이면 2명 오답이 승리
         wrong = set(g.citizens[:2])
         answer = DECISION_OF[g.truth]
         city = fixed_city(decision=lambda c, req: {"evacuate": "stay", "stay": "evacuate"}[answer]
                           if c in wrong else answer)
-        for _ in range(15):
+        for _ in range(7):
             result = play(g, city)
         self.assertEqual(result["outcome"], "win")
 
@@ -307,17 +307,17 @@ class GameHttpTests(unittest.TestCase):
         return caught.exception.code
 
     def test_full_game_over_http(self):
-        """POST /games → 15턴 → GET 상태. 끝난 게임과 모르는 게임은 409/404."""
+        """POST /games → 7턴 → GET 상태. 끝난 게임과 모르는 게임은 409/404."""
         state = http.request("POST", self.url + "/games", {"game_id": 9, "player": "bot",
                                                           "citizen_type": "majority", "seed": 3}, timeout=5)
         self.assertEqual((state["game_id"], state["turn"]), (9, 0))
-        for t in range(1, 16):
+        for t in range(1, 8):
             result = http.request("POST", self.url + "/games/9/turns", {"turn": t, "claims": {}}, timeout=5)
         self.assertEqual(result["end_reason"], "turns_done")
         self.assertIn(result["outcome"], ("perfect_win", "win", "loss"))
         state = http.request("GET", self.url + "/games/9", timeout=5)
-        self.assertEqual((state["turn"], state["game_over"], state["next_hints"]), (15, True, None))
-        self.assertEqual(self.status("POST", "/games/9/turns", {"turn": 16, "claims": {}}), 409)
+        self.assertEqual((state["turn"], state["game_over"], state["next_hints"]), (7, True, None))
+        self.assertEqual(self.status("POST", "/games/9/turns", {"turn": 8, "claims": {}}), 409)
         self.assertEqual(self.status("GET", "/games/8"), 404)
         self.assertEqual(self.status("POST", "/games/x/turns", {"turn": 1, "claims": {}}), 404)
         # 새 게임이 오면 이전 게임은 버린다

@@ -10,7 +10,7 @@ import random
 from app.god.client import GodGameError
 from app.god.mock import DECISION_OF, OPPOSITE_DECISION, OPPOSITE_TRUTH
 
-N, TURNS = 5, 15
+N, TURNS = 5, 7
 
 
 class MockGodGames:

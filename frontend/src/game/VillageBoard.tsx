@@ -20,7 +20,8 @@ const TREES = [
 const STONES = [
   [380, 345], [398, 315], [430, 298], [470, 298], [502, 315], [520, 345], [502, 376], [470, 392], [430, 392], [398, 376],
 ]
-const cellX = (day: number) => 150 + 44 * (day - 1)
+const CELL_STEP = Math.floor((654 - CELL_W) / Math.max(1, TOTAL_TURNS - 1))
+const cellX = (day: number) => 150 + CELL_STEP * (day - 1)
 
 // 목업 A3의 공용 그림 (거친 선 필터, 오두막, 깃발, 창문, 말)
 function Defs() {
@@ -188,11 +189,12 @@ function Sky({ danger, highlighted = false }: { danger: boolean; highlighted?: b
   )
 }
 
-// 달력 트랙 15칸. 지난 날은 짙게, 말은 오늘(끝났으면 마지막 날)에 선다.
+// 달력 트랙. 지난 날은 짙게, 말은 오늘(끝났으면 마지막 날)에 선다.
 function Calendar({ turn, over }: { turn: number; over: boolean }) {
   const day = over ? turn : Math.min(turn + 1, TOTAL_TURNS)
   const left = TOTAL_TURNS - turn
   const px = cellX(day) + CELL_W / 2
+  const lastCx = cellX(TOTAL_TURNS) + CELL_W / 2
   return (
     <g role="img" aria-label={`달력: 마지막 밤 D-${left}, ${day}/${TOTAL_TURNS}일`}>
       <rect x="0" y="598" width="900" height="62" fill="#7a5530" />
@@ -212,7 +214,7 @@ function Calendar({ turn, over }: { turn: number; over: boolean }) {
             fill={d === TOTAL_TURNS ? '#8fa0a8' : d <= turn ? '#b99662' : '#ecd9aa'}
           />
         ))}
-        <path d="M785 629 m0 -1 a3 3 0 1 1 3 3 a7 7 0 1 1 -7 -7 a11 11 0 0 1 11 11" fill="none" stroke="#2c3d4f" strokeWidth="2.4" strokeLinecap="round" />
+        <path d={`M${lastCx} 629 m0 -1 a3 3 0 1 1 3 3 a7 7 0 1 1 -7 -7 a11 11 0 0 1 11 11`} fill="none" stroke="#2c3d4f" strokeWidth="2.4" strokeLinecap="round" />
       </g>
       <g fontSize="13.5" fontWeight="700" textAnchor="middle" className="vb-cal-num" aria-hidden>
         {Array.from({ length: TOTAL_TURNS - 1 }, (_, i) => i + 1)
@@ -426,7 +428,7 @@ function HouseView({
   const { x, y } = h
   const obs = !isNight ? nextObservationTag(h) : null
   const obsW = obs ? (obs.lit ? 162 : 202) : 0
-  const obsY = h.suspicion != null ? y + 64 : y + 26
+  const obsY = h.suspicion != null ? y + 67 : y + 26
   const base = `${houseLabel(h, playerCity)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
   const label = pick
     ? `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
@@ -533,7 +535,7 @@ function HouseView({
       )}
       {h.suspicion != null && (
         <g
-          transform={`translate(${x - gaugeCx},${y + 24})`}
+          transform={`translate(${x - gaugeCx},${y + 19})`}
           className={`${over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}${hlSuspicion ? ' vb-tut-hl' : ''}`}
         >
           {hlSuspicion && (
@@ -542,7 +544,7 @@ function HouseView({
               x={gaugeLeft - 6}
               y="-15"
               width={gaugeRight - gaugeLeft + 12}
-              height="41"
+              height="50"
               rx="8"
               aria-hidden
             />
@@ -561,7 +563,8 @@ function HouseView({
           <g className="vb-post">
             <path d={`M${postX} -9 V10`} />
             <path d={`M${postX - 5} -9 H${postX + 5}`} />
-            <text x={postX} y="22" fontSize="11.5" fontWeight="700" textAnchor="middle" className="vb-post-label" aria-hidden>
+            <rect x={postX - 31} y="12" width="62" height="19" rx="4" className="vb-post-tag" aria-hidden />
+            <text x={postX} y="26.5" fontSize="15" fontWeight="700" textAnchor="middle" className="vb-post-label" aria-hidden>
               재판 {SUSPICION.threshold}
             </text>
           </g>
@@ -611,7 +614,7 @@ function HouseView({
       {pick?.changed && (
         <g
           className={hlChanged ? 'vb-new vb-tut-hl' : 'vb-new'}
-          transform={`translate(${x},${y + (h.suspicion != null ? 92 : 56)})`}
+          transform={`translate(${x},${y + (h.suspicion != null ? 95 : 56)})`}
           aria-hidden
         >
           <rect x="-92" y="-11.5" width="184" height="23" rx="11.5" />
@@ -865,32 +868,40 @@ function NoteCard({
   )
 }
 
-const SIGNS = ['1 불빛부터 봐요', '2 집마다 쪽지 골라요', '3 쪽지 비교엔 같은 쪽지']
+// 표지판 한 장에 두 줄
+const SIGNS = [
+  ['1 집 창문의', '불빛부터 봐요'],
+  ['2 각 집마다 보낼', '쪽지를 골라요'],
+  ['3 쪽지를 비교하는 집엔', '같은 쪽지를 보내요'],
+]
 
 // 첫날 안내 표지판 (왼쪽 나무 기둥).
 function Signs() {
   return (
     <g
-      fontSize="14"
+      fontSize="15"
       fontWeight="700"
       role="img"
-      aria-label="첫날 안내: 1 창문 불빛부터 봐요, 2 집마다 쪽지를 골라요, 3 오늘 밤 쪽지 비교로 이어진 두 집에는 같은 쪽지를 보내요"
+      aria-label="첫날 안내: 1 집 창문의 불빛부터 봐요, 2 각 집마다 보낼 쪽지를 골라요, 3 쪽지를 비교하는 집엔 같은 쪽지를 보내요"
     >
-      <rect x="80" y="302" width="9" height="112" fill="#5a3d22" filter="url(#vb-rough)" />
-      <text x="16" y="298" className="vb-sign-title">
+      <rect x="80" y="274" width="9" height="146" fill="#5a3d22" filter="url(#vb-rough)" />
+      <text x="16" y="270" className="vb-sign-title">
         첫날 안내
       </text>
-      {SIGNS.map((t, i) => (
-        <g key={t} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
+      {SIGNS.map(([first, second], i) => (
+        <g key={first} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
-            d={`M8 ${308 + i * 33} H174 L184 ${322 + i * 33} L174 ${336 + i * 33} H8 Z`}
+            d={`M8 ${280 + i * 49} H174 L184 ${302 + i * 49} L174 ${324 + i * 49} H8 Z`}
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
             filter="url(#vb-rough)"
           />
-          <text x="14" y={327 + i * 33}>
-            {t}
+          <text x="14" y={298 + i * 49}>
+            {first}
+          </text>
+          <text x="14" y={317 + i * 49}>
+            {second}
           </text>
         </g>
       ))}

@@ -16,11 +16,11 @@ router = APIRouter(prefix="/games", tags=["games"])
 
 _create_lock = Lock()  # 실험 확인과 게임 생성을 한 번에 하나만 (실험 API와 같은 이유)
 
-# 봇 승률 (7.2 난이도 표). wary는 experiments/mafia_pilot.csv, majority는 experiments/mafia_compare.csv. ai는 측정값 없음(null).
+# 봇 승률 (7.2 난이도 표). 근거: experiments/mafia_botwin.py (7턴, 시드 0~9999, --check로 대조). ai는 측정값 없음(null).
 # 나머지 설정이 기본값일 때만 적용한다.
 BOT_WIN_RATE = {
-    ("wary", 1, 0.48): 0.32, ("wary", 1, 0.4): 0.10, ("wary", 1, 0.3): 0.01,
-    ("majority", 1, 0.48): 0.873, ("majority", 1, 0.4): 0.748, ("majority", 1, 0.3): 0.482,
+    ("wary", 1, 0.48): 0.57, ("wary", 1, 0.4): 0.31, ("wary", 1, 0.3): 0.08,
+    ("majority", 1, 0.48): 0.864, ("majority", 1, 0.4): 0.736, ("majority", 1, 0.3): 0.490,
 }
 _DEFAULTS = {"connection": "all", "memory": "turn", "share_mode": "pairs", "share_pairs": 1}
 

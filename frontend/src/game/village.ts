@@ -1,6 +1,10 @@
 import { SUSPICION, claimTargets, difficulties, majority } from '../gameApi.ts'
 import type { Claim, Difficulty, GameState, Role, Truth, TurnResult } from '../gameApi.ts'
 
+// 엔진(engine/city/ai.py)이 AI 응답 실패 때 붙이는 접두어를 화면용 쉬운 문장으로 바꾼다. 오류 종류는 숨긴다.
+export const plainAiReason = (reason: string) =>
+  reason.replace(/^\[AI 응답 실패\([^)]*\)로 눈치 규칙 대체\]/, 'AI 주민이 답하지 못해 눈치 규칙으로 판단했어요.')
+
 // 숲속 보드 좌표 (viewBox 900x698, 목업 A3). 0번 자리는 내 집(아래 가운데), 1~4번은 시계방향.
 // trail: 집 앞 공터에서 광장까지의 오솔길 [시작x, 시작y, 조절x, 조절y, 끝x, 끝y].
 const SLOTS = [
@@ -499,6 +503,16 @@ export function nightSteps(
   return steps
 }
 
+// 튜토리얼 첫 밤의 ③ 주민 결정은 처음 보는 사람이 읽을 수 있게 더 오래 둔다.
+export function nightStepMs(
+  step: Pick<Step, 'phase' | 'ms'>,
+  tutorial: boolean,
+  turn: number | null | undefined,
+): number {
+  const slow = tutorial && turn === 1 && step.phase === 'flags'
+  return step.ms * (slow ? 2.5 : 1)
+}
+
 // 연출 중 집 상태: 깃발·의심도는 그 단계가 오기 전까지 지난 턴 값, 창문은 다음 날 전까지 오늘 밤 힌트.
 // flags 단계에서는 decided 수만큼 시계 방향 순서로 시민 깃발을 차례로 세운다.
 export function stagedHouses(
@@ -652,7 +666,7 @@ export function villageLines(
   // 쪽지를 받은 주민의 반응: 관측과 맞는 말 / 어긋나는 말 (AI 시민은 자기 판단 이유)
   for (const c of citizens) {
     const mine = c.received?.[me]
-    if (ai && c.reason) lines.push({ phase: 'notes', kind: 'say', who: c.city, text: c.reason })
+    if (ai && c.reason) lines.push({ phase: 'notes', kind: 'say', who: c.city, text: plainAiReason(c.reason) })
     else if (mine && c.hint)
       lines.push({
         phase: 'notes',
@@ -1473,11 +1487,11 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'suspicion',
-    text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민의 관측과 다른 쪽지를 보내면 의심도가 올라가요. 재판 기준을 넘으면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
+    text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민이 본 날씨와 같은 쪽지를 보내면 의심도가 내려가고, 다르면 올라가요. 재판 기준을 넘으면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
   },
   {
     highlight: 'votes',
-    text: '주민은 관측 한 표와 받은 쪽지들로 결정을 내려요. 의심하는 집 쪽지일수록 덜 믿어서 저울에 적게 반영돼요. 마을 이야기 위에서 오늘 밤 저울을 볼 수 있어요.',
+    text: "주민은 자기가 본 날씨를 한 표, 받은 쪽지를 각각 한 표로 세어 많은 쪽으로 결정해요. 단, 의심하는 집에서 온 쪽지는 더 적게 반영해요. 어떻게 계산됐는지는 마을 이야기 위 '오늘 밤 저울'에서 볼 수 있어요.",
   },
   {
     highlight: 'share',
@@ -1486,7 +1500,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   {
     highlight: 'submit',
     wait: 'turn',
-    text: '다 골랐으면 밤으로 넘겨 보세요.',
+    text: '주민들에게 보낼 쪽지를 다 골랐으면 밤으로 넘겨 보세요.',
   },
   {
     highlight: 'flags',
@@ -1494,7 +1508,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: null,
-    text: '주민 집에 마우스를 올리면 그 주민이 다른 집을 의심하는 선이 보여요. 의심도가 높을수록 선이 굵고, 키보드 초점으로도 볼 수 있어요.',
+    text: '주민 집에 마우스를 올리면 그 주민이 다른 집을 의심하는 선이 보여요. 의심도가 높을수록 선이 굵고, 키보드 초점으로도 볼 수 있어요. 나를 의심하는 집에서만, 내 집으로 가는 선이 보여요.',
   },
   {
     highlight: 'log',
@@ -1583,9 +1597,9 @@ export type DifficultyStat = {
 // 평균 틀린 수(4p)와 3명 이상 함께 틀릴 확률 P(X>=3) = 4p^3(1-p) + p^4는 프리셋 sensor_error에서 계산한다.
 export const DIFFICULTY_STATS: readonly DifficultyStat[] = (
   [
-    { key: 'easy', waryBotWinPct: 32, majorityBotWinPct: 87 },
-    { key: 'normal', waryBotWinPct: 10, majorityBotWinPct: 75 },
-    { key: 'hard', waryBotWinPct: 1, majorityBotWinPct: 48 },
+    { key: 'easy', waryBotWinPct: 57, majorityBotWinPct: 86 },
+    { key: 'normal', waryBotWinPct: 31, majorityBotWinPct: 74 },
+    { key: 'hard', waryBotWinPct: 8, majorityBotWinPct: 49 },
   ] as const
 ).map(({ key, waryBotWinPct, majorityBotWinPct }) => {
   const { label, sensor_error: p } = difficulties[key]

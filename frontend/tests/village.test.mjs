@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
+  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -355,6 +355,17 @@ test('night steps: night, notes, flags (one per citizen with vote bars, single s
   }
 })
 
+test('nightStepMs slows only tutorial turn 1 flags steps and keeps all other steps unchanged', () => {
+  const cities = [{ role: 'player', city: 3 }, ...[1, 2, 4, 5].map((city) => ({ role: 'citizen', city }))]
+  const steps = nightSteps({ vote: { ballots: { 1: 3 }, accused: null, caught: false }, cities })
+  for (const s of steps) {
+    assert.equal(nightStepMs(s, true, 1), s.phase === 'flags' ? s.ms * 2.5 : s.ms)
+    assert.equal(nightStepMs(s, true, 2), s.ms)
+    assert.equal(nightStepMs(s, true, undefined), s.ms)
+    assert.equal(nightStepMs(s, false, 1), s.ms)
+  }
+})
+
 test('visible lines follow the step: words in phase order, accusations one at a time', () => {
   const lines = villageLines(state, { ...turn, vote: { ballots: { 1: 3, 4: 1 }, accused: null, caught: false } })
   const steps = nightSteps({ vote: { ballots: { 1: 3, 4: 1 } }, cities: turn.cities }, false)
@@ -406,25 +417,25 @@ test('game summary: caught explains who accused me at which trial', () => {
   assert.ok(s.moments.some((m) => m.day === null && m.text === '재판이 1번 열렸어요'))
 })
 
-test('game summary: turn 15 counts fooled citizens, first crossing of 60 and caught contradictions', () => {
+test('game summary: turn 7 counts fooled citizens, first crossing of 60 and caught contradictions', () => {
   const quiet = day(1, { cities: turn.cities.map((c) => (c.suspicion ? { ...c, suspicion: { ...c.suspicion, 3: 10 } } : c)) })
   const hot = day(2, { cities: turn.cities.map((c) => (c.city === 4 ? { ...c, suspicion: { ...c.suspicion, 3: 70 } } : c)), sharing: turn.sharing })
-  const s = gameSummary(over('win', 'turns_done'), [quiet, hot, day(15)])
+  const s = gameSummary(over('win', 'turns_done'), [quiet, hot, day(7)])
   assert.equal(s.headline, '주민 과반을 끝까지 속였어요')
-  assert.ok(s.moments.some((m) => m.day === 15 && m.text === '마지막 15일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
+  assert.ok(s.moments.some((m) => m.day === 7 && m.text === '마지막 7일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
   assert.ok(s.moments.some((m) => m.day === 2 && m.text === '2일째 4번의 의심도가 70까지 올라 처음으로 재판 기준 60을 넘었어요'))
   assert.ok(s.moments.some((m) => m.day === 2 && m.text === '쪽지 비교에서 다른 쪽지를 보냈다가 1번 들켰어요 (2일째)'))
   assert.deepEqual(s.peaks, [10, 70, 50])
   assert.deepEqual(s.deceived, [2, 2, 2])
   assert.deepEqual(s.pins[1]?.labels, ['쪽지 들킴'])
 
-  const lostDay = day(15, {
+  const lostDay = day(7, {
     cities: turn.cities.map((c) => (c.city === 4 ? { ...c, correct: true } : c)),
   })
   const lost = gameSummary(over('loss', 'turns_done'), [lostDay])
-  assert.equal(lost.headline, '15일째에 주민 과반이 속지 않았어요')
-  assert.ok(lost.moments.some((m) => m.day === 15 && m.text === '마지막 15일째에 주민 3명 중 1명이 속았어요 (승리에 2명 필요)'))
-  assert.equal(gameSummary(over('perfect_win', 'turns_done'), [day(15)]).headline, '주민 모두를 끝까지 속였어요')
+  assert.equal(lost.headline, '7일째에 주민 과반이 속지 않았어요')
+  assert.ok(lost.moments.some((m) => m.day === 7 && m.text === '마지막 7일째에 주민 3명 중 1명이 속았어요 (승리에 2명 필요)'))
+  assert.equal(gameSummary(over('perfect_win', 'turns_done'), [day(7)]).headline, '주민 모두를 끝까지 속였어요')
 })
 
 const turnOf = (cities) => ({ cities: cities.map((c) => ({ ...empty, ...c })) })
@@ -688,9 +699,9 @@ test('DIFFICULTY_STATS derives expected error%, mean wrong citizens, and >=3 wro
   assert.deepEqual(
     DIFFICULTY_STATS.map((r) => [r.key, r.errorPct, r.avgWrong, r.atLeastThreePct, r.waryBotWinPct, r.majorityBotWinPct]),
     [
-      ['easy', 48, 1.9, 28, 32, 87],
-      ['normal', 40, 1.6, 18, 10, 75],
-      ['hard', 30, 1.2, 8, 1, 48],
+      ['easy', 48, 1.9, 28, 57, 86],
+      ['normal', 40, 1.6, 18, 31, 74],
+      ['hard', 30, 1.2, 8, 8, 49],
     ],
   )
 })
