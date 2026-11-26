@@ -1399,7 +1399,7 @@ export function gameSummary(
     const top = crossed.cities.reduce((a, c) => ((c.suspicion?.[me] ?? 0) > (a.suspicion?.[me] ?? 0) ? c : a))
     momentItems.push({
       day: crossed.turn,
-      text: `${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold}을 넘었어요`,
+      text: `${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold}에 닿았어요`,
     })
   }
   const knots = playerContradictionTurns(me, history)
@@ -1407,7 +1407,7 @@ export function gameSummary(
     momentItems.push({
       kind: 'knots',
       day: knots.at(-1)!.turn,
-      text: `쪽지 비교에서 다른 쪽지를 보냈다가 ${knots.length}번 들켰어요 (${knots.map((t) => `${t.turn}일째`).join(', ')})`,
+      text: `쪽지 비교에서 모순이 ${knots.length}번 드러났어요 (${knots.map((t) => `${t.turn}일째`).join(', ')})`,
     })
   }
 
@@ -1426,7 +1426,7 @@ export function gameSummary(
     .sort((a, b) => (a.day ?? Infinity) - (b.day ?? Infinity))
     .map(({ day: d, text, tag }) => (tag ? { day: d, text, tag } : { day: d, text }))
 
-  // 그래프 핀: 모순("쪽지 들킴"), 재판("재판"), 꼬리표(화면 꼬리표 이름과 동일)
+  // 그래프 핀: 모순("모순 드러남"), 재판("재판"), 꼬리표(화면 꼬리표 이름과 동일)
   const pins: Record<number, ChartPin> = {}
   const addPin = (idx: number, label: string, danger: boolean) => {
     if (idx < 0 || idx >= history.length) return
@@ -1436,7 +1436,7 @@ export function gameSummary(
     pins[idx] = cur
   }
   history.forEach((t, i) => {
-    if (t.sharing.some((s) => s.contradictions.some((c) => c.city === me))) addPin(i, '쪽지 들킴', true)
+    if (t.sharing.some((s) => s.contradictions.some((c) => c.city === me))) addPin(i, '모순 드러남', true)
     if (t.vote) addPin(i, '재판', true)
   })
   for (const m of moments) {
@@ -1500,7 +1500,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: 'suspicion',
-    text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민이 본 날씨와 같은 쪽지를 보내면 의심도가 내려가고, 다르면 올라가요. 재판 기준을 넘으면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
+    text: '쪽지를 고르면 의심도가 어떻게 바뀔지 미리 보여요. 주민이 본 날씨와 같은 쪽지를 보내면 의심도가 내려가고, 다르면 올라가요. 재판 기준 이상이 되면 재판이 열리고, 거기서 마피아로 지목되면 져요.',
   },
   {
     highlight: 'votes',
@@ -1642,15 +1642,23 @@ export function watchfulEyeGoalMet(state: Pick<GameState, 'outcome'>): boolean {
   return state.outcome === 'win' || state.outcome === 'perfect_win'
 }
 
-// 시나리오 '감시의 눈' 결과 한 줄 분기: 재판에 걸려 졌으면 숨기고, 아니면 이번 판 모순 유무에 따라 안내한다.
+// 시나리오 '감시의 눈' 결과 한 줄 분기: 재판 패배 여부·승패·모순 유무에 따라 한 줄을 안내한다.
 export function watchfulEyeClashNote(
-  state: Pick<GameState, 'player_city' | 'end_reason'>,
+  state: Pick<GameState, 'player_city' | 'end_reason' | 'outcome'>,
   history: Pick<TurnResult, 'turn' | 'sharing'>[],
-): string | null {
-  if (state.end_reason === 'caught') return null
+): string {
   const days = playerContradictionTurns(state.player_city, history).map((t) => t.turn)
+  if (state.end_reason === 'caught') {
+    if (days.length > 0) {
+      return `${days.join('·')}일째에 모순이 드러나 의심도가 올랐고, 결국 재판에 걸렸어요.`
+    }
+    return '모순은 없었지만, 주민이 본 하늘과 다른 쪽지가 쌓여 재판에 걸렸어요.'
+  }
   if (days.length > 0) {
     return `${days.join('·')}일째에 거짓이 증명됐지만, 그것만으로 쫓겨나지는 않았어요.`
+  }
+  if (state.outcome === 'loss') {
+    return '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보낼 때와 비교해 보세요.'
   }
   return '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보내 보세요.'
 }

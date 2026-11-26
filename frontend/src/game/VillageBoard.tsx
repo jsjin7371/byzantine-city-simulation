@@ -299,7 +299,7 @@ function houseLabel(h: House, playerCity: number) {
     h.flag ? `지난밤 결정 ${decisions[h.flag]}` : '아직 결정 없음',
     obs?.aria,
     h.suspicion != null &&
-      `나에 대한 의심도 ${h.suspicion}${h.suspicion >= SUSPICION.threshold ? ', 재판 기준 넘음' : ''}`,
+      `나에 대한 의심도 ${h.suspicion}${h.suspicion >= SUSPICION.threshold ? ', 재판 기준 도달' : ''}`,
     ...others,
     !h.reachable && '쪽지를 보낼 수 없음',
   ]
