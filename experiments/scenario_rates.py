@@ -167,9 +167,6 @@ def play_scenario(scenario_id, strategy, seed, threshold=40):
             chosen = ms.smart(g)
         elif strategy == "smart_wash":
             chosen = smart_wash(g, history, threshold)
-        elif strategy == "honest":
-            ans = DECISION_OF[g.truth]
-            chosen = {str(r): ans for r in ms.targets(g)}
         else:
             raise ValueError(f"unknown strategy: {strategy}")
         claims = {r: {"claim": c, "note": ""} for r, c in chosen.items()}

@@ -340,7 +340,7 @@ test('trial lines: one accusation per voter, then the verdict (and tie note only
   const lines = vote(null, false)
   assert.ok(lines.some((l) => l.who === 1 && l.text === '난 3번을 지목할게'))
   assert.ok(lines.some((l) => l.who === 4 && l.text === '난 1번을 지목할게'))
-  assert.ok(!lines.some((l) => l.text.includes('동점이면')))
+  assert.ok(!lines.some((l) => l.text.includes('여럿이면')))
   assert.equal(lines.at(-1).text, '과반이 모이지 않아 아무도 지목되지 않았다')
   assert.equal(vote(1, false).at(-1).text, '1번이 지목됐지만 무고한 주민이었다. 마피아는 아직 숨어 있다')
   assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 마피아가 재판에 걸렸다')
@@ -352,7 +352,7 @@ test('trial lines: one accusation per voter, then the verdict (and tie note only
     vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true },
   }
   const tiedLines = villageLines(state, tiedTurn)
-  assert.ok(tiedLines.some((l) => l.phase === 'trial' && l.kind === 'event' && l.text === '의심할 근거가 없거나 동점이면 그중 아무나 지목해요.'))
+  assert.ok(tiedLines.some((l) => l.phase === 'trial' && l.kind === 'event' && l.text === '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.'))
 })
 
 test('night steps: night, notes, flags (one per citizen with vote bars, single step for AI), suspicion, then ballots, verdict, day', () => {
@@ -1515,7 +1515,7 @@ test('ringVillageOutcomeNote branches on caught day and far-house observation/ou
   // 조기 재판 패배 vs 마지막 7일째 재판 패배
   assert.equal(
     ringVillageOutcomeNote(ringState('loss', 'caught'), [{ turn: 3, cities: dayCities(true, false, 'safe', true, 'danger', true) }]),
-    '3일째 재판에 걸려 마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.',
+    '마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.',
   )
   assert.equal(
     ringVillageOutcomeNote(ringState('loss', 'caught'), [{ turn: 7, cities: dayCities(true, false, 'safe', true, 'danger', true) }]),
@@ -1539,16 +1539,16 @@ test('ringVillageOutcomeNote branches on caught day and far-house observation/ou
   // 완승/승리: 먼 집 2채 모두 오답 (혼합: 3번 관측 정답, 4번 관측 오답)
   assert.equal(
     ringVillageOutcomeNote(ringState('perfect_win', 'turns_done'), [{ turn: 7, cities: dayCities(false, false, 'danger', false, 'safe', false) }]),
-    '마지막 밤, 먼 3번 집은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요. 4번 집은 그날 하늘도 잘못 봤어요.',
+    '마지막 밤, 먼 3번 집은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요. 4번 집은 그날 하늘도 잘못 보고 틀렸어요.',
   )
   // 패배: 먼 집 오답이지만 3명 미달 (관측 정답 / 관측 오답)
   assert.equal(
     ringVillageOutcomeNote(ringState('loss', 'turns_done'), [{ turn: 7, cities: dayCities(true, false, 'danger', true, 'safe', true) }]),
-    '마지막 밤, 먼 3번 집은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요. 다만 틀린 주민이 3명에 못 미쳤어요.',
+    '마지막 밤, 먼 3번 집은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요. 틀린 주민은 모두 합쳐 3명에 못 미쳤어요.',
   )
   assert.equal(
     ringVillageOutcomeNote(ringState('loss', 'turns_done'), [{ turn: 7, cities: dayCities(true, true, 'danger', false, 'safe', true) }]),
-    '마지막 밤, 먼 4번 집은 틀렸어요. 이 집은 그날 하늘도 잘못 봤어요. 다만 틀린 주민이 3명에 못 미쳤어요.',
+    '마지막 밤, 먼 4번 집은 틀렸어요. 이 집은 그날 하늘도 잘못 봤어요. 틀린 주민은 모두 합쳐 3명에 못 미쳤어요.',
   )
   // 패배: 먼 집 모두 정답
   assert.equal(

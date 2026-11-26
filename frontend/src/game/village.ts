@@ -24,7 +24,9 @@ const RING_EDGES: readonly (readonly [number, number, number, number, number, nu
   [670, 245, 692, 358, 670, 470],
   [670, 470, 560, 518, 450, 528],
 ]
-export const RING_TRAILS = RING_EDGES.map(([x0, y0, cx, cy, x1, y1]) => `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1}`)
+const quad = ([x0, y0, cx, cy, x1, y1]: readonly [number, number, number, number, number, number]) =>
+  `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1}`
+export const RING_TRAILS = RING_EDGES.map(quad)
 
 // 집 5채 자리: 내 집은 아래 가운데, 나머지는 내 다음 번호부터 시계방향 (양옆이 ring 이웃).
 export function houseSlots(player: number) {
@@ -129,13 +131,10 @@ export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'n
 // 고리 연결에서 인접한 두 집 사이의 오솔길 경로(정방향·역방향). 인접하지 않으면 광장 경로로 대체한다.
 function ringNotePath(player: number, from: number, to: number) {
   const [sa, sb] = [slotOf(player, from), slotOf(player, to)]
-  if (sb === (sa + 1) % 5) {
-    const [x0, y0, cx, cy, x1, y1] = RING_EDGES[sa]
-    return `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1}`
-  }
+  if (sb === (sa + 1) % 5) return quad(RING_EDGES[sa])
   if (sa === (sb + 1) % 5) {
     const [x0, y0, cx, cy, x1, y1] = RING_EDGES[sb]
-    return `M${x1} ${y1} Q${cx} ${cy} ${x0} ${y0}`
+    return quad([x1, y1, cx, cy, x0, y0])
   }
   return sharePath(player, from, to)
 }
@@ -773,7 +772,11 @@ export function villageLines(
       return vals.filter((v) => v === top).length > 1
     })
     if (hasTiedVoter) {
-      lines.push({ phase: 'trial', kind: 'event', text: '의심할 근거가 없거나 동점이면 그중 아무나 지목해요.' })
+      lines.push({
+        phase: 'trial',
+        kind: 'event',
+        text: '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.',
+      })
     }
     for (const [from, to] of Object.entries(result.vote.ballots))
       lines.push({ phase: 'trial', kind: 'say', who: Number(from), text: `난 ${to}번을 지목할게` })
@@ -1710,7 +1713,7 @@ export function ringVillageOutcomeNote(
   if (state.end_reason === 'caught') {
     return lastDay >= TOTAL_TURNS
       ? '마지막 밤 재판에 걸렸어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.'
-      : `${lastDay}일째 재판에 걸려 마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.`
+      : '마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.'
   }
   const targets = new Set(claimTargets(state))
   const far = (last?.cities ?? [])
@@ -1724,22 +1727,19 @@ export function ringVillageOutcomeNote(
   }
   const hintOk = farWrong.filter((c) => c.hint === state.truth)
   const hintBad = farWrong.filter((c) => c.hint != null && c.hint !== state.truth)
-  const suffix = won ? '' : ' 다만 틀린 주민이 3명에 못 미쳤어요.'
+  const suffix = won ? '' : ' 틀린 주민은 모두 합쳐 3명에 못 미쳤어요.'
   if (hintOk.length > 0 && hintBad.length > 0) {
     const okNames = formatHouseGroup(hintOk.map((c) => c.city))
     const badNames = formatHouseGroup(hintBad.map((c) => c.city))
-    return `마지막 밤, 먼 ${okNames}은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요. ${badNames}은 그날 하늘도 잘못 봤어요.${suffix}`
+    return `마지막 밤, 먼 ${okNames}은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요. ${badNames}은 그날 하늘도 잘못 보고 틀렸어요.${suffix}`
   }
   if (hintOk.length > 0) {
     const okNames = formatHouseGroup(hintOk.map((c) => c.city))
     return `마지막 밤, 먼 ${okNames}은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요.${suffix}`
   }
   const names = formatHouseGroup(farWrong.map((c) => c.city))
-  if (hintBad.length > 0) {
-    const subj = hintBad.length > 1 ? '이 집들은' : '이 집은'
-    return `마지막 밤, 먼 ${names}은 틀렸어요. ${subj} 그날 하늘도 잘못 봤어요.${suffix}`
-  }
-  return `마지막 밤, 먼 ${names}은 틀렸어요.${suffix}`
+  const subj = farWrong.length > 1 ? '이 집들은' : '이 집은'
+  return `마지막 밤, 먼 ${names}은 틀렸어요. ${subj} 그날 하늘도 잘못 봤어요.${suffix}`
 }
 
 // 시나리오별 결과 한 줄 분기.
