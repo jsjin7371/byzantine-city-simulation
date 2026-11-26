@@ -9,6 +9,8 @@ python experiments/mafia_compare.py --check    # 6단계: 파일럿과 같은 �
 python experiments/mafia_compare.py            # majority/wary, 연결 2종, 난이도 3종, 조건당 1000판 → mafia_compare.csv
 python experiments/mafia_compare.py --ai --runs 30   # ai 시민 포함 (LLM_API_KEY 필요, 없으면 건너뜀)
 python experiments/mafia_botwin.py --check     # 화면·API의 봇 승률(시드 0~9999) 계산, backend 값과 대조
+python experiments/scenario_rates.py --check   # 이론 실험실 시나리오 4개 설정에서 predict == 엔진 의심도 점검
+python experiments/scenario_rates.py           # 시나리오 4개(seed 0~999, 1000판) → scenario_rates.csv
 ```
 
 파일럿의 exp3 대조만 15턴으로 돌리고, 나머지 턴 수는 엔진의 `TURNS`(7)를 쓴다.
@@ -75,3 +77,34 @@ python experiments/mafia_strategy.py           # wary, 의심도 수치 후보 �
 - 7턴, 현재 수치: 봇은 normal에서 43%가 들키고 smart는 1.7%만 들키지만, 승률 차이는 작다. 구간이 안 겹치는 난이도는 hard뿐이고(0.078 → 0.129), easy·normal은 겹친다. 15턴 때는 세 난이도 모두 안 겹쳤다.
 - 다름 +10, +5처럼 거짓말이 싸면 봇도 잘 안 들켜 smart가 봇보다 낫지 않다. (15턴 때 이전 +10 수치·난이도(쉬움 마피아 2 오류 0.4 / 보통 0.3 / 어려움 0.2)에선 normal 봇 0.230 → smart 0.276이었다. 7턴으로는 다시 재지 않았다.)
 - 같음 −10/−5(신뢰 회복이 느림)는 전체 승률이 낮아진다. 모순은 봇 승률을 바꾸지 않고 임계값은 조금 바꾸며, 둘 다 smart의 이득 크기를 바꾼다 (normal 이득: 현재 +0.037, 모순 0은 +0.058, 임계값 40은 +0.076, 임계값 80은 +0.006).
+
+## 이론 실험실 시나리오 7일 재측정 (`scenario_rates.py`)
+
+```
+python experiments/scenario_rates.py --check   # 시나리오 4개 설정에서 predict == 엔진 의심도 점검 (시드 20개)
+python experiments/scenario_rates.py           # 시나리오 4개 × 전략(bot, smart, regain-trust는 smart_wash 포함), seed 0~999 → scenario_rates.csv
+```
+
+- `mafia_strategy.py`의 `predict`·`smart`·`bot`을 재사용한다(`ring`은 `receivers()` 이웃 시민만 대상으로 탐색). 모두 눈치 주민(`wary`), `player="human"`, 7턴, 시드 `0~999`(1000판).
+- `regain-trust`는 기존 `smart`가 의심도를 40 미만으로 유지해 목표를 노리지 않으므로, 한 주민을 문턱 이상으로 올린 뒤 그 주민 힌트와 같은 쪽지(직전과 다른 쪽지 전환 포함)로 20 이하까지 내리고 `smart`로 전환하는 `smart_wash` 전략을 추가했다.
+- 고정 시드는 `0~999` 중 `smart`(단 `regain-trust`는 `smart_wash`)가 목표 달성하고 `bot`은 실패하는 가장 작은 시드다.
+
+| 시나리오 | 전략 | 목표 달성률 (95% Wilson) | 승률 | 발각률 | 15일 참고 | 고정 시드 |
+|---|---|---:|---:|---:|---:|---:|
+| watchful-eye (`share_mode=all`, 0.45) | bot | 0.454 (0.423~0.485) | 0.454 | 0.313 | - | - |
+| watchful-eye (`share_mode=all`, 0.45) | smart | 0.394 (0.364~0.425) | 0.394 | 0.015 | 0.51 | 5 |
+| ring-village (`connection=ring`, 0.45) | bot | 0.354 (0.325~0.384) | 0.354 | 0.095 | - | - |
+| ring-village (`connection=ring`, 0.45) | smart | 0.419 (0.389~0.450) | 0.419 | 0.006 | 0.38 | 17 |
+| regain-trust (기본, 0.45, 문턱 40) | bot | 0.000 (0.000~0.004) | 0.445 | 0.329 | - | - |
+| regain-trust (기본, 0.45, 문턱 40) | smart | 0.000 (0.000~0.004) | 0.501 | 0.007 | - | - |
+| regain-trust (기본, 0.45, 문턱 40) | smart_wash | 0.472 (0.441~0.503) | 0.488 | 0.016 | 0.48 | 2 |
+| stubborn-ally (`mafia_count=2`, 0.48) | bot | 0.361 (0.332~0.391) | 0.361 | 0.619 | - | - |
+| stubborn-ally (`mafia_count=2`, 0.48) | smart | 0.414 (0.384~0.445) | 0.414 | 0.551 | 0.26 | 1 |
+
+`regain-trust` 문턱별 `smart_wash` 결과 (의심도가 20 단위로 변해 30 이상은 40 이상과 같고, 50 이상은 60 도달로 재판이 열린다):
+
+| 문턱 | 목표 달성률 (95% Wilson) | 승률 | 발각률 | 고정 시드 |
+|---:|---:|---:|---:|---:|
+| 30 | 0.472 (0.441~0.503) | 0.488 | 0.016 | 2 |
+| 40 | 0.472 (0.441~0.503) | 0.488 | 0.016 | 2 |
+| 50 | 0.402 (0.372~0.433) | 0.430 | 0.036 | 2 |
