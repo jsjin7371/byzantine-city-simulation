@@ -27,12 +27,12 @@ import {
   nightSteps,
   plainAiReason,
   saveCompletedScenario,
+  scenarioGoalMet,
   tonightVotes,
   tutorialStep,
   villageHouses,
   villageLines,
   visibleLines,
-  watchfulEyeGoalMet,
 } from '../game/village'
 import './GamePage.css'
 
@@ -250,7 +250,7 @@ export function GamePage() {
     run(async () => {
       if (!state) return
       const turn = await playTurn(state.game_id, state.turn + 1, claims)
-      if (scenario && turn.game_over && watchfulEyeGoalMet(turn)) {
+      if (scenario && turn.game_over && scenarioGoalMet(scenario.id, turn)) {
         saveCompletedScenario(scenario.id)
       }
       setHistory([...history, turn])

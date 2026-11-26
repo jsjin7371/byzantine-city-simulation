@@ -3,7 +3,7 @@ import type { RefObject } from 'react'
 import type { GameConfig, GameState, TurnResult } from '../gameApi'
 import { BookIcon, BookLink, TheoryBook } from './TheoryBook'
 import { THEORY_TOPICS } from './theoryBook'
-import { loadCompletedScenarios, watchfulEyeClashNote, watchfulEyeGoalMet } from './village'
+import { loadCompletedScenarios, scenarioGoalMet, scenarioResultNote } from './village'
 import type { TopicKey } from './village'
 
 
@@ -54,22 +54,22 @@ const SCENARIOS: readonly Scenario[] = [
     id: 'ring-village',
     title: '고리 마을',
     brief: '"길이 좁아 양옆 두 집에만 쪽지를 보낼 수 있어요."',
-    shows: '양옆 두 집에만 쪽지를 보낼 수 있는 좁은 길에서는 소식이 쉽게 막히고 왜곡돼요.',
+    shows: '양옆 두 집하고만 통하는 고리 마을에서, 소식은 어떻게 퍼지고 방어는 어디서 흔들릴까요?',
     chips: ['집 5채', '양옆과만 연결', '잘못 볼 확률 45%'],
-    goal: '주민 3명을 속이기',
-    rule: '직접 말할 수 있는 집은 둘뿐이에요. 나머지 두 집 중 한 집은 이웃이 전하는 소문으로 넘겨야 해요.',
+    goal: '주민 3명 이상을 속이기',
+    rule: '직접 쪽지를 보낼 수 있는 집은 양옆 둘뿐이에요. 양옆 두 집의 깃발이 바뀔 때와 그대로일 때, 먼 두 집의 판단이 다음 날 어떻게 달라지는지 비교해 보세요.',
     rate: '컴퓨터가 찾은 가장 좋은 수로 42% 이겨요',
     seed: 17,
     config: { connection: 'ring', sensor_error: 0.45 },
     topic: 'ring',
-    playable: false,
+    playable: true,
     debrief: {
       theory:
         '서명 없이 마피아 한 명을 확실히 막으려면, 서로 겹치지 않는 길이 세 갈래 이상 필요해요. 양옆 두 집만 이어진 고리 마을은 길이 두 갈래뿐이라, 이론상 안전한 방어를 장담할 수 없어요.',
       network:
         '비트코인 같은 P2P 망에서 공격자가 한 노드의 연결을 독점하면, 그 노드는 가짜 장부만 보게 돼요. 광통신 고리 망이 반대 방향 예비 길을 두는 것도, 한 길이 끊길 때를 대비해서예요.',
       reflect:
-        '소식이 지나가는 길목을 쥔 쪽이 판을 흔들기 쉬워져요. 하지만 이 마을에서는 마피아인 나의 쪽지도 양옆 두 집에만 닿았다는 점을 떠올려 보세요.',
+        '소식이 지나가는 길목을 쥔 쪽이 판을 흔들기 쉬워져요. 하지만 이 판에서는 내 말도 양옆 두 집에만 닿았어요. 길이 좁으면 주민뿐 아니라 마피아도 멀리 직접 말하지 못해요.',
     },
   },
   {
@@ -153,7 +153,7 @@ export function TheoryLab({
             <h2 id="tl-scenarios-title">시나리오 넷</h2>
           </div>
           <p id={soonId} className="tl-soon-note">
-            지금은 &lsquo;감시의 눈&rsquo;을 바로 플레이할 수 있어요. 나머지 마을은 준비 중이고, &ldquo;이론 읽기&rdquo;는 모두 열어 볼 수 있어요.
+            지금은 &lsquo;감시의 눈&rsquo;과 &lsquo;고리 마을&rsquo;을 바로 플레이할 수 있어요. 나머지 마을은 준비 중이고, &ldquo;이론 읽기&rdquo;는 모두 열어 볼 수 있어요.
           </p>
 
           <div className="tl-cards">
@@ -323,13 +323,15 @@ export function ScenarioResult({
   onLab: () => void
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
-  const goalMet = watchfulEyeGoalMet(state)
-  const clashNote = scenario.id === 'watchful-eye' ? watchfulEyeClashNote(state, history) : null
+  const goalMet = scenarioGoalMet(scenario.id, state)
+  const resultNote = scenarioResultNote(scenario.id, state, history)
   const lastDay = history.at(-1)?.turn ?? state.turn
   const blockedReason =
     state.end_reason === 'caught'
       ? `${lastDay}일째 재판에 걸렸어요.`
-      : `마지막 ${lastDay}일째에 주민 과반을 속이지 못했어요.`
+      : scenario.id === 'ring-village'
+        ? `마지막 ${lastDay}일째에 주민 3명 이상을 속이지 못했어요.`
+        : `마지막 ${lastDay}일째에 주민 과반을 속이지 못했어요.`
 
   return (
     <section className="gr-sheet sc-result" aria-label={`${scenario.title} 시나리오 결과`}>
@@ -358,7 +360,7 @@ export function ScenarioResult({
         )}
       </div>
 
-      {clashNote && <p className="sc-clash-note">{clashNote}</p>}
+      {resultNote && <p className="sc-clash-note">{resultNote}</p>}
 
       <dl className="sc-debrief">
         <div>

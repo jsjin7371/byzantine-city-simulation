@@ -16,6 +16,14 @@ const SLOTS = [
 ]
 // 바닥에 깔리는 오솔길 5개 (집마다 광장으로 이어지는 길)
 export const TRAILS = SLOTS.map(({ trail: [a, b, c, d, e, f] }) => `M${a} ${b} Q${c} ${d} ${e} ${f}`)
+// 고리 연결 오솔길 5개 (양옆 이웃 집끼리만 이어지는 길: 0-1-2-3-4-0)
+export const RING_TRAILS = [
+  'M450 528 Q340 518 230 470',
+  'M230 470 Q208 358 230 245',
+  'M230 245 Q450 218 670 245',
+  'M670 245 Q692 358 670 470',
+  'M670 470 Q560 518 450 528',
+] as const
 
 // 집 5채 자리: 내 집은 아래 가운데, 나머지는 내 다음 번호부터 시계방향 (양옆이 ring 이웃).
 export function houseSlots(player: number) {
@@ -1642,6 +1650,14 @@ export function watchfulEyeGoalMet(state: Pick<GameState, 'outcome'>): boolean {
   return state.outcome === 'win' || state.outcome === 'perfect_win'
 }
 
+// 시나리오별 목표 달성 판정.
+export function scenarioGoalMet(scenarioId: string, state: Pick<GameState, 'outcome'>): boolean {
+  if (scenarioId === 'watchful-eye' || scenarioId === 'ring-village') {
+    return state.outcome === 'win' || state.outcome === 'perfect_win'
+  }
+  return false
+}
+
 // 시나리오 '감시의 눈' 결과 한 줄 분기: 재판 패배 여부·모순 유무에 따라 한 줄을 안내한다.
 export function watchfulEyeClashNote(
   state: Pick<GameState, 'player_city' | 'end_reason'>,
@@ -1658,6 +1674,46 @@ export function watchfulEyeClashNote(
     return `${days.join('·')}일째에 집마다 다른 말을 한 게 증명됐지만, 그것만으로 쫓겨나지는 않았어요.`
   }
   return '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보낼 때와 비교해 보세요.'
+}
+
+// 시나리오 '고리 마을' 결과 한 줄 분기: 재판 여부와 마지막 밤 먼 집(직접 못 보내는 집)의 판단에 따라 안내한다.
+export function ringVillageOutcomeNote(
+  state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'outcome' | 'end_reason'>,
+  history: Pick<TurnResult, 'turn' | 'cities'>[],
+): string {
+  const last = history.at(-1)
+  const lastDay = last?.turn ?? 0
+  if (state.end_reason === 'caught') {
+    return `${lastDay}일째 재판에 걸려 마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.`
+  }
+  const targets = new Set(claimTargets(state))
+  const far = (last?.cities ?? [])
+    .filter((c) => c.role === 'citizen' && !targets.has(c.city))
+    .sort((a, b) => a.city - b.city)
+  const farFooled = far.filter((c) => c.correct === false)
+  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
+  if (farFooled.length === 0) {
+    const names = far.length > 0 ? formatHouseGroup(far.map((c) => c.city)) : '먼 집'
+    return `마지막 밤, 직접 쪽지를 못 보낸 먼 집(${names})은 모두 진짜 날씨를 지켰어요. 양옆 두 집만으로는 3명을 채울 수 없어요.`
+  }
+  const fooledNames = formatHouseGroup(farFooled.map((c) => c.city))
+  if (won) {
+    return farFooled.length === far.length
+      ? `마지막 밤, 직접 쪽지를 못 보낸 먼 집(${fooledNames})까지 모두 속아 목표를 이뤘어요.`
+      : `마지막 밤, 직접 쪽지를 못 보낸 먼 집 가운데 ${fooledNames}도 속아 목표를 이뤘어요.`
+  }
+  return `마지막 밤, 직접 쪽지를 못 보낸 ${fooledNames}은 속았지만 속은 주민이 3명에 못 미쳤어요.`
+}
+
+// 시나리오별 결과 한 줄 분기.
+export function scenarioResultNote(
+  scenarioId: string,
+  state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'outcome' | 'end_reason'>,
+  history: Pick<TurnResult, 'turn' | 'cities' | 'sharing'>[],
+): string | null {
+  if (scenarioId === 'watchful-eye') return watchfulEyeClashNote(state, history)
+  if (scenarioId === 'ring-village') return ringVillageOutcomeNote(state, history)
+  return null
 }
 
 export function loadCompletedScenarios(): string[] {

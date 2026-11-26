@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, watchfulEyeGoalMet, worsens,
+  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioResultNote, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, watchfulEyeGoalMet, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -1460,5 +1460,56 @@ test('watchfulEyeClashNote branches on caught and player contradictions', () => 
   assert.equal(
     watchfulEyeClashNote({ player_city: 4, end_reason: 'caught' }, [cleanTurn(1)]),
     '모순은 없었지만, 주민이 본 하늘과 다른 쪽지가 쌓여 재판에 걸렸어요.',
+  )
+})
+
+test('RING_TRAILS connects five adjacent clearings and scenarioGoalMet handles watchful-eye and ring-village', () => {
+  assert.equal(RING_TRAILS.length, 5)
+  assert.equal(scenarioGoalMet('ring-village', { outcome: 'win' }), true)
+  assert.equal(scenarioGoalMet('ring-village', { outcome: 'perfect_win' }), true)
+  assert.equal(scenarioGoalMet('ring-village', { outcome: 'loss' }), false)
+  assert.equal(scenarioGoalMet('watchful-eye', { outcome: 'win' }), true)
+})
+
+test('ringVillageOutcomeNote branches on caught and far-house outcomes on final night', () => {
+  const ringState = (outcome, end_reason) => ({
+    config: { ...config, connection: 'ring' },
+    roles: { 1: 'citizen', 2: 'citizen', 3: 'player', 4: 'citizen', 5: 'citizen' },
+    player_city: 3,
+    outcome,
+    end_reason,
+  })
+  const dayCities = (c1, c2, c4, c5) => [
+    { city: 1, role: 'citizen', correct: c1 },
+    { city: 2, role: 'citizen', correct: c2 },
+    { city: 3, role: 'player', correct: null },
+    { city: 4, role: 'citizen', correct: c4 },
+    { city: 5, role: 'citizen', correct: c5 },
+  ]
+  assert.equal(
+    ringVillageOutcomeNote(ringState('loss', 'caught'), [{ turn: 2, cities: dayCities(false, true, true, true) }]),
+    '2일째 재판에 걸려 마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.',
+  )
+  assert.equal(
+    ringVillageOutcomeNote(ringState('win', 'turns_done'), [{ turn: 7, cities: dayCities(false, false, false, true) }]),
+    '마지막 밤, 직접 쪽지를 못 보낸 먼 집 가운데 1번 집도 속아 목표를 이뤘어요.',
+  )
+  assert.equal(
+    ringVillageOutcomeNote(ringState('perfect_win', 'turns_done'), [{ turn: 7, cities: dayCities(false, false, false, false) }]),
+    '마지막 밤, 직접 쪽지를 못 보낸 먼 집(1·5번 집)까지 모두 속아 목표를 이뤘어요.',
+  )
+  assert.equal(
+    ringVillageOutcomeNote(ringState('loss', 'turns_done'), [{ turn: 7, cities: dayCities(false, true, true, true) }]),
+    '마지막 밤, 직접 쪽지를 못 보낸 1번 집은 속았지만 속은 주민이 3명에 못 미쳤어요.',
+  )
+  assert.equal(
+    ringVillageOutcomeNote(ringState('loss', 'turns_done'), [{ turn: 7, cities: dayCities(true, true, true, true) }]),
+    '마지막 밤, 직접 쪽지를 못 보낸 먼 집(1·5번 집)은 모두 진짜 날씨를 지켰어요. 양옆 두 집만으로는 3명을 채울 수 없어요.',
+  )
+  assert.equal(
+    scenarioResultNote('ring-village', ringState('win', 'turns_done'), [
+      { turn: 7, cities: dayCities(false, false, false, true), sharing: [] },
+    ]),
+    '마지막 밤, 직접 쪽지를 못 보낸 먼 집 가운데 1번 집도 속아 목표를 이뤘어요.',
   )
 })

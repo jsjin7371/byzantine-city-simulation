@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, nextObservationTag, pairMid, reached, scaleLeader, shareBadgeLabel, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
+import { PHASE_LABEL, RING_TRAILS, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, nextObservationTag, pairMid, reached, scaleLeader, shareBadgeLabel, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TrialStampMode, TutorialHighlight } from './village'
 import './village.css'
 
@@ -71,8 +71,9 @@ function Defs() {
   )
 }
 
-// 풀밭, 오솔길, 공터, 광장, 숲 (바뀌지 않는 바닥판)
-function Ground() {
+// 풀밭, 오솔길, 공터, 광장, 숲 (바뀌지 않는 바닥판). 고리 연결에서는 양옆 이웃끼리 이어진 길을 그린다.
+function Ground({ ring = false }: { ring?: boolean }) {
+  const trails = ring ? RING_TRAILS : TRAILS
   return (
     <g aria-hidden>
       <rect width="900" height="660" fill="#93a85a" />
@@ -80,10 +81,10 @@ function Ground() {
       <g filter="url(#vb-rough)">
         <g fill="none" strokeLinecap="round">
           <g stroke="#9c7442" strokeWidth="20">
-            {TRAILS.map((d) => <path key={d} d={d} />)}
+            {trails.map((d) => <path key={d} d={d} />)}
           </g>
           <g stroke="#c9a068" strokeWidth="13">
-            {TRAILS.map((d) => <path key={d} d={d} />)}
+            {trails.map((d) => <path key={d} d={d} />)}
           </g>
         </g>
         <g fill="#d9bb7c" stroke="#a9884f" strokeWidth="2">
@@ -298,7 +299,8 @@ function houseLabel(h: House, playerCity: number) {
     `${name}, 주민`,
     h.flag ? `지난밤 결정 ${decisions[h.flag]}` : '아직 결정 없음',
     obs?.aria,
-    h.suspicion != null &&
+    h.reachable &&
+      h.suspicion != null &&
       `나에 대한 의심도 ${h.suspicion}${h.suspicion >= SUSPICION.threshold ? ', 재판 기준 도달' : ''}`,
     ...others,
     !h.reachable && '쪽지를 보낼 수 없음',
@@ -428,7 +430,8 @@ function HouseView({
   const { x, y } = h
   const obs = !isNight ? nextObservationTag(h) : null
   const obsW = obs ? (obs.lit ? 162 : 202) : 0
-  const obsY = h.suspicion != null ? y + 67 : y + 26
+  const showSuspicion = h.suspicion != null && h.reachable
+  const obsY = showSuspicion ? y + 67 : y + 26
   const base = `${houseLabel(h, playerCity)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
   const label = pick
     ? `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
@@ -482,7 +485,15 @@ function HouseView({
           <use href="#vb-hut-dark" />
         </g>
       ) : (
-        <use href={mafia ? '#vb-hut-dark' : '#vb-hut'} x={x} y={y} filter="url(#vb-rough)" />
+        <use href={mafia ? '#vb-hut-dark' : '#vb-hut'} x={x} y={y} className="vb-hut-art" filter="url(#vb-rough)" />
+      )}
+      {h.role === 'citizen' && !h.reachable && !isNight && (
+        <g className="vb-far-tag" transform={`translate(${x - 24},${y - 82})`} aria-hidden="true">
+          <rect x="-44" y="-11" width="88" height="22" rx="11" strokeWidth="1.5" />
+          <text y="4.5" fontSize="13" fontWeight="700" textAnchor="middle">
+            직접 못 보냄
+          </text>
+        </g>
       )}
       {h.role === 'player' ? (
         <g>
@@ -533,7 +544,7 @@ function HouseView({
           {hlWindow && <rect className="vb-tut-ring" x={x - 32} y={y - 33} width="28" height="26" rx="6" aria-hidden />}
         </g>
       )}
-      {h.suspicion != null && (
+      {showSuspicion && h.suspicion != null && (
         <g
           transform={`translate(${x - gaugeCx},${y + 19})`}
           className={`${over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}${hlSuspicion ? ' vb-tut-hl' : ''}`}
@@ -874,11 +885,12 @@ const SIGNS: readonly (readonly [string, string])[] = [
   ['2 각 집마다 보낼', '쪽지를 골라요'],
   ['3 쪽지를 비교하는 집엔', '같은 쪽지를 보내요'],
 ]
+const RING_PICK_SIGN: readonly [string, string] = ['2 양옆 두 집에 보낼', '쪽지를 골라요']
 const NEUTRAL_SHARE_SIGN: readonly [string, string] = ['3 다르게 말하면 비교에서', '모순이 드러나요']
 
 // 첫날 안내 표지판 (왼쪽 나무 기둥). 1일째 왼쪽 위 집의 관측 꼬리표(y 291까지) 아래에서 시작한다.
-function Signs({ neutralShareSign = false }: { neutralShareSign?: boolean }) {
-  const signs = neutralShareSign ? [SIGNS[0], SIGNS[1], NEUTRAL_SHARE_SIGN] : SIGNS
+function Signs({ neutralShareSign = false, ring = false }: { neutralShareSign?: boolean; ring?: boolean }) {
+  const signs = [SIGNS[0], ring ? RING_PICK_SIGN : SIGNS[1], neutralShareSign ? NEUTRAL_SHARE_SIGN : SIGNS[2]]
   const ariaLabel = `첫날 안내: ${signs.map(([a, b]) => `${a} ${b}`).join(', ')}`
   return (
     <g fontSize="15" fontWeight="700" role="img" aria-label={ariaLabel}>
@@ -1173,7 +1185,7 @@ export function VillageBoard({
       onKeyDown={(e) => e.key === 'Escape' && setOpen(null)}
     >
       <Defs />
-      <Ground />
+      <Ground ring={state.config.connection === 'ring'} />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <BoardLegend />
       <Sky danger={state.truth === 'danger'} highlighted={highlight === 'sky'} />
@@ -1219,7 +1231,9 @@ export function VillageBoard({
       <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-plaza-label" aria-hidden>
         광장
       </text>
-      {picker && turn === 0 && !hideSigns && <Signs neutralShareSign={neutralShareSign} />}
+      {picker && turn === 0 && !hideSigns && (
+        <Signs neutralShareSign={neutralShareSign} ring={state.config.connection === 'ring'} />
+      )}
       {houses.map((h) => {
         const inFlags = night?.phase === 'flags' && h.order > 0
         const decided = !night || reached(night.phase, 'suspicion') || (inFlags && h.order <= night.decided)

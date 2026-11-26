@@ -578,7 +578,9 @@
 
 .vb-badge { fill: #d9a95f; stroke: var(--wood); }
 .vb-badge.is-mafia { fill: var(--rust); stroke: #4a1a10; }
-.vb-house.is-far { opacity: .45; }
+.vb-house.is-far .vb-hut-art { opacity: .55; }
+.vb-far-tag rect { fill: #efe0b9; stroke: #8a6a3e; }
+.vb-far-tag text { fill: #5a3d22; }
 
 .vb-gauge-fill { fill: #e0703f; transform-box: fill-box; transform-origin: left center; transition: transform 600ms cubic-bezier(0.23, 1, 0.32, 1); animation: vb-grow 600ms cubic-bezier(0.23, 1, 0.32, 1) backwards; }
 @keyframes vb-grow { from { transform: scaleX(0); } }
