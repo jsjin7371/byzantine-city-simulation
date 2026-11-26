@@ -2267,9 +2267,6 @@ dialog.tb-dialog[open] {
   font-weight: 700;
   max-width: 40em;
 }
-.tl-section-next {
-  margin-top: 48px;
-}
 .tl-cards {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(276px, 1fr));
@@ -2365,44 +2362,4 @@ dialog.tb-dialog[open] {
   color: var(--wood-dark);
   border-radius: 999px;
   padding: 0 8px;
-}
-.tl-card.is-locked {
-  background: rgba(248, 240, 218, 0.45);
-  box-shadow: none;
-  border: 2px dashed var(--border);
-}
-.tl-card.is-locked h3,
-.tl-card.is-locked dd {
-  color: var(--muted);
-}
-.tl-card.is-locked dl {
-  margin-top: 10px;
-}
-.tl-lock-badge {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--muted);
-  border: 1px dashed var(--border);
-  border-radius: 999px;
-  padding: 2px 10px;
-}
-.tl-presets {
-  display: inline-flex;
-  border: 2px solid var(--wood);
-  border-radius: 8px;
-  overflow: hidden;
-  font-size: 18px;
-  line-height: 1.35;
-}
-.tl-presets span {
-  padding: 1px 14px;
-  font-weight: 700;
-  color: var(--wood-dark);
-}
-.tl-presets span + span {
-  border-left: 2px solid var(--wood);
-}
-.tl-presets .is-on {
-  background: var(--wood);
-  color: var(--cream);
 }
