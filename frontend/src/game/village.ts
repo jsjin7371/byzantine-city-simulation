@@ -450,6 +450,16 @@ export function nightSteps(
   return steps
 }
 
+// 튜토리얼 첫 밤의 ③ 주민 결정은 처음 보는 사람이 읽을 수 있게 더 오래 둔다.
+export function nightStepMs(
+  step: Pick<Step, 'phase' | 'ms'>,
+  tutorial: boolean,
+  turn: number | null | undefined,
+): number {
+  const slow = tutorial && turn === 1 && step.phase === 'flags'
+  return step.ms * (slow ? 2.5 : 1)
+}
+
 // 연출 중 집 상태: 깃발·의심도는 그 단계가 오기 전까지 지난 턴 값, 창문은 다음 날 전까지 오늘 밤 힌트.
 // flags 단계에서는 decided 수만큼 시계 방향 순서로 시민 깃발을 차례로 세운다.
 export function stagedHouses(

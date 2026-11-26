@@ -21,6 +21,7 @@ import {
   TUTORIAL_STEPS,
   citizenScales,
   fooledDots,
+  nightStepMs,
   nightSteps,
   plainAiReason,
   tonightVotes,
@@ -175,9 +176,7 @@ export function GamePage() {
   useEffect(() => {
     if (step == null) return
     const next = steps[step + 1]?.phase === 'day' ? null : step + 1
-    // 튜토리얼 첫 밤의 ③ 주민 결정은 처음 보는 사람이 읽을 수 있게 더 오래 둔다
-    const slow = tutorial && result?.turn === 1 && steps[step].phase === 'flags'
-    const timer = setTimeout(() => setStep(next), steps[step].ms * (slow ? 2.5 : 1))
+    const timer = setTimeout(() => setStep(next), nightStepMs(steps[step], tutorial, result?.turn))
     return () => clearTimeout(timer)
   }, [step, steps, tutorial, result])
   useEffect(() => {

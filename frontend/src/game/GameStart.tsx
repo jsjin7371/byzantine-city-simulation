@@ -509,8 +509,9 @@ export function GameStart({
   const hoverTimerRef = useRef<number | null>(null)
   const [helpPinned, setHelpPinned] = useState(false)
   const [helpHovered, setHelpHovered] = useState(false)
+  const [helpDetailsOpen, setHelpDetailsOpen] = useState(false)
   const [helpPos, setHelpPos] = useState<{ left: number; top: number } | null>(null)
-  const helpOpen = helpPinned || helpHovered
+  const helpOpen = helpPinned || helpHovered || helpDetailsOpen
 
   const clearHoverTimer = useCallback(() => {
     if (hoverTimerRef.current != null) {
@@ -531,18 +532,20 @@ export function GameStart({
       clearHoverTimer()
       setHelpPinned(false)
       setHelpHovered(false)
+      setHelpDetailsOpen(false)
       if (restoreFocus) helpBtnRef.current?.focus()
     },
     [clearHoverTimer],
   )
   const toggleHelp = useCallback(() => {
-    if (helpPinned) {
+    if (helpPinned || helpDetailsOpen) {
       setHelpPinned(false)
       setHelpHovered(false)
+      setHelpDetailsOpen(false)
     } else {
       setHelpPinned(true)
     }
-  }, [helpPinned])
+  }, [helpPinned, helpDetailsOpen])
 
   useEffect(() => () => clearHoverTimer(), [clearHoverTimer])
 
@@ -558,7 +561,7 @@ export function GameStart({
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (e.key === 'Escape') {
         const focusInside = Boolean(helpPopRef.current?.contains(document.activeElement))
-        closeHelp(helpPinned || focusInside)
+        closeHelp(helpPinned || helpDetailsOpen || focusInside)
       }
     }
     const onClickOutside = (e: MouseEvent) => {
@@ -570,7 +573,7 @@ export function GameStart({
       window.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('click', onClickOutside)
     }
-  }, [helpOpen, helpPinned, closeHelp])
+  }, [helpOpen, helpPinned, helpDetailsOpen, closeHelp])
 
   useLayoutEffect(() => {
     if (!helpOpen) return
@@ -1021,8 +1024,8 @@ export function GameStart({
               </tbody>
             </table>
           </div>
-          {/* 펼치면 마우스가 벗어나도 닫히지 않게 고정한다 */}
-          <details className="gs-diff-help-more" onToggle={(e) => e.currentTarget.open && setHelpPinned(true)}>
+          {/* 펼치면 마우스가 벗어나도 닫히지 않게 고정하고, 접으면 고정을 푼다 */}
+          <details className="gs-diff-help-more" onToggle={(e) => setHelpDetailsOpen(e.currentTarget.open)}>
             <summary>자세히 보기</summary>
             <p className="gs-diff-help-foot">
               난이도에 따라 주민의 관측이 틀릴 확률만 달라져요. 마피아는 나 혼자예요.
