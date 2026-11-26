@@ -451,7 +451,7 @@ function HouseView({
     ? 16.7 + String(gaugePreview.next).length * 10 + (gaugePreview.trial ? 38 : 0)
     : 0
   const gaugeRight = gaugePreview ? previewX + previewW : curRight
-  const gaugeCx = (gaugeLeft + gaugeRight) / 2
+  const gaugeCx = (gaugeLeft + curRight) / 2 // 미리보기 글자는 빼고 잡아 쪽지를 골라도 막대가 움직이지 않게
   const hlHouse = Boolean(pick && pointed)
   const hlWindow = highlight === 'windows'
   const hlSuspicion = highlight === 'suspicion'
@@ -544,7 +544,7 @@ function HouseView({
               x={gaugeLeft - 6}
               y="-15"
               width={gaugeRight - gaugeLeft + 12}
-              height="50"
+              height="48"
               rx="8"
               aria-hidden
             />
@@ -729,7 +729,7 @@ function Trial({
           <g
             key={city}
             className={inspect ? 'vb-trial-tag is-interactive' : 'vb-trial-tag'}
-            transform={`translate(${t.x + (t.x > PLAZA.x ? 68 : -110)},${t.y - 14})`}
+            transform={`translate(${t.x + (t.x > PLAZA.x ? 68 : -110)},${t.y - 20})`}
             fontSize="15"
             fontWeight="700"
             onMouseEnter={inspect?.onEnter}
