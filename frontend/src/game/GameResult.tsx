@@ -312,6 +312,12 @@ export function GameResult({
   const s = gameSummary(state, history)
   const won = state.outcome === 'win' || state.outcome === 'perfect_win'
   const stampText = state.outcome ? outcomeLabels[state.outcome] : '종료'
+  const subParts = [
+    state.end_reason ? `끝난 이유: ${endReasonLabels[state.end_reason]}` : null,
+    state.bot_win_rate != null
+      ? `같은 마을에서 기본 마피아 봇이 이기는 비율은 ${percent(state.bot_win_rate)}예요.`
+      : null,
+  ].filter(Boolean)
   const idPrefix = useId()
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
 
@@ -326,11 +332,7 @@ export function GameResult({
           {s.headline}
         </h2>
         <p className="gr-sub">
-          {state.bot_win_rate != null
-            ? `같은 마을에서 기본 마피아 봇이 이기는 비율은 ${percent(state.bot_win_rate)}예요.`
-            : state.end_reason
-              ? `끝난 이유: ${endReasonLabels[state.end_reason]}`
-              : '이번 판의 기록을 정리했어요.'}
+          {subParts.length > 0 ? subParts.join(' · ') : '이번 판의 기록을 정리했어요.'}
         </p>
       </div>
 
