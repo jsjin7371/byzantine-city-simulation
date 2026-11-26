@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioResultNote, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, watchfulEyeGoalMet, worsens,
+  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioResultNote, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -233,7 +233,7 @@ test('changed houses: hint differs from today or newly on a dotted line, nothing
   assert.deepEqual(changedHouses({ ...day, next_hints: null, next_share_pairs: null }), {}) // 게임 종료
 })
 
-test('talk notes follow the trail from sender to receiver', () => {
+test('talk notes follow the trail from sender to receiver (and RING_TRAILS in ring mode)', () => {
   const notes = talkNotes(3, {
     cities: [
       { city: 4, received: { 3: { claim: 'stay', note: '' }, 5: null, 1: { claim: 'evacuate', note: '' } } },
@@ -243,6 +243,22 @@ test('talk notes follow the trail from sender to receiver', () => {
   assert.deepEqual(notes.map(({ from, to, claim }) => [from, to, claim]), [[1, 4, 'evacuate'], [3, 4, 'stay']])
   assert.equal(notes[0].path, sharePath(3, 1, 4))
   assert.equal(notes[1].path, sharePath(3, 3, 4))
+
+  // 고리 연결: 3(slot 0)→4(slot 1)은 RING_TRAILS[0] 정방향, 3(slot 0)→2(slot 4)은 RING_TRAILS[4] 역방향
+  const ringNotes = talkNotes(
+    3,
+    {
+      cities: [
+        { city: 4, received: { 3: { claim: 'stay', note: '' }, 5: { claim: 'evacuate', note: '' } } },
+        { city: 2, received: { 3: { claim: 'evacuate', note: '' } } },
+      ],
+    },
+    'ring',
+  )
+  const byEdge = Object.fromEntries(ringNotes.map((n) => [`${n.from}->${n.to}`, n.path]))
+  assert.equal(byEdge['3->4'], RING_TRAILS[0])
+  assert.equal(byEdge['5->4'], 'M230 245 Q208 358 230 470')
+  assert.equal(byEdge['3->2'], 'M450 528 Q560 518 670 470')
 })
 
 const msg = (claim) => ({ claim, note: '' })
@@ -319,14 +335,24 @@ test('majority citizens have no suspicion lines and ai citizens speak their reas
   assert.ok(ai.some((l) => l.who === 1 && l.text === '3번이 이상하다.'))
 })
 
-test('trial lines: one accusation per voter, then the verdict', () => {
+test('trial lines: one accusation per voter, then the verdict (and tie note only when tied)', () => {
   const vote = (accused, caught) => villageLines(state, { ...turn, vote: { ballots: { 1: 3, 4: 1 }, accused, caught } })
   const lines = vote(null, false)
   assert.ok(lines.some((l) => l.who === 1 && l.text === '난 3번을 지목할게'))
   assert.ok(lines.some((l) => l.who === 4 && l.text === '난 1번을 지목할게'))
+  assert.ok(!lines.some((l) => l.text.includes('동점이면')))
   assert.equal(lines.at(-1).text, '과반이 모이지 않아 아무도 지목되지 않았다')
   assert.equal(vote(1, false).at(-1).text, '1번이 지목됐지만 무고한 주민이었다. 마피아는 아직 숨어 있다')
   assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 마피아가 재판에 걸렸다')
+
+  // 의심 근거가 없거나 동점인 투표자가 있으면 재판 안내 한 줄이 붙는다
+  const tiedTurn = {
+    ...turn,
+    cities: turn.cities.map((c) => (c.city === 4 ? { ...c, suspicion: { 1: 0, 2: 0, 3: 0, 5: 0 } } : c)),
+    vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true },
+  }
+  const tiedLines = villageLines(state, tiedTurn)
+  assert.ok(tiedLines.some((l) => l.phase === 'trial' && l.kind === 'event' && l.text === '의심할 근거가 없거나 동점이면 그중 아무나 지목해요.'))
 })
 
 test('night steps: night, notes, flags (one per citizen with vote bars, single step for AI), suspicion, then ballots, verdict, day', () => {
@@ -834,21 +860,27 @@ test('resultBaseline covers all 7 cases, links byz/ring, and never exposes 3f+1 
   )
   assert.match(bTurnOk.lines.join(' '), /원래 주민에게 유리한 판이었는데도 해냈어요/)
 
-  // 5. 고리 마을 (ring): 승리 / 재판 패배 / 끝까지 버팀 패배 구분
+  // 5. 고리 마을 (ring): 승리 / 재판 패배(조기·7일) / 끝까지 버팀 패배 구분
   const bRing = resultBaseline(
     soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'win', end_reason: 'turns_done' }),
     winHist,
   )
   assert.equal(bRing.topic, 'ring')
   assert.equal(bRing.linkTitle, '연결도 조건')
+  assert.equal(bRing.linkSub, '왜 양옆만 이어지면 주민 방어가 흔들리는지')
   assert.match(bRing.lines.join(' '), /양옆 이웃하고만 이야기하는 마을은/)
-  assert.match(bRing.lines.join(' '), /전략이 통했어요/)
+  assert.match(bRing.lines.join(' '), /그렇다고 저절로 무너지는 것은 아니에요\. 이번엔 전략이 통했어요\./)
   const bRingCaught = resultBaseline(
     soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'loss', end_reason: 'caught' }),
     [makeDay(4, [cRow(1, 'danger', 'stay', true)], { ballots: { 1: 3, 2: 3, 4: 3 }, accused: 3, caught: true })],
   )
   assert.match(bRingCaught.lines.join(' '), /이번엔 재판에 걸려 일찍 끝났어요/)
   assert.doesNotMatch(bRingCaught.lines.join(' '), /끝까지 버텨 냈어요/)
+  const bRingCaught7 = resultBaseline(
+    soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'loss', end_reason: 'caught' }),
+    [makeDay(7, [cRow(1, 'danger', 'stay', true)], { ballots: { 1: 3, 2: 3, 4: 3 }, accused: 3, caught: true })],
+  )
+  assert.match(bRingCaught7.lines.join(' '), /이번엔 마지막 밤 재판에 걸렸어요/)
   const bRingTurns = resultBaseline(
     soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'loss', end_reason: 'turns_done' }),
     [makeDay(15, [cRow(1, 'danger', 'stay', true)])],
@@ -1425,13 +1457,6 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
   assert.equal(sCalm.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('속은 주민이')), false)
 })
 
-test('watchfulEyeGoalMet returns true only on win or perfect_win', () => {
-  assert.equal(watchfulEyeGoalMet({ outcome: 'win' }), true)
-  assert.equal(watchfulEyeGoalMet({ outcome: 'perfect_win' }), true)
-  assert.equal(watchfulEyeGoalMet({ outcome: 'loss' }), false)
-  assert.equal(watchfulEyeGoalMet({ outcome: null }), false)
-})
-
 test('watchfulEyeClashNote branches on caught and player contradictions', () => {
   const clashTurn = (turnNum, city) => ({
     turn: turnNum,
@@ -1463,53 +1488,77 @@ test('watchfulEyeClashNote branches on caught and player contradictions', () => 
   )
 })
 
-test('RING_TRAILS connects five adjacent clearings and scenarioGoalMet handles watchful-eye and ring-village', () => {
+test('RING_TRAILS connects five adjacent clearings and scenarioGoalMet returns true only on win or perfect_win', () => {
   assert.equal(RING_TRAILS.length, 5)
-  assert.equal(scenarioGoalMet('ring-village', { outcome: 'win' }), true)
-  assert.equal(scenarioGoalMet('ring-village', { outcome: 'perfect_win' }), true)
-  assert.equal(scenarioGoalMet('ring-village', { outcome: 'loss' }), false)
-  assert.equal(scenarioGoalMet('watchful-eye', { outcome: 'win' }), true)
+  assert.equal(scenarioGoalMet({ outcome: 'win' }), true)
+  assert.equal(scenarioGoalMet({ outcome: 'perfect_win' }), true)
+  assert.equal(scenarioGoalMet({ outcome: 'loss' }), false)
+  assert.equal(scenarioGoalMet({ outcome: null }), false)
 })
 
-test('ringVillageOutcomeNote branches on caught and far-house outcomes on final night', () => {
-  const ringState = (outcome, end_reason) => ({
+test('ringVillageOutcomeNote branches on caught day and far-house observation/outcome without false causation', () => {
+  const ringState = (outcome, end_reason, truth = 'danger') => ({
     config: { ...config, connection: 'ring' },
-    roles: { 1: 'citizen', 2: 'citizen', 3: 'player', 4: 'citizen', 5: 'citizen' },
-    player_city: 3,
+    roles: { 1: 'player', 2: 'citizen', 3: 'citizen', 4: 'citizen', 5: 'citizen' },
+    player_city: 1,
+    truth,
     outcome,
     end_reason,
   })
-  const dayCities = (c1, c2, c4, c5) => [
-    { city: 1, role: 'citizen', correct: c1 },
-    { city: 2, role: 'citizen', correct: c2 },
-    { city: 3, role: 'player', correct: null },
-    { city: 4, role: 'citizen', correct: c4 },
-    { city: 5, role: 'citizen', correct: c5 },
+  const dayCities = (c2, c3, h3, c4, h4, c5) => [
+    { city: 1, role: 'player', hint: null, correct: null },
+    { city: 2, role: 'citizen', hint: 'danger', correct: c2 },
+    { city: 3, role: 'citizen', hint: h3, correct: c3 },
+    { city: 4, role: 'citizen', hint: h4, correct: c4 },
+    { city: 5, role: 'citizen', hint: 'danger', correct: c5 },
   ]
+  // 조기 재판 패배 vs 마지막 7일째 재판 패배
   assert.equal(
-    ringVillageOutcomeNote(ringState('loss', 'caught'), [{ turn: 2, cities: dayCities(false, true, true, true) }]),
-    '2일째 재판에 걸려 마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.',
+    ringVillageOutcomeNote(ringState('loss', 'caught'), [{ turn: 3, cities: dayCities(true, false, 'safe', true, 'danger', true) }]),
+    '3일째 재판에 걸려 마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.',
   )
   assert.equal(
-    ringVillageOutcomeNote(ringState('win', 'turns_done'), [{ turn: 7, cities: dayCities(false, false, false, true) }]),
-    '마지막 밤, 직접 쪽지를 못 보낸 먼 집 가운데 1번 집도 속아 목표를 이뤘어요.',
+    ringVillageOutcomeNote(ringState('loss', 'caught'), [{ turn: 7, cities: dayCities(true, false, 'safe', true, 'danger', true) }]),
+    '마지막 밤 재판에 걸렸어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.',
+  )
+  // 승리: 먼 집 1채 오답 (관측 정답 → 이웃 쪽지 따라 틀림)
+  assert.equal(
+    ringVillageOutcomeNote(ringState('win', 'turns_done'), [{ turn: 7, cities: dayCities(false, false, 'danger', true, 'safe', false) }]),
+    '마지막 밤, 먼 3번 집은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요.',
+  )
+  // 승리: 먼 집 1채 오답 (관측도 오답)
+  assert.equal(
+    ringVillageOutcomeNote(ringState('win', 'turns_done'), [{ turn: 7, cities: dayCities(false, true, 'danger', false, 'safe', false) }]),
+    '마지막 밤, 먼 4번 집은 틀렸어요. 이 집은 그날 하늘도 잘못 봤어요.',
+  )
+  // 승리: 먼 집 2채 모두 오답 (둘 다 관측도 오답)
+  assert.equal(
+    ringVillageOutcomeNote(ringState('win', 'turns_done'), [{ turn: 7, cities: dayCities(false, false, 'safe', false, 'safe', true) }]),
+    '마지막 밤, 먼 3·4번 집은 틀렸어요. 이 집들은 그날 하늘도 잘못 봤어요.',
+  )
+  // 완승/승리: 먼 집 2채 모두 오답 (혼합: 3번 관측 정답, 4번 관측 오답)
+  assert.equal(
+    ringVillageOutcomeNote(ringState('perfect_win', 'turns_done'), [{ turn: 7, cities: dayCities(false, false, 'danger', false, 'safe', false) }]),
+    '마지막 밤, 먼 3번 집은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요. 4번 집은 그날 하늘도 잘못 봤어요.',
+  )
+  // 패배: 먼 집 오답이지만 3명 미달 (관측 정답 / 관측 오답)
+  assert.equal(
+    ringVillageOutcomeNote(ringState('loss', 'turns_done'), [{ turn: 7, cities: dayCities(true, false, 'danger', true, 'safe', true) }]),
+    '마지막 밤, 먼 3번 집은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요. 다만 틀린 주민이 3명에 못 미쳤어요.',
   )
   assert.equal(
-    ringVillageOutcomeNote(ringState('perfect_win', 'turns_done'), [{ turn: 7, cities: dayCities(false, false, false, false) }]),
-    '마지막 밤, 직접 쪽지를 못 보낸 먼 집(1·5번 집)까지 모두 속아 목표를 이뤘어요.',
+    ringVillageOutcomeNote(ringState('loss', 'turns_done'), [{ turn: 7, cities: dayCities(true, true, 'danger', false, 'safe', true) }]),
+    '마지막 밤, 먼 4번 집은 틀렸어요. 이 집은 그날 하늘도 잘못 봤어요. 다만 틀린 주민이 3명에 못 미쳤어요.',
   )
+  // 패배: 먼 집 모두 정답
   assert.equal(
-    ringVillageOutcomeNote(ringState('loss', 'turns_done'), [{ turn: 7, cities: dayCities(false, true, true, true) }]),
-    '마지막 밤, 직접 쪽지를 못 보낸 1번 집은 속았지만 속은 주민이 3명에 못 미쳤어요.',
-  )
-  assert.equal(
-    ringVillageOutcomeNote(ringState('loss', 'turns_done'), [{ turn: 7, cities: dayCities(true, true, true, true) }]),
-    '마지막 밤, 직접 쪽지를 못 보낸 먼 집(1·5번 집)은 모두 진짜 날씨를 지켰어요. 양옆 두 집만으로는 3명을 채울 수 없어요.',
+    ringVillageOutcomeNote(ringState('loss', 'turns_done'), [{ turn: 7, cities: dayCities(true, true, 'danger', true, 'safe', true) }]),
+    '마지막 밤, 직접 쪽지를 못 보낸 먼 집(3·4번 집)은 모두 진짜 날씨를 지켰어요. 양옆 두 집만으로는 3명을 채울 수 없어요.',
   )
   assert.equal(
     scenarioResultNote('ring-village', ringState('win', 'turns_done'), [
-      { turn: 7, cities: dayCities(false, false, false, true), sharing: [] },
+      { turn: 7, cities: dayCities(false, false, 'danger', true, 'safe', false), sharing: [] },
     ]),
-    '마지막 밤, 직접 쪽지를 못 보낸 먼 집 가운데 1번 집도 속아 목표를 이뤘어요.',
+    '마지막 밤, 먼 3번 집은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요.',
   )
 })

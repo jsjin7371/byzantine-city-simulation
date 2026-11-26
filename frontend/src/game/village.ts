@@ -1,4 +1,4 @@
-import { SUSPICION, claimTargets, difficulties, majority } from '../gameApi.ts'
+import { SUSPICION, TOTAL_TURNS, claimTargets, difficulties, majority } from '../gameApi.ts'
 import type { Claim, Difficulty, GameState, Role, Truth, TurnResult } from '../gameApi.ts'
 
 // 엔진(engine/city/ai.py)이 AI 응답 실패 때 붙이는 접두어를 화면용 쉬운 문장으로 바꾼다. 오류 종류는 숨긴다.
@@ -17,13 +17,14 @@ const SLOTS = [
 // 바닥에 깔리는 오솔길 5개 (집마다 광장으로 이어지는 길)
 export const TRAILS = SLOTS.map(({ trail: [a, b, c, d, e, f] }) => `M${a} ${b} Q${c} ${d} ${e} ${f}`)
 // 고리 연결 오솔길 5개 (양옆 이웃 집끼리만 이어지는 길: 0-1-2-3-4-0)
-export const RING_TRAILS = [
-  'M450 528 Q340 518 230 470',
-  'M230 470 Q208 358 230 245',
-  'M230 245 Q450 218 670 245',
-  'M670 245 Q692 358 670 470',
-  'M670 470 Q560 518 450 528',
-] as const
+const RING_EDGES: readonly (readonly [number, number, number, number, number, number])[] = [
+  [450, 528, 340, 518, 230, 470],
+  [230, 470, 208, 358, 230, 245],
+  [230, 245, 450, 218, 670, 245],
+  [670, 245, 692, 358, 670, 470],
+  [670, 470, 560, 518, 450, 528],
+]
+export const RING_TRAILS = RING_EDGES.map(([x0, y0, cx, cy, x1, y1]) => `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1}`)
 
 // 집 5채 자리: 내 집은 아래 가운데, 나머지는 내 다음 번호부터 시계방향 (양옆이 ring 이웃).
 export function houseSlots(player: number) {
@@ -125,13 +126,32 @@ export function changedHouses(result: Pick<TurnResult, 'cities' | 'sharing' | 'n
   return changes
 }
 
-// 밤에 오솔길을 따라 오가는 말: 받은 집마다 보낸 집에서 온 주장 (connection이 all이면 모든 집이 서로 보낸다).
-export function talkNotes(player: number, result: Pick<TurnResult, 'cities'>) {
+// 고리 연결에서 인접한 두 집 사이의 오솔길 경로(정방향·역방향). 인접하지 않으면 광장 경로로 대체한다.
+function ringNotePath(player: number, from: number, to: number) {
+  const [sa, sb] = [slotOf(player, from), slotOf(player, to)]
+  if (sb === (sa + 1) % 5) {
+    const [x0, y0, cx, cy, x1, y1] = RING_EDGES[sa]
+    return `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1}`
+  }
+  if (sa === (sb + 1) % 5) {
+    const [x0, y0, cx, cy, x1, y1] = RING_EDGES[sb]
+    return `M${x1} ${y1} Q${cx} ${cy} ${x0} ${y0}`
+  }
+  return sharePath(player, from, to)
+}
+
+// 밤에 오솔길을 따라 오가는 말: 받은 집마다 보낸 집에서 온 주장 (connection이 ring이면 고리 오솔길을 따른다).
+export function talkNotes(
+  player: number,
+  result: Pick<TurnResult, 'cities'>,
+  connection: GameState['config']['connection'] = 'all',
+) {
   return result.cities.flatMap((c) =>
     Object.entries(c.received ?? {}).flatMap(([from, msg]) => {
       const s = Number(from)
       if (!msg) return []
-      return [{ from: s, to: c.city, claim: msg.claim, path: sharePath(player, s, c.city) }]
+      const path = connection === 'ring' ? ringNotePath(player, s, c.city) : sharePath(player, s, c.city)
+      return [{ from: s, to: c.city, claim: msg.claim, path }]
     }),
   )
 }
@@ -745,6 +765,16 @@ export function villageLines(
 
   if (result.vote) {
     lines.push({ phase: 'trial', kind: 'when', text: PHASE_LABEL.trial })
+    const hasTiedVoter = citizens.some((c) => {
+      if (!c.suspicion || !(String(c.city) in result.vote!.ballots)) return false
+      const vals = Object.values(c.suspicion)
+      if (vals.length === 0) return false
+      const top = Math.max(...vals)
+      return vals.filter((v) => v === top).length > 1
+    })
+    if (hasTiedVoter) {
+      lines.push({ phase: 'trial', kind: 'event', text: '의심할 근거가 없거나 동점이면 그중 아무나 지목해요.' })
+    }
     for (const [from, to] of Object.entries(result.vote.ballots))
       lines.push({ phase: 'trial', kind: 'say', who: Number(from), text: `난 ${to}번을 지목할게` })
     const a = result.vote.accused
@@ -937,7 +967,7 @@ export function resultBaseline(
   const linkTitle = topic === 'ring' ? '연결도 조건' : '비잔틴 장군 문제'
   const linkSub =
     topic === 'ring'
-      ? '왜 양옆만 이어지면 불리한지'
+      ? '왜 양옆만 이어지면 주민 방어가 흔들리는지'
       : n < 3 * f + 1
         ? '왜 마피아가 둘이면 보장이 사라지는지'
         : '왜 주민이 유리했는지'
@@ -961,11 +991,13 @@ export function resultBaseline(
     const ending = won
       ? '이번엔 전략이 통했어요.'
       : state.end_reason === 'caught'
-        ? '이번엔 재판에 걸려 일찍 끝났어요.'
+        ? last && last.turn >= TOTAL_TURNS
+          ? '이번엔 마지막 밤 재판에 걸렸어요.'
+          : '이번엔 재판에 걸려 일찍 끝났어요.'
         : '이번엔 주민들이 끝까지 버텨 냈어요.'
     return {
       lines: [
-        `양옆 이웃하고만 이야기하는 마을은, 어떤 규칙을 써도 주민이 꼭 지켜 낸다는 보장이 없어요. 그래도 저절로 무너지진 않아서, ${ending}`,
+        `양옆 이웃하고만 이야기하는 마을은, 어떤 규칙을 써도 주민이 꼭 지켜 낸다는 보장이 없어요. 그렇다고 저절로 무너지는 것은 아니에요. ${ending}`,
       ],
       topic,
       linkTitle,
@@ -1645,17 +1677,9 @@ export function playerContradictionTurns<T extends Pick<TurnResult, 'turn' | 'sh
   return history.filter((t) => t.sharing.some((s) => s.contradictions.some((c) => c.city === playerCity)))
 }
 
-// 시나리오 '감시의 눈' 목표 판정: 주민 과반을 속여 이겼는지.
-export function watchfulEyeGoalMet(state: Pick<GameState, 'outcome'>): boolean {
+// 시나리오 목표 달성 판정 (현재 활성 시나리오는 모두 과반 기만 승리 기준).
+export function scenarioGoalMet(state: Pick<GameState, 'outcome'>): boolean {
   return state.outcome === 'win' || state.outcome === 'perfect_win'
-}
-
-// 시나리오별 목표 달성 판정.
-export function scenarioGoalMet(scenarioId: string, state: Pick<GameState, 'outcome'>): boolean {
-  if (scenarioId === 'watchful-eye' || scenarioId === 'ring-village') {
-    return state.outcome === 'win' || state.outcome === 'perfect_win'
-  }
-  return false
 }
 
 // 시나리오 '감시의 눈' 결과 한 줄 분기: 재판 패배 여부·모순 유무에 따라 한 줄을 안내한다.
@@ -1676,39 +1700,52 @@ export function watchfulEyeClashNote(
   return '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보낼 때와 비교해 보세요.'
 }
 
-// 시나리오 '고리 마을' 결과 한 줄 분기: 재판 여부와 마지막 밤 먼 집(직접 못 보내는 집)의 판단에 따라 안내한다.
+// 시나리오 '고리 마을' 결과 한 줄 분기: 재판 여부와 마지막 밤 먼 집(직접 못 보내는 집)의 관측·판단 기록을 그대로 안내한다.
 export function ringVillageOutcomeNote(
-  state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'outcome' | 'end_reason'>,
+  state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities'>[],
 ): string {
   const last = history.at(-1)
   const lastDay = last?.turn ?? 0
   if (state.end_reason === 'caught') {
-    return `${lastDay}일째 재판에 걸려 마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.`
+    return lastDay >= TOTAL_TURNS
+      ? '마지막 밤 재판에 걸렸어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.'
+      : `${lastDay}일째 재판에 걸려 마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.`
   }
   const targets = new Set(claimTargets(state))
   const far = (last?.cities ?? [])
     .filter((c) => c.role === 'citizen' && !targets.has(c.city))
     .sort((a, b) => a.city - b.city)
-  const farFooled = far.filter((c) => c.correct === false)
-  const won = state.outcome === 'win' || state.outcome === 'perfect_win'
-  if (farFooled.length === 0) {
+  const farWrong = far.filter((c) => c.correct === false)
+  const won = scenarioGoalMet(state)
+  if (farWrong.length === 0) {
     const names = far.length > 0 ? formatHouseGroup(far.map((c) => c.city)) : '먼 집'
     return `마지막 밤, 직접 쪽지를 못 보낸 먼 집(${names})은 모두 진짜 날씨를 지켰어요. 양옆 두 집만으로는 3명을 채울 수 없어요.`
   }
-  const fooledNames = formatHouseGroup(farFooled.map((c) => c.city))
-  if (won) {
-    return farFooled.length === far.length
-      ? `마지막 밤, 직접 쪽지를 못 보낸 먼 집(${fooledNames})까지 모두 속아 목표를 이뤘어요.`
-      : `마지막 밤, 직접 쪽지를 못 보낸 먼 집 가운데 ${fooledNames}도 속아 목표를 이뤘어요.`
+  const hintOk = farWrong.filter((c) => c.hint === state.truth)
+  const hintBad = farWrong.filter((c) => c.hint != null && c.hint !== state.truth)
+  const suffix = won ? '' : ' 다만 틀린 주민이 3명에 못 미쳤어요.'
+  if (hintOk.length > 0 && hintBad.length > 0) {
+    const okNames = formatHouseGroup(hintOk.map((c) => c.city))
+    const badNames = formatHouseGroup(hintBad.map((c) => c.city))
+    return `마지막 밤, 먼 ${okNames}은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요. ${badNames}은 그날 하늘도 잘못 봤어요.${suffix}`
   }
-  return `마지막 밤, 직접 쪽지를 못 보낸 ${fooledNames}은 속았지만 속은 주민이 3명에 못 미쳤어요.`
+  if (hintOk.length > 0) {
+    const okNames = formatHouseGroup(hintOk.map((c) => c.city))
+    return `마지막 밤, 먼 ${okNames}은 하늘을 바로 보고도 이웃 쪽지를 따라 틀렸어요.${suffix}`
+  }
+  const names = formatHouseGroup(farWrong.map((c) => c.city))
+  if (hintBad.length > 0) {
+    const subj = hintBad.length > 1 ? '이 집들은' : '이 집은'
+    return `마지막 밤, 먼 ${names}은 틀렸어요. ${subj} 그날 하늘도 잘못 봤어요.${suffix}`
+  }
+  return `마지막 밤, 먼 ${names}은 틀렸어요.${suffix}`
 }
 
 // 시나리오별 결과 한 줄 분기.
 export function scenarioResultNote(
   scenarioId: string,
-  state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'outcome' | 'end_reason'>,
+  state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities' | 'sharing'>[],
 ): string | null {
   if (scenarioId === 'watchful-eye') return watchfulEyeClashNote(state, history)

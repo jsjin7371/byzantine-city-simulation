@@ -57,19 +57,19 @@ const SCENARIOS: readonly Scenario[] = [
     shows: '양옆 두 집하고만 통하는 고리 마을에서, 소식은 어떻게 퍼지고 방어는 어디서 흔들릴까요?',
     chips: ['집 5채', '양옆과만 연결', '잘못 볼 확률 45%'],
     goal: '주민 3명 이상을 속이기',
-    rule: '직접 쪽지를 보낼 수 있는 집은 양옆 둘뿐이에요. 양옆 두 집의 깃발이 바뀔 때와 그대로일 때, 먼 두 집의 판단이 다음 날 어떻게 달라지는지 비교해 보세요.',
-    rate: '컴퓨터가 찾은 가장 좋은 수로 42% 이겨요',
-    seed: 17,
+    rule: '직접 쪽지를 보낼 수 있는 집은 양옆 둘뿐이에요. 양옆 두 집의 깃발이 바뀔 때와 그대로일 때, 다음 날 먼 두 집의 판단을 그 집이 본 하늘과 함께 비교해 보세요.',
+    rate: '컴퓨터 전략으로 42% 이겨요',
+    seed: 767,
     config: { connection: 'ring', sensor_error: 0.45 },
     topic: 'ring',
     playable: true,
     debrief: {
       theory:
-        '서명 없이 마피아 한 명을 확실히 막으려면, 서로 겹치지 않는 길이 세 갈래 이상 필요해요. 양옆 두 집만 이어진 고리 마을은 길이 두 갈래뿐이라, 이론상 안전한 방어를 장담할 수 없어요.',
+        '서명 없이 마피아 한 명을 확실히 막으려면, 어느 두 집 사이에도 서로 겹치지 않는 길이 세 갈래 이상 필요해요. 고리 마을은 두 갈래뿐이라 보장이 없어요. 보장이 없다는 뜻이지, 늘 마피아가 이긴다는 뜻은 아니에요.',
       network:
-        '비트코인 같은 P2P 망에서 공격자가 한 노드의 연결을 독점하면, 그 노드는 가짜 장부만 보게 돼요. 광통신 고리 망이 반대 방향 예비 길을 두는 것도, 한 길이 끊길 때를 대비해서예요.',
+        '비트코인 같은 P2P 망에서 공격자가 한 노드의 연결을 모두 차지하면, 그 노드는 공격자가 골라 준 장부만 보게 돼요. 광통신 고리 망의 두 길은 끊김에는 버티지만, 거짓말을 가려내기에는 부족해요.',
       reflect:
-        '소식이 지나가는 길목을 쥔 쪽이 판을 흔들기 쉬워져요. 하지만 이 판에서는 내 말도 양옆 두 집에만 닿았어요. 길이 좁으면 주민뿐 아니라 마피아도 멀리 직접 말하지 못해요.',
+        '이 판에서는 내 쪽지도 양옆 두 집에만 닿았어요. 길이 좁으면 주민끼리도 관측을 덜 모으게 돼요. 마피아가 정직한 쪽지만 보내도 주민이 틀리는 일이 늘까요?',
     },
   },
   {
@@ -80,7 +80,7 @@ const SCENARIOS: readonly Scenario[] = [
     chips: ['기본 마을', '잘못 볼 확률 45%'],
     goal: '의심도 40 넘은 주민에게 그 주민이 본 날씨와 같은 쪽지를 보내 20 이하로 낮춘 뒤, 다시 속여 이기기',
     rule: '의심도는 0 아래로 내려가지 않아요. 믿음을 미리 쌓아 둘 수 없으니, 의심도가 쌓인 뒤에 낮춰야 해요.',
-    rate: '컴퓨터가 찾은 가장 좋은 수로 목표 달성 49%',
+    rate: '컴퓨터 전략으로 목표 달성 49%',
     seed: 2,
     config: { sensor_error: 0.45 },
     topic: 'onoff',
@@ -102,7 +102,7 @@ const SCENARIOS: readonly Scenario[] = [
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
     goal: '주민 과반을 속이기',
     rule: '동료는 금방 의심을 사요. 동료가 시선을 끄는 동안 맞는 말로 신뢰를 지키세요. 그리고 결정적인 날에만 거짓말을 보태세요.',
-    rate: '컴퓨터가 찾은 가장 좋은 수로 41% 이겨요',
+    rate: '컴퓨터 전략으로 41% 이겨요',
     seed: 1,
     config: { mafia_count: 2, sensor_error: 0.48 },
     topic: 'zealot',
@@ -323,15 +323,13 @@ export function ScenarioResult({
   onLab: () => void
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
-  const goalMet = scenarioGoalMet(scenario.id, state)
+  const goalMet = scenarioGoalMet(state)
   const resultNote = scenarioResultNote(scenario.id, state, history)
   const lastDay = history.at(-1)?.turn ?? state.turn
   const blockedReason =
     state.end_reason === 'caught'
       ? `${lastDay}일째 재판에 걸렸어요.`
-      : scenario.id === 'ring-village'
-        ? `마지막 ${lastDay}일째에 주민 3명 이상을 속이지 못했어요.`
-        : `마지막 ${lastDay}일째에 주민 과반을 속이지 못했어요.`
+      : `마지막 ${lastDay}일째에 목표를 이루지 못했어요.`
 
   return (
     <section className="gr-sheet sc-result" aria-label={`${scenario.title} 시나리오 결과`}>

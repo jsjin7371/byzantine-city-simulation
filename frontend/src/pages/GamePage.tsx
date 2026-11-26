@@ -250,7 +250,7 @@ export function GamePage() {
     run(async () => {
       if (!state) return
       const turn = await playTurn(state.game_id, state.turn + 1, claims)
-      if (scenario && turn.game_over && scenarioGoalMet(scenario.id, turn)) {
+      if (scenario && turn.game_over && scenarioGoalMet(turn)) {
         saveCompletedScenario(scenario.id)
       }
       setHistory([...history, turn])
@@ -461,6 +461,7 @@ export function GamePage() {
               lines={lines && playing ? visibleLines(lines, steps[step]) : lines}
               day={shown?.turn}
               citizenType={state.config.citizen_type}
+              ring={state.config.connection === 'ring'}
               live={playing}
               tonightScale={tonightScale}
               highlight={highlight === 'log' || highlight === 'scale' || highlight === 'votes' ? highlight : null}

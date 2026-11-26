@@ -779,8 +779,16 @@ function Trial({
 }
 
 // 밤에 오솔길을 따라 각 집으로 가는 말: 내 쪽지(큰 쪽지)와 다른 집의 주장(작은 쪽지).
-function Talk({ result, player }: { result: TurnResult; player: number }) {
-  const notes = talkNotes(player, result).sort((a, b) => Number(a.from === player) - Number(b.from === player)) // 내 쪽지를 맨 위에
+function Talk({
+  result,
+  player,
+  connection,
+}: {
+  result: TurnResult
+  player: number
+  connection: GameState['config']['connection']
+}) {
+  const notes = talkNotes(player, result, connection).sort((a, b) => Number(a.from === player) - Number(b.from === player)) // 내 쪽지를 맨 위에
   return (
     <g aria-hidden>
       {notes.map((n, i) => (
@@ -888,11 +896,13 @@ const SIGNS: readonly (readonly [string, string])[] = [
   ['3 쪽지를 비교하는 집엔', '같은 쪽지를 보내요'],
 ]
 const RING_PICK_SIGN: readonly [string, string] = ['2 양옆 두 집에 보낼', '쪽지를 골라요']
+const RING_SHARE_SIGN: readonly [string, string] = ['3 비교하는 두 집에', '쪽지가 둘 다 가는지 봐요']
 const NEUTRAL_SHARE_SIGN: readonly [string, string] = ['3 다르게 말하면 비교에서', '모순이 드러나요']
 
 // 첫날 안내 표지판 (왼쪽 나무 기둥). 1일째 왼쪽 위 집의 관측 꼬리표(y 291까지) 아래에서 시작한다.
 function Signs({ neutralShareSign = false, ring = false }: { neutralShareSign?: boolean; ring?: boolean }) {
-  const signs = [SIGNS[0], ring ? RING_PICK_SIGN : SIGNS[1], neutralShareSign ? NEUTRAL_SHARE_SIGN : SIGNS[2]]
+  const thirdSign = neutralShareSign ? NEUTRAL_SHARE_SIGN : ring ? RING_SHARE_SIGN : SIGNS[2]
+  const signs = [SIGNS[0], ring ? RING_PICK_SIGN : SIGNS[1], thirdSign]
   const ariaLabel = `첫날 안내: ${signs.map(([a, b]) => `${a} ${b}`).join(', ')}`
   return (
     <g fontSize="15" fontWeight="700" role="img" aria-label={ariaLabel}>
@@ -1285,7 +1295,9 @@ export function VillageBoard({
         )
       })}
       {pointerTarget && <HousePointer target={pointerTarget} />}
-      {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
+      {night && at('notes') && (
+        <Talk result={night.result} player={state.player_city} connection={state.config.connection} />
+      )}
       {pairs.length === 1 &&
         caught.map(([a, b]) => {
           const [mx, my] = pairMid(state.player_city, a, b)
