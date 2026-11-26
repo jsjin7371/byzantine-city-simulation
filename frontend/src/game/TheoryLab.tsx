@@ -3,9 +3,9 @@ import type { RefObject } from 'react'
 import { BookLink, TheoryBook } from './TheoryBook'
 import type { TopicKey } from './village'
 
-const RATE_BASIS = '매 턴 가능한 쪽지를 모두 계산해 고른 전략 기준(7일, 1000판)'
+const RATE_BASIS = '시나리오마다 찾은 전략 중 가장 잘 이긴 것 기준(1000판)'
 
-const CHAPTER1_SCENARIOS: readonly {
+const SCENARIOS: readonly {
   id: string
   title: string
   brief: string
@@ -22,9 +22,9 @@ const CHAPTER1_SCENARIOS: readonly {
     brief: '"오늘 밤부터 모든 주민이 받은 쪽지를 다 같이 맞춰 봐요."',
     chips: ['집 5채', '모든 집 쪽지 비교', '잘못 볼 확률 45%'],
     goal: '주민 과반을 속이기',
-    rule: '집마다 다른 쪽지는 반드시 들켜요. 들킨 다음 날엔 주민이 본 하늘과 같은 말을 보내 의심도를 낮추세요.',
-    rate: '잘하면 39% 이겨요',
-    seed: 5,
+    rule: '집마다 다른 쪽지는 쪽지 비교에서 반드시 들켜요. 모든 주민에게 같은 말을 보내 보세요.',
+    rate: '잘하면 45% 이겨요',
+    seed: 0,
     topic: 'equiv',
   },
   {
@@ -43,9 +43,9 @@ const CHAPTER1_SCENARIOS: readonly {
     title: '신뢰를 되찾는 법',
     brief: '"재판 직전까지 밀어붙였다가, 맞는 말로 신뢰를 되찾아 보세요."',
     chips: ['기본 마을', '잘못 볼 확률 45%'],
-    goal: '의심도 40 넘은 주민에게 그 주민이 본 날씨와 같은 쪽지를 보내 20 아래로 낮춘 뒤, 다시 속여 이기기',
+    goal: '의심도 40 넘은 주민에게 그 주민이 본 날씨와 같은 쪽지를 보내 20 이하로 낮춘 뒤, 다시 속여 이기기',
     rule: '의심도는 0 아래로 내려가지 않아요. 믿음을 미리 쌓아 둘 수 없으니, 의심도가 쌓인 뒤에 낮춰야 해요.',
-    rate: '잘하면 목표 달성 47%',
+    rate: '잘하면 목표 달성 49%',
     seed: 2,
     topic: 'onoff',
   },
@@ -54,7 +54,7 @@ const CHAPTER1_SCENARIOS: readonly {
     title: '고집쟁이 동료',
     brief: '"동료 마피아가 한 명 더 있어요. 그런데 이 동료는 늘 같은 거짓말만 해요."',
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
-    goal: '동료가 재판에 걸리지 않게 버티며 이기기',
+    goal: '주민 과반을 속이기',
     rule: '동료는 금방 의심을 사요. 동료가 시선을 끄는 동안 맞는 말로 신뢰를 지키세요. 그리고 결정적인 날에만 거짓말을 보태세요.',
     rate: '잘하면 41% 이겨요',
     seed: 1,
@@ -89,9 +89,9 @@ export function TheoryLab({
           </div>
         </header>
 
-        <section className="tl-section" aria-labelledby="tl-ch1-title">
-          <div className="tl-chapter">
-            <h2 id="tl-ch1-title">첫째 장</h2>
+        <section className="tl-section" aria-labelledby="tl-scenarios-title">
+          <div className="tl-section-head">
+            <h2 id="tl-scenarios-title">시나리오</h2>
             <p>지금 엔진으로 바로 열 수 있는 마을 넷</p>
           </div>
           <p id={soonId} className="tl-soon-note">
@@ -99,7 +99,7 @@ export function TheoryLab({
           </p>
 
           <div className="tl-cards">
-            {CHAPTER1_SCENARIOS.map((card) => (
+            {SCENARIOS.map((card) => (
               <article key={card.id} className="tl-card">
                 <h3>{card.title}</h3>
                 <p className="tl-brief">{card.brief}</p>

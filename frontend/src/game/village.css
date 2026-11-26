@@ -2237,20 +2237,20 @@ dialog.tb-dialog[open] {
   font-weight: 700;
   max-width: 34em;
 }
-.tl-chapter {
+.tl-section-head {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 10px 14px;
   margin: 0 0 12px;
 }
-.tl-chapter h2 {
+.tl-section-head h2 {
   margin: 0;
   font-size: 28px;
   font-weight: 700;
   color: var(--wood-dark);
 }
-.tl-chapter p {
+.tl-section-head p {
   margin: 0;
   color: var(--muted);
   font-size: 19px;
