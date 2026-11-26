@@ -261,10 +261,10 @@ const SUSPICION_EDGE: Record<string, LinkGeom> = {
   '0-3': { a: [466, 480], b: [618, 242], c: [476, 336], tag: [482, 404] },
   '0-4': { a: [488, 494], b: [618, 462], c: [548, 466], tag: [548, 474] },
   '1-2': { a: [178, 412], b: [174, 248], c: [44, 344], tag: [124, 372] },
-  '1-3': { a: [282, 420], b: [618, 242], c: [450, 420], tag: [424, 386] },
+  '1-3': { a: [282, 420], b: [618, 242], c: [450, 420], tag: [366, 409] },
   '1-4': { a: [282, 424], b: [618, 424], c: [450, 438], tag: [450, 431] },
   '2-3': { a: [282, 204], b: [618, 204], c: [450, 152], tag: [450, 178] },
-  '2-4': { a: [294, 294], b: [618, 414], c: [484, 306], tag: [499, 345] },
+  '2-4': { a: [294, 294], b: [618, 414], c: [484, 306], tag: [547, 366] },
   '3-4': { a: [726, 246], b: [750, 420], c: [932, 208], tag: [814, 334] },
 }
 
@@ -956,6 +956,22 @@ function playerAlwaysHonest(
 }
 
 // 출발선 문장 (목업 "검토용 7가지" 표 기준). 화면 겉면에는 수식을 쓰지 않는다.
+// 재판 기록: 지목된 집의 그날 최고 의심도와, 동점 추첨이 지목을 갈랐는지(그 집만 가장 의심한 주민이 과반이 아님).
+function trialRecord(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined) {
+  const accused = turn?.vote?.accused
+  if (accused == null) return null
+  const citizens = turn!.cities.filter((c) => c.role === 'citizen')
+  const sus = Math.max(0, ...citizens.map((c) => c.suspicion?.[accused] ?? 0))
+  const sure = citizens.filter((c) =>
+    Object.entries(c.suspicion ?? {}).every(
+      ([target, v]) => Number(target) === accused || v < (c.suspicion?.[accused] ?? 0),
+    ),
+  ).length
+  return { accused, sus, drawn: sure * 2 <= citizens.length }
+}
+
+const DRAWN_NOTE = ' 가장 의심하는 집이 동점인 주민이 있어, 추첨으로 지목이 갈렸어요.'
+
 export function resultBaseline(
   state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities' | 'vote'>[],
@@ -1014,14 +1030,13 @@ export function resultBaseline(
       n === 5 && f === 2
         ? '집 다섯에 마피아 둘이면 주민이 반드시 버틴다는 보장이 사라져요.'
         : `집 ${n}채에 마피아 ${f}명이면 주민이 반드시 버틴다는 보장이 사라져요.`
-    const colleagueAccused = history.some(
-      (t) => t.vote?.accused != null && state.roles[t.vote.accused] === 'colleague',
-    )
+    const trial = state.end_reason === 'caught' ? trialRecord(last) : null
+    const who = trial && state.roles[trial.accused] === 'colleague' ? '동료가' : '내 집이'
     const tail = won
-      ? ' 수적 우위를 잘 살려 끝까지 흔들어 놓았어요.'
-      : colleagueAccused
-        ? ' 그런데도 어려웠다면, 같은 거짓말만 되풀이한 동료가 먼저 의심받았기 때문이에요.'
-        : ''
+      ? ' 이번엔 끝까지 흔들어 놓았어요.'
+      : trial
+        ? ` 이번 재판에서는 ${who} 의심도 ${trial.sus}에서 지목됐어요.${trial.drawn ? DRAWN_NOTE : ''}`
+        : ' 이번엔 마지막 밤 주민 과반을 속이지 못했어요.'
     return { lines: [`${head}${tail}`], topic, linkTitle, linkSub }
   }
 
@@ -1228,7 +1243,7 @@ export function detectTactics(
         detected.push({
           tag: 'zealot',
           day: colleagueTrial.turn,
-          text: `같은 거짓말만 되풀이한 동료(${colleagueCity}번 집) 때문에 광장 재판이 열렸어요.`,
+          text: `광장 재판에서 동료(${colleagueCity}번 집)가 의심도 ${trialRecord(colleagueTrial)!.sus}에서 지목됐어요.`,
           attachTo: 'caught',
         })
       }
@@ -1939,13 +1954,7 @@ export function regainTrustOutcomeNote(
   return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 ${winEnd}`
 }
 
-type AllyStatus = {
-  city: number
-  maxSus: number
-  caught: boolean
-  label: string
-  tone: 'ok' | 'warn' | 'caught'
-}
+type AllyStatus = { label: string; tone: 'ok' | 'warn' | 'caught' }
 
 function colleagueCityOf(roles: GameState['roles']): number | null {
   const entry = Object.entries(roles).find(([, role]) => role === 'colleague')
@@ -1959,15 +1968,14 @@ export function stubbornAllyStatus(
 ): AllyStatus | null {
   const city = colleagueCityOf(state.roles)
   if (city == null) return null
-  const caught = history.some((t) => t.vote?.accused === city)
+  if (history.some((t) => t.vote?.accused === city)) return { label: '동료 재판에 걸림', tone: 'caught' }
   const last = history.at(-1)
   const maxSus = Math.max(
     0,
     ...(last?.cities ?? []).filter((c) => c.role === 'citizen').map((c) => c.suspicion?.[city] ?? 0),
   )
-  if (caught) return { city, maxSus, caught: true, label: '동료 재판에 걸림', tone: 'caught' }
-  const label = maxSus > 0 ? `동료 무사 · 의심도 ${maxSus}` : '동료 무사'
-  return { city, maxSus, caught: false, label, tone: maxSus >= SUSPICION.threshold ? 'warn' : 'ok' }
+  const label = maxSus > 0 ? `동료 무사 (의심도 최고 ${maxSus})` : '동료 무사'
+  return { label, tone: maxSus >= SUSPICION.threshold ? 'warn' : 'ok' }
 }
 
 // 시나리오 '고집쟁이 동료' 결과 한 줄 분기: 동료/내 재판 여부, 최고 의심도, 7일 승패 기록에 따라 한 줄을 안내한다.
@@ -1979,41 +1987,49 @@ export function stubbornAllyOutcomeNote(
   const colLabel = col != null ? `동료(${col}번 집)` : '동료'
   const last = history.at(-1)
   const lastDay = last?.turn ?? 0
-  if (state.end_reason === 'caught') {
-    if (col != null && last?.vote?.accused === col) {
-      return lastDay >= TOTAL_TURNS
-        ? `마지막 밤 재판에서 같은 거짓말만 되풀이한 ${colLabel}가 지목돼 판이 끝났어요.`
-        : `마지막 밤까지 가지 못했어요. 같은 거짓말만 되풀이한 ${colLabel}가 재판에서 지목돼 판이 끝났어요.`
-    }
-    const head = lastDay >= TOTAL_TURNS ? '마지막 밤 재판에서' : '마지막 밤까지 가지 못했어요. 재판에서'
-    return `${head} ${colLabel}가 아니라 내 집이 지목됐어요. 각 집이 본 하늘에 맞춰 의심도를 살피며 다시 해 보세요.`
-  }
-  const citizens = Object.values(state.roles).filter((r) => r === 'citizen').length
-  const need = majority(citizens)
-  const peakOf = (target: number | null) =>
+  const peakIn = (turns: typeof history, target: number | null) =>
     target == null
       ? 0
       : Math.max(
           0,
-          ...history.flatMap((t) =>
+          ...turns.flatMap((t) =>
             t.cities.filter((c) => c.role === 'citizen').map((c) => c.suspicion?.[target] ?? 0),
           ),
         )
-  const colPeak = peakOf(col)
-  const playerPeak = peakOf(state.player_city)
+  const trial = state.end_reason === 'caught' ? trialRecord(last) : null
+  if (trial) {
+    const early = lastDay >= TOTAL_TURNS ? '' : '마지막 밤까지 가지 못했어요. '
+    const when = lastDay >= TOTAL_TURNS ? '마지막 밤 재판' : '재판'
+    const drawn = trial.drawn ? DRAWN_NOTE : ''
+    const mine = peakIn([last!], state.player_city)
+    const theirs = peakIn([last!], col)
+    if (trial.accused === col) {
+      return `${early}${when}에서 같은 거짓말만 되풀이한 ${colLabel}가 의심도 ${trial.sus}에서 지목돼 판이 끝났어요.${drawn} 동료의 의심도는 내 쪽지로 바뀌지 않아요. 그날 내 의심도는 최고 ${mine}이었어요.`
+    }
+    const low =
+      trial.sus < SUSPICION.threshold
+        ? ` 내 의심도는 ${SUSPICION.threshold} 미만이었지만, 다른 집 의심도 때문에 열린 재판이었어요.`
+        : ''
+    return `${early}${when}에서 ${colLabel}가 아니라 내 집이 의심도 ${trial.sus}에서 지목됐어요.${low}${drawn} 그날 동료의 의심도는 최고 ${theirs}이었어요. 두 의심도를 비교하며 다시 해 보세요.`
+  }
+  const citizens = Object.values(state.roles).filter((r) => r === 'citizen').length
+  const need = majority(citizens)
+  const colPeak = peakIn(history, col)
+  const playerPeak = peakIn(history, state.player_city)
   if (!isWin(state.outcome)) {
     return colPeak >= SUSPICION.threshold
       ? `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 7일을 버텼지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.`
-      : `${colLabel}도 나도 7일 동안 재판에 걸리지 않았지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.`
+      : `${colLabel}도 나도 7일 동안 재판에서 지목되지 않았지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.`
   }
   const winEnd = state.outcome === 'perfect_win' ? '주민 모두를 속였어요.' : '주민 과반을 넘겼어요.'
-  if (colPeak >= SUSPICION.threshold && colPeak > playerPeak) {
-    return `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 내 의심도는 ${playerPeak} 이하로 버텼고, 동료도 무사히 남아 마지막 밤 ${winEnd}`
+  const survived = `동료도 무사히 남아 마지막 밤 ${winEnd}`
+  if (playerPeak >= SUSPICION.threshold) {
+    return `내 의심도가 최고 ${playerPeak}까지 올랐지만 재판에서 지목되지 않았고, ${survived}`
   }
   if (colPeak > playerPeak) {
-    return `${colLabel}가 더 높은 의심(최고 ${colPeak})을 받는 동안 내 의심도는 ${playerPeak} 이하로 유지했고, 동료도 무사히 남아 마지막 밤 ${winEnd}`
+    return `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 내 의심도는 최고 ${playerPeak}이었고, ${survived}`
   }
-  return `${colLabel}와 나 모두 끝까지 재판에 걸리지 않았고, 마지막 밤 ${winEnd}`
+  return `${colLabel}도 나도 재판에서 지목되지 않았고, 마지막 밤 ${winEnd}`
 }
 
 // 시나리오별 결과 한 줄 분기.

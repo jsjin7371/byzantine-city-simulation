@@ -2287,17 +2287,6 @@ dialog.tb-dialog[open] {
   font-weight: 700;
   color: var(--wood-dark);
 }
-.tl-soon-note {
-  margin: 0 0 18px;
-  padding: 8px 14px;
-  border-radius: 6px;
-  background: rgba(248, 240, 218, 0.72);
-  border: 1.5px dashed var(--border);
-  color: var(--ink-soft);
-  font-size: 18px;
-  font-weight: 700;
-  max-width: 40em;
-}
 .tl-cards {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2484,14 +2473,6 @@ dialog.tb-dialog[open] {
 .tl-play:focus-visible {
   outline: 3px solid var(--leave);
   outline-offset: 2px;
-}
-.tl-soon-badge {
-  font-size: 15px;
-  font-weight: 700;
-  background: rgba(107, 74, 42, 0.14);
-  color: var(--wood-dark);
-  border-radius: 999px;
-  padding: 0 8px;
 }
 .tl-play.is-ready {
   background: var(--forest);

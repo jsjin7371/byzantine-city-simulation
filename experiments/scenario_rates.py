@@ -183,19 +183,25 @@ def play_scenario(scenario_id, strategy, seed, threshold=40):
     return goal, won, caught
 
 
+def play_all(scenario_id, seed, fn):
+    """fn(g) → 쪽지로 한 판을 끝까지 진행해 (g, 턴 결과 목록)을 돌려준다."""
+    g = Game(1, GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS[scenario_id]))
+    history = []
+    while not g.game_over:
+        claims = {r: {"claim": c, "note": ""} for r, c in fn(g).items()}
+        history.append(g.play({"turn": g.turn + 1, "claims": claims}, city_turn))
+    return g, history
+
+
 def ring_far_varies(seed, samples=128):
     """고리 마을 고정 시드 조건: 먼 집 판단이 내 수에 따라 갈리는지 확인.
     1) 정직(진짜 날씨)으로 7일 완주 시 먼 두 집 모두 정답,
     2) smart 승리 시 하늘을 바로 본 먼 집이 이웃 쪽지를 따라 틀림,
     3) 무작위 수 표본에서 재판이 발생할 수 있고, 7일 완주 중 승률 ≥ 10%이며 먼 두 집 각각의 오답률이 15%~85% 사이."""
     def run_last(strat):
-        cfg = GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["ring-village"])
-        g = Game(1, cfg)
-        ans = DECISION_OF[g.truth]
-        while not g.game_over:
-            chosen = {str(r): ans for r in ms.targets(g)} if strat == "honest" else ms.smart(g)
-            res = g.play({"turn": g.turn + 1, "claims": {r: {"claim": c, "note": ""} for r, c in chosen.items()}}, city_turn)
-        return g, res
+        fn = (lambda g: {str(r): DECISION_OF[g.truth] for r in ms.targets(g)}) if strat == "honest" else ms.smart
+        g, history = play_all("ring-village", seed, fn)
+        return g, history[-1]
 
     g_hon, r_hon = run_last("honest")
     if r_hon["end_reason"] != "turns_done":
@@ -238,22 +244,15 @@ def ring_far_varies(seed, samples=128):
 
 
 def stubborn_ally_shows(seed):
-    """고집쟁이 동료 고정 시드 조건: '동료가 먼저 의심받는 동안 내가 버팀'과 4개 결과 분기를 수에 따라 보여 주는지 확인.
-    1) smart 승리 시 동료 의심도가 6일째 이전에 60 이상에 닿는 동안 내 의심도는 60 미만으로 유지,
-    2) bot(늘 거짓) 패배 시 동료가 재판에서 지목됨,
+    """고집쟁이 동료 고정 시드 조건: 4개 결과 분기를 수에 따라 보여 줄 수 있는 판인지 확인.
+    1) smart 승리 시 동료 의심도가 6일째 이전에 60 이상에 닿고 내 의심도는 60 미만으로 유지
+       (섞기의 일반 효과가 아니라 이 조건으로 고른 시드의 모습),
+    2) bot(늘 거짓) 패배 시 동료가 재판에서 지목됨 (늘 거짓이면 나와 동료 의심도가 같아 동점 추첨 결과),
     3) 정직(진짜 날씨) 패배 시 내가 재판에서 지목됨,
     4) 안전 정직(의심도 60 미만 유지 + 최대한 정직)으로 7일 버텼지만 과반 미달 패배 도달 가능."""
-    cfg = GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["stubborn-ally"])
-
     def run_fn(fn):
-        g = Game(1, cfg)
-        col = next(c for c, r in g.roles.items() if r == "colleague")
-        hist = []
-        while not g.game_over:
-            chosen = fn(g)
-            res = g.play({"turn": g.turn + 1, "claims": {r: {"claim": c, "note": ""} for r, c in chosen.items()}}, city_turn)
-            hist.append(res)
-        return g, col, hist
+        g, hist = play_all("stubborn-ally", seed, fn)
+        return g, next(c for c, r in g.roles.items() if r == "colleague"), hist
 
     gs, col, hs = run_fn(ms.smart)
     if hs[-1]["outcome"] not in ("win", "perfect_win"):

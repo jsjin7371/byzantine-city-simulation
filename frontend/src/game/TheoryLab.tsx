@@ -19,7 +19,6 @@ export type Scenario = {
   seed: number
   config: Partial<GameConfig>
   topic: TopicKey
-  playable: boolean
   debrief: {
     theory: string
     network: string
@@ -40,7 +39,6 @@ const SCENARIOS: readonly Scenario[] = [
     seed: 0,
     config: { share_mode: 'all', sensor_error: 0.45 },
     topic: 'equiv',
-    playable: true,
     debrief: {
       theory:
         '집마다 다른 쪽지(이중 발언)는 비교로 증명되지만, 모순 한 번으로 바로 쫓아내는 규칙이 없으면 버틸 수 있어요. 모두에게 같은 거짓말은 이중 발언이 아니라서 비교로 안 잡혀요. 비교는 말이 다른지만 보지, 맞는 말인지는 몰라요.',
@@ -62,7 +60,6 @@ const SCENARIOS: readonly Scenario[] = [
     seed: 767,
     config: { connection: 'ring', sensor_error: 0.45 },
     topic: 'ring',
-    playable: true,
     debrief: {
       theory:
         '서명 없이 마피아 한 명을 확실히 막으려면, 어느 두 집 사이에도 서로 겹치지 않는 길이 세 갈래 이상 필요해요. 고리 마을은 두 갈래뿐이라 보장이 없어요. 보장이 없다는 뜻이지, 늘 마피아가 이긴다는 뜻은 아니에요.',
@@ -84,7 +81,6 @@ const SCENARIOS: readonly Scenario[] = [
     seed: 2,
     config: { sensor_error: 0.45 },
     topic: 'onoff',
-    playable: true,
     debrief: {
       theory:
         '착한 행동으로 평판을 회복했다가 다시 속이는 수법을 온오프 공격이라고 해요. 좋은 행동과 나쁜 행동을 같은 크기로 반영하면 재판 기준 아래를 오갈 수 있어, 나쁜 기록을 더 오래 기억하게 설계해요. 이 마을의 의심도는 진실이 아니라 그 집이 본 하늘과 맞았는지로 매겨져요.',
@@ -101,19 +97,18 @@ const SCENARIOS: readonly Scenario[] = [
     shows: '마피아가 둘로 늘어난 마을에서, 늘 같은 거짓말만 반복하는 동료는 힘이 될까요, 약점이 될까요?',
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
     goal: '주민 과반을 속이기',
-    rule: '동료는 매일 주민 모두에게 같은 거짓 쪽지만 보내요. 주민 집에 마우스를 올려 동료에 대한 의심도 선을 보며, 나도 동료처럼 늘 거짓만 보낼 때와 집이 본 하늘에 맞춰 섞어 보낼 때를 비교해 보세요.',
+    rule: '동료는 매일 같은 거짓 쪽지만 보내요. 동료나 내가 재판에 걸리면 판이 끝나요(패배). 주민 집을 눌러, 대피와 잔류를 고를 때의 내 의심도 미리 보기를 비교해 보세요.',
     rate: '컴퓨터 전략으로 41% 이겨요',
     seed: 222,
     config: { mafia_count: 2, sensor_error: 0.48 },
     topic: 'zealot',
-    playable: true,
     debrief: {
       theory:
-        '의견을 바꾸지 않는 소수가 집단의 합의를 끌어가거나 막을 수 있어요. 마피아 둘이면 집 5채는 방어 보장의 경계(3f+1)를 넘지만, 이는 보장의 경계일 뿐 승패를 정하지는 않아요.',
+        '의견을 바꾸지 않는 소수가 집단의 합의를 끌어가거나 막을 수 있어요. 마피아 둘을 견딘다고 보장하려면 집 7채가 필요한데 이 마을은 5채뿐이에요. 보장이 없다는 뜻이지, 마피아가 늘 이긴다는 뜻은 아니에요.',
       network:
-        'SNS에서 같은 말만 단순하게 반복하는 봇은 눈에 띄어 탐지 시스템에 먼저 걸려요. 그래서 요즘 여론 조작 봇은 정상 글도 섞어 올리며 평범한 사람처럼 숨으려 해요.',
+        '한 SNS 연구에서 단순한 옛 스팸봇은 어떤 무리는 99%가 정지됐지만 어떤 무리는 9%만 정지됐어요. 정상 글을 섞어 사람처럼 꾸민 새 봇은 대부분 살아남았어요.',
       reflect:
-        '감시가 없는 다수결에서는 고집이 힘이지만, 의심도와 재판이 있는 마을에서는 약점이 돼요. 어떤 규칙이 고집을 힘으로 만들고, 어떤 규칙이 고집을 약점으로 바꿀까요?',
+        '재판이 없는 다수결 마을이었다면, 같은 고집은 어떻게 달리 작용했을까요? 동료의 의심도를 내가 바꿀 수 있었다면 무엇이 달라졌을까요?',
     },
   },
 ]
@@ -196,19 +191,13 @@ export function TheoryLab({
                   </p>
                   <div className="tl-card-foot">
                     <BookLink label="이론 읽기" icon onClick={() => setBookTopic(card.topic)} />
-                    {card.playable ? (
-                      <button
+                    <button
                         type="button"
                         className="tl-play is-ready"
                         onClick={() => onStartScenario(card)}
                       >
                         시작
                       </button>
-                    ) : (
-                      <button type="button" className="tl-play" aria-disabled="true">
-                        시작 <span className="tl-soon-badge">준비 중</span>
-                      </button>
-                    )}
                   </div>
                 </article>
               )
@@ -321,9 +310,7 @@ export function ScenarioResult({
   const colleagueCaught = accused != null && state.roles[accused] === 'colleague'
   const blockedReason =
     state.end_reason === 'caught'
-      ? colleagueCaught
-        ? `${lastDay}일째 동료가 재판에 걸렸어요.`
-        : `${lastDay}일째 재판에 걸렸어요.`
+      ? `${lastDay}일째 ${colleagueCaught ? '동료가 ' : ''}재판에 걸렸어요.`
       : '이번 판에서 목표를 이루지 못했어요.'
 
   return (
