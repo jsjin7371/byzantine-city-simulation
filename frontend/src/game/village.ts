@@ -1035,7 +1035,7 @@ export function resultBaseline(
     const tail = won
       ? ' 이번엔 끝까지 흔들어 놓았어요.'
       : trial
-        ? ` 이번 재판에서는 ${who} 의심도 ${trial.sus}에서 지목됐어요.${trial.drawn ? DRAWN_NOTE : ''}`
+        ? ` 이번 재판에서는 ${who} 의심도 ${trial.sus}에서 지목됐어요${trial.drawn ? '(동점 추첨)' : ''}.`
         : ' 이번엔 마지막 밤 주민 과반을 속이지 못했어요.'
     return { lines: [`${head}${tail}`], topic, linkTitle, linkSub }
   }
