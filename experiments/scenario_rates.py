@@ -1,7 +1,7 @@
 """이론 실험실 시나리오 4개 7일 재측정 (명세_시나리오준비.md 2단계).
   python experiments/scenario_rates.py --check    시나리오 4개 설정에서 predict == 엔진 의심도 점검 (시드 20개)
   python experiments/scenario_rates.py            seed 0~999 (1000판) 측정 → experiments/scenario_rates.csv
-엔진은 고치지 않고 mafia_strategy.py의 predict·smart·play 방식을 재사용한다."""
+엔진은 고치지 않고 mafia_strategy.py의 predict·smart·bot을 재사용한다."""
 import argparse
 import csv
 import itertools
@@ -13,118 +13,96 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mafia_compare import city_turn, wilson  # noqa: E402
 import mafia_strategy as ms  # noqa: E402
 import god.game as game  # noqa: E402
-from god.game import OPPOSITE, TURNS, Game, GameConfig  # noqa: E402
+from god.game import OPPOSITE, Game, GameConfig  # noqa: E402
 from god.simulation import DECISION_OF  # noqa: E402
 
 OUT = os.path.dirname(os.path.abspath(__file__))
 
-SCENARIOS = [
-    ("watchful-eye", dict(share_mode="all", sensor_error=0.45)),
-    ("ring-village", dict(connection="ring", sensor_error=0.45)),
-    ("regain-trust", dict(sensor_error=0.45)),
-    ("stubborn-ally", dict(mafia_count=2, sensor_error=0.48)),
-]
-SCENARIO_CFG = dict(SCENARIOS)
+SCENARIOS = {
+    "watchful-eye": dict(share_mode="all", sensor_error=0.45),
+    "ring-village": dict(connection="ring", sensor_error=0.45),
+    "regain-trust": dict(sensor_error=0.45),
+    "stubborn-ally": dict(mafia_count=2, sensor_error=0.48),
+}
 WASH_THRESHOLDS = (30, 40, 50)
 
 
-def targets_of(g):
-    """사람 플레이어가 쪽지를 보낼 수 있는 시민 목록 (all이면 전원, ring이면 양옆 이웃만)."""
-    rec = g.receivers()
-    return [c for c in g.citizens if str(c) in rec]
-
-
-def bot_for(g):
-    """mafia_strategy.bot을 ring(receivers 제한)에서도 쓸 수 있게 맞춘 래퍼."""
-    if g.config.connection == "all":
-        return ms.bot(g)
-    lie = OPPOSITE[DECISION_OF[g.truth]]
-    return {str(c): lie for c in targets_of(g)}
-
-
-def smart_for(g):
-    """mafia_strategy.smart 재사용. ring은 보낼 수 있는 이웃 시민(receivers) 조합만 탐색한다."""
-    if g.config.connection == "all":
-        return ms.smart(g)
-    lie, cs = OPPOSITE[DECISION_OF[g.truth]], targets_of(g)
-    limit = game.THRESHOLD if g.turn + 1 == TURNS else game.THRESHOLD - 20
-    best = None
-    for combo in itertools.product((True, False), repeat=len(cs)):
-        claim = {str(r): lie if x else OPPOSITE[lie] for r, x in zip(cs, combo)}
-        after = ms.predict(g, claim).values()
-        safe = max(after) < limit
-        key = (safe, sum(combo) if safe else -max(after), -sum(after))
-        if best is None or key > best[0]:
-            best = (key, claim)
-    return best[1]
-
-
-def citizen_rows(history, player_city, city):
-    """한 주민의 턴별 (나에 대한 의심도, 내가 보낸 쪽지, 그 주민 힌트 일치 여부)."""
-    me = str(player_city)
+def citizen_rows(history, player_city, truth, city):
+    """한 주민의 턴별 (의심도, 보낸 쪽지, 힌트 일치, 거짓 여부, 정답 여부)."""
+    me, ans = str(player_city), DECISION_OF[truth]
     rows = []
     for res in history:
         row = next(x for x in res["cities"] if x["city"] == city)
         msg = row["received"].get(me)
-        if msg is None:
-            continue
-        sent = msg["claim"]
-        rows.append((row["suspicion"][me], sent, sent == DECISION_OF[row["hint"]]))
+        sent = msg["claim"] if msg else None
+        rows.append((
+            row["suspicion"][me],
+            sent,
+            sent is not None and row["hint"] is not None and sent == DECISION_OF[row["hint"]],
+            sent is not None and sent != ans,
+            row["correct"],
+        ))
     return rows
 
 
-def washed_citizen(history, player_city, threshold=40):
-    """한 주민의 의심도가 threshold 이상이 된 뒤, 그 주민 힌트와 같은 쪽지를 보내(직전과 다른 쪽지 전환 포함)
-    의심도를 20 이하로 내린 적이 있는지 판정한다."""
+def wash_peak(rows, end, threshold):
+    """rows[:end]를 역순으로 훑어 연속 힌트 일치 구간 직전의 threshold 이상 최고 의심도 (detectTactics와 동일)."""
+    peak = 0
+    for p in range(end - 1, -1, -1):
+        sus, _, match, _, _ = rows[p]
+        if sus >= threshold:
+            peak = max(peak, sus)
+        elif peak == 0 and match:
+            continue
+        else:
+            break
+    return peak
+
+
+def has_onoff(history, player_city, truth, threshold=40, need_fool=True):
+    """결과 화면 detectTactics의 온오프 판정(need_fool=False면 세탁 완료까지만 확인).
+    의심도 >= threshold 뒤 힌트와 같은 쪽지(직전과 전환)로 <= 20까지 내린 뒤,
+    다시 threshold 이상이 되기 전에 거짓 쪽지로 그 주민을 속이면(correct=False) 달성."""
     if not history:
         return False
-    citizens = [x["city"] for x in history[0]["cities"] if x["role"] == "citizen"]
-    for c in citizens:
-        rows = citizen_rows(history, player_city, c)
+    for c in (x["city"] for x in history[0]["cities"] if x["role"] == "citizen"):
+        rows = citizen_rows(history, player_city, truth, c)
         for j in range(1, len(rows)):
-            sus_j, _, match_j = rows[j]
-            if not match_j or sus_j > 20:
+            sus_j, sent_j, match_j, _, _ = rows[j]
+            if not match_j or sus_j > 20 or sent_j == rows[j - 1][1]:
                 continue
-            p = j - 1
-            max_sus = rows[p][0]
-            while p > 0 and rows[p][0] > 20 and rows[p][2]:
-                p -= 1
-                max_sus = max(max_sus, rows[p][0])
-            if max_sus >= threshold and any(rows[k][1] != rows[k - 1][1] for k in range(p + 1, j + 1)):
+            if wash_peak(rows, j, threshold) < threshold:
+                continue
+            if not need_fool:
+                return True
+            after = rows[j + 1:]
+            k = next((i for i, r in enumerate(after) if (r[3] and r[4] is False) or r[0] >= threshold), -1)
+            if k >= 0 and after[k][3] and after[k][4] is False:
                 return True
     return False
 
 
-def wash_candidates(history, player_city, threshold=40):
-    """현재 threshold 이상을 찍은 뒤 아직 20 이하로 내려가지 않은 주민별 (직전 쪽지, 이미 전환했는지)."""
+def wash_candidates(history, player_city, truth, threshold=40):
+    """현재 threshold 이상을 찍은 뒤 아직 세탁을 마칠 수 있는 주민별 직전 쪽지."""
     out = {}
     if not history:
         return out
-    citizens = [x["city"] for x in history[0]["cities"] if x["role"] == "citizen"]
-    for c in citizens:
-        rows = citizen_rows(history, player_city, c)
-        if not rows or rows[-1][0] <= 20:
-            continue
-        p = len(rows) - 1
-        max_sus = rows[p][0]
-        while p > 0 and rows[p][0] > 20 and rows[p][2]:
-            p -= 1
-            max_sus = max(max_sus, rows[p][0])
-        if max_sus >= threshold:
-            changed = any(rows[k][1] != rows[k - 1][1] for k in range(p + 1, len(rows)))
-            out[c] = (rows[-1][1], changed)
+    for c in (x["city"] for x in history[0]["cities"] if x["role"] == "citizen"):
+        rows = citizen_rows(history, player_city, truth, c)
+        if rows and wash_peak(rows, len(rows), threshold) >= threshold:
+            out[c] = rows[-1][1]
     return out
 
 
 def smart_wash(g, history, threshold=40):
     """regain-trust용 변형 전략: 한 주민의 의심도를 threshold 이상으로 올린 뒤, 그 주민 힌트와 같은
-    쪽지(진실/전환)로 20 이하까지 내리고, 세탁 완료 뒤에는 smart로 전환해 승리를 노린다."""
-    if washed_citizen(history, g.player, threshold):
-        return smart_for(g)
+    쪽지(직전과 전환)로 20 이하까지 내리고, 세탁 완료 뒤에는 smart로 전환해 재기만과 승리를 노린다."""
+    if has_onoff(history, g.player, g.truth, threshold, need_fool=False):
+        return ms.smart(g)
 
-    lie, cs = OPPOSITE[DECISION_OF[g.truth]], targets_of(g)
+    lie, cs = OPPOSITE[DECISION_OF[g.truth]], ms.targets(g)
     me = str(g.player)
-    cands = wash_candidates(history, g.player, threshold)
+    cands = wash_candidates(history, g.player, g.truth, threshold)
     best = None
 
     for combo in itertools.product((True, False), repeat=len(cs)):
@@ -137,8 +115,8 @@ def smart_wash(g, history, threshold=40):
             completes = any(
                 after[r] <= 20
                 and claim[str(r)] == DECISION_OF[g.hints[str(r)]]
-                and (changed or claim[str(r)] != prev_sent)
-                for r, (prev_sent, changed) in cands.items()
+                and claim[str(r)] != prev_sent
+                for r, prev_sent in cands.items()
             )
             steps = any(
                 after[r] < g.suspicion[r][me]
@@ -170,25 +148,22 @@ def goal_met(scenario_id, g, history, res, threshold=40):
     won = res["outcome"] in ("win", "perfect_win")
     if not won:
         return False
-    if scenario_id in ("watchful-eye", "ring-village"):
+    if scenario_id in ("watchful-eye", "ring-village", "stubborn-ally"):
         return True
     if scenario_id == "regain-trust":
-        return washed_citizen(history, g.player, threshold)
-    if scenario_id == "stubborn-ally":
-        colleague = next(c for c, r in g.roles.items() if r == "colleague")
-        return not any(t["vote"] and t["vote"]["accused"] == colleague for t in history)
+        return has_onoff(history, g.player, g.truth, threshold, need_fool=True)
     raise ValueError(f"unknown scenario: {scenario_id}")
 
 
 def play_scenario(scenario_id, strategy, seed, threshold=40):
-    cfg = GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIO_CFG[scenario_id])
+    cfg = GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS[scenario_id])
     g = Game(1, cfg)
     history = []
     while not g.game_over:
-        if strategy == "bot":
-            chosen = bot_for(g)
+        if strategy in ("bot", "always_lie"):
+            chosen = ms.bot(g)
         elif strategy == "smart":
-            chosen = smart_for(g)
+            chosen = ms.smart(g)
         elif strategy == "smart_wash":
             chosen = smart_wash(g, history, threshold)
         else:
@@ -224,13 +199,13 @@ def run_job(job):
 
 def check():
     """각 시나리오 설정(시드 20개)에서 predict가 실제 엔진 의심도와 매 턴 일치하는지 점검."""
-    for scenario_id, extra in SCENARIOS:
+    for scenario_id, extra in SCENARIOS.items():
         for seed in range(20):
             cfg = GameConfig(citizen_type="wary", player="human", seed=seed, **extra)
             g = Game(1, cfg)
             history = []
             while not g.game_over:
-                claim = smart_wash(g, history, 40) if scenario_id == "regain-trust" else smart_for(g)
+                claim = smart_wash(g, history, 40) if scenario_id == "regain-trust" else ms.smart(g)
                 want = ms.predict(g, claim)
                 res = g.play({"turn": g.turn + 1, "claims": {r: {"claim": c} for r, c in claim.items()}}, city_turn)
                 history.append(res)
@@ -245,24 +220,30 @@ def check():
 
 def main(runs):
     jobs = []
-    for scenario_id, _ in SCENARIOS:
-        if scenario_id == "regain-trust":
-            for thr in WASH_THRESHOLDS:
-                for strat in ("bot", "smart", "smart_wash"):
-                    jobs.append((scenario_id, strat, thr, runs))
+    for scenario_id in SCENARIOS:
+        if scenario_id == "watchful-eye":
+            jobs.extend([(scenario_id, strat, 40, runs) for strat in ("always_lie", "smart")])
+        elif scenario_id == "regain-trust":
+            jobs.extend([(scenario_id, "bot", 40, runs), (scenario_id, "smart", 40, runs)])
+            jobs.extend([(scenario_id, "smart_wash", thr, runs) for thr in WASH_THRESHOLDS])
         else:
-            for strat in ("bot", "smart"):
-                jobs.append((scenario_id, strat, 40, runs))
+            jobs.extend([(scenario_id, strat, 40, runs) for strat in ("bot", "smart")])
 
     with Pool() as pool:
         results = pool.map(run_job, jobs)
 
     by_key = {(r["scenario"], r["strategy"], r["threshold"]): r for r in results}
     fixed_seeds = {}
-    for scenario_id, _ in SCENARIOS:
-        if scenario_id == "regain-trust":
+    for scenario_id in SCENARIOS:
+        if scenario_id == "watchful-eye":
+            al_g = by_key[(scenario_id, "always_lie", "")]["goals"]
+            sm_g = by_key[(scenario_id, "smart", "")]["goals"]
+            fixed_seeds[(scenario_id, "always_lie", "")] = next(
+                (s for s in range(runs) if al_g[s] and not sm_g[s]), ""
+            )
+        elif scenario_id == "regain-trust":
+            bot_g = by_key[(scenario_id, "bot", 40)]["goals"]
             for thr in WASH_THRESHOLDS:
-                bot_g = by_key[(scenario_id, "bot", thr)]["goals"]
                 sw_g = by_key[(scenario_id, "smart_wash", thr)]["goals"]
                 fixed_seeds[(scenario_id, "smart_wash", thr)] = next(
                     (s for s in range(runs) if sw_g[s] and not bot_g[s]), ""

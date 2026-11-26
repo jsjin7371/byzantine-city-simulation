@@ -82,29 +82,32 @@ python experiments/mafia_strategy.py           # wary, 의심도 수치 후보 �
 
 ```
 python experiments/scenario_rates.py --check   # 시나리오 4개 설정에서 predict == 엔진 의심도 점검 (시드 20개)
-python experiments/scenario_rates.py           # 시나리오 4개 × 전략(bot, smart, regain-trust는 smart_wash 포함), seed 0~999 → scenario_rates.csv
+python experiments/scenario_rates.py           # 시나리오 4개 × 전략(watchful-eye는 always_lie·smart, regain-trust는 smart_wash 포함), seed 0~999 → scenario_rates.csv
 ```
 
-- `mafia_strategy.py`의 `predict`·`smart`·`bot`을 재사용한다(`ring`은 `receivers()` 이웃 시민만 대상으로 탐색). 모두 눈치 주민(`wary`), `player="human"`, 7턴, 시드 `0~999`(1000판).
-- `regain-trust`는 기존 `smart`가 의심도를 40 미만으로 유지해 목표를 노리지 않으므로, 한 주민을 문턱 이상으로 올린 뒤 그 주민 힌트와 같은 쪽지(직전과 다른 쪽지 전환 포함)로 20 이하까지 내리고 `smart`로 전환하는 `smart_wash` 전략을 추가했다.
-- 고정 시드는 `0~999` 중 `smart`(단 `regain-trust`는 `smart_wash`)가 목표 달성하고 `bot`은 실패하는 가장 작은 시드다.
+- `mafia_strategy.py`의 `predict`·`smart`·`bot`을 재사용한다(`mafia_strategy`가 `receivers()` 기준으로 대상을 고르므로 `ring`에서도 그대로 동작한다). 모두 눈치 주민(`wary`), `player="human"`, 7턴, 시드 `0~999`(1000판).
+- `watchful-eye`는 모든 집이 쪽지를 비교해 집마다 섞는 `smart`(0.394)보다 모든 주민에게 매일 같은 거짓말을 보내는 `always_lie`(`bot` 재사용, 0.454)가 더 높아 `always_lie`를 최고 전략으로 본다.
+- `regain-trust`의 목표 판정은 결과 화면 `detectTactics`의 온오프 조건(의심도 ≥ 문턱 뒤 그 주민 힌트와 같은 쪽지로 전환해 20 이하로 낮춘 뒤, 다시 문턱 이상이 되기 전에 거짓 쪽지로 그 주민을 속임) + 승리와 같다. `smart_wash`는 한 주민을 문턱 이상으로 올린 뒤 20 이하까지 세탁하고 `smart`로 전환한다.
+- `stubborn-ally`는 동료가 지목되면 엔진이 즉시 패배 처리하므로 목표를 승리로 단순화했다.
+- 카드 표시 승률은 시나리오마다 찾은 전략 중 가장 잘 이긴 것 기준이다(`watchful-eye`: `always_lie` 45%, `ring-village`: `smart` 42%, `regain-trust`: `smart_wash` 49%, `stubborn-ally`: `smart` 41%).
+- 고정 시드는 `0~999` 중 카드 기준 전략이 목표 달성하고 비교 전략(`watchful-eye`는 `smart`, 나머지는 `bot`)은 실패하는 가장 작은 시드다.
 
-| 시나리오 | 전략 | 목표 달성률 (95% Wilson) | 승률 | 발각률 | 15일 참고 | 고정 시드 |
-|---|---|---:|---:|---:|---:|---:|
-| watchful-eye (`share_mode=all`, 0.45) | bot | 0.454 (0.423~0.485) | 0.454 | 0.313 | - | - |
-| watchful-eye (`share_mode=all`, 0.45) | smart | 0.394 (0.364~0.425) | 0.394 | 0.015 | 0.51 | 5 |
-| ring-village (`connection=ring`, 0.45) | bot | 0.354 (0.325~0.384) | 0.354 | 0.095 | - | - |
-| ring-village (`connection=ring`, 0.45) | smart | 0.419 (0.389~0.450) | 0.419 | 0.006 | 0.38 | 17 |
-| regain-trust (기본, 0.45, 문턱 40) | bot | 0.000 (0.000~0.004) | 0.445 | 0.329 | - | - |
-| regain-trust (기본, 0.45, 문턱 40) | smart | 0.000 (0.000~0.004) | 0.501 | 0.007 | - | - |
-| regain-trust (기본, 0.45, 문턱 40) | smart_wash | 0.472 (0.441~0.503) | 0.488 | 0.016 | 0.48 | 2 |
-| stubborn-ally (`mafia_count=2`, 0.48) | bot | 0.361 (0.332~0.391) | 0.361 | 0.619 | - | - |
-| stubborn-ally (`mafia_count=2`, 0.48) | smart | 0.414 (0.384~0.445) | 0.414 | 0.551 | 0.26 | 1 |
+| 시나리오 | 전략 | 카드 기준 | 목표 달성률 (95% Wilson) | 승률 | 발각률 | 15일 참고 | 고정 시드 |
+|---|---|---|---:|---:|---:|---:|---:|
+| watchful-eye (`share_mode=all`, 0.45) | always_lie | **45%** | 0.454 (0.423~0.485) | 0.454 | 0.313 | - | 0 |
+| watchful-eye (`share_mode=all`, 0.45) | smart | - | 0.394 (0.364~0.425) | 0.394 | 0.015 | 0.51 | - |
+| ring-village (`connection=ring`, 0.45) | bot | - | 0.354 (0.325~0.384) | 0.354 | 0.095 | - | - |
+| ring-village (`connection=ring`, 0.45) | smart | **42%** | 0.419 (0.389~0.450) | 0.419 | 0.006 | 0.38 | 17 |
+| regain-trust (기본, 0.45, 문턱 40) | bot | - | 0.000 (0.000~0.004) | 0.445 | 0.329 | - | - |
+| regain-trust (기본, 0.45, 문턱 40) | smart | - | 0.000 (0.000~0.004) | 0.501 | 0.007 | - | - |
+| regain-trust (기본, 0.45, 문턱 40) | smart_wash | **49%** | 0.489 (0.458~0.520) | 0.493 | 0.010 | 0.48 | 2 |
+| stubborn-ally (`mafia_count=2`, 0.48) | bot | - | 0.361 (0.332~0.391) | 0.361 | 0.619 | - | - |
+| stubborn-ally (`mafia_count=2`, 0.48) | smart | **41%** | 0.414 (0.384~0.445) | 0.414 | 0.551 | 0.26 | 1 |
 
 `regain-trust` 문턱별 `smart_wash` 결과 (의심도가 20 단위로 변해 30 이상은 40 이상과 같고, 50 이상은 60 도달로 재판이 열린다):
 
 | 문턱 | 목표 달성률 (95% Wilson) | 승률 | 발각률 | 고정 시드 |
 |---:|---:|---:|---:|---:|
-| 30 | 0.472 (0.441~0.503) | 0.488 | 0.016 | 2 |
-| 40 | 0.472 (0.441~0.503) | 0.488 | 0.016 | 2 |
-| 50 | 0.402 (0.372~0.433) | 0.430 | 0.036 | 2 |
+| 30 | 0.489 (0.458~0.520) | 0.493 | 0.010 | 2 |
+| 40 | 0.489 (0.458~0.520) | 0.493 | 0.010 | 2 |
+| 50 | 0.364 (0.335~0.394) | 0.441 | 0.034 | 2 |
