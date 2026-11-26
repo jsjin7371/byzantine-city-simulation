@@ -1136,16 +1136,28 @@ export function VillageBoard({
                 <path d={d} className="vb-share-glow" />
                 <path d={d} fill="none" stroke="#3b2a1a" strokeWidth="9" strokeLinecap="round" opacity=".35" />
                 <path d={d} className="vb-share-line" fill="none" stroke="#ffd35a" strokeWidth="5" strokeDasharray="11 9" strokeLinecap="round" />
-                {/* 점선 이름표: 이 두 집은 오늘 밤 내가 준 쪽지를 서로 비교한다 */}
-                <g className="vb-share-tag" aria-hidden>
-                  <rect x={mx - 82} y={my - 80} width="164" height="25" rx="12.5" strokeWidth="1.5" />
-                  <text x={mx} y={my - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
-                    오늘 밤 쪽지 비교
-                  </text>
-                </g>
+                {/* 점선 이름표: 쌍이 하나일 때는 그 쌍 위에, 여러 쌍이면 아래에서 광장 위에 한 번만 띄운다 */}
+                {pairs.length === 1 && (
+                  <g className="vb-share-tag" aria-hidden>
+                    <rect x={mx - 82} y={my - 80} width="164" height="25" rx="12.5" strokeWidth="1.5" />
+                    <text x={mx} y={my - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
+                      오늘 밤 쪽지 비교
+                    </text>
+                  </g>
+                )}
               </g>
             )
           })}
+          {pairs.length > 1 && (
+            <g className={pairs.some(([a, b]) => red(a, b)) ? 'is-clash' : undefined} aria-hidden>
+              <g className="vb-share-tag">
+                <rect x={PLAZA.x - 82} y={PLAZA.y - 102} width="164" height="25" rx="12.5" strokeWidth="1.5" />
+                <text x={PLAZA.x} y={PLAZA.y - 84.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
+                  {state.config.share_mode === 'all' ? '모든 집 쪽지 비교' : '오늘 밤 쪽지 비교'}
+                </text>
+              </g>
+            </g>
+          )}
         </g>
       )}
       <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-plaza-label" aria-hidden>
