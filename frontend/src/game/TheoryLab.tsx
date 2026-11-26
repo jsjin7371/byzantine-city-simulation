@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import type { RefObject } from 'react'
 import type { GameConfig, GameState, TurnResult } from '../gameApi'
 import { BookIcon, BookLink, TheoryBook } from './TheoryBook'
+import { THEORY_TOPICS } from './theoryBook'
 import { loadCompletedScenarios, watchfulEyeGoalMet } from './village'
 import type { TopicKey } from './village'
 
@@ -11,8 +12,6 @@ export type Scenario = {
   id: string
   title: string
   brief: string
-  theory: string
-  real: string
   shows: string
   chips: readonly string[]
   goal: string
@@ -34,8 +33,6 @@ const SCENARIOS: readonly Scenario[] = [
     id: 'watchful-eye',
     title: '감시의 눈',
     brief: '"오늘 밤부터 모든 주민이 받은 쪽지를 다 같이 맞춰 봐요."',
-    theory: '이중 발언 · 들킨 쪽을 빼내야 막혀요.',
-    real: '이더리움은 이중 서명 검증자의 보증금을 깎고 퇴출해요.',
     shows: '모든 집이 쪽지 비교를 해도, 들킨 마피아를 바로 빼내지 못하면 거짓말이 통할 수 있어요.',
     chips: ['집 5채', '모든 집 쪽지 비교', '잘못 볼 확률 45%'],
     goal: '주민 과반을 속이기',
@@ -58,8 +55,6 @@ const SCENARIOS: readonly Scenario[] = [
     id: 'ring-village',
     title: '고리 마을',
     brief: '"길이 좁아 양옆 두 집에만 쪽지를 보낼 수 있어요."',
-    theory: '연결도 조건 · 길이 좁으면 방어가 깨져요.',
-    real: '비트코인 노드의 연결을 독점하면 가짜 장부만 보게 돼요.',
     shows: '양옆 두 집에만 쪽지를 보낼 수 있는 좁은 길에서는 소식이 쉽게 막히고 왜곡돼요.',
     chips: ['집 5채', '양옆과만 연결', '잘못 볼 확률 45%'],
     goal: '주민 3명을 속이기',
@@ -82,8 +77,6 @@ const SCENARIOS: readonly Scenario[] = [
     id: 'regain-trust',
     title: '신뢰를 되찾는 법',
     brief: '"재판 직전까지 밀어붙였다가, 맞는 말로 신뢰를 되찾아 보세요."',
-    theory: '온오프 공격 · 착한 척과 거짓말을 번갈아요.',
-    real: 'P2P·센서 망에서 정상과 오작동을 번갈아 감시를 피해요.',
     shows: '의심도가 오르고 내리는 폭이 같으면, 착한 척과 거짓말을 번갈아 재판을 피할 수 있어요.',
     chips: ['기본 마을', '잘못 볼 확률 45%'],
     goal: '의심도 40 넘은 주민에게 그 주민이 본 날씨와 같은 쪽지를 보내 20 이하로 낮춘 뒤, 다시 속여 이기기',
@@ -106,8 +99,6 @@ const SCENARIOS: readonly Scenario[] = [
     id: 'stubborn-ally',
     title: '고집쟁이 동료',
     brief: '"동료 마피아가 한 명 더 있어요. 그런데 이 동료는 늘 같은 거짓말만 해요."',
-    theory: '완고한 행위자 · 고집이 합의를 끌거나 막아요.',
-    real: 'SNS에서 같은 말만 반복하는 봇은 탐지에 먼저 걸려요.',
     shows: '마피아가 둘로 늘어도, 눈치 없이 거짓말만 반복하는 동료는 오히려 먼저 재판에 걸려요.',
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
     goal: '주민 과반을 속이기',
@@ -173,44 +164,41 @@ export function TheoryLab({
                 <article key={card.id} className="tl-card">
                   <div className="tl-card-head">
                     <h3>{card.title}</h3>
-                    {isCompleted && (
-                      <span className="tl-done-stamp" aria-label="목표 달성 완료">
-                        완료
-                      </span>
-                    )}
+                    <div className="tl-card-head-meta">
+                      <span className="tl-topic-chip">{THEORY_TOPICS[card.topic].title}</span>
+                      {isCompleted && (
+                        <span className="tl-done-stamp" aria-label="목표 달성 완료">
+                          완료
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="tl-theory-box">
-                    <p className="tl-theory-line">
-                      <span className="tl-theory-label">이론</span>
-                      <span>{card.theory}</span>
-                    </p>
-                    <p className="tl-theory-line">
-                      <span className="tl-theory-label is-real">실제로는</span>
-                      <span>{card.real}</span>
-                    </p>
+                  <div className="tl-real-block">
+                    <p className="tl-block-label is-real">실제 네트워크에서는</p>
+                    <p className="tl-real-body">{card.debrief.network}</p>
                   </div>
-                  <p className="tl-brief">{card.brief}</p>
-                  <dl>
-                    <div>
-                      <dt>마을</dt>
-                      <dd className="gr-chips">
-                        {card.chips.map((chip) => (
-                          <span key={chip} className="gr-chip tl-chip">
-                            {chip}
-                          </span>
-                        ))}
-                      </dd>
+                  <div className="tl-village-block">
+                    <p className="tl-block-label">이 마을에서는</p>
+                    <p className="tl-brief">{card.brief}</p>
+                    <div className="gr-chips">
+                      {card.chips.map((chip) => (
+                        <span key={chip} className="gr-chip tl-chip">
+                          {chip}
+                        </span>
+                      ))}
                     </div>
-                    <div>
-                      <dt>목표</dt>
-                      <dd>{card.goal}</dd>
-                    </div>
-                    <div>
-                      <dt>요령</dt>
-                      <dd>{card.rule}</dd>
-                    </div>
-                  </dl>
-                  <p className="tl-rate">{card.rate}*</p>
+                  </div>
+                  <div className="tl-goal-row">
+                    <p className="tl-goal">
+                      <span className="tl-inline-label">목표</span>
+                      <span>{card.goal}</span>
+                    </p>
+                    <span className="tl-rate">{card.rate}*</span>
+                  </div>
+                  <p className="tl-tip">
+                    <span className="tl-inline-label">요령</span>
+                    <span>{card.rule}</span>
+                  </p>
                   <div className="tl-card-foot">
                     <BookLink label="이론 읽기" icon onClick={() => setBookTopic(card.topic)} />
                     {card.playable ? (

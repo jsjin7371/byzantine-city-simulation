@@ -2284,43 +2284,137 @@ dialog.tb-dialog[open] {
 }
 .tl-card h3 {
   margin: 0;
-  font-size: 26px;
+  font-size: 25px;
   font-weight: 700;
   line-height: 1.2;
   color: var(--ink);
 }
-.tl-brief {
-  margin: 6px 0 12px;
-  font-size: 18px;
+.tl-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+}
+.tl-card-head-meta {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.tl-topic-chip {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(107, 74, 42, 0.14);
+  border: 1px solid rgba(107, 74, 42, 0.25);
+  color: var(--wood-dark);
+  font-size: 14px;
   font-weight: 700;
-  color: var(--muted);
-  line-height: 1.45;
+  line-height: 1.35;
+  white-space: nowrap;
 }
-.tl-card dl {
-  margin: 0;
-  display: grid;
-  gap: 10px;
-}
-.tl-card dt {
+.tl-done-stamp {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 48px;
+  height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 2.5px double var(--forest);
+  color: var(--forest);
+  background: rgba(46, 94, 46, 0.08);
   font-size: 15px;
   font-weight: 700;
-  color: var(--muted);
+  line-height: 1;
+  transform: rotate(-7deg);
 }
-.tl-card dd {
+.tl-real-block {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  background: var(--parch);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--rust);
+  border-radius: 4px 10px 10px 4px;
+  display: grid;
+  gap: 5px;
+}
+.tl-block-label {
   margin: 0;
-  font-size: 19px;
+  font-size: 14px;
   font-weight: 700;
-  line-height: 1.45;
+  line-height: 1.25;
+  color: var(--wood-dark);
+}
+.tl-block-label.is-real {
+  color: var(--rust);
+}
+.tl-real-body {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.5;
   color: var(--ink);
 }
+.tl-village-block {
+  margin-top: 13px;
+  display: grid;
+  gap: 6px;
+}
+.tl-brief {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  line-height: 1.45;
+}
 .tl-chip {
-  font-size: 15px;
+  font-size: 14px;
+}
+.tl-goal-row {
+  margin-top: 13px;
+  padding-top: 10px;
+  border-top: 1.5px dotted var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.tl-goal {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--ink);
+}
+.tl-inline-label {
+  display: inline-block;
+  margin-right: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--wood-dark);
 }
 .tl-rate {
-  font-size: 16px;
+  flex: none;
+  margin-left: auto;
+  font-size: 15px;
   font-weight: 700;
   color: var(--muted);
-  margin: 12px 0 0;
+  white-space: nowrap;
+}
+.tl-tip {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: var(--muted);
+}
+.tl-tip .tl-inline-label {
+  color: var(--muted);
 }
 .tl-rate-note {
   margin: 14px 0 0;
@@ -2361,63 +2455,6 @@ dialog.tb-dialog[open] {
   color: var(--wood-dark);
   border-radius: 999px;
   padding: 0 8px;
-}
-.tl-card-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 10px;
-}
-.tl-done-stamp {
-  flex: none;
-  display: inline-grid;
-  place-items: center;
-  min-width: 52px;
-  height: 32px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 2.5px double var(--forest);
-  color: var(--forest);
-  background: rgba(46, 94, 46, 0.08);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
-  transform: rotate(-7deg);
-}
-.tl-theory-box {
-  margin: 10px 0 8px;
-  padding: 10px 12px;
-  background: var(--parch);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--wood);
-  border-radius: 4px 8px 8px 4px;
-  display: grid;
-  gap: 6px;
-}
-.tl-theory-line {
-  margin: 0;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 8px;
-  align-items: baseline;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.4;
-  color: var(--ink);
-}
-.tl-theory-label {
-  display: inline-block;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: rgba(107, 74, 42, 0.16);
-  color: var(--wood-dark);
-  font-size: 14px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.tl-theory-label.is-real {
-  background: rgba(168, 54, 31, 0.14);
-  color: var(--rust);
 }
 .tl-play.is-ready {
   background: var(--forest);
