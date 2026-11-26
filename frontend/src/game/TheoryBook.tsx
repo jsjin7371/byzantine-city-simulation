@@ -92,27 +92,27 @@ export function TheoryBook({ topic, onClose }: { topic: TopicKey | null; onClose
             <h2 id={titleId}>{data.title}</h2>
             <p className="tb-en">{data.en}</p>
 
-          <h3>쉽게 말하면</h3>
-          <p className="tb-easy">{data.easy}</p>
+            <h3>쉽게 말하면</h3>
+            <p className="tb-easy">{data.easy}</p>
 
-          <h3>이 게임에서는</h3>
-          <p>{data.game}</p>
+            <h3>이 게임에서는</h3>
+            <p>{data.game}</p>
 
-          <h3>이론</h3>
-          {data.boxes.map(([kind, body]) => (
-            <div key={kind} className="tb-box">
-              <b className="tb-box-kind">{kind}</b>
-              <p>{body}</p>
-            </div>
-          ))}
-          {topic && <TheoryFigure topic={topic} />}
-          {data.proof && (
-            <p className="tb-proof">
-              <b>왜 그런가.</b> {data.proof}
-            </p>
-          )}
+            <h3>이론</h3>
+            {data.boxes.map(([kind, body]) => (
+              <div key={kind} className="tb-box">
+                <b className="tb-box-kind">{kind}</b>
+                <p>{body}</p>
+              </div>
+            ))}
+            {topic && <TheoryFigure topic={topic} />}
+            {data.proof && (
+              <p className="tb-proof">
+                <b>왜 그런가.</b> {data.proof}
+              </p>
+            )}
 
-          <h3>참고 문헌</h3>
+            <h3>참고 문헌</h3>
             <ol className="tb-refs">
               {data.refs.map((ref, i) => (
                 <li key={i}>

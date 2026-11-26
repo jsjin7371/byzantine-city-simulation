@@ -1615,7 +1615,9 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   ]
   const botProg = regainTrustProgress(trustState('win'), botLike)
   assert.equal(botProg.reached40?.sus, 40)
-  assert.equal(botProg.washed, null)
+  assert.equal(botProg.washedActive, null)
+  assert.equal(botProg.washedThenSpiked, null)
+  assert.equal(botProg.refooled, null)
   assert.deepEqual(botProg.droppedWithoutSwitch, { city: 2, fromSus: 40, toSus: 20, day: 3 })
   assert.equal(scenarioGoalMet(trustState('win'), 'regain-trust', botLike), false)
   assert.equal(
@@ -1627,7 +1629,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
     '2번 집 의심도가 40에서 20까지 내려갈 때 같은 쪽지만 보냈고, 마지막 밤 과반도 속이지 못했어요. 쪽지를 바꿔 의심도를 낮춰 보세요.',
   )
 
-  // 3. 40 이상 도달했지만 20 이하로 낮추지 못함 (중간 날 / 마지막 7일째 경계 구분)
+  // 3. 40 이상 도달했지만 20 이하로 낮추지 못함 (처음 40 이상 닿은 날 기준 / 마지막 7일째 경계 구분)
   const stuckHigh = [
     t(1, [c(2, 'safe', 'evacuate', 40, false)]),
     t(2, [c(2, 'safe', 'evacuate', 60, true)]),
@@ -1640,11 +1642,37 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   ])
   assert.equal(
     regainTrustOutcomeNote(trustState('win'), stuckHigh),
-    '판은 이겼지만, 2일째에 의심도가 60까지 오른 2번 집을 20 이하로 낮추지는 못했어요.',
+    '판은 이겼지만, 1일째에 의심도가 40까지 오른 2번 집을 20 이하로 낮추지는 못했어요.',
   )
   assert.equal(
     regainTrustOutcomeNote(trustState('loss'), stuckHigh),
-    '2일째에 2번 집 의심도가 60까지 올랐지만 20 이하로 낮추지 못했고, 마지막 밤 과반도 속이지 못했어요.',
+    '1일째에 2번 집 의심도가 40까지 올랐지만 20 이하로 낮추지 못했고, 마지막 밤 과반도 속이지 못했어요.',
+  )
+  // 회귀: 6일째 40 → 7일째 60이면 처음 닿은 6일째 기준이라 "마지막 7일째에야"가 나오지 않아야 한다
+  const stuck6To7 = [
+    t(6, [c(2, 'safe', 'evacuate', 40, true)]),
+    t(7, [c(2, 'safe', 'evacuate', 60, true)]),
+  ]
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), stuck6To7),
+    '판은 이겼지만, 6일째에 의심도가 40까지 오른 2번 집을 20 이하로 낮추지는 못했어요.',
+  )
+  assert.doesNotMatch(regainTrustOutcomeNote(trustState('loss'), stuck6To7), /마지막 7일째에야/)
+  // 회귀: 0,20,60,80,60,80,100(3일째 이미 60) 및 타 집 2일째 40 + 2번 집 7일째 60 모두 가장 이른 40 도달 날 기준
+  const stuckEarlyPeakDay7 = [0, 20, 60, 80, 60, 80, 100].map((sus, i) =>
+    t(i + 1, [c(2, 'safe', 'evacuate', sus, true)]),
+  )
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss'), stuckEarlyPeakDay7),
+    '3일째에 2번 집 의심도가 60까지 올랐지만 20 이하로 낮추지 못했고, 마지막 밤 과반도 속이지 못했어요.',
+  )
+  const stuckOtherEarly = [
+    t(2, [c(2, 'safe', 'stay', 0, true), c(3, 'safe', 'evacuate', 40, true)]),
+    t(7, [c(2, 'safe', 'evacuate', 60, true), c(3, 'safe', 'evacuate', 40, true)]),
+  ]
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), stuckOtherEarly),
+    '판은 이겼지만, 2일째에 의심도가 40까지 오른 3번 집을 20 이하로 낮추지는 못했어요.',
   )
   const stuckDay7 = [t(7, [c(2, 'safe', 'evacuate', 40, true)])]
   assert.equal(
@@ -1664,11 +1692,23 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   ]
   assert.equal(
     regainTrustOutcomeNote(trustState('win'), washedEarlyNoFool),
-    '2일째에 2번 집 의심도를 20까지 낮추고 판도 이겼지만, 그 뒤 2번 집이 내 거짓 쪽지에 틀린 날은 없었어요.',
+    '2일째에 2번 집 의심도를 20까지 낮추고 판도 이겼지만, 그 뒤 2번 집에게 거짓 쪽지를 보낸 날 그 집이 틀린 적은 없었어요.',
   )
   assert.equal(
     regainTrustOutcomeNote(trustState('loss'), washedEarlyNoFool),
-    '2일째에 2번 집 의심도를 20까지 낮췄지만, 그 뒤 2번 집이 내 거짓 쪽지에 틀린 날은 없었고 마지막 밤 과반도 채우지 못했어요.',
+    '2일째에 2번 집 의심도를 20까지 낮췄지만, 그 뒤 2번 집에게 거짓 쪽지를 보낸 날 그 집이 틀린 적은 없었고 마지막 밤 과반도 채우지 못했어요.',
+  )
+  // 회귀: 2일째 거짓 세탁(남은 날 있음)과 7일째 진실 세탁(남은 날 없음)이 함께 있으면 남은 날이 있는 2일째 세탁이 우선
+  const earlyLieWashBeatsDay7Truth = [
+    t(1, [c(2, 'safe', 'evacuate', 40, true), c(5, 'danger', 'stay', 20, true)]),
+    t(2, [c(2, 'safe', 'stay', 20, true), c(5, 'danger', 'stay', 20, true)]),
+    t(6, [c(2, 'safe', 'stay', 0, true), c(5, 'danger', 'stay', 40, true)]),
+    t(7, [c(2, 'safe', 'stay', 0, true), c(5, 'danger', 'evacuate', 20, true)]),
+  ]
+  assert.equal(regainTrustProgress(trustState('win'), earlyLieWashBeatsDay7Truth).washedActive?.city, 2)
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), earlyLieWashBeatsDay7Truth),
+    '2일째에 2번 집 의심도를 20까지 낮추고 판도 이겼지만, 그 뒤 2번 집에게 거짓 쪽지를 보낸 날 그 집이 틀린 적은 없었어요.',
   )
   const washedOnly = [
     t(6, [c(2, 'safe', 'evacuate', 40, true)]),
@@ -1710,11 +1750,11 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   ])
   assert.equal(
     regainTrustOutcomeNote(trustState('win'), reSpiked),
-    '2일째에 2번 집 의심도를 20까지 낮추고 판도 이겼지만, 3일째에 의심도가 40까지 다시 올랐어요.',
+    '2일째에 2번 집 의심도를 20까지 낮추고 판도 이겼지만, 거짓 쪽지를 보낸 날 그 집이 틀리기 전에 3일째 의심도가 40까지 다시 올랐어요. 다시 40 이상이 되면 20 이하로 낮추는 것부터 다시 해야 해요.',
   )
   assert.equal(
     regainTrustOutcomeNote(trustState('loss'), reSpiked),
-    '2일째에 2번 집 의심도를 20까지 낮췄지만, 3일째에 의심도가 40까지 다시 올랐고 마지막 밤 과반도 채우지 못했어요.',
+    '2일째에 2번 집 의심도를 20까지 낮췄지만, 거짓 쪽지를 보낸 날 그 집이 틀리기 전에 3일째 의심도가 40까지 다시 올랐고 마지막 밤 과반도 채우지 못했어요. 다시 40 이상이 되면 20 이하로 낮추는 것부터 다시 해야 해요.',
   )
 
   // 5b. 다턴 세탁(60 stay -> 40 evacuate -> 40 evacuate -> 20 evacuate)은 첫 일치 시점 전환으로 인정
@@ -1727,8 +1767,8 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   ]
   const multiProg = regainTrustProgress(trustState('win'), multiTurnWash)
   assert.equal(multiProg.droppedWithoutSwitch, null)
-  assert.equal(multiProg.washed?.fromSus, 60)
-  assert.equal(multiProg.washed?.washDay, 4)
+  assert.equal(multiProg.refooled?.fromSus, 60)
+  assert.equal(multiProg.refooled?.washDay, 4)
   assert.equal(multiProg.refooled?.foolDay, 5)
   assert.equal(scenarioGoalMet(trustState('win'), 'regain-trust', multiTurnWash), true)
 
@@ -1777,7 +1817,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
     '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 주민 모두를 속였어요.',
   )
 
-  // 7. 조기 재판 / 7일째 마지막 밤 재판 / 내 의심도 60 미만에서 다른 집 의심도로 열린 재판
+  // 7. 조기 재판 / 7일째 마지막 밤 재판 / 내 의심도 60 미만에서 다른 집 의심도로 열린 재판 / 낮추기 성공 후 재판
   assert.equal(
     regainTrustOutcomeNote(trustState('loss', 'caught'), [t(2, [c(2, 'safe', 'evacuate', 60, true)])]),
     '마지막 밤까지 가지 못했어요. 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.',
@@ -1789,6 +1829,24 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.equal(
     regainTrustOutcomeNote(trustState('loss', 'caught'), [t(5, [c(2, 'safe', 'evacuate', 40, true)])]),
     '마지막 밤까지 가지 못했어요. 다른 집 의심도로 열린 재판에서 주민 과반이 나를 지목했어요. 집마다 의심도를 더 낮게 유지하며 다시 해 보세요.',
+  )
+  const washedThenCaught = [
+    t(1, [c(2, 'danger', 'stay', 40, true)]),
+    t(2, [c(2, 'danger', 'evacuate', 20, true)]),
+    t(5, [c(2, 'danger', 'stay', 60, true)]),
+  ]
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss', 'caught'), washedThenCaught),
+    '2일째에 2번 집 의심도를 낮추는 데는 성공했지만, 마지막 밤까지 가지 못했어요. 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.',
+  )
+  const washedThenCaughtDay7 = [
+    t(1, [c(2, 'danger', 'stay', 40, true)]),
+    t(2, [c(2, 'danger', 'evacuate', 20, true)]),
+    t(7, [c(2, 'danger', 'stay', 40, true)]),
+  ]
+  assert.equal(
+    regainTrustOutcomeNote(trustState('loss', 'caught'), washedThenCaughtDay7),
+    '2일째에 2번 집 의심도를 낮추는 데는 성공했지만, 마지막 밤 재판에 걸렸어요. 다른 집 의심도로 열린 재판에서 주민 과반이 나를 지목했어요. 집마다 의심도를 더 낮게 유지하며 다시 해 보세요.',
   )
 })
 
