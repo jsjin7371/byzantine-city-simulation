@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import type { RefObject } from 'react'
 import type { GameConfig, GameState, TurnResult } from '../gameApi'
 import { BookIcon, BookLink, TheoryBook } from './TheoryBook'
@@ -30,7 +30,7 @@ export type Scenario = {
   }
 }
 
-export const SCENARIOS: readonly Scenario[] = [
+const SCENARIOS: readonly Scenario[] = [
   {
     id: 'watchful-eye',
     title: '감시의 눈',
@@ -129,7 +129,7 @@ export const SCENARIOS: readonly Scenario[] = [
   },
 ]
 
-export function loadCompletedScenarios(): string[] {
+function loadCompletedScenarios(): string[] {
   try {
     const raw = localStorage.getItem(COMPLETED_STORAGE_KEY)
     if (!raw) return []
@@ -140,7 +140,7 @@ export function loadCompletedScenarios(): string[] {
   }
 }
 
-export function saveCompletedScenario(id: string): string[] {
+function saveCompletedScenario(id: string): string[] {
   const prev = loadCompletedScenarios()
   if (prev.includes(id)) return prev
   const next = [...prev, id]
@@ -154,16 +154,15 @@ export function saveCompletedScenario(id: string): string[] {
 
 export function TheoryLab({
   headingRef,
-  completed = [],
   onBack,
   onStartScenario,
 }: {
   headingRef?: RefObject<HTMLHeadingElement | null>
-  completed?: readonly string[]
   onBack: () => void
   onStartScenario?: (scenario: Scenario) => void
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
+  const [completed] = useState<string[]>(loadCompletedScenarios)
   const soonId = useId()
 
   return (
@@ -363,6 +362,9 @@ export function ScenarioResult({
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
   const goalMet = watchfulEyeGoalMet(state)
+  useEffect(() => {
+    if (goalMet) saveCompletedScenario(scenario.id)
+  }, [goalMet, scenario.id])
   const lastDay = history.at(-1)?.turn ?? state.turn
   const blockedReason =
     state.end_reason === 'caught'
