@@ -1,0 +1,64 @@
+name: Deploy
+
+# main에 병합되면 Azure 서버에 자동 배포
+# 서버의 deploy.sh가 main을 받아 docker compose로 다시 빌드·실행한다
+# 필요한 secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 배포가 겹치지 않게 한 번에 하나만 실행 (진행 중인 배포는 취소하지 않음)
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: SSH 키 준비
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: 서버에 배포
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        # 서버 쪽에서 이 키는 deploy.sh만 실행하도록 묶여 있어서 별도 명령을 넘기지 않는다
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 \
+            "$DEPLOY_USER@$DEPLOY_HOST"
+
+      - name: 접속 확인
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          for i in $(seq 1 12); do
+            if curl -fsS "http://$DEPLOY_HOST/api/health"; then
+              echo
+              echo "✅ 배포 완료: http://$DEPLOY_HOST"
+              exit 0
+            fi
+            echo "API 준비 대기 중... ($i/12)"
+            sleep 10
+          done
+          echo "❌ /api/health 응답 없음"
+          exit 1
+
+      - name: 키 삭제
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

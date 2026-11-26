@@ -9,6 +9,9 @@ export type ExperimentConfig = {
   seed: number | null
 }
 
+// 실험 목록은 이 개수씩 조회한다. 결과 탐색의 페이지 이동과 비교 화면의 더 불러오기가 함께 쓴다.
+export const EXPERIMENT_PAGE_SIZE = 50
+
 export type Experiment = {
   id: number
   name: string | null
@@ -17,6 +20,8 @@ export type Experiment = {
   completed_turns: number
   mean_accuracy: number | null
   error: string | null
+  // 생성 시각(UTC ISO 문자열). 목록에서 같은 조건의 실험을 구분하는 데만 쓰므로 없어도 된다.
+  created_at?: string | null
 }
 
 // 화면에서는 백분율(10%)을 입력받고, API에는 확률(0.1)을 보낸다.
@@ -61,7 +66,7 @@ export class HttpError extends Error {
   }
 }
 
-async function request(url: string, options: RequestInit) {
+export async function request(url: string, options: RequestInit = {}) {
   let response: Response
   try {
     // 화면 전환에 의한 취소와 HTTP 요청당 15초 제한을 함께 적용한다.
@@ -117,7 +122,8 @@ function validExperiment(value: unknown): value is Experiment {
     validConfig(value.config) &&
     integer(value.completed_turns) &&
     (value.mean_accuracy === null || numeric(value.mean_accuracy)) &&
-    nullableText(value.error)
+    nullableText(value.error) &&
+    (value.created_at === undefined || nullableText(value.created_at))
   )
 }
 function validSummary(value: unknown): value is TurnSummary {
@@ -211,7 +217,7 @@ export type TurnList = { experiment_id: number; turns: TurnSummary[] }
 export type TurnDetail = TurnSummary & { experiment_id: number; cities: CityResult[] }
 
 export async function listExperiments(offset: number, signal: AbortSignal): Promise<Experiment[]> {
-  const data = await request(`/api/experiments?limit=50&offset=${offset}`, { signal })
+  const data = await request(`/api/experiments?limit=${EXPERIMENT_PAGE_SIZE}&offset=${offset}`, { signal })
   if (!Array.isArray(data) || !data.every(validExperiment))
     throw new Error('실험 목록 응답 형식이 올바르지 않습니다.')
   return data

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { compareExperiments, listExperiments } from '../experimentsApi'
+import { EXPERIMENT_PAGE_SIZE, compareExperiments, listExperiments } from '../experimentsApi'
 import type { ComparisonExperiment, Experiment } from '../experimentsApi'
 import { errorMessage } from '../lib/errors'
 import { CompareTimeline, CompareTurnControls } from '../components/compare/CompareTimeline'
@@ -55,7 +55,7 @@ export function ComparePage() {
   useEffect(() => {
     const controller = new AbortController()
     // 목록 API에는 완료 상태 필터가 없어서 프론트에서 걸러낸다.
-    // 최신 50개가 모두 미완료여도 '더 불러오기'로 이전의 완료 실험에 접근할 수 있다.
+    // 최신 한 페이지가 모두 미완료여도 '더 불러오기'로 이전의 완료 실험에 접근할 수 있다.
     listExperiments(offset, controller.signal)
       .then((rows) => {
         if (controller.signal.aborted) return
@@ -68,7 +68,7 @@ export function ComparePage() {
                 ...completed.filter((row) => !previous.some((item) => item.id === row.id)),
               ],
         )
-        setHasMore(rows.length === 50)
+        setHasMore(rows.length === EXPERIMENT_PAGE_SIZE)
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted) setListError(message(cause))
@@ -139,7 +139,7 @@ export function ComparePage() {
               disabled={loading}
               onClick={() => {
                 setLoading(true)
-                setOffset(offset + 50)
+                setOffset(offset + EXPERIMENT_PAGE_SIZE)
               }}
             >
               이전 실험 더 불러오기

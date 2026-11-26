@@ -15,12 +15,13 @@ class ValidationTests(unittest.TestCase):
         self.assertEqual(ExperimentConfig.parse({"experiment_id": 1}), ExperimentConfig(1))
 
     def test_bad_bodies_and_fields(self):
-        """요청 형식이 틀리거나 범위·타입이 틀린 값은 거부한다."""
+        """요청 형식이 틀리거나 범위·타입이 틀린 값은 거부한다. n_cities 상한은 City 컨테이너 수(5)."""
         invalid = [None, [], "request", {}, {"experiment_id": None}, {"experiment_id": True},
                    {"experiment_id": 0}, {"experiment_id": "1"}, {"experiment_id": 1, "n_cities": 7}]
         for field, values in {
             "turns": [0, 21, 1.5, True, "2", None],
             "byzantine_count": [-1, 6, True, 1.1, None],
+            "n_cities": [2, 6, True, "5", None], "connection": ["star", None, 1, ["all"]],
             "seed": [-1, 2**31, False, "42", 1.2],
             "sensor_error": [-.1, 1.1, float("nan"), float("inf"), True, "0.1", None],
             "drop_rate": [-1, 2, False, []], "flip_rate": [-1, 2, True, {}],
@@ -37,6 +38,12 @@ class ValidationTests(unittest.TestCase):
                                              "seed": None, "sensor_error": 1, "drop_rate": 0, "flip_rate": 1})
             mock = MockCity()
             self.assertEqual(len(list(simulate(config, mock.turn, mock.init))), 20)
+
+    def test_byzantine_count_limited_by_n_cities(self):
+        """비잔틴 수는 n_cities를 넘을 수 없다."""
+        ExperimentConfig.parse({"experiment_id": 1, "n_cities": 3, "byzantine_count": 3, "connection": "all"})
+        with self.assertRaises(ValueError):
+            ExperimentConfig.parse({"experiment_id": 1, "n_cities": 3, "byzantine_count": 4})
 
 
 if __name__ == "__main__":

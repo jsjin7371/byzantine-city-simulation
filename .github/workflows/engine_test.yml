@@ -28,9 +28,15 @@ jobs:
       - name: City 판단 규칙
         if: ${{ !cancelled() }}
         run: python -m unittest test_city_decide -v
+      - name: City 게임 판단
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_city_game -v
       - name: City 메시지 전송
         if: ${{ !cancelled() }}
         run: python -m unittest test_city_broadcast -v
+      - name: City AI 시민 (가짜 LLM)
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_city_ai -v
       - name: God 시뮬레이션 규칙
         if: ${{ !cancelled() }}
         run: python -m unittest test_god_simulation -v
@@ -43,6 +49,12 @@ jobs:
       - name: God HTTP 서버
         if: ${{ !cancelled() }}
         run: python -m unittest test_god_http -v
+      - name: God 마피아 게임
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_god_game -v
+      - name: God Kubernetes 자원 관리
+        if: ${{ !cancelled() }}
+        run: python -m unittest test_god_kubernetes -v
       - name: Docker 검사 스크립트
         if: ${{ !cancelled() }}
         run: python -m unittest test_network_smoke -v

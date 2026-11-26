@@ -1,19 +1,50 @@
 import type { CityResult, TurnDetail } from '../../experimentsApi'
-import { decisions, percent, received, sends, truths } from './resultLabels'
+import {
+  decisions,
+  percent,
+  received,
+  sendTones,
+  sends,
+  truthTones,
+  truths,
+} from './resultLabels'
+import { neighbours } from '../networkGeometry'
 
 // 동일한 필드 매핑을 요약·상세 양쪽에서 사용해 표시 의미가 어긋나지 않게 한다.
-const fields: { label: string; value: (city: CityResult, data: TurnDetail) => string }[] = [
+// tone은 값의 의미를 색으로 함께 보여준다. 눈에 띄어야 하는 값(위험·오답·비잔틴·누락·조작)에만 색을 준다.
+type Field = {
+  label: string
+  value: (city: CityResult, data: TurnDetail) => string
+  tone?: (city: CityResult, data: TurnDetail) => string | undefined
+}
+const fields: Field[] = [
   // truth는 도시별 값이 아니라 해당 턴에 모든 도시가 공유하는 실제 상태다.
-  { label: '실제 상태', value: (_, d) => truths[d.truth] },
-  { label: '센서값', value: (c) => truths[c.hint] },
-  { label: '왼쪽 수신', value: (c) => received(c.from_left) },
-  { label: '오른쪽 수신', value: (c) => received(c.from_right) },
+  { label: '실제 상태', value: (_, d) => truths[d.truth], tone: (_, d) => truthTones[d.truth] },
+  { label: '센서값', value: (c) => truths[c.hint], tone: (c) => truthTones[c.hint] },
+  {
+    label: '왼쪽 수신',
+    value: (c) => received(c.from_left),
+    tone: (c) => (c.from_left === null ? 'muted' : undefined),
+  },
+  {
+    label: '오른쪽 수신',
+    value: (c) => received(c.from_right),
+    tone: (c) => (c.from_right === null ? 'muted' : undefined),
+  },
   { label: '판단', value: (c) => decisions[c.decision] },
-  { label: '정답 여부', value: (c) => (c.correct ? '정답' : '오답') },
-  { label: '비잔틴 여부', value: (c) => (c.is_byzantine ? '비잔틴' : '정상') },
+  {
+    label: '정답 여부',
+    value: (c) => (c.correct ? '정답' : '오답'),
+    tone: (c) => (c.correct ? 'success' : 'error'),
+  },
+  {
+    label: '비잔틴 여부',
+    value: (c) => (c.is_byzantine ? '비잔틴' : '정상'),
+    tone: (c) => (c.is_byzantine ? 'byzantine' : undefined),
+  },
   // 발신 필드는 메시지 내용이 아닌 전송 상태(normal/dropped/flipped)다.
-  { label: '왼쪽 발신', value: (c) => sends[c.to_left] },
-  { label: '오른쪽 발신', value: (c) => sends[c.to_right] },
+  { label: '왼쪽 발신', value: (c) => sends[c.to_left], tone: (c) => sendTones[c.to_left] },
+  { label: '오른쪽 발신', value: (c) => sends[c.to_right], tone: (c) => sendTones[c.to_right] },
 ]
 export function CityOverview({ data, onCity }: { data: TurnDetail; onCity: (n: number) => void }) {
   const cities = [...data.cities].sort((a, b) => a.city - b.city)
@@ -37,13 +68,7 @@ export function CityOverview({ data, onCity }: { data: TurnDetail; onCity: (n: n
           <tr key={field.label}>
             <th scope="row">{field.label}</th>
             {cities.map((c) => (
-              <td
-                key={c.city}
-                data-city={c.city}
-                className={
-                  field.label === '정답 여부' ? (c.correct ? 'rs-correct' : 'rs-incorrect') : ''
-                }
-              >
+              <td key={c.city} data-city={c.city} data-tone={field.tone?.(c, data)}>
                 {field.value(c, data)}
               </td>
             ))}
@@ -76,14 +101,14 @@ export function CityDetail({ data, city }: { data: TurnDetail; city: number | nu
         </span>
       </div>
       <p className="rs-muted">
-        왼쪽 이웃: 도시 {city === 1 ? 5 : city! - 1} / 오른쪽 이웃: 도시{' '}
-        {city === 5 ? 1 : city! + 1}
+        왼쪽 이웃: 도시 {neighbours(row.city).left} / 오른쪽 이웃: 도시{' '}
+        {neighbours(row.city).right}
       </p>
       <dl className="rs-detail-values">
         {fields.map((field) => (
           <div key={field.label}>
             <dt>{field.label}</dt>
-            <dd>{field.value(row, data)}</dd>
+            <dd data-tone={field.tone?.(row, data)}>{field.value(row, data)}</dd>
           </div>
         ))}
       </dl>
@@ -130,7 +155,9 @@ export function AllResultsTable({
                   </button>
                 </td>
                 {fields.map((f) => (
-                  <td key={f.label}>{f.value(city, data)}</td>
+                  <td key={f.label} data-tone={f.tone?.(city, data)}>
+                    {f.value(city, data)}
+                  </td>
                 ))}
               </tr>
             )),
