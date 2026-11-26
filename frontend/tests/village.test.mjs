@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeGoalMet, worsens,
+  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeGoalMet, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -180,6 +180,17 @@ test('ai citizens omit fixed +20 contradiction copy and scale legend while wary 
   const waryLog = villageLogHeader('wary')
   assert.equal(waryLog.showLegend, true)
   assert.match(waryLog.intro, /›.*속마음 저울/)
+})
+
+test('shareBadgeLabel summarizes multi-pair contradictions in one plaza badge while keeping single-pair unchanged', () => {
+  assert.equal(shareBadgeLabel(0, 0, 'all', 'wary'), null)
+  assert.equal(shareBadgeLabel(1, 0, 'pairs', 'wary'), '오늘 밤 쪽지 비교')
+  assert.equal(shareBadgeLabel(1, 1, 'pairs', 'wary'), '오늘 밤 쪽지 비교')
+  assert.equal(shareBadgeLabel(6, 0, 'all', 'wary'), '모든 집 쪽지 비교')
+  assert.equal(shareBadgeLabel(6, 3, 'all', 'wary'), '모든 집 쪽지 비교 · 모순 3쌍 (각 +20)')
+  assert.equal(shareBadgeLabel(6, 3, 'all', 'ai'), '모든 집 쪽지 비교 · 모순 3쌍')
+  assert.equal(shareBadgeLabel(2, 0, 'pairs', 'wary'), '오늘 밤 쪽지 비교')
+  assert.equal(shareBadgeLabel(2, 2, 'pairs', 'wary'), '오늘 밤 쪽지 비교 · 모순 2쌍 (각 +20)')
 })
 
 test('suspicion preview matches engine game_turn (7.6): ±20, contradiction +20, clamp 0~100, trial at 60', () => {

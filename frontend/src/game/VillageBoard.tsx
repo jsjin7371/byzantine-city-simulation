@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, nextObservationTag, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
+import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, nextObservationTag, pairMid, reached, scaleLeader, shareBadgeLabel, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TrialStampMode, TutorialHighlight } from './village'
 import './village.css'
 
@@ -1056,22 +1056,27 @@ export function VillageBoard({
   const houses = night
     ? stagedHouses(state, night.prev, night.result, night.phase, night.decided)
     : villageHouses(state, result)
-  const pairs = (night ? night.result.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
+  const showTurnSharing = Boolean(!picker && result)
+  const pairs = (showTurnSharing ? result!.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
   const clashes = picker ? clashingPairs(pairs, picker.claims) : []
-  // 연출 중 모순이 들킨 쌍 (내가 두 집에 다른 말을 했다)
+  // 연출 중(의심 단계 이후)과 결과·지난 턴 보기에서 모순이 들킨 쌍 (내가 두 집에 다른 말을 했다)
   const caught =
-    night && at('suspicion')
-      ? night.result.sharing.filter((s) => s.contradictions.some((c) => c.city === state.player_city)).map((s) => s.pair)
+    showTurnSharing && at('suspicion')
+      ? result!.sharing.filter((s) => s.contradictions.some((c) => c.city === state.player_city)).map((s) => s.pair)
       : []
-  const red = (a: number, b: number) => [...clashes, ...caught].some(([x, y]) => x === a && y === b)
+  const redPairs = [...clashes, ...caught]
+  const red = (a: number, b: number) => redPairs.some(([x, y]) => x === a && y === b)
+  const sortedPairs = [...pairs].sort((p, q) => Number(red(p[0], p[1])) - Number(red(q[0], q[1])))
   const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집${red(a, b) ? '(모순)' : ''}`).join(', ')
+  const badgeText = shareBadgeLabel(pairs.length, redPairs.length, state.config.share_mode, state.config.citizen_type)
   const shareTag =
-    pairs.length === 1
-      ? { pos: pairMid(state.player_city, pairs[0][0], pairs[0][1]), label: '오늘 밤 쪽지 비교' }
-      : pairs.length > 1
+    badgeText && pairs.length === 1
+      ? { pos: pairMid(state.player_city, pairs[0][0], pairs[0][1]), label: badgeText, w: 164 }
+      : badgeText && pairs.length > 1
         ? {
             pos: [PLAZA.x, PLAZA.y - 22] as const,
-            label: state.config.share_mode === 'all' ? '모든 집 쪽지 비교' : '오늘 밤 쪽지 비교',
+            label: badgeText,
+            w: redPairs.length > 0 ? (state.config.citizen_type === 'ai' ? 216 : 274) : 164,
           }
         : null
   const preview = (h: House, claim?: Claim) =>
@@ -1135,9 +1140,13 @@ export function VillageBoard({
         </g>
       )}
       {pairs.length > 0 && (
-        <g className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'} role="img" aria-label={`오늘 밤 쪽지 비교: ${pairLabel}`}>
-          <title>{`오늘 밤 쪽지 비교: ${pairLabel}`}</title>
-          {pairs.map(([a, b]) => {
+        <g
+          className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'}
+          role="img"
+          aria-label={`${shareTag?.label ?? '오늘 밤 쪽지 비교'}: ${pairLabel}`}
+        >
+          <title>{`${shareTag?.label ?? '오늘 밤 쪽지 비교'}: ${pairLabel}`}</title>
+          {sortedPairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
             return (
               <g key={`${a}-${b}`} className={red(a, b) ? 'is-clash' : undefined}>
@@ -1148,9 +1157,9 @@ export function VillageBoard({
             )
           })}
           {shareTag && (
-            <g className={pairs.some(([a, b]) => red(a, b)) ? 'is-clash' : undefined} aria-hidden>
+            <g className={redPairs.length > 0 ? 'is-clash' : undefined} aria-hidden>
               <g className="vb-share-tag">
-                <rect x={shareTag.pos[0] - 82} y={shareTag.pos[1] - 80} width="164" height="25" rx="12.5" strokeWidth="1.5" />
+                <rect x={shareTag.pos[0] - shareTag.w / 2} y={shareTag.pos[1] - 80} width={shareTag.w} height="25" rx="12.5" strokeWidth="1.5" />
                 <text x={shareTag.pos[0]} y={shareTag.pos[1] - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
                   {shareTag.label}
                 </text>
@@ -1213,11 +1222,12 @@ export function VillageBoard({
       })}
       {pointerTarget && <HousePointer target={pointerTarget} />}
       {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
-      {caught.map(([a, b]) => {
-        const [mx, my] = pairMid(state.player_city, a, b)
-        const knot = contradictionKnotCopy(state.config.citizen_type, 'caught', a, b)
-        return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} />
-      })}
+      {pairs.length === 1 &&
+        caught.map(([a, b]) => {
+          const [mx, my] = pairMid(state.player_city, a, b)
+          const knot = contradictionKnotCopy(state.config.citizen_type, 'caught', a, b)
+          return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} />
+        })}
       {result?.vote && at('trial') && (
         <Trial
           vote={result.vote}
@@ -1241,11 +1251,12 @@ export function VillageBoard({
         />
       )}
       {activeSuspicionLinks.length > 0 && <SuspicionLines links={activeSuspicionLinks} />}
-      {clashes.map(([a, b]) => {
-        const [mx, my] = pairMid(state.player_city, a, b)
-        const knot = contradictionKnotCopy(state.config.citizen_type, 'clashes', a, b)
-        return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} title />
-      })}
+      {pairs.length === 1 &&
+        clashes.map(([a, b]) => {
+          const [mx, my] = pairMid(state.player_city, a, b)
+          const knot = contradictionKnotCopy(state.config.citizen_type, 'clashes', a, b)
+          return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} title />
+        })}
       {opened && picker && (
         <NoteCard
           key={opened.city}

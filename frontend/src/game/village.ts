@@ -57,6 +57,21 @@ export function contradictionKnotCopy(
   return { text: `모순 +${SUSPICION.contradiction}`, label: `${head}: ${pair}, 의심도 +${SUSPICION.contradiction}` }
 }
 
+// 광장 쪽지 비교 배지 문구. 쌍이 1개면 기존 문구를 유지하고, 2개 이상이면 모순 요약까지 배지 하나로 합친다.
+export function shareBadgeLabel(
+  pairCount: number,
+  clashCount: number,
+  shareMode: GameState['config']['share_mode'],
+  citizenType: GameState['config']['citizen_type'],
+): string | null {
+  if (pairCount <= 0) return null
+  if (pairCount === 1) return '오늘 밤 쪽지 비교'
+  const base = shareMode === 'all' ? '모든 집 쪽지 비교' : '오늘 밤 쪽지 비교'
+  if (clashCount <= 0) return base
+  if (citizenType === 'ai') return `${base} · 모순 ${clashCount}쌍`
+  return `${base} · 모순 ${clashCount}쌍 (각 +${SUSPICION.contradiction})`
+}
+
 const agrees = (hint: Truth, claim: Claim) => (hint === 'danger') === (claim === 'evacuate')
 
 // 쪽지 하나로 그 시민의 나에 대한 의심도가 어떻게 바뀔지 (7.6, engine/city/logic.py game_turn과 같은 규칙).
