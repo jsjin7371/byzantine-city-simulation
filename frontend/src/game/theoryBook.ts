@@ -69,8 +69,8 @@ export const THEORY_TOPICS: Record<TagKey, TaggedTopic> & Record<Exclude<TopicKe
     kicker: '비잔틴 장애',
     title: '이중 발언',
     en: 'Equivocation',
-    easy: '같은 날, 집마다 서로 다른 말을 보내는 거예요. 쪽지 비교를 해 보기 전까지는 각 집이 자기 것만 보기 때문에 거짓을 알기 어려워요.',
-    game: '쪽지 비교에서 모순이 드러나면 비교한 두 집의 의심도가 20씩 올라가요. 그런데 주민은 자기 관측과 같은 쪽지를 받으면 의심도를 20 내려요. 그래서 모든 집이 쪽지 비교를 하는 마을에서도, 각 주민이 본 하늘에 맞춰 서로 다른 쪽지를 보내면 +20과 −20이 상쇄되어 재판이 거의 열리지 않아요. 이론에서는 거짓 증거가 잡히면 그 발신자를 걸러 내지만, 이 마을에는 그런 배제 규칙이 없기 때문이에요.',
+    easy: '같은 날, 집마다 서로 다른 말을 보내는 거예요. 쪽지 비교를 해 보기 전까지는 각 집이 자기 것만 보기 때문에 거짓을 알기 어려워요. 반대로 모두에게 똑같이 거짓말하는 건 이중 발언이 아니에요.',
+    game: '쪽지 비교에서 모순이 드러나면 비교한 두 집의 의심도가 20씩 올라가요. 그런데 주민은 자기 관측과 같은 쪽지를 받으면 의심도를 20 내려요. 그래서 각 주민이 본 하늘에 맞춰 다르게 보내면 +20과 −20이 상쇄되어 나에 대한 의심도가 쌓이지 않아요. 이 마을에는 모순 한 번으로 바로 쫓아내는 규칙이 없고, 의심도 60이 넘어 재판에서 과반이 지목해야 배제돼요. 또한 이 게임은 서명 대신, 주민이 받은 쪽지를 서로 정직하게 알려 준다고 가정해요.',
     boxes: [
       [
         '정의',
@@ -86,7 +86,7 @@ export const THEORY_TOPICS: Record<TagKey, TaggedTopic> & Record<Exclude<TopicKe
       ],
     ],
     proof:
-      '서명이 있으면 서로 모순된 두 메시지를 나란히 놓아 발신자의 거짓을 증명할 수 있다. 그러나 그 증거를 제3자에게 검증 가능하게 전달하고, 모순을 낸 발신자를 합의 절차에서 배제하는 규칙이 함께 있어야 이중 발언의 힘이 사라진다.',
+      '서명이 있으면 서로 모순된 두 메시지를 나란히 놓아 발신자의 거짓을 증명할 수 있다. 정직한 참여자들이 서명된 메시지를 서로 전달하면 배신자를 쫓아내지 않고도 같은 결정에 이를 수 있다(Lamport 외 1982). 이 증거로 발신자를 적발하거나 처벌·배제하는 것은 그 위에 얹는 별도 규칙이다(Haeberlen 외 2007). 반면 모두에게 똑같이 보낸 거짓은 모순이 생기지 않아 메시지 비교만으로는 가려낼 수 없다.',
     refs: [
       {
         before: 'Lamport, L., Shostak, R., & Pease, M. (1982). The Byzantine Generals Problem. ',
@@ -103,6 +103,12 @@ export const THEORY_TOPICS: Record<TagKey, TaggedTopic> & Record<Exclude<TopicKe
           'Chun, B.-G., Maniatis, P., Shenker, S., & Kubiatowicz, J. (2007). Attested Append-Only Memory: Making Adversaries Stick to Their Word. In ',
         italic: "Proceedings of the 21st ACM SIGOPS Symposium on Operating Systems Principles (SOSP '07)",
         after: ', 189–204. DOI: 10.1145/1294261.1294280',
+      },
+      {
+        before:
+          'Haeberlen, A., Kuznetsov, P., & Druschel, P. (2007). PeerReview: Practical Accountability for Distributed Systems. In ',
+        italic: "Proceedings of the 21st ACM SIGOPS Symposium on Operating Systems Principles (SOSP '07)",
+        after: ', 175–188. DOI: 10.1145/1294261.1294279',
       },
       {
         before:
