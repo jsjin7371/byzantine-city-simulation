@@ -1149,9 +1149,7 @@ export function detectTactics(
     if (claimsSent.size >= 2) equivTurnIndices.push(i)
   }
 
-  const contradictionTurns = history.filter((t) =>
-    t.sharing.some((s) => s.contradictions.some((c) => c.city === me)),
-  )
+  const contradictionTurns = playerContradictionTurns(me, history)
 
   // 1. 감사 회피 (완벽한 알리바이): share_mode !== 'none'이고 비교가 실제 일어난 턴 중 이중 발언 5회 이상 & 판 전체 모순 0회
   if (state.config.share_mode !== 'none' && contradictionTurns.length === 0) {
@@ -1404,7 +1402,7 @@ export function gameSummary(
       text: `${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold}을 넘었어요`,
     })
   }
-  const knots = history.filter((t) => t.sharing.some((s) => s.contradictions.some((c) => c.city === me)))
+  const knots = playerContradictionTurns(me, history)
   if (knots.length) {
     momentItems.push({
       kind: 'knots',
@@ -1631,9 +1629,30 @@ export const DIFFICULTY_STATS: readonly DifficultyStat[] = (
 
 const COMPLETED_SCENARIOS_KEY = 'byzantine:completed-scenarios'
 
+// 이번 판에서 내 쪽지 모순이 드러난 턴 목록.
+export function playerContradictionTurns<T extends Pick<TurnResult, 'turn' | 'sharing'>>(
+  playerCity: number,
+  history: T[],
+): T[] {
+  return history.filter((t) => t.sharing.some((s) => s.contradictions.some((c) => c.city === playerCity)))
+}
+
 // 시나리오 '감시의 눈' 목표 판정: 주민 과반을 속여 이겼는지.
 export function watchfulEyeGoalMet(state: Pick<GameState, 'outcome'>): boolean {
   return state.outcome === 'win' || state.outcome === 'perfect_win'
+}
+
+// 시나리오 '감시의 눈' 결과 한 줄 분기: 재판에 걸려 졌으면 숨기고, 아니면 이번 판 모순 유무에 따라 안내한다.
+export function watchfulEyeClashNote(
+  state: Pick<GameState, 'player_city' | 'end_reason'>,
+  history: Pick<TurnResult, 'turn' | 'sharing'>[],
+): string | null {
+  if (state.end_reason === 'caught') return null
+  const days = playerContradictionTurns(state.player_city, history).map((t) => t.turn)
+  if (days.length > 0) {
+    return `${days.join('·')}일째에 거짓이 증명됐지만, 그것만으로 쫓겨나지는 않았어요.`
+  }
+  return '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보내 보세요.'
 }
 
 export function loadCompletedScenarios(): string[] {

@@ -3,7 +3,7 @@ import type { RefObject } from 'react'
 import type { GameConfig, GameState, TurnResult } from '../gameApi'
 import { BookIcon, BookLink, TheoryBook } from './TheoryBook'
 import { THEORY_TOPICS } from './theoryBook'
-import { loadCompletedScenarios, watchfulEyeGoalMet } from './village'
+import { loadCompletedScenarios, watchfulEyeClashNote, watchfulEyeGoalMet } from './village'
 import type { TopicKey } from './village'
 
 
@@ -324,6 +324,7 @@ export function ScenarioResult({
 }) {
   const [bookTopic, setBookTopic] = useState<TopicKey | null>(null)
   const goalMet = watchfulEyeGoalMet(state)
+  const clashNote = scenario.id === 'watchful-eye' ? watchfulEyeClashNote(state, history) : null
   const lastDay = history.at(-1)?.turn ?? state.turn
   const blockedReason =
     state.end_reason === 'caught'
@@ -356,6 +357,8 @@ export function ScenarioResult({
           </div>
         )}
       </div>
+
+      {clashNote && <p className="sc-clash-note">{clashNote}</p>}
 
       <dl className="sc-debrief">
         <div>

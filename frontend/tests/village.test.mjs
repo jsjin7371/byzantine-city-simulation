@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeGoalMet, worsens,
+  DIFFICULTY_STATS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, scaleLeader, scaleText, scaleVoteSummary, shareBadgeLabel, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, watchfulEyeGoalMet, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -1430,4 +1430,35 @@ test('watchfulEyeGoalMet returns true only on win or perfect_win', () => {
   assert.equal(watchfulEyeGoalMet({ outcome: 'perfect_win' }), true)
   assert.equal(watchfulEyeGoalMet({ outcome: 'loss' }), false)
   assert.equal(watchfulEyeGoalMet({ outcome: null }), false)
+})
+
+test('watchfulEyeClashNote branches on player contradictions and hides when caught in trial', () => {
+  const clashTurn = (turnNum, city) => ({
+    turn: turnNum,
+    sharing: [{ pair: [1, 2], contradictions: [{ city, told: {} }] }],
+  })
+  const cleanTurn = (turnNum) => ({
+    turn: turnNum,
+    sharing: [{ pair: [1, 2], contradictions: [] }],
+  })
+  assert.equal(
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done' }, [clashTurn(1, 4), cleanTurn(2)]),
+    '1일째에 거짓이 증명됐지만, 그것만으로 쫓겨나지는 않았어요.',
+  )
+  assert.equal(
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done' }, [clashTurn(1, 4), clashTurn(3, 4)]),
+    '1·3일째에 거짓이 증명됐지만, 그것만으로 쫓겨나지는 않았어요.',
+  )
+  assert.equal(
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'turns_done' }, [clashTurn(1, 2), cleanTurn(2)]),
+    '이번엔 모순이 한 번도 없었어요. 다시 해서 집마다 다르게 보내 보세요.',
+  )
+  assert.equal(
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'caught' }, [clashTurn(1, 4)]),
+    null,
+  )
+  assert.equal(
+    watchfulEyeClashNote({ player_city: 4, end_reason: 'caught' }, [cleanTurn(1)]),
+    null,
+  )
 })
