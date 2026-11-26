@@ -6,6 +6,7 @@ import argparse
 import csv
 import itertools
 import os
+import random
 import sys
 from multiprocessing import Pool
 
@@ -166,6 +167,9 @@ def play_scenario(scenario_id, strategy, seed, threshold=40):
             chosen = ms.smart(g)
         elif strategy == "smart_wash":
             chosen = smart_wash(g, history, threshold)
+        elif strategy == "honest":
+            ans = DECISION_OF[g.truth]
+            chosen = {str(r): ans for r in ms.targets(g)}
         else:
             raise ValueError(f"unknown strategy: {strategy}")
         claims = {r: {"claim": c, "note": ""} for r, c in chosen.items()}
@@ -175,6 +179,60 @@ def play_scenario(scenario_id, strategy, seed, threshold=40):
     caught = res["end_reason"] == "caught"
     goal = goal_met(scenario_id, g, history, res, threshold)
     return goal, won, caught
+
+
+def ring_far_varies(seed, samples=128):
+    """고리 마을 고정 시드 조건: 먼 집 판단이 내 수에 따라 갈리는지 확인.
+    1) 정직(진짜 날씨)으로 7일 완주 시 먼 두 집 모두 정답,
+    2) smart 승리 시 하늘을 바로 본 먼 집이 이웃 쪽지를 따라 틀림,
+    3) 무작위 수 표본에서 재판이 발생할 수 있고, 7일 완주 중 승률 ≥ 10%이며 먼 두 집 각각의 오답률이 15%~85% 사이."""
+    def run_last(strat):
+        cfg = GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["ring-village"])
+        g = Game(1, cfg)
+        ans = DECISION_OF[g.truth]
+        while not g.game_over:
+            chosen = {str(r): ans for r in ms.targets(g)} if strat == "honest" else ms.smart(g)
+            res = g.play({"turn": g.turn + 1, "claims": {r: {"claim": c, "note": ""} for r, c in chosen.items()}}, city_turn)
+        return g, res
+
+    g_hon, r_hon = run_last("honest")
+    if r_hon["end_reason"] != "turns_done":
+        return False
+    targets = set(ms.targets(g_hon))
+    far = sorted(c for c in g_hon.citizens if c not in targets)
+    if not all(c["correct"] for c in r_hon["cities"] if c["city"] in far):
+        return False
+
+    g_sm, r_sm = run_last("smart")
+    if not any(
+        c["city"] in far and c["correct"] is False and c["hint"] == g_sm.truth
+        for c in r_sm["cities"]
+    ):
+        return False
+
+    rng = random.Random(seed)
+    ans = DECISION_OF[g_hon.truth]
+    opts = (ans, OPPOSITE[ans])
+    t_list = sorted(targets)
+    done7 = wins = caught = 0
+    far_wrong = {c: 0 for c in far}
+    for _ in range(samples):
+        g = Game(1, GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["ring-village"]))
+        while not g.game_over:
+            claims = {str(r): {"claim": rng.choice(opts), "note": ""} for r in t_list}
+            res = g.play({"turn": g.turn + 1, "claims": claims}, city_turn)
+        if res["end_reason"] != "turns_done":
+            caught += 1
+            continue
+        done7 += 1
+        if res["outcome"] in ("win", "perfect_win"):
+            wins += 1
+        for c in res["cities"]:
+            if c["city"] in far_wrong and c["correct"] is False:
+                far_wrong[c["city"]] += 1
+    if caught == 0 or done7 == 0 or wins / done7 < 0.10:
+        return False
+    return all(0.15 <= far_wrong[c] / done7 <= 0.85 for c in far)
 
 
 def run_job(job):
@@ -248,6 +306,12 @@ def main(runs):
                 fixed_seeds[(scenario_id, "smart_wash", thr)] = next(
                     (s for s in range(runs) if sw_g[s] and not bot_g[s]), ""
                 )
+        elif scenario_id == "ring-village":
+            bot_g = by_key[(scenario_id, "bot", "")]["goals"]
+            sm_g = by_key[(scenario_id, "smart", "")]["goals"]
+            fixed_seeds[(scenario_id, "smart", "")] = next(
+                (s for s in range(runs) if sm_g[s] and not bot_g[s] and ring_far_varies(s)), ""
+            )
         else:
             bot_g = by_key[(scenario_id, "bot", "")]["goals"]
             sm_g = by_key[(scenario_id, "smart", "")]["goals"]

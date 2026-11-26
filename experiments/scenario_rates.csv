@@ -2,7 +2,7 @@ scenario,strategy,threshold,runs,goal_rate,goal_lo,goal_hi,win_rate,caught_rate,
 watchful-eye,always_lie,,1000,0.454,0.4234,0.485,0.454,0.313,0
 watchful-eye,smart,,1000,0.394,0.3642,0.4246,0.394,0.015,
 ring-village,bot,,1000,0.354,0.325,0.3841,0.354,0.095,
-ring-village,smart,,1000,0.419,0.3888,0.4498,0.419,0.006,17
+ring-village,smart,,1000,0.419,0.3888,0.4498,0.419,0.006,767
 regain-trust,bot,40,1000,0.0,0.0,0.0038,0.445,0.329,
 regain-trust,smart,40,1000,0.0,0.0,0.0038,0.501,0.007,
 regain-trust,smart_wash,30,1000,0.489,0.4581,0.52,0.493,0.01,2
