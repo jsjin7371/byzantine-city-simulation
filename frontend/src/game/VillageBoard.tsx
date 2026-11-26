@@ -435,7 +435,21 @@ function HouseView({
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
   // 어긋난 쪽지 한 장이면 재판: 막대가 약하게 두근거린다
   const near = !over && h.suspicion != null && h.suspicion >= SUSPICION.threshold - SUSPICION.disagree
-  const postX = -48 + 0.96 * SUSPICION.threshold
+  const postX = 2 + 0.96 * SUSPICION.threshold
+  const gaugePreview =
+    h.suspicion != null && pick?.preview && (pick.preview.next !== h.suspicion || pick.preview.trial)
+      ? pick.preview
+      : null
+  const gaugeLeft = over ? -22 : 0
+  const valDigits = h.suspicion != null ? String(h.suspicion).length : 0
+  const badgeW = valDigits >= 3 ? 36 : 30
+  const curRight = over ? 104 + badgeW : 106 + valDigits * 10.3
+  const previewX = curRight + 6
+  const previewW = gaugePreview
+    ? 16.7 + String(gaugePreview.next).length * 10 + (gaugePreview.trial ? 38 : 0)
+    : 0
+  const gaugeRight = gaugePreview ? previewX + previewW : curRight
+  const gaugeCx = (gaugeLeft + gaugeRight) / 2
   const hlHouse = Boolean(pick && pointed)
   const hlWindow = highlight === 'windows'
   const hlSuspicion = highlight === 'suspicion'
@@ -519,12 +533,30 @@ function HouseView({
       )}
       {h.suspicion != null && (
         <g
-          transform={`translate(${x - 20},${y + 24})`}
+          transform={`translate(${x - gaugeCx},${y + 24})`}
           className={`${over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}${hlSuspicion ? ' vb-tut-hl' : ''}`}
         >
-          {hlSuspicion && <rect className="vb-tut-ring" x="-56" y="-15" width="146" height="41" rx="8" aria-hidden />}
-          <rect x="-50" y="-5" width="100" height="10" rx="5" fill="#5a3d22" />
-          <rect className="vb-gauge-fill" x="-48" y="-3" width="96" height="6" rx="3" style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }} />
+          {hlSuspicion && (
+            <rect
+              className="vb-tut-ring"
+              x={gaugeLeft - 6}
+              y="-15"
+              width={gaugeRight - gaugeLeft + 12}
+              height="41"
+              rx="8"
+              aria-hidden
+            />
+          )}
+          <rect x="0" y="-5" width="100" height="10" rx="5" fill="#5a3d22" />
+          <rect
+            className="vb-gauge-fill"
+            x="2"
+            y="-3"
+            width="96"
+            height="6"
+            rx="3"
+            style={{ transform: `scaleX(${Math.min(h.suspicion, 100) / 100})` }}
+          />
           {/* 재판 기준 60 말뚝 */}
           <g className="vb-post">
             <path d={`M${postX} -9 V10`} />
@@ -535,20 +567,27 @@ function HouseView({
           </g>
           {over && (
             <g className="vb-knot" aria-hidden>
-              <circle cx="-62" r="10" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" />
-              <text x="-62" y="5.5" fontSize="15" fontWeight="800" textAnchor="middle" className="vb-light">
+              <circle cx="-12" r="10" fill="#a8361f" stroke="#4a1a10" strokeWidth="1.5" />
+              <text x="-12" y="5.5" fontSize="15" fontWeight="800" textAnchor="middle" className="vb-light">
                 !
               </text>
             </g>
           )}
-          {over && <rect x="53" y="-14" width="32" height="26" rx="3" fill="#a8361f" />}
-          <text x="56" y="6" fontSize="18" fontWeight="700" className={over ? 'vb-light' : undefined}>
+          {over && <rect x="104" y="-14" width={badgeW} height="26" rx="3" fill="#a8361f" />}
+          <text
+            x={over ? 104 + badgeW / 2 : 106}
+            y="6"
+            fontSize="18"
+            fontWeight="700"
+            textAnchor={over ? 'middle' : undefined}
+            className={over ? 'vb-light' : undefined}
+          >
             {h.suspicion}
           </text>
-          {pick?.preview && (pick.preview.next !== h.suspicion || pick.preview.trial) && (
-            <text x="88" y="6" fontSize="17.5" fontWeight="700" className={worsens(pick.preview) ? 'vb-rust' : 'vb-green'}>
-              →{pick.preview.next}
-              {pick.preview.trial && ' 재판'}
+          {gaugePreview && (
+            <text x={previewX} y="6" fontSize="17.5" fontWeight="700" className={worsens(gaugePreview) ? 'vb-rust' : 'vb-green'}>
+              →{gaugePreview.next}
+              {gaugePreview.trial && ' 재판'}
             </text>
           )}
         </g>
@@ -572,7 +611,7 @@ function HouseView({
       {pick?.changed && (
         <g
           className={hlChanged ? 'vb-new vb-tut-hl' : 'vb-new'}
-          transform={`translate(${x - 10},${y + (h.suspicion != null ? 92 : 56)})`}
+          transform={`translate(${x},${y + (h.suspicion != null ? 92 : 56)})`}
           aria-hidden
         >
           <rect x="-92" y="-11.5" width="184" height="23" rx="11.5" />

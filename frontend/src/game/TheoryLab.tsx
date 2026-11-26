@@ -31,7 +31,7 @@ const CHAPTER1_SCENARIOS: readonly {
     brief: '"길이 좁아 양옆 두 집에만 쪽지를 보낼 수 있어요."',
     chips: ['집 5채', '양옆과만 연결', '잘못 볼 확률 45%'],
     goal: '주민 3명을 속이기',
-    rule: '직접 말할 수 있는 집은 둘뿐이에요. 나머지 한 집은 이웃이 전하는 소문으로 넘겨야 해요.',
+    rule: '직접 말할 수 있는 집은 둘뿐이에요. 나머지 두 집 중 한 집은 이웃이 전하는 소문으로 넘겨야 해요.',
     rate: '잘하면 38% 이겨요',
     topic: 'ring',
   },
@@ -127,7 +127,7 @@ export function TheoryLab({
         <section className="tl-section" aria-labelledby="tl-ch1-title">
           <div className="tl-chapter">
             <h2 id="tl-ch1-title">첫째 장</h2>
-            <p>지금 엔진으로 바로 열 수 있는 마을 다섯</p>
+            <p>이론을 읽어 볼 수 있는 마을 다섯</p>
           </div>
           <p id={soonId} className="tl-soon-note">
             시나리오 실제 플레이는 준비 중이에요. 지금은 각 마을의 &ldquo;이론 읽기&rdquo;를 먼저 열어 볼 수 있어요.
