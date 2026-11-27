@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, nextObservationTag, pairMid, reached, scaleLeader, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
+import { PHASE_LABEL, RING_TRAILS, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, nextObservationTag, pairMid, reached, scaleLeader, shareBadgeLabel, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TrialStampMode, TutorialHighlight } from './village'
 import './village.css'
 
@@ -71,8 +71,9 @@ function Defs() {
   )
 }
 
-// 풀밭, 오솔길, 공터, 광장, 숲 (바뀌지 않는 바닥판)
-function Ground() {
+// 풀밭, 오솔길, 공터, 광장, 숲 (바뀌지 않는 바닥판). 고리 연결에서는 양옆 이웃끼리 이어진 길을 그린다.
+function Ground({ ring = false }: { ring?: boolean }) {
+  const trails = ring ? RING_TRAILS : TRAILS
   return (
     <g aria-hidden>
       <rect width="900" height="660" fill="#93a85a" />
@@ -80,10 +81,10 @@ function Ground() {
       <g filter="url(#vb-rough)">
         <g fill="none" strokeLinecap="round">
           <g stroke="#9c7442" strokeWidth="20">
-            {TRAILS.map((d) => <path key={d} d={d} />)}
+            {trails.map((d) => <path key={d} d={d} />)}
           </g>
           <g stroke="#c9a068" strokeWidth="13">
-            {TRAILS.map((d) => <path key={d} d={d} />)}
+            {trails.map((d) => <path key={d} d={d} />)}
           </g>
         </g>
         <g fill="#d9bb7c" stroke="#a9884f" strokeWidth="2">
@@ -97,7 +98,9 @@ function Ground() {
         <g fill="#9f9886" stroke="#5f5a4c" strokeWidth="1.5">
           {STONES.map(([x, y]) => <ellipse key={`${x}-${y}`} cx={x} cy={y} rx="9" ry="6" />)}
         </g>
-        {TREES.map(([x, y]) => <use key={`${x}-${y}`} href="#vb-tree" x={x} y={y} />)}
+        {TREES.filter(([x, y]) => !(ring && y >= 225 && y <= 238 && x >= 360 && x <= 540)).map(([x, y]) => (
+          <use key={`${x}-${y}`} href="#vb-tree" x={x} y={y} />
+        ))}
       </g>
     </g>
   )
@@ -298,8 +301,9 @@ function houseLabel(h: House, playerCity: number) {
     `${name}, 주민`,
     h.flag ? `지난밤 결정 ${decisions[h.flag]}` : '아직 결정 없음',
     obs?.aria,
-    h.suspicion != null &&
-      `나에 대한 의심도 ${h.suspicion}${h.suspicion >= SUSPICION.threshold ? ', 재판 기준 넘음' : ''}`,
+    h.reachable &&
+      h.suspicion != null &&
+      `나에 대한 의심도 ${h.suspicion}${h.suspicion >= SUSPICION.threshold ? ', 재판 기준 도달' : ''}`,
     ...others,
     !h.reachable && '쪽지를 보낼 수 없음',
   ]
@@ -428,7 +432,8 @@ function HouseView({
   const { x, y } = h
   const obs = !isNight ? nextObservationTag(h) : null
   const obsW = obs ? (obs.lit ? 162 : 202) : 0
-  const obsY = h.suspicion != null ? y + 67 : y + 26
+  const showSuspicion = h.suspicion != null && h.reachable
+  const obsY = showSuspicion ? y + 67 : y + 26
   const base = `${houseLabel(h, playerCity)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
   const label = pick
     ? `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
@@ -482,7 +487,23 @@ function HouseView({
           <use href="#vb-hut-dark" />
         </g>
       ) : (
-        <use href={mafia ? '#vb-hut-dark' : '#vb-hut'} x={x} y={y} filter="url(#vb-rough)" />
+        <use href={mafia ? '#vb-hut-dark' : '#vb-hut'} x={x} y={y} className="vb-hut-art" filter="url(#vb-rough)" />
+      )}
+      {h.role === 'citizen' && !h.reachable && !isNight && (
+        <g className="vb-far-tag" transform={`translate(${x - 24},${y - 82})`} aria-hidden="true">
+          <rect x="-44" y="-11" width="88" height="22" rx="11" strokeWidth="1.5" />
+          <text y="4.5" fontSize="13" fontWeight="700" textAnchor="middle">
+            직접 못 보냄
+          </text>
+        </g>
+      )}
+      {h.role === 'colleague' && (
+        <g className="vb-ally-tag" transform={`translate(${x + 14},${y - 80})`} aria-hidden="true">
+          <rect x="-48" y="-11" width="96" height="22" rx="11" strokeWidth="1.5" />
+          <text y="4.5" fontSize="13" fontWeight="700" textAnchor="middle">
+            동료 · 늘 거짓
+          </text>
+        </g>
       )}
       {h.role === 'player' ? (
         <g>
@@ -533,7 +554,7 @@ function HouseView({
           {hlWindow && <rect className="vb-tut-ring" x={x - 32} y={y - 33} width="28" height="26" rx="6" aria-hidden />}
         </g>
       )}
-      {h.suspicion != null && (
+      {showSuspicion && h.suspicion != null && (
         <g
           transform={`translate(${x - gaugeCx},${y + 19})`}
           className={`${over ? 'vb-gauge is-over' : near ? 'vb-gauge is-near' : 'vb-gauge'}${hlSuspicion ? ' vb-tut-hl' : ''}`}
@@ -766,8 +787,16 @@ function Trial({
 }
 
 // 밤에 오솔길을 따라 각 집으로 가는 말: 내 쪽지(큰 쪽지)와 다른 집의 주장(작은 쪽지).
-function Talk({ result, player }: { result: TurnResult; player: number }) {
-  const notes = talkNotes(player, result).sort((a, b) => Number(a.from === player) - Number(b.from === player)) // 내 쪽지를 맨 위에
+function Talk({
+  result,
+  player,
+  connection,
+}: {
+  result: TurnResult
+  player: number
+  connection: GameState['config']['connection']
+}) {
+  const notes = talkNotes(player, result, connection).sort((a, b) => Number(a.from === player) - Number(b.from === player)) // 내 쪽지를 맨 위에
   return (
     <g aria-hidden>
       {notes.map((n, i) => (
@@ -869,38 +898,39 @@ function NoteCard({
 }
 
 // 표지판 한 장에 두 줄
-const SIGNS = [
+const SIGNS: readonly (readonly [string, string])[] = [
   ['1 집 창문의', '불빛부터 봐요'],
   ['2 각 집마다 보낼', '쪽지를 골라요'],
   ['3 쪽지를 비교하는 집엔', '같은 쪽지를 보내요'],
 ]
+const RING_PICK_SIGN: readonly [string, string] = ['2 양옆 두 집에 보낼', '쪽지를 골라요']
+const RING_SHARE_SIGN: readonly [string, string] = ['3 비교하는 두 집에', '쪽지가 둘 다 가는지 봐요']
+const NEUTRAL_SHARE_SIGN: readonly [string, string] = ['3 다르게 말하면 비교에서', '모순이 드러나요']
 
-// 첫날 안내 표지판 (왼쪽 나무 기둥).
-function Signs() {
+// 첫날 안내 표지판 (왼쪽 나무 기둥). 1일째 왼쪽 위 집의 관측 꼬리표(y 291까지) 아래에서 시작한다.
+function Signs({ neutralShareSign = false, ring = false }: { neutralShareSign?: boolean; ring?: boolean }) {
+  const thirdSign = neutralShareSign ? NEUTRAL_SHARE_SIGN : ring ? RING_SHARE_SIGN : SIGNS[2]
+  const signs = [SIGNS[0], ring ? RING_PICK_SIGN : SIGNS[1], thirdSign]
+  const ariaLabel = `첫날 안내: ${signs.map(([a, b]) => `${a} ${b}`).join(', ')}`
   return (
-    <g
-      fontSize="15"
-      fontWeight="700"
-      role="img"
-      aria-label="첫날 안내: 1 집 창문의 불빛부터 봐요, 2 각 집마다 보낼 쪽지를 골라요, 3 쪽지를 비교하는 집엔 같은 쪽지를 보내요"
-    >
+    <g fontSize="15" fontWeight="700" role="img" aria-label={ariaLabel}>
       <rect x="80" y="274" width="9" height="146" fill="#5a3d22" filter="url(#vb-rough)" />
       <text x="16" y="270" className="vb-sign-title">
         첫날 안내
       </text>
-      {SIGNS.map(([first, second], i) => (
+      {signs.map(([first, second], i) => (
         <g key={first} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
-            d={`M8 ${280 + i * 49} H174 L184 ${302 + i * 49} L174 ${324 + i * 49} H8 Z`}
+            d={`M8 ${293 + i * 44} H174 L184 ${313 + i * 44} L174 ${333 + i * 44} H8 Z`}
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
             filter="url(#vb-rough)"
           />
-          <text x="14" y={298 + i * 49}>
+          <text x="14" y={310 + i * 44}>
             {first}
           </text>
-          <text x="14" y={317 + i * 49}>
+          <text x="14" y={328 + i * 44}>
             {second}
           </text>
         </g>
@@ -1034,6 +1064,7 @@ export function VillageBoard({
   swayed = [],
   highlight = null,
   hideSigns = false,
+  neutralShareSign = false,
   onCardOpen,
   boardRef,
 }: {
@@ -1045,6 +1076,7 @@ export function VillageBoard({
   swayed?: number[] // 내 쪽지가 결정을 뒤집은 시민 (citizenScales)
   highlight?: TutorialHighlight | null // 튜토리얼 강조 대상 이름
   hideSigns?: boolean // 튜토리얼에서는 첫날 안내 표지판을 숨긴다
+  neutralShareSign?: boolean // 시나리오 요령과 충돌하지 않게 3번 표지판을 규칙 사실로 바꾼다
   onCardOpen?: (city: number | null) => void
   boardRef?: RefObject<SVGSVGElement | null>
 }) {
@@ -1104,15 +1136,36 @@ export function VillageBoard({
   const houses = night
     ? stagedHouses(state, night.prev, night.result, night.phase, night.decided)
     : villageHouses(state, result)
-  const pairs = (night ? night.result.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
+  const showTurnSharing = Boolean(!picker && result)
+  const pairs = (showTurnSharing ? result!.sharing.map((s) => s.pair) : result ? result.next_share_pairs : state.next_share_pairs) ?? []
   const clashes = picker ? clashingPairs(pairs, picker.claims) : []
-  // 연출 중 모순이 들킨 쌍 (내가 두 집에 다른 말을 했다)
+  // 연출 중(의심 단계 이후)과 결과·지난 턴 보기에서 모순이 들킨 쌍 (내가 두 집에 다른 말을 했다)
   const caught =
-    night && at('suspicion')
-      ? night.result.sharing.filter((s) => s.contradictions.some((c) => c.city === state.player_city)).map((s) => s.pair)
+    showTurnSharing && at('suspicion')
+      ? result!.sharing.filter((s) => s.contradictions.some((c) => c.city === state.player_city)).map((s) => s.pair)
       : []
-  const red = (a: number, b: number) => [...clashes, ...caught].some(([x, y]) => x === a && y === b)
+  const redPairs = [...clashes, ...caught]
+  const red = (a: number, b: number) => redPairs.some(([x, y]) => x === a && y === b)
+  const sortedPairs = [...pairs].sort((p, q) => Number(red(p[0], p[1])) - Number(red(q[0], q[1])))
   const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집${red(a, b) ? '(모순)' : ''}`).join(', ')
+  const pastSharing = showTurnSharing && !night
+  const badgeText = shareBadgeLabel(
+    pairs.length,
+    redPairs.length,
+    state.config.share_mode,
+    state.config.citizen_type,
+    pastSharing,
+  )
+  const shareTag =
+    badgeText && pairs.length === 1
+      ? { pos: pairMid(state.player_city, pairs[0][0], pairs[0][1]), label: badgeText, w: 164 }
+      : badgeText && pairs.length > 1
+        ? {
+            pos: [PLAZA.x, PLAZA.y - 22] as const,
+            label: badgeText,
+            w: redPairs.length > 0 ? (state.config.citizen_type === 'ai' ? 216 : 304) : 164,
+          }
+        : null
   const preview = (h: House, claim?: Claim) =>
     picker?.ruled && claim ? suspicionPreview(h, claim, pairs, picker.claims) : null
   const changed = picker && result ? changedHouses(result) : {}
@@ -1159,7 +1212,7 @@ export function VillageBoard({
       onKeyDown={(e) => e.key === 'Escape' && setOpen(null)}
     >
       <Defs />
-      <Ground />
+      <Ground ring={state.config.connection === 'ring'} />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <BoardLegend />
       <Sky danger={state.truth === 'danger'} highlighted={highlight === 'sky'} />
@@ -1174,32 +1227,40 @@ export function VillageBoard({
         </g>
       )}
       {pairs.length > 0 && (
-        <g className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'} role="img" aria-label={`오늘 밤 쪽지 비교: ${pairLabel}`}>
-          <title>{`오늘 밤 쪽지 비교: ${pairLabel}`}</title>
-          {pairs.map(([a, b]) => {
+        <g
+          className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'}
+          role="img"
+          aria-label={`${badgeText}: ${pairLabel}`}
+        >
+          <title>{`${badgeText}: ${pairLabel}`}</title>
+          {sortedPairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
-            const [mx, my] = pairMid(state.player_city, a, b)
             return (
               <g key={`${a}-${b}`} className={red(a, b) ? 'is-clash' : undefined}>
                 <path d={d} className="vb-share-glow" />
                 <path d={d} fill="none" stroke="#3b2a1a" strokeWidth="9" strokeLinecap="round" opacity=".35" />
                 <path d={d} className="vb-share-line" fill="none" stroke="#ffd35a" strokeWidth="5" strokeDasharray="11 9" strokeLinecap="round" />
-                {/* 점선 이름표: 이 두 집은 오늘 밤 내가 준 쪽지를 서로 비교한다 */}
-                <g className="vb-share-tag" aria-hidden>
-                  <rect x={mx - 82} y={my - 80} width="164" height="25" rx="12.5" strokeWidth="1.5" />
-                  <text x={mx} y={my - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
-                    오늘 밤 쪽지 비교
-                  </text>
-                </g>
               </g>
             )
           })}
+          {shareTag && (
+            <g className={redPairs.length > 0 ? 'is-clash' : undefined} aria-hidden>
+              <g className="vb-share-tag">
+                <rect x={shareTag.pos[0] - shareTag.w / 2} y={shareTag.pos[1] - 80} width={shareTag.w} height="25" rx="12.5" strokeWidth="1.5" />
+                <text x={shareTag.pos[0]} y={shareTag.pos[1] - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
+                  {shareTag.label}
+                </text>
+              </g>
+            </g>
+          )}
         </g>
       )}
       <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-plaza-label" aria-hidden>
         광장
       </text>
-      {picker && turn === 0 && !hideSigns && <Signs />}
+      {picker && turn === 0 && !hideSigns && (
+        <Signs neutralShareSign={neutralShareSign} ring={state.config.connection === 'ring'} />
+      )}
       {houses.map((h) => {
         const inFlags = night?.phase === 'flags' && h.order > 0
         const decided = !night || reached(night.phase, 'suspicion') || (inFlags && h.order <= night.decided)
@@ -1249,12 +1310,15 @@ export function VillageBoard({
         )
       })}
       {pointerTarget && <HousePointer target={pointerTarget} />}
-      {night && at('notes') && <Talk result={night.result} player={state.player_city} />}
-      {caught.map(([a, b]) => {
-        const [mx, my] = pairMid(state.player_city, a, b)
-        const knot = contradictionKnotCopy(state.config.citizen_type, 'caught', a, b)
-        return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} />
-      })}
+      {night && at('notes') && (
+        <Talk result={night.result} player={state.player_city} connection={state.config.connection} />
+      )}
+      {pairs.length === 1 &&
+        caught.map(([a, b]) => {
+          const [mx, my] = pairMid(state.player_city, a, b)
+          const knot = contradictionKnotCopy(state.config.citizen_type, 'caught', a, b)
+          return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} />
+        })}
       {result?.vote && at('trial') && (
         <Trial
           vote={result.vote}
@@ -1278,11 +1342,12 @@ export function VillageBoard({
         />
       )}
       {activeSuspicionLinks.length > 0 && <SuspicionLines links={activeSuspicionLinks} />}
-      {clashes.map(([a, b]) => {
-        const [mx, my] = pairMid(state.player_city, a, b)
-        const knot = contradictionKnotCopy(state.config.citizen_type, 'clashes', a, b)
-        return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} title />
-      })}
+      {pairs.length === 1 &&
+        clashes.map(([a, b]) => {
+          const [mx, my] = pairMid(state.player_city, a, b)
+          const knot = contradictionKnotCopy(state.config.citizen_type, 'clashes', a, b)
+          return <ContradictionKnot key={`${a}-${b}`} x={mx} y={my} label={knot.label} text={knot.text} title />
+        })}
       {opened && picker && (
         <NoteCard
           key={opened.city}

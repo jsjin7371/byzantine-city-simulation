@@ -78,7 +78,8 @@ def validate_reply(reply, keys, wary):
 class Game:
     def __init__(self, game_id, config):
         self.game_id, self.config = game_id, config
-        self.rng = rng = random.Random(config.seed)  # 정답, 마피아 위치, 힌트, 공유 쌍, 동점 투표를 모두 뽑는다
+        self.rng = rng = random.Random(config.seed)  # 정답, 마피아 위치, 힌트, 공유 쌍을 뽑는다
+        self.vote_rng = random.Random(None if config.seed is None else f"{config.seed}/vote")  # 동점 투표 전용 (관측과 분리)
         self.truth = rng.choice(["danger", "safe"])
         mafia = rng.sample(range(1, N + 1), config.mafia_count)
         self.player = mafia[0]
@@ -139,7 +140,7 @@ class Game:
     def play(self, body, city_turn):
         """한 턴 진행 (7.5). city_turn(city, 요청) → 7.10 응답. 반환은 7.7 턴 결과."""
         claims = self._claims(body)
-        cfg, t, rng = self.config, self.turn + 1, self.rng
+        cfg, t = self.config, self.turn + 1
         answer = DECISION_OF[self.truth]
 
         # 2. 주장 모으기. 시민은 직전 결정, 동료·봇은 정답의 반대, 사람은 받는 시민별 claims.
@@ -191,7 +192,7 @@ class Game:
             ballots = {}
             for r in self.citizens:
                 top = max(self.suspicion[r].values())
-                ballots[str(r)] = int(rng.choice([s for s, v in self.suspicion[r].items() if v == top]))
+                ballots[str(r)] = int(self.vote_rng.choice([s for s, v in self.suspicion[r].items() if v == top]))
             counts = list(ballots.values())
             accused = next((c for c in sorted(set(counts)) if counts.count(c) * 2 > len(self.citizens)), None)
             caught = accused is not None and self.roles[accused] != "citizen"

@@ -139,6 +139,7 @@ export function VillageLog({
   lines,
   day,
   citizenType = 'wary',
+  ring = false,
   live = false,
   tonightScale = null,
   highlight = null,
@@ -149,6 +150,7 @@ export function VillageLog({
   lines: Line[] | null
   day?: number
   citizenType?: CitizenType
+  ring?: boolean
   live?: boolean
   tonightScale?: { city: number; votes: TonightVotes } | null
   highlight?: 'log' | 'scale' | 'votes' | null
@@ -235,7 +237,13 @@ export function VillageLog({
         )}
       </div>
       <div ref={log} className={live ? 'vl-log is-live' : 'vl-log'} aria-live={live ? 'polite' : undefined}>
-        {!entries && <p className="vl-event is-quiet">아직 첫날 밤이 오지 않았어요. 집마다 쪽지를 고르고 밤으로 넘겨 보세요.</p>}
+        {!entries && (
+          <p className="vl-event is-quiet">
+            {ring
+              ? '아직 첫날 밤이 오지 않았어요. 양옆 두 집의 쪽지를 고르고 밤으로 넘겨 보세요.'
+              : '아직 첫날 밤이 오지 않았어요. 집마다 쪽지를 고르고 밤으로 넘겨 보세요.'}
+          </p>
+        )}
         {entries?.map((entry, i) => {
           if (entry.kind === 'when') {
             return (

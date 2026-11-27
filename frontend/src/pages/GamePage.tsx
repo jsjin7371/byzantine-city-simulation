@@ -12,7 +12,8 @@ import {
 } from '../gameApi'
 import type { CitizenType, Claim, Difficulty, GameState, TurnResult } from '../gameApi'
 import { GameStart } from '../game/GameStart'
-import { TheoryLab } from '../game/TheoryLab'
+import { ScenarioBriefing, ScenarioResult, TheoryLab } from '../game/TheoryLab'
+import type { Scenario } from '../game/TheoryLab'
 import { Tutorial } from '../game/Tutorial'
 import { VillageBoard } from '../game/VillageBoard'
 import { VillageLog } from '../game/VillageLog'
@@ -25,6 +26,10 @@ import {
   nightStepMs,
   nightSteps,
   plainAiReason,
+  saveCompletedScenario,
+  scenarioGoalMet,
+  scenarioGoalSteps,
+  stubbornAllyStatus,
   tonightVotes,
   tutorialStep,
   villageHouses,
@@ -145,7 +150,8 @@ function scrollIntoView(el: HTMLElement | null) {
 export function GamePage() {
   const [difficulty, setDifficulty] = useState<Difficulty>('normal')
   const [citizenType, setCitizenType] = useState<CitizenType>('wary')
-  const [screen, setScreen] = useState<'start' | 'lab'>('start')
+  const [screen, setScreen] = useState<'start' | 'lab' | 'briefing'>('start')
+  const [scenario, setScenario] = useState<Scenario | null>(null)
   const [state, setState] = useState<GameState | null>(null)
   const [claims, setClaims] = useState<Record<string, Claim>>({})
   const [history, setHistory] = useState<TurnResult[]>([])
@@ -167,6 +173,7 @@ export function GamePage() {
   useEffect(() => {
     if (prevView.current !== view) {
       prevView.current = view
+      window.scrollTo(0, 0)
       headingRef.current?.focus({ preventScroll: true })
     }
   }, [view])
@@ -200,48 +207,8 @@ export function GamePage() {
     }
   }
 
-  const start = (isTutorial = false) =>
-    run(async () => {
-      setState(null) // 실패해도 이전 게임을 이어서 진행하지 않게 (God은 새 요청 때 이전 게임을 버린다)
-      const game = isTutorial
-        ? await createGame('easy', 'wary', undefined, TUTORIAL_SEED)
-        : await createGame(difficulty, citizenType)
-      setState(game)
-      setTutorial(isTutorial)
-      setTutorialCursor(0)
-      setOpenCity(null)
-      setScaleOpen(false)
-      setHistory([])
-      setViewed(0)
-      setStep(null)
-      setClaims(defaultClaims(game))
-    }, '게임을 시작하지 못했어요.')
-
-  const submit = () =>
-    run(async () => {
-      if (!state) return
-      const turn = await playTurn(state.game_id, state.turn + 1, claims)
-      setHistory([...history, turn])
-      setViewed(0)
-      setOpenCity(null)
-      // 움직임 줄이기 설정이면 연출 없이 바로 최종 상태
-      setStep(matchMedia('(prefers-reduced-motion: reduce)').matches ? null : 0)
-      setState({
-        ...state,
-        turn: turn.turn,
-        game_over: turn.game_over,
-        outcome: turn.outcome,
-        end_reason: turn.end_reason,
-        next_hints: turn.next_hints,
-        next_share_pairs: turn.next_share_pairs,
-      })
-      // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다 (실패해도 종료 상태는 위에서 반영됨).
-      if (turn.game_over) setState(await getGame(state.game_id))
-    }, '다음 밤으로 넘기지 못했어요.')
-
-  const exit = () => {
+  const resetPlay = () => {
     setState(null)
-    setScreen('start')
     setTutorial(false)
     setTutorialCursor(0)
     setOpenCity(null)
@@ -251,6 +218,72 @@ export function GamePage() {
     setStep(null)
     setClaims({})
     setError('')
+  }
+
+  const start = (isTutorial = false) =>
+    run(async () => {
+      resetPlay() // 실패해도 이전 게임을 이어서 진행하지 않게 (God은 새 요청 때 이전 게임을 버린다)
+      setScenario(null)
+      const game = isTutorial
+        ? await createGame('easy', 'wary', undefined, TUTORIAL_SEED)
+        : await createGame(difficulty, citizenType)
+      setState(game)
+      setTutorial(isTutorial)
+      setClaims(defaultClaims(game))
+    }, '게임을 시작하지 못했어요.')
+
+  const openBriefing = (selected: Scenario) => {
+    setScenario(selected)
+    setError('')
+    setScreen('briefing')
+  }
+
+  const startScenario = () => {
+    if (!scenario) return
+    void run(async () => {
+      resetPlay()
+      const game = await createGame('normal', 'wary', undefined, scenario.seed, scenario.config)
+      setState(game)
+      setClaims(defaultClaims(game, true))
+    }, '시나리오를 시작하지 못했어요.')
+  }
+
+  const submit = () =>
+    run(async () => {
+      if (!state) return
+      const turn = await playTurn(state.game_id, state.turn + 1, claims)
+      const nextHistory = [...history, turn]
+      const nextState = {
+        ...state,
+        turn: turn.turn,
+        game_over: turn.game_over,
+        outcome: turn.outcome,
+        end_reason: turn.end_reason,
+        next_hints: turn.next_hints,
+        next_share_pairs: turn.next_share_pairs,
+      }
+      if (scenario && turn.game_over && scenarioGoalMet(nextState, scenario.id, nextHistory)) {
+        saveCompletedScenario(scenario.id)
+      }
+      setHistory(nextHistory)
+      setViewed(0)
+      setOpenCity(null)
+      // 움직임 줄이기 설정이면 연출 없이 바로 최종 상태
+      setStep(matchMedia('(prefers-reduced-motion: reduce)').matches ? null : 0)
+      setState(nextState)
+      // bot_win_rate는 GET /games/{id}에 있다. 끝났을 때만 한 번 더 조회한다 (실패해도 종료 상태는 위에서 반영됨).
+      if (turn.game_over) setState(await getGame(state.game_id))
+    }, '다음 밤으로 넘기지 못했어요.')
+
+  const exit = () => {
+    resetPlay()
+    setScenario(null)
+    setScreen(scenario ? 'lab' : 'start')
+  }
+
+  const retryScenario = () => {
+    resetPlay()
+    setScreen('briefing')
   }
 
   const dismissTutorial = () => {
@@ -301,6 +334,13 @@ export function GamePage() {
     : 0
   const wrong = citizens.filter((c) => c.correct === false).length
   const fooled = fooledDots(settled ? wrong : 0, citizenCount)
+  const settledHistory = playing ? history.slice(0, -1) : history
+  const goalSteps =
+    scenario && state
+      ? scenarioGoalSteps(scenario.id, playing ? { ...state, outcome: null } : state, settledHistory)
+      : null
+  const allyStatus =
+    scenario?.id === 'stubborn-ally' && state ? stubbornAllyStatus(state, settledHistory) : null
   const ruled = state?.config.citizen_type === 'wary' // 7.6 규칙을 따르는 시민만 예상을 보인다
   const tonightScale = useMemo(() => {
     if (openCity == null || !latest || !state) return null
@@ -320,8 +360,25 @@ export function GamePage() {
     <>
       <PencilFilters />
       {!state ? (
-        screen === 'lab' ? (
-          <TheoryLab headingRef={headingRef} onBack={() => setScreen('start')} />
+        screen === 'briefing' && scenario ? (
+          <ScenarioBriefing
+            scenario={scenario}
+            busy={busy}
+            error={error}
+            headingRef={headingRef}
+            onBack={() => {
+              setScenario(null)
+              setError('')
+              setScreen('lab')
+            }}
+            onStart={startScenario}
+          />
+        ) : screen === 'lab' ? (
+          <TheoryLab
+            headingRef={headingRef}
+            onBack={() => setScreen('start')}
+            onStartScenario={openBriefing}
+          />
         ) : (
           <GameStart
             difficulty={difficulty}
@@ -339,7 +396,7 @@ export function GamePage() {
       ) : (
         <div className="gm-workspace gm-play">
           <h1 ref={headingRef} tabIndex={-1} className="sr-only">
-            AI 주민을 속여라
+            {scenario ? `${scenario.title} — AI 주민을 속여라` : 'AI 주민을 속여라'}
           </h1>
           <div className="gm-stage">
             <section className="gm-board-zone" aria-label="마을 보드">
@@ -349,6 +406,40 @@ export function GamePage() {
                     ← 나가기
                   </button>
                   {tutorialActive && <span className="gm-tutorial-badge">튜토리얼</span>}
+                  {scenario && (
+                    <span className={goalSteps ? 'gm-goal-badge is-steps' : 'gm-goal-badge'}>
+                      <span className="gm-goal-tag">목표</span> ·{' '}
+                      {goalSteps ? (
+                        <span className="gm-goal-steps">
+                          {goalSteps.map((s, idx) => (
+                            <Fragment key={s.label}>
+                              {idx > 0 && (
+                                <span className="gm-goal-arrow" aria-hidden="true">
+                                  →
+                                </span>
+                              )}
+                              <span className={s.done ? 'gm-goal-step is-done' : 'gm-goal-step'}>
+                                {s.done && (
+                                  <span className="gm-goal-check" aria-hidden="true">
+                                    ✓
+                                  </span>
+                                )}
+                                {s.label}
+                                {s.done && <span className="sr-only"> 완료</span>}
+                              </span>
+                            </Fragment>
+                          ))}
+                        </span>
+                      ) : (
+                        <>
+                          {scenario.goal}
+                          {allyStatus && (
+                            <span className={`gm-ally-pill is-${allyStatus.tone}`}>{allyStatus.label}</span>
+                          )}
+                        </>
+                      )}
+                    </span>
+                  )}
                   <div className="gm-role">
                     <span className="gm-me-dot" aria-hidden="true">
                       나
@@ -395,6 +486,7 @@ export function GamePage() {
                   stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
                   highlight={highlight}
                   hideSigns={tutorialActive}
+                  neutralShareSign={scenario != null && scenario.id !== 'ring-village'}
                   onCardOpen={setOpenCity}
                   boardRef={boardRef}
                   picker={
@@ -409,6 +501,7 @@ export function GamePage() {
               lines={lines && playing ? visibleLines(lines, steps[step]) : lines}
               day={shown?.turn}
               citizenType={state.config.citizen_type}
+              ring={state.config.connection === 'ring'}
               live={playing}
               tonightScale={tonightScale}
               highlight={highlight === 'log' || highlight === 'scale' || highlight === 'votes' ? highlight : null}
@@ -449,7 +542,7 @@ export function GamePage() {
                 <div className="vl-foot-actions">
                   <Button onClick={scrollToResult}>결과 보기</Button>
                   <Button variant="outline" onClick={exit} disabled={busy}>
-                    새 게임
+                    {scenario ? '실험실로' : '새 게임'}
                   </Button>
                 </div>
               ) : (
@@ -484,12 +577,24 @@ export function GamePage() {
                     <TurnReport result={shown} />
                   </details>
                 )}
-                <div className="gm-row">
-                  <Button onClick={exit} disabled={busy}>
-                    새 게임
-                  </Button>
-                </div>
+                {!scenario && (
+                  <div className="gm-row">
+                    <Button onClick={exit} disabled={busy}>
+                      새 게임
+                    </Button>
+                  </div>
+                )}
               </GameResult>
+              {scenario && (
+                <ScenarioResult
+                  scenario={scenario}
+                  state={state}
+                  history={history}
+                  busy={busy}
+                  onRetry={retryScenario}
+                  onLab={exit}
+                />
+              )}
             </div>
           )}
         </div>

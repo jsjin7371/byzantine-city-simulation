@@ -181,6 +181,34 @@ class GameRuleTests(unittest.TestCase):
                 self.assertNotEqual(int(voter), target)
                 seen.add(target)
         self.assertEqual(seen, {1, 2, 3, 4, 5})
+        # seed=None이어도 동점 투표가 정상 동작한다
+        g_none = Game(7, GameConfig(seed=None))
+        res_none = play(g_none, fixed_city(suspicion=lambda c, req: dict.fromkeys(req["suspicion"], 60)))
+        self.assertIsNotNone(res_none["vote"])
+
+    def test_same_seed_keeps_truth_hints_and_pairs_across_strategies(self):
+        """같은 시드면 플레이어 전략이 달라 재판 동점 투표가 열려도 하늘·힌트·비교 쌍이 매 턴 같다."""
+        def run_with(claim):
+            g = new_game(sensor_error=0.4)
+
+            def sus(c, req):
+                if req["received"][str(g.player)]["claim"] == "stay":
+                    others = [k for k in req["suspicion"] if int(k) != g.player]
+                    return {k: 60 if k in others[:2] else 0 for k in req["suspicion"]}
+                return dict.fromkeys(req["suspicion"], 0)
+
+            turns = [play(g, fixed_city(suspicion=sus), claims_for(g, claim)) for _ in range(7)]
+            return g.truth, turns
+
+        truth_a, turns_a = run_with("stay")
+        truth_b, turns_b = run_with("evacuate")
+        self.assertEqual(truth_a, truth_b)
+        self.assertTrue(all(t["vote"] is not None for t in turns_a))
+        self.assertTrue(all(t["vote"] is None for t in turns_b))
+        self.assertEqual(
+            [({r["city"]: r["hint"] for r in t["cities"]}, [s["pair"] for s in t["sharing"]]) for t in turns_a],
+            [({r["city"]: r["hint"] for r in t["cities"]}, [s["pair"] for s in t["sharing"]]) for t in turns_b],
+        )
 
     def test_catching_mafia_ends_game_immediately(self):
         """동료가 지목돼도 즉시 패배로 끝나고 다음 턴은 409."""

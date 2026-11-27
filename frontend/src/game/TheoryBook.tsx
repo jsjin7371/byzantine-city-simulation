@@ -75,51 +75,57 @@ export function TheoryBook({ topic, onClose }: { topic: TopicKey | null; onClose
       }}
     >
       {data && (
-        <div ref={pageRef} className="tb-page">
-          <button
-            ref={closeBtnRef}
-            type="button"
-            className="tb-close"
-            aria-label="이론 책 닫기"
-            onClick={() => dialogRef.current?.close()}
-          >
-            ×
-          </button>
-          <p className="tb-kicker">{data.kicker}</p>
-          <h2 id={titleId}>{data.title}</h2>
-          <p className="tb-en">{data.en}</p>
+        <>
+          <div className="tb-head">
+            <p className="tb-kicker">{data.kicker}</p>
+            <button
+              ref={closeBtnRef}
+              type="button"
+              className="tb-close"
+              aria-label="이론 책 닫기"
+              onClick={() => dialogRef.current?.close()}
+            >
+              ×
+            </button>
+          </div>
+          <div ref={pageRef} className="tb-page">
+            <h2 id={titleId}>{data.title}</h2>
+            <p className="tb-en">{data.en}</p>
 
-          <h3>쉽게 말하면</h3>
-          <p className="tb-easy">{data.easy}</p>
+            <h3>쉽게 말하면</h3>
+            <p className="tb-easy">{data.easy}</p>
 
-          <h3>이 게임에서는</h3>
-          <p>{data.game}</p>
-
-          <h3>이론</h3>
-          {data.boxes.map(([kind, body]) => (
-            <div key={kind} className="tb-box">
-              <b className="tb-box-kind">{kind}</b>
-              <p>{body}</p>
-            </div>
-          ))}
-          {topic && <TheoryFigure topic={topic} />}
-          {data.proof && (
-            <p className="tb-proof">
-              <b>왜 그런가.</b> {data.proof}
-            </p>
-          )}
-
-          <h3>참고 문헌</h3>
-          <ol className="tb-refs">
-            {data.refs.map((ref, i) => (
-              <li key={i}>
-                {ref.before}
-                {ref.italic && <i>{ref.italic}</i>}
-                {ref.after}
-              </li>
+            <h3>이 게임에서는</h3>
+            {data.game.split('\n').map((para) => (
+              <p key={para}>{para}</p>
             ))}
-          </ol>
-        </div>
+
+            <h3>이론</h3>
+            {data.boxes.map(([kind, body]) => (
+              <div key={kind} className="tb-box">
+                <b className="tb-box-kind">{kind}</b>
+                <p>{body}</p>
+              </div>
+            ))}
+            {topic && <TheoryFigure topic={topic} />}
+            {data.proof && (
+              <p className="tb-proof">
+                <b>왜 그런가.</b> {data.proof}
+              </p>
+            )}
+
+            <h3>참고 문헌</h3>
+            <ol className="tb-refs">
+              {data.refs.map((ref, i) => (
+                <li key={i}>
+                  {ref.before}
+                  {ref.italic && <i>{ref.italic}</i>}
+                  {ref.after}
+                </li>
+              ))}
+            </ol>
+          </div>
+        </>
       )}
     </dialog>
   )

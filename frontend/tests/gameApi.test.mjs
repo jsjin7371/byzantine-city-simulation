@@ -16,6 +16,8 @@ test('claim targets are neighbouring citizens only', () => {
   assert.deepEqual(claimTargets(ring3), [4])
   assert.deepEqual(defaultClaims(state), { 2: 'stay', 3: 'stay', 5: 'stay' })
   assert.deepEqual(defaultClaims({ ...state, truth: 'safe' }), { 2: 'evacuate', 3: 'evacuate', 5: 'evacuate' })
+  assert.deepEqual(defaultClaims(state, true), { 2: 'evacuate', 3: 'evacuate', 5: 'evacuate' })
+  assert.deepEqual(defaultClaims({ ...state, truth: 'safe' }, true), { 2: 'stay', 3: 'stay', 5: 'stay' })
 })
 
 test('createGame posts the difficulty preset and validates the state', async (context) => {
@@ -39,6 +41,15 @@ test('createGame posts the difficulty preset and validates the state', async (co
   fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify(state), { status: 201 }))
   await createGame('easy', 'wary', undefined, 0)
   assert.deepEqual(JSON.parse(fetchMock.mock.calls[3].arguments[1].body), { mafia_count: 1, sensor_error: 0.48, citizen_type: 'wary', seed: 0 })
+  fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify(state), { status: 201 }))
+  await createGame('normal', 'wary', undefined, 0, { share_mode: 'all', sensor_error: 0.45 })
+  assert.deepEqual(JSON.parse(fetchMock.mock.calls[4].arguments[1].body), {
+    mafia_count: 1,
+    sensor_error: 0.45,
+    citizen_type: 'wary',
+    share_mode: 'all',
+    seed: 0,
+  })
   fetchMock.mock.mockImplementation(async () => new Response(JSON.stringify({ detail: '실험이 실행 중입니다.' }), { status: 409 }))
   await assert.rejects(createGame('easy'), /실험이 실행 중/)
   fetchMock.mock.mockImplementation(async () => new Response('{}', { status: 201 }))

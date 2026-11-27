@@ -18,9 +18,15 @@ TUNE = [BASE, dict(BASE, up=10), dict(BASE, up=5), dict(BASE, down=10), dict(BAS
 OUT = os.path.dirname(os.path.abspath(__file__))
 
 
+def targets(g):
+    """사람 플레이어가 쪽지를 보낼 수 있는 시민 목록 (all이면 전원, ring이면 양옆 이웃만)."""
+    rec = g.receivers()
+    return [c for c in g.citizens if str(c) in rec]
+
+
 def bot(g):
     lie = OPPOSITE[DECISION_OF[g.truth]]
-    return {str(c): lie for c in g.citizens}
+    return {str(c): lie for c in targets(g)}
 
 
 def predict(g, claim):
@@ -43,7 +49,7 @@ def smart(g):
     """시민별 참/거짓 배정(최대 16가지)을 모두 predict로 보고, 이번 턴 뒤 의심도가 모두 limit(= 임계값 - 20) 미만인
     배정 중 거짓말이 가장 많은 것. 같으면 의심도 합이 낮은 쪽. 안전한 배정이 없으면 최대 의심도가 가장 낮은 배정
     (힌트와 같은 말로 신뢰 회복). 마지막 턴은 limit을 임계값으로 올린다 (이후 대가가 없음). wary 시민 전용."""
-    lie, cs = OPPOSITE[DECISION_OF[g.truth]], g.citizens
+    lie, cs = OPPOSITE[DECISION_OF[g.truth]], targets(g)
     limit = game.THRESHOLD if g.turn + 1 == TURNS else game.THRESHOLD - 20
     best = None
     for combo in itertools.product((True, False), repeat=len(cs)):
