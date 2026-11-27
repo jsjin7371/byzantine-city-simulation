@@ -1901,30 +1901,34 @@ test('stubbornAllyStatus and stubbornAllyOutcomeNote track colleague survival, p
   const colCaughtTurn = turn(6, [c(1, 60, 60)], { ballots: { 1: 3, 4: 3, 5: 2 }, accused: 3, caught: true })
   assert.deepEqual(stubbornAllyStatus(allyState('loss', 'caught'), [colCaughtTurn]), { label: '동료 재판에 걸림', tone: 'caught' })
 
-  // 1. 동료가 재판에 걸려 끝남 (조기 / 마지막 밤, 동점 추첨)
-  const colCaughtNote =
-    '마지막 밤까지 가지 못했어요. 재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 60에서 지목돼 판이 끝났어요.'
-  const myPeak = ' 동료의 의심도는 내 쪽지로 바뀌지 않아요. 그날 내 의심도는 최고 60이었어요.'
-  const drawn = ' 가장 의심하는 집이 동점인 주민이 있어, 추첨으로 지목이 갈렸어요.'
+  // 1. 동료가 재판에 걸려 끝남 (조기 / 마지막 밤 / 60 미만, 동점 추첨)
+  const compareNote = ' 동료의 의심도는 내 쪽지로 바뀌지 않지만, 주민이 누구를 지목할지는 나와의 비교로 갈려요.'
   // colCaughtTurn: 유일한 주민의 최고 의심도가 나와 동률(60) → 추첨
-  assert.equal(stubbornAllyOutcomeNote(allyState('loss', 'caught'), [colCaughtTurn]), colCaughtNote + drawn + myPeak)
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('loss', 'caught'), [colCaughtTurn]),
+    `재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 60에서 지목돼 판이 끝났어요(동점이라 추첨).${compareNote} 그날 내 의심도는 최고 60이었어요.`,
+  )
   const colCaughtDay7 = turn(7, [c(1, 40, 80)], { ballots: { 1: 3 }, accused: 3, caught: true })
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss', 'caught'), [colCaughtDay7]),
-    '마지막 밤 재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 80에서 지목돼 판이 끝났어요. 동료의 의심도는 내 쪽지로 바뀌지 않아요. 그날 내 의심도는 최고 40이었어요.',
+    `마지막 밤 재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 80에서 지목돼 판이 끝났어요.${compareNote} 그날 내 의심도는 최고 40이었어요.`,
+  )
+  const colCaughtLow = turn(5, [c(1, 60, 40), c(4, 20, 40), c(5, 0, 20)], { ballots: { 1: 2, 4: 3, 5: 3 }, accused: 3, caught: true })
+  assert.equal(
+    stubbornAllyOutcomeNote(allyState('loss', 'caught'), [colCaughtLow]),
+    `재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 40에서 지목돼 판이 끝났어요. 동료 의심도는 60 미만이었지만, 다른 집 의심도 때문에 열린 재판이었어요.${compareNote} 그날 내 의심도는 최고 60이었어요.`,
   )
 
   // 2. 내가 재판에 걸려 끝남 (60 이상 / 60 미만 + 동점 추첨)
   const meCaught = turn(3, [c(4, 60, 40)], { ballots: { 4: 2 }, accused: 2, caught: true })
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss', 'caught'), [meCaught]),
-    '마지막 밤까지 가지 못했어요. 재판에서 동료(3번 집)가 아니라 내 집이 의심도 60에서 지목됐어요. 그날 동료의 의심도는 최고 40이었어요. 두 의심도를 비교하며 다시 해 보세요.',
+    '재판에서 동료(3번 집)가 아니라 내 집이 의심도 60에서 지목됐어요. 그날 동료의 의심도는 최고 40이었어요. 두 의심도를 비교하며 다시 해 보세요.',
   )
   const meCaughtLow = turn(7, [c(1, 20, 60), c(4, 20, 20), c(5, 0, 0)], { ballots: { 1: 3, 4: 2, 5: 2 }, accused: 2, caught: true })
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss', 'caught'), [meCaughtLow]),
-    '마지막 밤 재판에서 동료(3번 집)가 아니라 내 집이 의심도 20에서 지목됐어요. 내 의심도는 60 미만이었지만, 다른 집 의심도 때문에 열린 재판이었어요.' +
-      drawn + ' 그날 동료의 의심도는 최고 60이었어요. 두 의심도를 비교하며 다시 해 보세요.',
+    '마지막 밤 재판에서 동료(3번 집)가 아니라 내 집이 의심도 20에서 지목됐어요(동점이라 추첨). 내 의심도는 60 미만이었지만, 다른 집 의심도 때문에 열린 재판이었어요. 그날 동료의 의심도는 최고 60이었어요. 두 의심도를 비교하며 다시 해 보세요.',
   )
 
   // 3. 7일 버텼지만 과반 못 속임 (동료 60 이상 / 미만 구분)

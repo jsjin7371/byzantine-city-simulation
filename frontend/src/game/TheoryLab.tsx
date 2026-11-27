@@ -97,7 +97,7 @@ const SCENARIOS: readonly Scenario[] = [
     shows: '마피아가 둘로 늘어난 마을에서, 늘 같은 거짓말만 반복하는 동료는 힘이 될까요, 약점이 될까요?',
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
     goal: '주민 과반을 속이기',
-    rule: '동료는 매일 같은 거짓 쪽지만 보내요. 동료나 내가 재판에 걸리면 판이 끝나요(패배). 주민 집을 눌러, 대피와 잔류를 고를 때의 내 의심도 미리 보기를 비교해 보세요.',
+    rule: '동료는 매일 같은 거짓 쪽지만 보내요. 동료나 내가 재판에 걸리면 판이 끝나요(패배). 위쪽 동료 의심도를 함께 보며, 주민 집을 눌러 대피와 잔류를 고를 때의 내 의심도 미리 보기를 비교해 보세요.',
     rate: '컴퓨터 전략으로 41% 이겨요',
     seed: 222,
     config: { mafia_count: 2, sensor_error: 0.48 },
@@ -106,7 +106,7 @@ const SCENARIOS: readonly Scenario[] = [
       theory:
         '의견을 바꾸지 않는 소수가 집단의 합의를 끌어가거나 막을 수 있어요. 마피아 둘을 견딘다고 보장하려면 집 7채가 필요한데 이 마을은 5채뿐이에요. 보장이 없다는 뜻이지, 마피아가 늘 이긴다는 뜻은 아니에요.',
       network:
-        '한 SNS 연구에서 단순한 옛 스팸봇은 어떤 무리는 99%\u2060가 정지됐지만 어떤 무리는 9%\u2060만 정지됐어요. 정상 글을 섞어 사람처럼 꾸민 새 봇은 대부분 살아남았어요.',
+        '한 SNS 연구(2017)에서 사기 링크를 반복해 뿌리던 단순한 스팸봇 한 무리는 99%\u2060가 정지됐어요. 반면 사람처럼 꾸민 새 봇 세 무리는 95%\u00a0넘게 살아남았어요.',
       reflect:
         '재판이 없는 다수결 마을이었다면, 같은 고집은 어떻게 달리 작용했을까요? 동료의 의심도를 내가 바꿀 수 있었다면 무엇이 달라졌을까요?',
     },
@@ -192,12 +192,12 @@ export function TheoryLab({
                   <div className="tl-card-foot">
                     <BookLink label="이론 읽기" icon onClick={() => setBookTopic(card.topic)} />
                     <button
-                        type="button"
-                        className="tl-play is-ready"
-                        onClick={() => onStartScenario(card)}
-                      >
-                        시작
-                      </button>
+                      type="button"
+                      className="tl-play is-ready"
+                      onClick={() => onStartScenario(card)}
+                    >
+                      시작
+                    </button>
                   </div>
                 </article>
               )
@@ -311,7 +311,9 @@ export function ScenarioResult({
   const blockedReason =
     state.end_reason === 'caught'
       ? `${lastDay}일째 ${colleagueCaught ? '동료가 ' : ''}재판에 걸렸어요.`
-      : '이번 판에서 목표를 이루지 못했어요.'
+      : state.end_reason === 'turns_done' && state.outcome === 'loss'
+        ? '마지막 밤 주민 과반을 속이지 못했어요.'
+        : '이번 판에서 목표를 이루지 못했어요.'
 
   return (
     <section className="gr-sheet sc-result" aria-label={`${scenario.title} 시나리오 결과`}>
