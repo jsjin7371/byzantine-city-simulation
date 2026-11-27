@@ -47,13 +47,13 @@ def citizen_rows(history, player_city, truth, city):
 
 
 def wash_peak(rows, end, threshold):
-    """rows[:end]를 역순으로 훑어 연속 힌트 일치 구간 직전의 threshold 이상 최고 의심도 (detectTactics와 동일)."""
+    """rows[:end]를 역순으로 훑어 이미 20 이하로 내려오지 않은 연속 힌트 일치 구간 직전의 threshold 이상 최고 의심도 (regainTrustProgress와 동일)."""
     peak = 0
     for p in range(end - 1, -1, -1):
         sus, _, match, _, _ = rows[p]
         if sus >= threshold:
             peak = max(peak, sus)
-        elif peak == 0 and match:
+        elif peak == 0 and match and sus > 20:
             continue
         else:
             break
@@ -61,21 +61,22 @@ def wash_peak(rows, end, threshold):
 
 
 def has_onoff(history, player_city, truth, threshold=40, need_fool=True):
-    """결과 화면 detectTactics의 온오프 판정(need_fool=False면 세탁 완료까지만 확인).
-    의심도 >= threshold 뒤 힌트와 같은 쪽지(연속 일치 구간 내 쪽지 전환 포함)로 <= 20까지 내린 뒤,
-    다시 threshold 이상이 되기 전에 거짓 쪽지로 그 주민을 속이면(correct=False) 달성."""
+    """결과 화면 regainTrustProgress의 온오프 판정(need_fool=False면 세탁 완료까지만 확인).
+    의심도 >= threshold 뒤 아직 20 이하로 내려오기 전의 연속 힌트 일치 구간(쪽지 전환 포함)에서
+    실제로 20 이하로 내려간 밤을 세탁으로 인정하고, 다시 threshold 이상이 되기 전에 거짓 쪽지로
+    그 주민을 속이면(correct=False) 달성."""
     if not history:
         return False
     for c in (x["city"] for x in history[0]["cities"] if x["role"] == "citizen"):
         rows = citizen_rows(history, player_city, truth, c)
         for j in range(1, len(rows)):
             sus_j, _, match_j, _, _ = rows[j]
-            if not match_j or sus_j > 20:
+            if not match_j or sus_j > 20 or rows[j - 1][0] <= 20:
                 continue
             if wash_peak(rows, j, threshold) < threshold:
                 continue
             q = j
-            while q > 0 and rows[q - 1][2]:
+            while q > 0 and rows[q - 1][2] and rows[q - 1][0] > 20:
                 q -= 1
             if not any(rows[m][1] != rows[m - 1][1] for m in range(max(1, q), j + 1)):
                 continue
@@ -328,6 +329,20 @@ def check():
     for seed in range(50):
         goal, _, _ = play_scenario("regain-trust", "bot", seed, 40)
         assert not goal, f"bot unexpectedly satisfied regain-trust on seed {seed}"
+    # 회귀: 이미 20 이하인 날(5일째 40→20 무전환, 6일째 20→20 전환)은 낮춘 날로 세지 않는다
+    def run_seed2(seq):
+        g = Game(1, GameConfig(citizen_type="wary", player="human", seed=2, **SCENARIOS["regain-trust"]))
+        cs = sorted(g.citizens)
+        hist = []
+        for day, word in enumerate(seq.split(), 1):
+            claims = {str(c): {"claim": "evacuate" if ch == "e" else "stay", "note": ""} for c, ch in zip(cs, word)}
+            hist.append(g.play({"turn": day, "claims": claims}, city_turn))
+        return g, hist
+
+    g_bad, h_bad = run_seed2("sses esee eeee eses sses esss ssse")
+    assert not has_onoff(h_bad, g_bad.player, g_bad.truth, 40), "already-20 day falsely counted as wash"
+    g_ok, h_ok = run_seed2("esss ssse ssss esss ssss ssss ssss")
+    assert has_onoff(h_ok, g_ok.player, g_ok.truth, 40), "textbook seed 2 sequence should satisfy on-off"
     print("check ok")
 
 

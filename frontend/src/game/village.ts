@@ -1756,15 +1756,20 @@ export function regainTrustProgress(
     }
 
     for (let j = 1; j < rows.length; j++) {
-      if (!rows[j].matchedHint || rows[j].sus > REGAIN_LOW) continue
+      // 이미 20 이하인 날은 낮춘 날로 세지 않는다: 직전 밤에는 20 초과였고 오늘 밤에 20 이하로 내려간 날만 인정.
+      if (!rows[j].matchedHint || rows[j].sus > REGAIN_LOW || rows[j - 1].sus <= REGAIN_LOW) continue
       let fromSus = 0
-      for (let p = j - 1; p >= 0 && (rows[p].sus >= REGAIN_PEAK || (fromSus === 0 && rows[p].matchedHint)); p--) {
+      for (
+        let p = j - 1;
+        p >= 0 && (rows[p].sus >= REGAIN_PEAK || (fromSus === 0 && rows[p].matchedHint && rows[p].sus > REGAIN_LOW));
+        p--
+      ) {
         if (rows[p].sus >= REGAIN_PEAK) fromSus = Math.max(fromSus, rows[p].sus)
       }
       if (fromSus < REGAIN_PEAK) continue
 
       let q = j
-      while (q > 0 && rows[q - 1].matchedHint) q--
+      while (q > 0 && rows[q - 1].matchedHint && rows[q - 1].sus > REGAIN_LOW) q--
       const start = Math.max(1, q)
       const switched = rows.slice(start, j + 1).some((r, idx) => r.sent !== rows[start + idx - 1].sent)
       if (!switched) {

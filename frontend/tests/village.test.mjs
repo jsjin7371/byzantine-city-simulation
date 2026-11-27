@@ -1978,6 +1978,89 @@ test('regainTrustOutcomeNote notes survived split trial on goal-not-met wins onl
   assert.doesNotMatch(regainTrustOutcomeNote(trustState('win'), otherSusSplit), /지목이 갈려/)
 })
 
+test('regainTrustProgress counts wash day only when suspicion actually drops from >20 to <=20 with a switch', () => {
+  const trustState = (outcome = 'win') => ({
+    config: { ...soloConfig, sensor_error: 0.45, seed: 2 },
+    roles: { 1: 'player', 2: 'citizen', 3: 'citizen', 4: 'citizen', 5: 'citizen' },
+    player_city: 1,
+    truth: 'danger',
+    outcome,
+    end_reason: 'turns_done',
+  })
+  const c = (city, hint, claim, sus, correct) => ({
+    city,
+    role: 'citizen',
+    hint,
+    received: { 1: msg(claim) },
+    decision: correct ? 'evacuate' : 'stay',
+    correct,
+    suspicion: { 1: sus },
+    reason: null,
+  })
+  const t = (turnNum, cities) => ({ turn: turnNum, cities, sharing: [], vote: null })
+
+  // 회귀 1: 시드 2 sses esee eeee eses sses esss ssse의 4번 집 기록 모양
+  // 5일째 같은 쪽지(evacuate)로 40→20 하락(전환 없음), 6일째 이미 20인 상태에서 stay로 바꿔 20 유지 → 세탁 불인정
+  const already20Stayed = [
+    t(1, [c(4, 'danger', 'evacuate', 0, true)]),
+    t(2, [c(4, 'safe', 'evacuate', 40, true)]),
+    t(3, [c(4, 'danger', 'evacuate', 20, true)]),
+    t(4, [c(4, 'safe', 'evacuate', 40, true)]),
+    t(5, [c(4, 'danger', 'evacuate', 20, true)]),
+    t(6, [c(4, 'safe', 'stay', 20, false)]),
+    t(7, [c(4, 'danger', 'stay', 40, false)]),
+  ]
+  const p1 = regainTrustProgress(trustState(), already20Stayed)
+  assert.equal(p1.refooled, null)
+  assert.equal(p1.washedActive, null)
+  assert.equal(p1.washedThenSpiked, null)
+  assert.deepEqual(p1.droppedWithoutSwitch, { city: 4, fromSus: 40, toSus: 20, day: 3 })
+  assert.equal(scenarioGoalMet(trustState(), 'regain-trust', already20Stayed), false)
+  assert.equal(
+    regainTrustOutcomeNote(trustState(), already20Stayed),
+    '판은 이겼지만, 4번 집 의심도가 40에서 20까지 내려갈 때 같은 쪽지만 보냈어요. 쪽지를 바꿔 의심도를 낮춰 보세요.',
+  )
+
+  // 회귀 2: 2일째 같은 쪽지(stay)로 40→20 하락한 뒤, 3일째 이미 20인 상태에서 쪽지를 바꿔 20→0 하락 → 세탁 불인정
+  const already20ToZero = [
+    t(1, [c(2, 'danger', 'stay', 40, true)]),
+    t(2, [c(2, 'safe', 'stay', 20, false)]),
+    t(3, [c(2, 'danger', 'evacuate', 0, true)]),
+    t(4, [c(2, 'danger', 'stay', 20, false)]),
+  ]
+  const p2 = regainTrustProgress(trustState(), already20ToZero)
+  assert.equal(p2.refooled, null)
+  assert.equal(p2.washedActive, null)
+  assert.deepEqual(p2.droppedWithoutSwitch, { city: 2, fromSus: 40, toSus: 20, day: 2 })
+  assert.equal(scenarioGoalMet(trustState(), 'regain-trust', already20ToZero), false)
+
+  // 회귀 3: 2일째 전환으로 40→20(거짓 세탁) 뒤 3일째 이미 20→0(진실 쪽지)일 때 낮춘 날은 2일째로 유지
+  const washedDay2ThenZeroDay3 = [
+    t(1, [c(2, 'safe', 'evacuate', 40, false)]),
+    t(2, [c(2, 'safe', 'stay', 20, true)]),
+    t(3, [c(2, 'danger', 'evacuate', 0, true)]),
+    t(4, [c(2, 'danger', 'stay', 20, false)]),
+  ]
+  const p3 = regainTrustProgress(trustState(), washedDay2ThenZeroDay3)
+  assert.equal(p3.refooled?.washDay, 2)
+  assert.equal(p3.refooled?.fromSus, 40)
+  assert.equal(p3.refooled?.toSus, 20)
+  assert.equal(p3.refooled?.foolDay, 4)
+
+  // 회귀 4: 40→40(모순 상쇄로 유지하며 전환)→20(실제 하락)은 3일째가 낮춘 날이고 구간 전환으로 인정
+  const clashHoldThenDrop = [
+    t(1, [c(2, 'danger', 'stay', 40, true)]),
+    t(2, [c(2, 'danger', 'evacuate', 40, true)]),
+    t(3, [c(2, 'danger', 'evacuate', 20, true)]),
+    t(4, [c(2, 'danger', 'stay', 40, false)]),
+  ]
+  const p4 = regainTrustProgress(trustState(), clashHoldThenDrop)
+  assert.equal(p4.refooled?.washDay, 3)
+  assert.equal(p4.refooled?.fromSus, 40)
+  assert.equal(p4.refooled?.toSus, 20)
+  assert.equal(p4.refooled?.foolDay, 4)
+})
+
 test('stubbornAllyStatus and stubbornAllyOutcomeNote track colleague survival, peak suspicion, and all 4 outcome branches', () => {
   const allyState = (outcome, end_reason = 'turns_done') => ({
     config: { ...soloConfig, mafia_count: 2, sensor_error: 0.48, seed: 222 },
