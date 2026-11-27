@@ -1785,7 +1785,6 @@ export function regainTrustProgress(
       if (k >= 0 && after[k].sentLie && after[k].correct === false) {
         const hit: OnOffHit = { ...wash, foolDay: after[k].turn }
         if (betterHit(hit, refooled)) refooled = hit
-        if (betterWash(wash, washedActive)) washedActive = wash
         break
       }
       if (k >= 0) {
@@ -1897,9 +1896,11 @@ export function regainTrustOutcomeNote(
   const anyWash = p.refooled ?? p.washedActive ?? p.washedThenSpiked
   if (state.end_reason === 'caught') {
     const baseHead = lastDay >= TOTAL_TURNS ? '마지막 밤 재판에 걸렸어요.' : '마지막 밤까지 가지 못했어요.'
-    const head = anyWash
-      ? `${anyWash.washDay}일째에 ${anyWash.city}번 집 의심도를 낮추는 데는 성공했지만, ${baseHead}`
-      : baseHead
+    const head = p.refooled
+      ? `${p.refooled.washDay}일째에 ${p.refooled.city}번 집 의심도를 낮추고 ${p.refooled.foolDay}일째에 다시 속이는 데까지는 성공했지만, ${baseHead}`
+      : anyWash
+        ? `${anyWash.washDay}일째에 ${anyWash.city}번 집 의심도를 낮추는 데는 성공했지만, ${baseHead}`
+        : baseHead
     const maxSus = Math.max(0, ...(last?.cities ?? []).map((c) => c.suspicion?.[state.player_city] ?? 0))
     return maxSus >= SUSPICION.threshold
       ? `${head} 의심도가 60 이상이 되기 전에 본 하늘과 같은 쪽지로 낮추며 다시 해 보세요.`
@@ -1925,11 +1926,11 @@ export function regainTrustOutcomeNote(
         : `마지막 ${r.day}일째에야 ${r.city}번 집 의심도가 ${r.sus}에 닿아 낮출 날이 남지 않았고, 마지막 밤 과반도 속이지 못했어요.`
     }
     return won
-      ? `판은 이겼지만, ${r.day}일째에 의심도가 ${r.sus}까지 오른 ${r.city}번 집을 20 이하로 낮추지는 못했어요.`
-      : `${r.day}일째에 ${r.city}번 집 의심도가 ${r.sus}까지 올랐지만 20 이하로 낮추지 못했고, 마지막 밤 과반도 속이지 못했어요.`
+      ? `판은 이겼지만, ${r.day}일째에 의심도가 처음 40 이상(${r.sus})이 된 ${r.city}번 집을 20 이하로 낮추지는 못했어요.`
+      : `${r.day}일째에 ${r.city}번 집 의심도가 처음 40 이상(${r.sus})이 됐지만 20 이하로 낮추지 못했고, 마지막 밤 과반도 속이지 못했어요.`
   }
   if (!p.refooled) {
-    if (p.washedActive) {
+    if (p.washedActive && !(p.washedActive.washDay >= TOTAL_TURNS && p.washedThenSpiked)) {
       const w = p.washedActive
       if (w.washDay >= TOTAL_TURNS) {
         return won
@@ -1941,10 +1942,10 @@ export function regainTrustOutcomeNote(
         : `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮췄지만, 그 뒤 ${w.city}번 집에게 거짓 쪽지를 보낸 날 그 집이 틀린 적은 없었고 마지막 밤 과반도 채우지 못했어요.`
     }
     const s = p.washedThenSpiked!
-    const retry = ' 다시 40 이상이 되면 20 이하로 낮추는 것부터 다시 해야 해요.'
+    const retry = ' 다시 할 때는 40 이상으로 올랐다면 20 이하로 낮추는 것부터 다시 하세요.'
     return won
-      ? `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮추고 판도 이겼지만, 거짓 쪽지를 보낸 날 그 집이 틀리기 전에 ${s.spikeDay}일째 의심도가 ${s.spikeSus}까지 다시 올랐어요.${retry}`
-      : `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮췄지만, 거짓 쪽지를 보낸 날 그 집이 틀리기 전에 ${s.spikeDay}일째 의심도가 ${s.spikeSus}까지 다시 올랐고 마지막 밤 과반도 채우지 못했어요.${retry}`
+      ? `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮추고 판도 이겼지만, 그 집을 거짓 쪽지로 틀리게 하지 못한 채 ${s.spikeDay}일째에 의심도가 ${s.spikeSus}까지 다시 올랐어요.${retry}`
+      : `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮췄지만, 그 집을 거짓 쪽지로 틀리게 하지 못한 채 ${s.spikeDay}일째에 의심도가 ${s.spikeSus}까지 다시 올랐고 마지막 밤 과반도 채우지 못했어요.${retry}`
   }
   const rf = p.refooled
   if (!won) {
