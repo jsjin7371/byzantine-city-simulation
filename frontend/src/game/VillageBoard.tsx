@@ -1230,9 +1230,9 @@ export function VillageBoard({
         <g
           className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'}
           role="img"
-          aria-label={`${shareTag?.label ?? (pastSharing ? '그날 밤 쪽지 비교' : '오늘 밤 쪽지 비교')}: ${pairLabel}`}
+          aria-label={`${badgeText}: ${pairLabel}`}
         >
-          <title>{`${shareTag?.label ?? (pastSharing ? '그날 밤 쪽지 비교' : '오늘 밤 쪽지 비교')}: ${pairLabel}`}</title>
+          <title>{`${badgeText}: ${pairLabel}`}</title>
           {sortedPairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
             return (
