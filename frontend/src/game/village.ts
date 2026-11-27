@@ -1231,7 +1231,7 @@ export function detectTactics(
     detected.push({
       tag: 'onoff',
       day: onoffHit.washDay,
-      text: `나를 의심하던 ${onoffHit.city}번 집(의심도 ${onoffHit.fromSus})에 그 집이 본 하늘과 같은 쪽지를 보내 ${onoffHit.toSus}까지 낮춘 뒤, ${nextWhen} 거짓 쪽지를 보냈고 그 집은 틀렸어요.`,
+      text: `나를 의심하던 ${onoffHit.city}번 집(의심도 ${onoffHit.prevSus})에 그 집이 본 하늘과 같은 쪽지를 보내 ${onoffHit.toSus}까지 낮춘 뒤, ${nextWhen} 거짓 쪽지를 보냈고 그 집은 틀렸어요.`,
     })
   }
 
@@ -1666,6 +1666,7 @@ const isWin = (outcome: GameState['outcome']) => outcome === 'win' || outcome ==
 type OnOffWash = {
   city: number
   fromSus: number
+  prevSus: number
   toSus: number
   washDay: number
   washSentLie: boolean
@@ -1761,7 +1762,7 @@ export function regainTrustProgress(
       let fromSus = 0
       for (
         let p = j - 1;
-        p >= 0 && (rows[p].sus >= REGAIN_PEAK || (fromSus === 0 && rows[p].matchedHint && rows[p].sus > REGAIN_LOW));
+        p >= 0 && (rows[p].sus >= REGAIN_PEAK || (fromSus === 0 && rows[p].matchedHint));
         p--
       ) {
         if (rows[p].sus >= REGAIN_PEAK) fromSus = Math.max(fromSus, rows[p].sus)
@@ -1769,7 +1770,7 @@ export function regainTrustProgress(
       if (fromSus < REGAIN_PEAK) continue
 
       let q = j
-      while (q > 0 && rows[q - 1].matchedHint && rows[q - 1].sus > REGAIN_LOW) q--
+      while (q > 0 && rows[q - 1].matchedHint) q--
       const start = Math.max(1, q)
       const switched = rows.slice(start, j + 1).some((r, idx) => r.sent !== rows[start + idx - 1].sent)
       if (!switched) {
@@ -1782,6 +1783,7 @@ export function regainTrustProgress(
       const wash: OnOffWash = {
         city: cityId,
         fromSus,
+        prevSus: rows[j - 1].sus,
         toSus: rows[j].sus,
         washDay: rows[j].turn,
         washSentLie: rows[j].sentLie,
@@ -1987,7 +1989,7 @@ export function regainTrustOutcomeNote(
   const misobserved = rf.foolMatchedHint
     ? ` 그날 ${rf.city}번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요.`
     : ''
-  return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요.${misobserved} 마지막 밤 ${winEnd}`
+  return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.prevSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요.${misobserved} 마지막 밤 ${winEnd}`
 }
 
 type AllyStatus = { label: string; tone: 'ok' | 'warn' | 'caught' }

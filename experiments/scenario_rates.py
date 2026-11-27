@@ -76,7 +76,7 @@ def has_onoff(history, player_city, truth, threshold=40, need_fool=True):
             if wash_peak(rows, j, threshold) < threshold:
                 continue
             q = j
-            while q > 0 and rows[q - 1][2] and rows[q - 1][0] > 20:
+            while q > 0 and rows[q - 1][2]:
                 q -= 1
             if not any(rows[m][1] != rows[m - 1][1] for m in range(max(1, q), j + 1)):
                 continue
@@ -330,18 +330,16 @@ def check():
         goal, _, _ = play_scenario("regain-trust", "bot", seed, 40)
         assert not goal, f"bot unexpectedly satisfied regain-trust on seed {seed}"
     # 회귀: 이미 20 이하인 날(5일째 40→20 무전환, 6일째 20→20 전환)은 낮춘 날로 세지 않는다
-    def run_seed2(seq):
-        g = Game(1, GameConfig(citizen_type="wary", player="human", seed=2, **SCENARIOS["regain-trust"]))
-        cs = sorted(g.citizens)
-        hist = []
-        for day, word in enumerate(seq.split(), 1):
-            claims = {str(c): {"claim": "evacuate" if ch == "e" else "stay", "note": ""} for c, ch in zip(cs, word)}
-            hist.append(g.play({"turn": day, "claims": claims}, city_turn))
-        return g, hist
+    def seq_fn(seq):
+        words = seq.split()
+        return lambda g: {
+            str(c): "evacuate" if ch == "e" else "stay"
+            for c, ch in zip(sorted(g.citizens), words[g.turn])
+        }
 
-    g_bad, h_bad = run_seed2("sses esee eeee eses sses esss ssse")
+    g_bad, h_bad = play_all("regain-trust", 2, seq_fn("sses esee eeee eses sses esss ssse"))
     assert not has_onoff(h_bad, g_bad.player, g_bad.truth, 40), "already-20 day falsely counted as wash"
-    g_ok, h_ok = run_seed2("esss ssse ssss esss ssss ssss ssss")
+    g_ok, h_ok = play_all("regain-trust", 2, seq_fn("esss ssse ssss esss ssss ssss ssss"))
     assert has_onoff(h_ok, g_ok.player, g_ok.truth, 40), "textbook seed 2 sequence should satisfy on-off"
     print("check ok")
 

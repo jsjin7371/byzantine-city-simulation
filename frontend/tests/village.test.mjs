@@ -2061,6 +2061,53 @@ test('regainTrustProgress counts wash day only when suspicion actually drops fro
   assert.equal(p4.refooled?.foolDay, 4)
 })
 
+test('regainTrustOutcomeNote and onoff tag report that wash night actual drop when wash spans multiple nights', () => {
+  const trustState = (outcome = 'win') => ({
+    config: { ...soloConfig, sensor_error: 0.45, seed: 2 },
+    roles: { 1: 'player', 2: 'citizen', 3: 'citizen', 4: 'citizen', 5: 'citizen' },
+    player_city: 1,
+    truth: 'danger',
+    outcome,
+    end_reason: 'turns_done',
+  })
+  const c = (city, hint, claim, sus, correct) => ({
+    city,
+    role: 'citizen',
+    hint,
+    received: { 1: msg(claim) },
+    decision: correct ? 'evacuate' : 'stay',
+    correct,
+    suspicion: { 1: sus },
+    reason: null,
+  })
+  const t = (turnNum, cities) => ({ turn: turnNum, cities, sharing: [], vote: null })
+
+  // 3일째 60 → 4일째 40(전환) → 5일째 20 → 6일째 재기만: 5일째 실제 변화는 40→20
+  const multiNight = [
+    t(1, [c(2, 'danger', 'stay', 20, true)]),
+    t(2, [c(2, 'danger', 'stay', 40, true)]),
+    t(3, [c(2, 'danger', 'stay', 60, true)]),
+    t(4, [c(2, 'danger', 'evacuate', 40, true)]),
+    t(5, [c(2, 'danger', 'evacuate', 20, true)]),
+    t(6, [c(2, 'danger', 'stay', 40, false)]),
+  ]
+  const prog = regainTrustProgress(trustState('win'), multiNight)
+  assert.equal(prog.refooled?.fromSus, 60)
+  assert.equal(prog.refooled?.prevSus, 40)
+  assert.equal(prog.refooled?.toSus, 20)
+  assert.equal(prog.refooled?.washDay, 5)
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), multiNight),
+    '5일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 6일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 과반을 넘겼어요.',
+  )
+  const onoff = detectTactics(trustState('win'), multiNight).find((x) => x.tag === 'onoff')
+  assert.equal(onoff?.day, 5)
+  assert.equal(
+    onoff?.text,
+    '나를 의심하던 2번 집(의심도 40)에 그 집이 본 하늘과 같은 쪽지를 보내 20까지 낮춘 뒤, 다음 날 거짓 쪽지를 보냈고 그 집은 틀렸어요.',
+  )
+})
+
 test('stubbornAllyStatus and stubbornAllyOutcomeNote track colleague survival, peak suspicion, and all 4 outcome branches', () => {
   const allyState = (outcome, end_reason = 'turns_done') => ({
     config: { ...soloConfig, mafia_count: 2, sensor_error: 0.48, seed: 222 },
