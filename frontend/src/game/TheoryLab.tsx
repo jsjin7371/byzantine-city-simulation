@@ -193,7 +193,7 @@ export function TheoryLab({
                     <BookLink label="이론 읽기" icon onClick={() => setBookTopic(card.topic)} />
                     <button
                       type="button"
-                      className="tl-play is-ready"
+                      className="tl-play"
                       onClick={() => onStartScenario(card)}
                     >
                       시작

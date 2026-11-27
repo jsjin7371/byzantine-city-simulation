@@ -2463,21 +2463,10 @@ dialog.tb-dialog[open] {
   gap: 6px;
   font-weight: 700;
   font-size: 17px;
-  background: var(--parch);
-  color: var(--muted);
-  border: 1.5px dashed var(--border);
-  border-radius: 8px;
-  padding: 5px 12px;
-  cursor: not-allowed;
-}
-.tl-play:focus-visible {
-  outline: 3px solid var(--leave);
-  outline-offset: 2px;
-}
-.tl-play.is-ready {
   background: var(--forest);
   color: var(--cream);
   border: 1.5px solid #1b2d18;
+  border-radius: 8px;
   cursor: pointer;
   min-height: 40px;
   padding: 6px 18px;
@@ -2486,10 +2475,14 @@ dialog.tb-dialog[open] {
     background-color 150ms ease,
     transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
 }
-.tl-play.is-ready:hover {
+.tl-play:focus-visible {
+  outline: 3px solid var(--leave);
+  outline-offset: 2px;
+}
+.tl-play:hover {
   background: #2b5727;
 }
-.tl-play.is-ready:active {
+.tl-play:active {
   transform: scale(0.97);
 }
 
@@ -2804,11 +2797,11 @@ dialog.tb-dialog[open] {
   background: var(--parch);
 }
 @media (prefers-reduced-motion: reduce) {
-  .tl-play.is-ready,
+  .tl-play,
   .sc-btn {
     transition: none;
   }
-  .tl-play.is-ready:active,
+  .tl-play:active,
   .sc-btn:active:not(:disabled) {
     transform: none;
   }

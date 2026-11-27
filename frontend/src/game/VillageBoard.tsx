@@ -1148,7 +1148,14 @@ export function VillageBoard({
   const red = (a: number, b: number) => redPairs.some(([x, y]) => x === a && y === b)
   const sortedPairs = [...pairs].sort((p, q) => Number(red(p[0], p[1])) - Number(red(q[0], q[1])))
   const pairLabel = pairs.map(([a, b]) => `${a}번 집과 ${b}번 집${red(a, b) ? '(모순)' : ''}`).join(', ')
-  const badgeText = shareBadgeLabel(pairs.length, redPairs.length, state.config.share_mode, state.config.citizen_type)
+  const pastSharing = showTurnSharing && !night
+  const badgeText = shareBadgeLabel(
+    pairs.length,
+    redPairs.length,
+    state.config.share_mode,
+    state.config.citizen_type,
+    pastSharing,
+  )
   const shareTag =
     badgeText && pairs.length === 1
       ? { pos: pairMid(state.player_city, pairs[0][0], pairs[0][1]), label: badgeText, w: 164 }
@@ -1223,9 +1230,9 @@ export function VillageBoard({
         <g
           className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'}
           role="img"
-          aria-label={`${shareTag?.label ?? '오늘 밤 쪽지 비교'}: ${pairLabel}`}
+          aria-label={`${shareTag?.label ?? (pastSharing ? '그날 밤 쪽지 비교' : '오늘 밤 쪽지 비교')}: ${pairLabel}`}
         >
-          <title>{`${shareTag?.label ?? '오늘 밤 쪽지 비교'}: ${pairLabel}`}</title>
+          <title>{`${shareTag?.label ?? (pastSharing ? '그날 밤 쪽지 비교' : '오늘 밤 쪽지 비교')}: ${pairLabel}`}</title>
           {sortedPairs.map(([a, b]) => {
             const d = sharePath(state.player_city, a, b)
             return (

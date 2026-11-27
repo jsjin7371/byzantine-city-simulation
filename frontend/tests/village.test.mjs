@@ -186,11 +186,14 @@ test('shareBadgeLabel summarizes multi-pair contradictions in one plaza badge wh
   assert.equal(shareBadgeLabel(0, 0, 'all', 'wary'), null)
   assert.equal(shareBadgeLabel(1, 0, 'pairs', 'wary'), '오늘 밤 쪽지 비교')
   assert.equal(shareBadgeLabel(1, 1, 'pairs', 'wary'), '오늘 밤 쪽지 비교')
+  assert.equal(shareBadgeLabel(1, 0, 'pairs', 'wary', true), '그날 밤 쪽지 비교')
   assert.equal(shareBadgeLabel(6, 0, 'all', 'wary'), '모든 집 쪽지 비교')
+  assert.equal(shareBadgeLabel(6, 0, 'all', 'wary', true), '모든 집 쪽지 비교')
   assert.equal(shareBadgeLabel(6, 3, 'all', 'wary'), '모든 집 쪽지 비교 · 모순 3쌍 (집마다 +20)')
   assert.equal(shareBadgeLabel(6, 3, 'all', 'ai'), '모든 집 쪽지 비교 · 모순 3쌍')
   assert.equal(shareBadgeLabel(2, 0, 'pairs', 'wary'), '오늘 밤 쪽지 비교')
   assert.equal(shareBadgeLabel(2, 2, 'pairs', 'wary'), '오늘 밤 쪽지 비교 · 모순 2쌍 (집마다 +20)')
+  assert.equal(shareBadgeLabel(2, 2, 'pairs', 'wary', true), '그날 밤 쪽지 비교 · 모순 2쌍 (집마다 +20)')
 })
 
 test('suspicion preview matches engine game_turn (7.6): ±20, contradiction +20, clamp 0~100, trial at 60', () => {
@@ -1491,10 +1494,10 @@ test('watchfulEyeClashNote branches on caught and player contradictions', () => 
 
 test('RING_TRAILS connects five adjacent clearings and scenarioGoalMet returns true only on win or perfect_win', () => {
   assert.equal(RING_TRAILS.length, 5)
-  assert.equal(scenarioGoalMet({ outcome: 'win' }), true)
-  assert.equal(scenarioGoalMet({ outcome: 'perfect_win' }), true)
-  assert.equal(scenarioGoalMet({ outcome: 'loss' }), false)
-  assert.equal(scenarioGoalMet({ outcome: null }), false)
+  assert.equal(scenarioGoalMet({ outcome: 'win' }, 'ring-village', []), true)
+  assert.equal(scenarioGoalMet({ outcome: 'perfect_win' }, 'ring-village', []), true)
+  assert.equal(scenarioGoalMet({ outcome: 'loss' }, 'ring-village', []), false)
+  assert.equal(scenarioGoalMet({ outcome: null }, 'ring-village', []), false)
 })
 
 test('ringVillageOutcomeNote branches on caught day and far-house observation/outcome without false causation', () => {

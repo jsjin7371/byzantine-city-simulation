@@ -78,10 +78,12 @@ export function shareBadgeLabel(
   clashCount: number,
   shareMode: GameState['config']['share_mode'],
   citizenType: GameState['config']['citizen_type'],
+  past = false,
 ): string | null {
   if (pairCount <= 0) return null
-  if (pairCount === 1) return '오늘 밤 쪽지 비교'
-  const base = shareMode === 'all' ? '모든 집 쪽지 비교' : '오늘 밤 쪽지 비교'
+  const nightLabel = past ? '그날 밤 쪽지 비교' : '오늘 밤 쪽지 비교'
+  if (pairCount === 1) return nightLabel
+  const base = shareMode === 'all' ? '모든 집 쪽지 비교' : nightLabel
   if (clashCount <= 0) return base
   if (citizenType === 'ai') return `${base} · 모순 ${clashCount}쌍`
   return `${base} · 모순 ${clashCount}쌍 (집마다 +${SUSPICION.contradiction})`
@@ -1811,12 +1813,12 @@ export function regainTrustProgress(
 // 시나리오 목표 달성 판정: 신뢰를 되찾는 법은 온오프(40 이상 → 20 이하 전환 → 재기만) + 승리, 나머지는 과반 기만 승리.
 export function scenarioGoalMet(
   state: Pick<GameState, 'outcome' | 'player_city' | 'roles' | 'truth'>,
-  scenarioId?: string,
-  history?: Pick<TurnResult, 'turn' | 'cities'>[],
+  scenarioId: string,
+  history: Pick<TurnResult, 'turn' | 'cities'>[],
 ): boolean {
   if (!isWin(state.outcome)) return false
   if (scenarioId === 'regain-trust') {
-    return history != null && regainTrustProgress(state, history).refooled != null
+    return regainTrustProgress(state, history).refooled != null
   }
   return true
 }
@@ -1872,7 +1874,7 @@ export function ringVillageOutcomeNote(
     .filter((c) => c.role === 'citizen' && !targets.has(c.city))
     .sort((a, b) => a.city - b.city)
   const farWrong = far.filter((c) => c.correct === false)
-  const won = scenarioGoalMet(state)
+  const won = isWin(state.outcome)
   if (farWrong.length === 0) {
     const names = far.length > 0 ? formatHouseGroup(far.map((c) => c.city)) : '먼 집'
     return `마지막 밤, 직접 쪽지를 못 보낸 먼 집(${names})은 모두 진짜 날씨를 지켰어요. 양옆 두 집만으로는 3명을 채울 수 없어요.`

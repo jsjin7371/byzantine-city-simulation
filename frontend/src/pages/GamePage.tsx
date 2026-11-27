@@ -335,7 +335,10 @@ export function GamePage() {
   const wrong = citizens.filter((c) => c.correct === false).length
   const fooled = fooledDots(settled ? wrong : 0, citizenCount)
   const settledHistory = playing ? history.slice(0, -1) : history
-  const goalSteps = scenario && state ? scenarioGoalSteps(scenario.id, state, settledHistory) : null
+  const goalSteps =
+    scenario && state
+      ? scenarioGoalSteps(scenario.id, playing ? { ...state, outcome: null } : state, settledHistory)
+      : null
   const allyStatus =
     scenario?.id === 'stubborn-ally' && state ? stubbornAllyStatus(state, settledHistory) : null
   const ruled = state?.config.citizen_type === 'wary' // 7.6 규칙을 따르는 시민만 예상을 보인다
@@ -483,11 +486,7 @@ export function GamePage() {
                   stage={playing ? { ...steps[step], prev: history.at(-2) ?? null } : undefined}
                   highlight={highlight}
                   hideSigns={tutorialActive}
-                  neutralShareSign={
-                    scenario?.id === 'watchful-eye' ||
-                    scenario?.id === 'regain-trust' ||
-                    scenario?.id === 'stubborn-ally'
-                  }
+                  neutralShareSign={scenario != null && scenario.id !== 'ring-village'}
                   onCardOpen={setOpenCity}
                   boardRef={boardRef}
                   picker={
