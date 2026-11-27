@@ -1673,6 +1673,7 @@ type OnOffWash = {
 
 type OnOffHit = OnOffWash & {
   foolDay: number
+  foolMatchedHint: boolean
 }
 
 type OnOffSpiked = OnOffWash & {
@@ -1784,7 +1785,7 @@ export function regainTrustProgress(
       const after = rows.slice(j + 1)
       const k = after.findIndex((r) => (r.sentLie && r.correct === false) || r.sus >= REGAIN_PEAK)
       if (k >= 0 && after[k].sentLie && after[k].correct === false) {
-        const hit: OnOffHit = { ...wash, foolDay: after[k].turn }
+        const hit: OnOffHit = { ...wash, foolDay: after[k].turn, foolMatchedHint: after[k].matchedHint }
         if (betterHit(hit, refooled)) refooled = hit
         break
       }
@@ -1886,10 +1887,31 @@ export function ringVillageOutcomeNote(
   return `마지막 밤, 먼 ${names}은 틀렸어요. ${subj} 그날 하늘도 잘못 봤어요.${suffix}`
 }
 
+// 목표 미달 승리 분기용: 어느 주민의 나에 대한 의심도가 60 이상인 밤에 재판이 열렸지만 지목이 갈려(accused===null) 넘어간 첫 기록.
+function survivedSplitTrial(
+  me: number,
+  history: (Pick<TurnResult, 'turn' | 'cities'> & Partial<Pick<TurnResult, 'vote'>>)[],
+): { day: number; city: number; sus: number } | null {
+  for (const t of history) {
+    if (!t.vote || t.vote.accused !== null) continue
+    let best: { city: number; sus: number } | null = null
+    for (const c of t.cities) {
+      if (c.role !== 'citizen') continue
+      const sus = c.suspicion?.[me] ?? 0
+      if (sus < SUSPICION.threshold) continue
+      if (!best || sus > best.sus || (sus === best.sus && c.city < best.city)) {
+        best = { city: c.city, sus }
+      }
+    }
+    if (best) return { day: t.turn, ...best }
+  }
+  return null
+}
+
 // 시나리오 '신뢰를 되찾는 법' 결과 한 줄 분기: 실제 의심도·전환·재기만·승패 기록에 따라 한 줄을 안내한다.
 export function regainTrustOutcomeNote(
   state: Pick<GameState, 'player_city' | 'roles' | 'truth' | 'outcome' | 'end_reason'>,
-  history: Pick<TurnResult, 'turn' | 'cities'>[],
+  history: (Pick<TurnResult, 'turn' | 'cities'> & Partial<Pick<TurnResult, 'vote'>>)[],
 ): string {
   const last = history.at(-1)
   const lastDay = last?.turn ?? 0
@@ -1908,6 +1930,10 @@ export function regainTrustOutcomeNote(
       : `${head} 다른 집 의심도로 열린 재판에서 주민 과반이 나를 지목했어요. 집마다 의심도를 더 낮게 유지하며 다시 해 보세요.`
   }
   const won = isWin(state.outcome)
+  const split = won && !p.refooled ? survivedSplitTrial(state.player_city, history) : null
+  const splitNote = split
+    ? ` ${split.day}일째에는 ${split.city}번 집 의심도가 ${split.sus}이라 재판이 열렸지만, 지목이 갈려 넘어갔어요.`
+    : ''
   if (!p.reached40) {
     return won
       ? '판은 이겼지만, 의심도가 40 이상까지 오른 주민이 없었어요. 일부러 의심도를 올린 뒤 다시 낮춰 보세요.'
@@ -1917,17 +1943,17 @@ export function regainTrustOutcomeNote(
     if (p.droppedWithoutSwitch) {
       const d = p.droppedWithoutSwitch
       return won
-        ? `판은 이겼지만, ${d.city}번 집 의심도가 ${d.fromSus}에서 ${d.toSus}까지 내려갈 때 같은 쪽지만 보냈어요. 쪽지를 바꿔 의심도를 낮춰 보세요.`
+        ? `판은 이겼지만, ${d.city}번 집 의심도가 ${d.fromSus}에서 ${d.toSus}까지 내려갈 때 같은 쪽지만 보냈어요.${splitNote} 쪽지를 바꿔 의심도를 낮춰 보세요.`
         : `${d.city}번 집 의심도가 ${d.fromSus}에서 ${d.toSus}까지 내려갈 때 같은 쪽지만 보냈고, 마지막 밤 과반도 속이지 못했어요. 쪽지를 바꿔 의심도를 낮춰 보세요.`
     }
     const r = p.reached40
     if (r.day >= TOTAL_TURNS) {
       return won
-        ? `판은 이겼지만, 마지막 ${r.day}일째에야 ${r.city}번 집 의심도가 ${r.sus}에 닿아 낮출 날이 남지 않았어요.`
+        ? `판은 이겼지만, 마지막 ${r.day}일째에야 ${r.city}번 집 의심도가 ${r.sus}에 닿아 낮출 날이 남지 않았어요.${splitNote}`
         : `마지막 ${r.day}일째에야 ${r.city}번 집 의심도가 ${r.sus}에 닿아 낮출 날이 남지 않았고, 마지막 밤 과반도 속이지 못했어요.`
     }
     return won
-      ? `판은 이겼지만, ${r.day}일째에 의심도가 처음 40 이상(${r.sus})이 된 ${r.city}번 집을 20 이하로 낮추지는 못했어요.`
+      ? `판은 이겼지만, ${r.day}일째에 의심도가 처음 40 이상(${r.sus})이 된 ${r.city}번 집을 20 이하로 낮추지는 못했어요.${splitNote}`
       : `${r.day}일째에 ${r.city}번 집 의심도가 처음 40 이상(${r.sus})이 됐지만 20 이하로 낮추지 못했고, 마지막 밤 과반도 속이지 못했어요.`
   }
   if (!p.refooled) {
@@ -1935,17 +1961,17 @@ export function regainTrustOutcomeNote(
       const w = p.washedActive
       if (w.washDay >= TOTAL_TURNS) {
         return won
-          ? `마지막 ${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮추고 판도 이겼지만, 그 뒤 다시 속일 날이 남지 않았어요.`
+          ? `마지막 ${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮추고 판도 이겼지만, 그 뒤 다시 속일 날이 남지 않았어요.${splitNote}`
           : `마지막 ${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮췄지만, 그 뒤 다시 속일 날이 남지 않았고 마지막 밤 과반도 채우지 못했어요.`
       }
       return won
-        ? `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮추고 판도 이겼지만, 그 뒤 ${w.city}번 집에게 거짓 쪽지를 보낸 날 그 집이 틀린 적은 없었어요.`
+        ? `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮추고 판도 이겼지만, 그 뒤 ${w.city}번 집에게 거짓 쪽지를 보낸 날 그 집이 틀린 적은 없었어요.${splitNote}`
         : `${w.washDay}일째에 ${w.city}번 집 의심도를 ${w.toSus}까지 낮췄지만, 그 뒤 ${w.city}번 집에게 거짓 쪽지를 보낸 날 그 집이 틀린 적은 없었고 마지막 밤 과반도 채우지 못했어요.`
     }
     const s = p.washedThenSpiked!
     const retry = ' 다시 할 때는 40 이상으로 올랐다면 20 이하로 낮추는 것부터 다시 하세요.'
     return won
-      ? `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮추고 판도 이겼지만, 그 집을 거짓 쪽지로 틀리게 하지 못한 채 ${s.spikeDay}일째에 의심도가 ${s.spikeSus}까지 다시 올랐어요.${retry}`
+      ? `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮추고 판도 이겼지만, 그 집을 거짓 쪽지로 틀리게 하지 못한 채 ${s.spikeDay}일째에 의심도가 ${s.spikeSus}까지 다시 올랐어요.${splitNote}${retry}`
       : `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮췄지만, 그 집을 거짓 쪽지로 틀리게 하지 못한 채 ${s.spikeDay}일째에 의심도가 ${s.spikeSus}까지 다시 올랐고 마지막 밤 과반도 채우지 못했어요.${retry}`
   }
   const rf = p.refooled
@@ -1953,7 +1979,10 @@ export function regainTrustOutcomeNote(
     return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸지만, 마지막 밤 과반은 속이지 못했어요.`
   }
   const winEnd = state.outcome === 'perfect_win' ? '주민 모두를 속였어요.' : '과반을 넘겼어요.'
-  return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 ${winEnd}`
+  const misobserved = rf.foolMatchedHint
+    ? ` 그날 ${rf.city}번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요.`
+    : ''
+  return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.fromSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요.${misobserved} 마지막 밤 ${winEnd}`
 }
 
 type AllyStatus = { label: string; tone: 'ok' | 'warn' | 'caught' }
