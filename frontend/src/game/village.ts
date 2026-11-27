@@ -1857,7 +1857,7 @@ export function ringVillageOutcomeNote(
   if (state.end_reason === 'caught') {
     return lastDay >= TOTAL_TURNS
       ? '마지막 밤 재판에 걸렸어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.'
-      : '마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.'
+      : '마지막 밤까지 가지 못했어요. 다시 할 때는 양옆 두 집의 의심도를 살피면서, 먼 두 집의 깃발이 어떻게 바뀌는지도 지켜보세요.'
   }
   const targets = new Set(claimTargets(state))
   const far = (last?.cities ?? [])

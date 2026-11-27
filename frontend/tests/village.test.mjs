@@ -1516,7 +1516,7 @@ test('ringVillageOutcomeNote branches on caught day and far-house observation/ou
   // 조기 재판 패배 vs 마지막 7일째 재판 패배
   assert.equal(
     ringVillageOutcomeNote(ringState('loss', 'caught'), [{ turn: 3, cities: dayCities(true, false, 'safe', true, 'danger', true) }]),
-    '마지막 밤까지 가지 못했어요. 양옆 두 집의 의심도를 살피며 다시 해 보세요.',
+    '마지막 밤까지 가지 못했어요. 다시 할 때는 양옆 두 집의 의심도를 살피면서, 먼 두 집의 깃발이 어떻게 바뀌는지도 지켜보세요.',
   )
   assert.equal(
     ringVillageOutcomeNote(ringState('loss', 'caught'), [{ turn: 7, cities: dayCities(true, false, 'safe', true, 'danger', true) }]),

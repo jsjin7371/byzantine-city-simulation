@@ -96,7 +96,9 @@ export function TheoryBook({ topic, onClose }: { topic: TopicKey | null; onClose
             <p className="tb-easy">{data.easy}</p>
 
             <h3>이 게임에서는</h3>
-            <p>{data.game}</p>
+            {data.game.split('\n').map((para) => (
+              <p key={para}>{para}</p>
+            ))}
 
             <h3>이론</h3>
             {data.boxes.map(([kind, body]) => (
