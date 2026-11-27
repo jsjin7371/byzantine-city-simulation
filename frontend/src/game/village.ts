@@ -2033,18 +2033,22 @@ export function stubbornAllyOutcomeNote(
   const allCities = history.flatMap((t) => t.cities)
   const colPeak = peakSus(allCities, col)
   const playerPeak = peakSus(allCities, state.player_city)
+  const survivedRule =
+    colPeak >= SUSPICION.threshold || playerPeak >= SUSPICION.threshold
+      ? ' 주민은 저마다 가장 의심하는 집을 지목하고, 과반이 모여야 걸려요.'
+      : ''
   if (!isWin(state.outcome)) {
     return colPeak >= SUSPICION.threshold
-      ? `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 7일을 버텼지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.`
-      : `${colLabel}도 나도 7일 동안 재판에서 지목되지 않았지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.`
+      ? `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 7일을 버텼지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.${survivedRule}`
+      : `${colLabel}도 나도 7일 동안 재판에서 지목되지 않았지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.${survivedRule}`
   }
   const winEnd = state.outcome === 'perfect_win' ? '주민 모두를 속였어요.' : '주민 과반을 넘겼어요.'
   const survived = `동료도 무사히 남아 마지막 밤 ${winEnd}`
   if (playerPeak >= SUSPICION.threshold) {
-    return `내 의심도가 최고 ${playerPeak}까지 올랐지만 재판에서 지목되지 않았고, ${survived}`
+    return `내 의심도가 최고 ${playerPeak}까지 올랐지만 재판에서 지목되지 않았고, ${survived}${survivedRule}`
   }
   if (colPeak > playerPeak) {
-    return `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 내 의심도는 최고 ${playerPeak}이었고, ${survived}`
+    return `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 내 의심도는 최고 ${playerPeak}이었고, ${survived}${survivedRule}`
   }
   return `${colLabel}도 나도 재판에서 지목되지 않았고, 마지막 밤 ${winEnd}`
 }

@@ -2038,20 +2038,22 @@ test('stubbornAllyStatus and stubbornAllyOutcomeNote track colleague survival, p
     `마지막 밤 재판에서 동료(3번 집)가 아니라 내 집이 의심도 20에서 지목됐어요(동점이라 추첨). 60에는 못 미쳤지만, 다른 집 의심도 때문에 재판이 열렸어요.${meNote}`,
   )
 
+  const survivedRule = ' 주민은 저마다 가장 의심하는 집을 지목하고, 과반이 모여야 걸려요.'
+
   // 3. 7일 버텼지만 과반 못 속임 (동료 60 이상 / 미만 구분)
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss'), [turn(7, [c(1, 40, 80, true)])]),
-    '동료(3번 집) 의심도가 최고 80까지 오르는 동안 7일을 버텼지만, 마지막 밤 주민 과반(2명)은 속이지 못했어요.',
+    `동료(3번 집) 의심도가 최고 80까지 오르는 동안 7일을 버텼지만, 마지막 밤 주민 과반(2명)은 속이지 못했어요.${survivedRule}`,
   )
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss'), [turn(7, [c(1, 20, 40, true)])]),
     '동료(3번 집)도 나도 7일 동안 재판에서 지목되지 않았지만, 마지막 밤 주민 과반(2명)은 속이지 못했어요.',
   )
 
-  // 4. 승리 / 완승 (동료 60+ 먼저 의심 / 동료 더 높음 / 동률 이하)
+  // 4. 승리 / 완승 (동료 60+ 먼저 의심 / 동료 더 높음(60 미만) / 동률 이하 / 내 60+)
   assert.equal(
     scenarioResultNote('stubborn-ally', allyState('perfect_win'), [turn(4, [c(5, 20, 60)]), turn(7, [c(1, 40, 80)])]),
-    '동료(3번 집) 의심도가 최고 80까지 오르는 동안 내 의심도는 최고 40이었고, 동료도 무사히 남아 마지막 밤 주민 모두를 속였어요.',
+    `동료(3번 집) 의심도가 최고 80까지 오르는 동안 내 의심도는 최고 40이었고, 동료도 무사히 남아 마지막 밤 주민 모두를 속였어요.${survivedRule}`,
   )
   assert.equal(
     stubbornAllyOutcomeNote(allyState('win'), [turn(7, [c(1, 20, 40)])]),
@@ -2063,6 +2065,40 @@ test('stubbornAllyStatus and stubbornAllyOutcomeNote track colleague survival, p
   )
   assert.equal(
     stubbornAllyOutcomeNote(allyState('win'), [turn(4, [c(1, 60, 80)]), turn(7, [c(1, 40, 60)])]),
-    '내 의심도가 최고 60까지 올랐지만 재판에서 지목되지 않았고, 동료도 무사히 남아 마지막 밤 주민 과반을 넘겼어요.',
+    `내 의심도가 최고 60까지 올랐지만 재판에서 지목되지 않았고, 동료도 무사히 남아 마지막 밤 주민 과반을 넘겼어요.${survivedRule}`,
   )
+})
+
+test('stubbornAllyOutcomeNote appends majority vote rule only when suspicion reached 60+ without accusation', () => {
+  const allyState = (outcome) => ({
+    config: { ...soloConfig, mafia_count: 2, sensor_error: 0.48, seed: 222 },
+    roles: { 1: 'citizen', 2: 'player', 3: 'colleague', 4: 'citizen', 5: 'citizen' },
+    player_city: 2,
+    truth: 'danger',
+    outcome,
+    end_reason: 'turns_done',
+  })
+  const c = (city, pSus, colSus, correct = false) => ({
+    city,
+    role: 'citizen',
+    hint: 'danger',
+    received: { 2: msg('stay'), 3: msg('stay') },
+    decision: correct ? 'evacuate' : 'stay',
+    correct,
+    suspicion: { 2: pSus, 3: colSus },
+    reason: null,
+  })
+  const splitVote = { ballots: { 1: 3, 4: 5, 5: 1 }, accused: null, caught: false }
+  const t = (turn, cities, vote = null) => ({ turn, cities, sharing: [], vote })
+  const rule = '주민은 저마다 가장 의심하는 집을 지목하고, 과반이 모여야 걸려요.'
+
+  // 동료 60 이상(승리·7일 패배), 나 60 이상(승리·7일 패배) → 지목 규칙 덧붙임
+  assert.ok(stubbornAllyOutcomeNote(allyState('win'), [t(7, [c(1, 20, 60)], splitVote)]).endsWith(rule))
+  assert.ok(stubbornAllyOutcomeNote(allyState('loss'), [t(7, [c(1, 60, 40, true)], splitVote)]).endsWith(rule))
+  assert.ok(stubbornAllyOutcomeNote(allyState('win'), [t(7, [c(1, 60, 40)], splitVote)]).endsWith(rule))
+  assert.ok(stubbornAllyOutcomeNote(allyState('loss'), [t(7, [c(1, 20, 60, true)], splitVote)]).endsWith(rule))
+
+  // 둘 다 60 미만(동료가 더 높아도 40 < 60 포함) → 지목 규칙 안 붙임
+  assert.ok(!stubbornAllyOutcomeNote(allyState('win'), [t(7, [c(1, 20, 40)])]).includes(rule))
+  assert.ok(!stubbornAllyOutcomeNote(allyState('loss'), [t(7, [c(1, 40, 40, true)])]).includes(rule))
 })
