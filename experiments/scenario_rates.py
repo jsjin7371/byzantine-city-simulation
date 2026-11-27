@@ -359,39 +359,25 @@ def main(runs):
         results = pool.map(run_job, jobs)
 
     by_key = {(r["scenario"], r["strategy"], r["threshold"]): r for r in results}
-    fixed_seeds = {}
-    for scenario_id in SCENARIOS:
-        if scenario_id == "watchful-eye":
-            al_g = by_key[(scenario_id, "always_lie", "")]["goals"]
-            sm_g = by_key[(scenario_id, "smart", "")]["goals"]
-            fixed_seeds[(scenario_id, "always_lie", "")] = next(
-                (s for s in range(runs) if al_g[s] and not sm_g[s]), ""
-            )
-        elif scenario_id == "regain-trust":
-            bot_g = by_key[(scenario_id, "bot", 40)]["goals"]
-            for thr in WASH_THRESHOLDS:
-                sw_g = by_key[(scenario_id, "smart_wash", thr)]["goals"]
-                fixed_seeds[(scenario_id, "smart_wash", thr)] = next(
-                    (s for s in range(runs) if sw_g[s] and not bot_g[s]), ""
-                )
-        elif scenario_id == "ring-village":
-            bot_g = by_key[(scenario_id, "bot", "")]["goals"]
-            sm_g = by_key[(scenario_id, "smart", "")]["goals"]
-            fixed_seeds[(scenario_id, "smart", "")] = next(
-                (s for s in range(runs) if sm_g[s] and not bot_g[s] and ring_far_varies(s)), ""
-            )
-        elif scenario_id == "stubborn-ally":
-            bot_g = by_key[(scenario_id, "bot", "")]["goals"]
-            sm_g = by_key[(scenario_id, "smart", "")]["goals"]
-            fixed_seeds[(scenario_id, "smart", "")] = next(
-                (s for s in range(runs) if sm_g[s] and not bot_g[s] and stubborn_ally_shows(s)), ""
-            )
-        else:
-            bot_g = by_key[(scenario_id, "bot", "")]["goals"]
-            sm_g = by_key[(scenario_id, "smart", "")]["goals"]
-            fixed_seeds[(scenario_id, "smart", "")] = next(
-                (s for s in range(runs) if sm_g[s] and not bot_g[s]), ""
-            )
+    seed_specs = [
+        ("watchful-eye", "always_lie", "", ("watchful-eye", "smart", ""), None),
+        ("ring-village", "smart", "", ("ring-village", "bot", ""), ring_far_varies),
+        *(("regain-trust", "smart_wash", thr, ("regain-trust", "bot", 40), None) for thr in WASH_THRESHOLDS),
+        ("stubborn-ally", "smart", "", ("stubborn-ally", "bot", ""), stubborn_ally_shows),
+    ]
+    fixed_seeds = {
+        (sid, strat, thr): next(
+            (
+                s
+                for s in range(runs)
+                if by_key[(sid, strat, thr)]["goals"][s]
+                and not by_key[base]["goals"][s]
+                and (extra is None or extra(s))
+            ),
+            "",
+        )
+        for sid, strat, thr, base, extra in seed_specs
+    }
 
     cols = ["scenario", "strategy", "threshold", "runs", "goal_rate", "goal_lo", "goal_hi",
             "win_rate", "caught_rate", "fixed_seed"]
