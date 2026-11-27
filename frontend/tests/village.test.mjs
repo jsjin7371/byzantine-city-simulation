@@ -1896,39 +1896,41 @@ test('stubbornAllyStatus and stubbornAllyOutcomeNote track colleague survival, p
 
   // HUD 동료 상태 배지: 0 → 의심 상승(ok) → 60 이상(warn) → 재판 발각(caught)
   assert.deepEqual(stubbornAllyStatus(allyState(null), []), { label: '동료 무사', tone: 'ok' })
-  assert.deepEqual(stubbornAllyStatus(allyState(null), [turn(2, [c(1, 20, 40)])]), { label: '동료 무사 (의심도 최고 40)', tone: 'ok' })
-  assert.deepEqual(stubbornAllyStatus(allyState(null), [turn(4, [c(1, 20, 60)])]), { label: '동료 무사 (의심도 최고 60)', tone: 'warn' })
+  assert.deepEqual(stubbornAllyStatus(allyState(null), [turn(2, [c(1, 20, 40)])]), { label: '동료 무사 (지금 의심도 최고 40)', tone: 'ok' })
+  assert.deepEqual(stubbornAllyStatus(allyState(null), [turn(4, [c(1, 20, 60)])]), { label: '동료 무사 (지금 의심도 최고 60)', tone: 'warn' })
   const colCaughtTurn = turn(6, [c(1, 60, 60)], { ballots: { 1: 3, 4: 3, 5: 2 }, accused: 3, caught: true })
   assert.deepEqual(stubbornAllyStatus(allyState('loss', 'caught'), [colCaughtTurn]), { label: '동료 재판에 걸림', tone: 'caught' })
 
   // 1. 동료가 재판에 걸려 끝남 (조기 / 마지막 밤 / 60 미만, 동점 추첨)
-  const compareNote = ' 동료의 의심도는 내 쪽지로 바뀌지 않지만, 주민이 누구를 지목할지는 나와의 비교로 갈려요.'
+  const voteRule = '주민은 저마다 가장 의심하는 집을 지목하고, 과반이 모인 집이 걸려요.'
+  const colNote = ` 동료의 의심도는 내 쪽지로 바뀌지 않아요. ${voteRule}`
   // colCaughtTurn: 유일한 주민의 최고 의심도가 나와 동률(60) → 추첨
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss', 'caught'), [colCaughtTurn]),
-    `재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 60에서 지목돼 판이 끝났어요(동점이라 추첨).${compareNote} 그날 내 의심도는 최고 60이었어요.`,
+    `재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 60에서 지목돼 판이 끝났어요(동점이라 추첨).${colNote}`,
   )
   const colCaughtDay7 = turn(7, [c(1, 40, 80)], { ballots: { 1: 3 }, accused: 3, caught: true })
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss', 'caught'), [colCaughtDay7]),
-    `마지막 밤 재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 80에서 지목돼 판이 끝났어요.${compareNote} 그날 내 의심도는 최고 40이었어요.`,
+    `마지막 밤 재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 80에서 지목돼 판이 끝났어요.${colNote}`,
   )
   const colCaughtLow = turn(5, [c(1, 60, 40), c(4, 20, 40), c(5, 0, 20)], { ballots: { 1: 2, 4: 3, 5: 3 }, accused: 3, caught: true })
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss', 'caught'), [colCaughtLow]),
-    `재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 40에서 지목돼 판이 끝났어요. 동료 의심도는 60 미만이었지만, 다른 집 의심도 때문에 열린 재판이었어요.${compareNote} 그날 내 의심도는 최고 60이었어요.`,
+    `재판에서 같은 거짓말만 되풀이한 동료(3번 집)가 의심도 40에서 지목돼 판이 끝났어요. 60에는 못 미쳤지만, 다른 집 의심도 때문에 재판이 열렸어요.${colNote}`,
   )
 
   // 2. 내가 재판에 걸려 끝남 (60 이상 / 60 미만 + 동점 추첨)
+  const meNote = ` ${voteRule} 집마다 나와 동료의 의심도를 비교하며 다시 해 보세요.`
   const meCaught = turn(3, [c(4, 60, 40)], { ballots: { 4: 2 }, accused: 2, caught: true })
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss', 'caught'), [meCaught]),
-    '재판에서 동료(3번 집)가 아니라 내 집이 의심도 60에서 지목됐어요. 그날 동료의 의심도는 최고 40이었어요. 두 의심도를 비교하며 다시 해 보세요.',
+    `재판에서 동료(3번 집)가 아니라 내 집이 의심도 60에서 지목됐어요.${meNote}`,
   )
   const meCaughtLow = turn(7, [c(1, 20, 60), c(4, 20, 20), c(5, 0, 0)], { ballots: { 1: 3, 4: 2, 5: 2 }, accused: 2, caught: true })
   assert.equal(
     stubbornAllyOutcomeNote(allyState('loss', 'caught'), [meCaughtLow]),
-    '마지막 밤 재판에서 동료(3번 집)가 아니라 내 집이 의심도 20에서 지목됐어요(동점이라 추첨). 내 의심도는 60 미만이었지만, 다른 집 의심도 때문에 열린 재판이었어요. 그날 동료의 의심도는 최고 60이었어요. 두 의심도를 비교하며 다시 해 보세요.',
+    `마지막 밤 재판에서 동료(3번 집)가 아니라 내 집이 의심도 20에서 지목됐어요(동점이라 추첨). 60에는 못 미쳤지만, 다른 집 의심도 때문에 재판이 열렸어요.${meNote}`,
   )
 
   // 3. 7일 버텼지만 과반 못 속임 (동료 60 이상 / 미만 구분)

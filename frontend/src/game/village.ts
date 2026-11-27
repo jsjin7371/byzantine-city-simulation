@@ -1972,7 +1972,7 @@ export function stubbornAllyStatus(
   if (city == null) return null
   if (history.some((t) => t.vote?.accused === city)) return { label: '동료 재판에 걸림', tone: 'caught' }
   const maxSus = peakSus(history.at(-1)?.cities ?? [], city)
-  const label = maxSus > 0 ? `동료 무사 (의심도 최고 ${maxSus})` : '동료 무사'
+  const label = maxSus > 0 ? `동료 무사 (지금 의심도 최고 ${maxSus})` : '동료 무사'
   return { label, tone: maxSus >= SUSPICION.threshold ? 'warn' : 'ok' }
 }
 
@@ -1991,19 +1991,19 @@ export function stubbornAllyOutcomeNote(
     const drawn = trial.drawn ? '(동점이라 추첨)' : ''
     const low =
       trial.sus < SUSPICION.threshold
-        ? ` ${trial.accused === col ? '동료' : '내'} 의심도는 ${SUSPICION.threshold} 미만이었지만, 다른 집 의심도 때문에 열린 재판이었어요.`
+        ? ` ${SUSPICION.threshold}에는 못 미쳤지만, 다른 집 의심도 때문에 재판이 열렸어요.`
         : ''
+    const voteRule = '주민은 저마다 가장 의심하는 집을 지목하고, 과반이 모인 집이 걸려요.'
     if (trial.accused === col) {
-      const mine = peakSus(last!.cities, state.player_city)
-      return `${when}에서 같은 거짓말만 되풀이한 ${colLabel}가 의심도 ${trial.sus}에서 지목돼 판이 끝났어요${drawn}.${low} 동료의 의심도는 내 쪽지로 바뀌지 않지만, 주민이 누구를 지목할지는 나와의 비교로 갈려요. 그날 내 의심도는 최고 ${mine}이었어요.`
+      return `${when}에서 같은 거짓말만 되풀이한 ${colLabel}가 의심도 ${trial.sus}에서 지목돼 판이 끝났어요${drawn}.${low} 동료의 의심도는 내 쪽지로 바뀌지 않아요. ${voteRule}`
     }
-    const theirs = peakSus(last!.cities, col)
-    return `${when}에서 ${colLabel}가 아니라 내 집이 의심도 ${trial.sus}에서 지목됐어요${drawn}.${low} 그날 동료의 의심도는 최고 ${theirs}이었어요. 두 의심도를 비교하며 다시 해 보세요.`
+    return `${when}에서 ${colLabel}가 아니라 내 집이 의심도 ${trial.sus}에서 지목됐어요${drawn}.${low} ${voteRule} 집마다 나와 동료의 의심도를 비교하며 다시 해 보세요.`
   }
   const citizens = Object.values(state.roles).filter((r) => r === 'citizen').length
   const need = majority(citizens)
-  const colPeak = Math.max(0, ...history.map((t) => peakSus(t.cities, col)))
-  const playerPeak = Math.max(0, ...history.map((t) => peakSus(t.cities, state.player_city)))
+  const allCities = history.flatMap((t) => t.cities)
+  const colPeak = peakSus(allCities, col)
+  const playerPeak = peakSus(allCities, state.player_city)
   if (!isWin(state.outcome)) {
     return colPeak >= SUSPICION.threshold
       ? `${colLabel} 의심도가 최고 ${colPeak}까지 오르는 동안 7일을 버텼지만, 마지막 밤 주민 과반(${need}명)은 속이지 못했어요.`
