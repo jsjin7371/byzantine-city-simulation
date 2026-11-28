@@ -303,13 +303,15 @@ function ResultChart({
 export function GameResult({
   state,
   history,
+  scenarioTopic,
   children,
 }: {
   state: GameState
   history: TurnResult[]
+  scenarioTopic?: TopicKey
   children?: ReactNode
 }) {
-  const s = gameSummary(state, history)
+  const s = gameSummary(state, history, scenarioTopic)
   const won = state.outcome === 'win' || state.outcome === 'perfect_win'
   const stampText = state.outcome ? outcomeLabels[state.outcome] : '종료'
   const subParts = [

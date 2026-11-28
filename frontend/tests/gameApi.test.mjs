@@ -18,6 +18,20 @@ test('claim targets are neighbouring citizens only', () => {
   assert.deepEqual(defaultClaims({ ...state, truth: 'safe' }), { 2: 'evacuate', 3: 'evacuate', 5: 'evacuate' })
   assert.deepEqual(defaultClaims(state, true), { 2: 'evacuate', 3: 'evacuate', 5: 'evacuate' })
   assert.deepEqual(defaultClaims({ ...state, truth: 'safe' }, true), { 2: 'stay', 3: 'stay', 5: 'stay' })
+  // 감시의 눈(share_mode='all') 시작 시 defaultClaims(game, true)는 관측이 달라도 모든 집에 같은 쪽지를 채운다
+  const watchfulInit = defaultClaims(
+    {
+      ...state,
+      config: { ...config, share_mode: 'all', mafia_count: 1 },
+      roles: { 1: 'citizen', 2: 'citizen', 3: 'citizen', 4: 'citizen', 5: 'player' },
+      player_city: 5,
+      truth: 'safe',
+      next_hints: { 1: 'safe', 2: 'danger', 3: 'danger', 4: 'safe' },
+    },
+    true,
+  )
+  assert.equal(new Set(Object.values(watchfulInit)).size, 1)
+  assert.deepEqual(watchfulInit, { 1: 'stay', 2: 'stay', 3: 'stay', 4: 'stay' })
 })
 
 test('createGame posts the difficulty preset and validates the state', async (context) => {

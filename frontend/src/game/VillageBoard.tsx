@@ -907,30 +907,30 @@ const RING_PICK_SIGN: readonly [string, string] = ['2 양옆 두 집에 보낼',
 const RING_SHARE_SIGN: readonly [string, string] = ['3 비교하는 두 집에', '쪽지가 둘 다 가는지 봐요']
 const NEUTRAL_SHARE_SIGN: readonly [string, string] = ['3 다르게 말하면 비교에서', '모순이 드러나요']
 
-// 첫날 안내 표지판 (왼쪽 나무 기둥). 1일째 왼쪽 위 집의 관측 꼬리표(y 291까지) 아래에서 시작한다.
+// 첫날 안내 표지판 (왼쪽 나무 기둥). 1일째 왼쪽 위 집의 관측 꼬리표(y 291까지)와 아래 집 번호 배지(y 423부터) 사이에 놓는다.
 function Signs({ neutralShareSign = false, ring = false }: { neutralShareSign?: boolean; ring?: boolean }) {
   const thirdSign = neutralShareSign ? NEUTRAL_SHARE_SIGN : ring ? RING_SHARE_SIGN : SIGNS[2]
   const signs = [SIGNS[0], ring ? RING_PICK_SIGN : SIGNS[1], thirdSign]
   const ariaLabel = `첫날 안내: ${signs.map(([a, b]) => `${a} ${b}`).join(', ')}`
   return (
-    <g fontSize="15" fontWeight="700" role="img" aria-label={ariaLabel}>
-      <rect x="80" y="274" width="9" height="146" fill="#5a3d22" filter="url(#vb-rough)" />
-      <text x="16" y="270" className="vb-sign-title">
+    <g fontSize="14" fontWeight="700" role="img" aria-label={ariaLabel}>
+      <rect x="74" y="298" width="9" height="122" fill="#5a3d22" filter="url(#vb-rough)" />
+      <text x="12" y="294" className="vb-sign-title">
         첫날 안내
       </text>
       {signs.map(([first, second], i) => (
         <g key={first} className="vb-sign" style={{ animationDelay: `${80 + i * 80}ms` }}>
           <path
-            d={`M8 ${293 + i * 44} H174 L184 ${313 + i * 44} L174 ${333 + i * 44} H8 Z`}
+            d={`M8 ${303 + i * 39} H166 L176 ${320.5 + i * 39} L166 ${338 + i * 39} H8 Z`}
             fill="#c99a5b"
             stroke="#4a3119"
             strokeWidth="2"
             filter="url(#vb-rough)"
           />
-          <text x="14" y={310 + i * 44}>
+          <text x="13" y={317 + i * 39}>
             {first}
           </text>
-          <text x="14" y={328 + i * 44}>
+          <text x="13" y={333 + i * 39}>
             {second}
           </text>
         </g>

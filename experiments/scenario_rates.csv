@@ -1,12 +1,12 @@
 scenario,strategy,threshold,runs,goal_rate,goal_lo,goal_hi,win_rate,caught_rate,fixed_seed
-watchful-eye,always_lie,,1000,0.454,0.4234,0.485,0.454,0.313,0
+watchful-eye,always_lie,,1000,0.454,0.4234,0.485,0.454,0.313,40
 watchful-eye,smart,,1000,0.394,0.3642,0.4246,0.394,0.015,
 ring-village,bot,,1000,0.354,0.325,0.3841,0.354,0.095,
-ring-village,smart,,1000,0.419,0.3888,0.4498,0.419,0.006,767
+ring-village,smart,,1000,0.419,0.3888,0.4498,0.419,0.006,961
 regain-trust,bot,40,1000,0.0,0.0,0.0038,0.445,0.329,
 regain-trust,smart,40,1000,0.0,0.0,0.0038,0.501,0.007,
-regain-trust,smart_wash,30,1000,0.465,0.4343,0.496,0.489,0.016,2
-regain-trust,smart_wash,40,1000,0.465,0.4343,0.496,0.489,0.016,2
-regain-trust,smart_wash,50,1000,0.349,0.3201,0.3791,0.43,0.036,2
+regain-trust,smart_wash,30,1000,0.465,0.4343,0.496,0.489,0.016,48
+regain-trust,smart_wash,40,1000,0.465,0.4343,0.496,0.489,0.016,48
+regain-trust,smart_wash,50,1000,0.349,0.3201,0.3791,0.43,0.036,272
 stubborn-ally,bot,,1000,0.361,0.3318,0.3912,0.361,0.619,
 stubborn-ally,smart,,1000,0.414,0.3839,0.4448,0.414,0.551,222
