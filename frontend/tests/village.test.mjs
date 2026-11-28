@@ -1058,6 +1058,19 @@ test('resultDecisive explains contradiction catch, trial catch, and final-day ma
   assert.deepEqual(allCaughtDec, [
     '3일째 재판에서 2번, 4번, 5번 집이 나를 마피아로 지목했어요 (3표, 과반 3표).',
   ])
+  // 고리 마을 마지막 밤에 모순이 드러나고 먼 집 동점 추첨 표가 포함되면 결정타 모순 문장 뒤에도 표시한다
+  const ringClashDay = {
+    ...ringCaughtDay,
+    sharing: [{ pair: [2, 5], contradictions: [{ city: 1, told: { 2: msg('stay'), 5: msg('evacuate') } }] }],
+  }
+  assert.deepEqual(resultDecisive(ringCaughtState, [ringClashDay]), [
+    '3일째 밤, 2번 집과 5번 집에 서로 다른 쪽지를 보냈어요.',
+    '그날 쪽지 비교에서 모순이 드러났고, 이어진 재판에서 지목됐어요 (4번은 동점 추첨).',
+  ])
+  assert.deepEqual(resultDecisive({ ...ringCaughtState, config: soloConfig }, [ringClashDay]), [
+    '3일째 밤, 2번 집과 5번 집에 서로 다른 쪽지를 보냈어요.',
+    '그날 쪽지 비교에서 모순이 드러났고, 이어진 재판에서 지목됐어요.',
+  ])
 })
 
 test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () => {

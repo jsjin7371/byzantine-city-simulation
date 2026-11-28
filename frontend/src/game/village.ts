@@ -1030,6 +1030,15 @@ function ringFarTieVotersForMe(
     .sort((a, b) => a - b)
 }
 
+function farTieNote(
+  state: Pick<GameState, 'config' | 'roles' | 'player_city'>,
+  turn: Pick<TurnResult, 'cities' | 'vote'> | undefined,
+): string {
+  if (turn?.vote?.accused !== state.player_city) return ''
+  const farTie = ringFarTieVotersForMe(state, turn)
+  return farTie.length > 0 ? `${farTie.join('·')}번은 동점 추첨` : ''
+}
+
 // 재판 기록: 지목된 집의 그날 최고 의심도와, 동점 추첨이 지목을 갈랐는지(그 집만 가장 의심한 주민이 과반이 아님).
 function trialRecord(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined) {
   const accused = turn?.vote?.accused
@@ -1185,22 +1194,21 @@ export function resultDecisive(
   const need = majority(citizens)
 
   if (state.end_reason === 'caught' && last?.vote) {
+    const tie = farTieNote(state, last)
     const caughtClash = last.sharing.find((s) => s.contradictions.some((c) => c.city === me))
     if (caughtClash && last.vote.accused === me) {
       const [a, b] = caughtClash.pair
       return [
         `${day}일째 밤, ${a}번 집과 ${b}번 집에 서로 다른 쪽지를 보냈어요.`,
-        '그날 쪽지 비교에서 모순이 드러났고, 이어진 재판에서 지목됐어요.',
+        `그날 쪽지 비교에서 모순이 드러났고, 이어진 재판에서 지목됐어요${tie ? ` (${tie})` : ''}.`,
       ]
     }
     const voters = Object.entries(last.vote.ballots)
       .filter(([, to]) => to === last.vote!.accused)
       .map(([from]) => `${from}번`)
     const who = last.vote.accused === me ? '나를' : `동료 ${last.vote.accused}번을`
-    const farTie = last.vote.accused === me ? ringFarTieVotersForMe(state, last) : []
-    const tieNote = farTie.length > 0 ? `, ${farTie.join('·')}번은 동점 추첨` : ''
     return [
-      `${day}일째 재판에서 ${voters.join(', ')} 집이 ${who} 마피아로 지목했어요 (${voters.length}표, 과반 ${need}표${tieNote}).`,
+      `${day}일째 재판에서 ${voters.join(', ')} 집이 ${who} 마피아로 지목했어요 (${voters.length}표, 과반 ${need}표${tie ? `, ${tie}` : ''}).`,
     ]
   }
 
@@ -1469,12 +1477,11 @@ export function gameSummary(
       .filter(([, to]) => to === vote.accused)
       .map(([from]) => `${from}번`)
     const who = vote.accused === me ? '나를' : `동료 ${vote.accused}번을`
-    const farTie = vote.accused === me ? ringFarTieVotersForMe(state, last) : []
-    const tieNote = farTie.length > 0 ? `, ${farTie.join('·')}번은 동점 추첨` : ''
+    const tie = farTieNote(state, last)
     momentItems.push({
       kind: 'caught',
       day,
-      text: `${day}일째 재판에서 ${voters.join(', ')}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표${tieNote})`,
+      text: `${day}일째 재판에서 ${voters.join(', ')}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표${tie ? `, ${tie}` : ''})`,
     })
   } else if (last) {
     const wrong = last.cities.filter((c) => c.role === 'citizen' && c.correct === false).length

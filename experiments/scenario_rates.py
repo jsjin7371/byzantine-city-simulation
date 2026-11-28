@@ -218,10 +218,8 @@ def ring_far_varies(seed, samples=128):
     done7 = wins = 0
     far_wrong = {c: 0 for c in far}
     for _ in range(samples):
-        g = Game(1, GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["ring-village"]))
-        while not g.game_over:
-            claims = {str(r): {"claim": rng.choice(opts), "note": ""} for r in t_list}
-            res = g.play({"turn": g.turn + 1, "claims": claims}, city_turn)
+        _, hist = play_all("ring-village", seed, lambda _: {str(r): rng.choice(opts) for r in t_list})
+        res = hist[-1]
         if res["end_reason"] != "turns_done":
             continue
         done7 += 1
@@ -266,26 +264,24 @@ def regain_trust_shows(seed, threshold=40):
     if not has_honest_wash_goal(g_sw, h_sw):
         return False
 
-    g_h = Game(1, GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["regain-trust"]))
-    lie = OPPOSITE[DECISION_OF[g_h.truth]]
-    washed, hit40, h_h = set(), set(), []
-    while not g_h.game_over:
+    washed, hit40 = set(), set()
+
+    def intuitive(g):
+        lie = OPPOSITE[DECISION_OF[g.truth]]
+        me = str(g.player)
         cl = {}
-        for cid in g_h.citizens:
+        for cid in g.citizens:
             sc = str(cid)
-            sus = g_h.suspicion[cid][str(g_h.player)]
+            sus = g.suspicion[cid][me]
+            if cid in hit40 and sus <= 20:
+                washed.add(cid)
             if sus >= threshold:
                 hit40.add(cid)
-            if (cid in hit40 and cid not in washed and sus > 20) or sus >= threshold:
-                cl[sc] = {"claim": DECISION_OF[g_h.hints[sc]], "note": ""}
-            else:
-                cl[sc] = {"claim": lie, "note": ""}
-        res = g_h.play({"turn": g_h.turn + 1, "claims": cl}, city_turn)
-        h_h.append(res)
-        for row in res["cities"]:
-            if row["role"] == "citizen" and row["city"] in hit40 and row["suspicion"][str(g_h.player)] <= 20:
-                washed.add(row["city"])
-    return has_honest_wash_goal(g_h, h_h)
+            wash = (cid in hit40 and cid not in washed and sus > 20) or sus >= threshold
+            cl[sc] = DECISION_OF[g.hints[sc]] if wash else lie
+        return cl
+
+    return has_honest_wash_goal(*play_all("regain-trust", seed, intuitive))
 
 
 def stubborn_ally_shows(seed):
