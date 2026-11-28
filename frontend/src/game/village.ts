@@ -1850,7 +1850,7 @@ export function scenarioGoalSteps(
   return [
     { label: '한 주민 의심 40 이상', done: p.reached40 != null },
     { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: p.refooled != null || p.washedActive != null },
-    { label: '같은 주민, 거짓 쪽지로 다시 속이기', done: p.refooled != null },
+    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: p.refooled != null },
     { label: '이기기', done: isWin(state.outcome) },
   ]
 }

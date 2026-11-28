@@ -599,7 +599,11 @@
 .vb-gauge.is-over .vb-post-tag { stroke: #2b1a0c; }
 
 .vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
+.vb-share-back { fill: none; stroke: #3b2a1a; stroke-width: 9; stroke-linecap: round; opacity: .35; }
+.vb-share-line { fill: none; stroke: #ffd35a; stroke-width: 5; stroke-dasharray: 11 9; stroke-linecap: round; }
 .vb-share.is-all .vb-share-glow { stroke-width: 11; opacity: .4; }
+.vb-share.is-all .vb-share-back { stroke-width: 6.5; }
+.vb-share.is-all .vb-share-line { stroke-width: 3.8; stroke-dasharray: 9 7; }
 .vb-share-tag rect { fill: #f6ebcd; stroke: #b8861f; }
 /* 두 집에 다른 쪽지: 점선이 붉게 (모순 매듭과 함께 보여 색만으로 구분하지 않는다) */
 .vb-share .is-clash .vb-share-line { stroke: var(--rust); }
@@ -2513,7 +2517,6 @@ dialog.tb-dialog[open] {
   padding: 5px 11px;
   border-radius: 16px;
   gap: 4px;
-  flex-wrap: wrap;
 }
 .gm-goal-steps {
   display: inline-flex;
@@ -2542,10 +2545,7 @@ dialog.tb-dialog[open] {
   opacity: 0.7;
 }
 .gm-scenario-note {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 5px;
+  display: inline-block;
   max-width: 100%;
   padding: 4px 12px;
   border-radius: 16px;
@@ -2558,17 +2558,9 @@ dialog.tb-dialog[open] {
   word-break: keep-all;
   box-shadow: 0 2px 0 rgba(74, 49, 25, 0.14);
 }
-.gm-scenario-name {
-  color: var(--wood-dark);
-}
-.gm-scenario-sep {
-  color: var(--wood);
-  opacity: 0.7;
-}
 @media (max-width: 640px) {
   .gm-goal-step {
     white-space: normal;
-    word-break: keep-all;
     border-radius: 10px;
   }
 }

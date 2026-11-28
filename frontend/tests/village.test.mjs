@@ -1613,7 +1613,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('perfect_win'), no40), [
     { label: '한 주민 의심 40 이상', done: false },
     { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: false },
-    { label: '같은 주민, 거짓 쪽지로 다시 속이기', done: false },
+    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: true },
   ])
   assert.equal(scenarioGoalSteps('watchful-eye', trustState('win'), no40), null)
@@ -1657,7 +1657,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), stuckHigh), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: false },
-    { label: '같은 주민, 거짓 쪽지로 다시 속이기', done: false },
+    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: false },
   ])
   assert.equal(
@@ -1738,7 +1738,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('win'), washedOnly), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: true },
-    { label: '같은 주민, 거짓 쪽지로 다시 속이기', done: false },
+    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: true },
   ])
   assert.equal(
@@ -1765,7 +1765,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), reSpiked), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: false },
-    { label: '같은 주민, 거짓 쪽지로 다시 속이기', done: false },
+    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: false },
   ])
   assert.equal(
@@ -1829,13 +1829,13 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), fullOnOff), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: true },
-    { label: '같은 주민, 거짓 쪽지로 다시 속이기', done: true },
+    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: true },
     { label: '이기기', done: false },
   ])
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('win'), fullOnOff), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: true },
-    { label: '같은 주민, 거짓 쪽지로 다시 속이기', done: true },
+    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: true },
     { label: '이기기', done: true },
   ])
   assert.equal(

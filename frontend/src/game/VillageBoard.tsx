@@ -1239,16 +1239,8 @@ export function VillageBoard({
             return (
               <g key={`${a}-${b}`} className={red(a, b) ? 'is-clash' : undefined}>
                 <path d={d} className="vb-share-glow" />
-                <path d={d} fill="none" stroke="#3b2a1a" strokeWidth={isAllShare ? 6.5 : 9} strokeLinecap="round" opacity=".35" />
-                <path
-                  d={d}
-                  className="vb-share-line"
-                  fill="none"
-                  stroke="#ffd35a"
-                  strokeWidth={isAllShare ? 3.8 : 5}
-                  strokeDasharray={isAllShare ? '9 7' : '11 9'}
-                  strokeLinecap="round"
-                />
+                <path d={d} className="vb-share-back" />
+                <path d={d} className="vb-share-line" />
               </g>
             )
           })}

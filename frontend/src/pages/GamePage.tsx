@@ -441,11 +441,7 @@ export function GamePage() {
                         )}
                       </span>
                       <span className="gm-scenario-note">
-                        <span className="gm-scenario-name">{scenario.title}</span>
-                        <span className="gm-scenario-sep" aria-hidden="true">
-                          ·
-                        </span>
-                        <span>{scenario.feature}</span>
+                        {scenario.title} · {scenario.feature}
                       </span>
                     </>
                   )}
