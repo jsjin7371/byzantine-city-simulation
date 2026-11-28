@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, allSharePath, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, regainTrustOutcomeNote, regainTrustProgress, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioGoalSteps, scenarioResultNote, shareBadgeLabel, stubbornAllyOutcomeNote, stubbornAllyStatus, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialKindOf, trialStampCopy, trialStampMode, trialTieVoters, trialTriggerCities, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
+  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, allSharePath, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, regainTrustOutcomeNote, regainTrustProgress, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioGoalSteps, scenarioResultNote, shareBadgeLabel, stubbornAllyOutcomeNote, stubbornAllyStatus, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialKindOf, trialStampCopy, trialStampMode, trialTriggerCities, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -488,10 +488,13 @@ const over = (outcome, end_reason) => ({ ...state, outcome, end_reason })
 const day = (n, extra = {}) => ({ ...turn, turn: n, sharing: [], vote: null, ...extra })
 
 test('game summary: caught explains who accused me at which trial', () => {
-  const caught = day(6, { vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true } })
+  const caught = day(6, {
+    cities: turn.cities.map((c) => (c.city === 1 ? { ...c, suspicion: { ...c.suspicion, 3: 60 } } : c)),
+    vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true },
+  })
   const s = gameSummary(over('loss', 'caught'), [day(5), caught])
   assert.equal(s.headline, '6일째 광장 재판에 걸렸어요')
-  assert.ok(s.moments.some((m) => m.day === 6 && m.text === '6일째 재판에서 1·4번 집이 나를 지목했어요 (2표, 과반 2표)'))
+  assert.ok(s.moments.some((m) => m.day === 6 && m.text === '나(3번)를 두고 열린 재판에서 1·4번 집이 나를 지목했어요 (2표, 과반 2표)'))
   assert.ok(s.moments.some((m) => m.day === null && m.text === '재판이 1번 열렸어요 (내 재판 1번)'))
 })
 
@@ -513,6 +516,11 @@ test('game summary: turn 7 counts wrong citizens with swayed count, first crossi
   const lost = gameSummary(over('loss', 'turns_done'), [lostDay])
   assert.equal(lost.headline, '마지막 밤, 틀린 주민이 과반이 안 됐어요')
   assert.ok(lost.moments.some((m) => m.day === 7 && m.text === '마지막 7일째, 틀린 주민 1명 (그중 내 쪽지로 뒤집힌 주민 0명, 2명 이상이면 승리)'))
+  const zeroWrongDay = day(7, {
+    cities: turn.cities.map((c) => (c.role === 'citizen' ? { ...c, correct: true } : c)),
+  })
+  const zeroLost = gameSummary(over('loss', 'turns_done'), [zeroWrongDay])
+  assert.ok(zeroLost.moments.some((m) => m.day === 7 && m.text === '마지막 7일째, 틀린 주민 0명 (2명 이상이면 승리)'))
   assert.equal(gameSummary(over('perfect_win', 'turns_done'), [day(7)]).headline, '마지막 밤, 주민 모두가 틀렸어요')
 })
 
@@ -1160,7 +1168,6 @@ test('trial pins distinguish me vs colleague vs resident trials, and colleaguePe
 
   assert.deepEqual(trialTriggerCities(hist[0]), [5])
   assert.equal(trialKindOf(allyState, hist[0]), 'other')
-  assert.deepEqual(trialTieVoters(hist[0]), [4, 5])
 
   assert.deepEqual(trialTriggerCities(hist[1]), [3])
   assert.equal(trialKindOf(allyState, hist[1]), 'colleague')

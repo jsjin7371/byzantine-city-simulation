@@ -438,7 +438,7 @@ function HouseView({
   const isSusPick = pick?.mode === 'suspicion'
   const label = pick
     ? isSusPick
-      ? `${base}. 의심선 보기${pick.open ? ', 보는 중' : ''}`
+      ? `${base}. 의심선 보기`
       : `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
     : base
   const mafia = h.role !== 'citizen'
@@ -1133,25 +1133,6 @@ export function VillageBoard({
   }
   const last = useRef<number | null>(null)
   const cardFocused = useRef(false)
-  // 좁은 화면 크게 보기(가로 스크롤) 전환 시 열린 카드나 보드 가운데로 맞춘다.
-  useEffect(() => {
-    const frame = svg.current?.parentElement
-    if (!frame) return
-    if (!zoomed) {
-      frame.scrollLeft = 0
-      return
-    }
-    if (frame.scrollWidth <= frame.clientWidth) return
-    const card = svg.current?.querySelector<SVGGElement>('.vb-card')
-    if (card) {
-      const cardRect = card.getBoundingClientRect()
-      const frameRect = frame.getBoundingClientRect()
-      const targetLeft = frame.scrollLeft + (cardRect.left - frameRect.left) - (frameRect.width - cardRect.width) / 2
-      frame.scrollTo({ left: Math.max(0, targetLeft), behavior: 'auto' })
-    } else {
-      frame.scrollLeft = Math.round((frame.scrollWidth - frame.clientWidth) / 2)
-    }
-  }, [zoomed, state.game_id])
   // 쪽지가 열리면 첫 선택 버튼으로 포커스를 옮기고, 좁은 화면 가로 스크롤 보드에서는 카드가 가운데 보이게 맞춘다.
   useEffect(() => {
     if (open != null) {
@@ -1174,11 +1155,11 @@ export function VillageBoard({
       last.current = null
     }
   }, [open])
-  // 선택창과 집·튜토리얼 말풍선·오늘 밤 저울 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
+  // 선택창과 집·튜토리얼 말풍선·오늘 밤 저울·보드 도구 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
   useEffect(() => {
     if (open == null) return
     const close = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('.vb-card, .vb-house, .tut-box, .vl-tonight')) setOpen(null)
+      if (!(e.target as Element).closest('.vb-card, .vb-house, .tut-box, .vl-tonight, .gm-board-tools')) setOpen(null)
     }
     document.addEventListener('click', close)
     return () => document.removeEventListener('click', close)
@@ -1231,6 +1212,28 @@ export function VillageBoard({
         houses.find((h) => h.slot === 4 && h.reachable) ??
         null)
       : null
+  const pointerCity = pointerTarget?.city ?? null
+  // 좁은 화면 크게 보기(가로 스크롤) 전환 시 열린 카드·튜토리얼 가리킴 집·보드 가운데 순으로 맞춘다.
+  useEffect(() => {
+    const frame = svg.current?.parentElement
+    if (!frame) return
+    if (!zoomed) {
+      frame.scrollTo({ left: 0, behavior: 'auto' })
+      return
+    }
+    if (frame.scrollWidth <= frame.clientWidth) return
+    const focusEl =
+      svg.current?.querySelector<SVGGElement>('.vb-card') ??
+      (pointerCity != null ? svg.current?.querySelector<SVGGElement>(`.vb-house[data-city="${pointerCity}"]`) : null)
+    if (focusEl) {
+      const rect = focusEl.getBoundingClientRect()
+      const frameRect = frame.getBoundingClientRect()
+      const targetLeft = frame.scrollLeft + (rect.left - frameRect.left) - (frameRect.width - rect.width) / 2
+      frame.scrollTo({ left: Math.max(0, targetLeft), behavior: 'auto' })
+    } else {
+      frame.scrollTo({ left: Math.round((frame.scrollWidth - frame.clientWidth) / 2), behavior: 'auto' })
+    }
+  }, [zoomed, state.game_id, pointerCity])
   const openCity = opened?.city ?? null
   const canInspectTrial = !night && !highlight && !opened
   const [prevCanInspectTrial, setPrevCanInspectTrial] = useState(canInspectTrial)
@@ -1254,7 +1257,7 @@ export function VillageBoard({
       : null
   const inspected = suspicionMode ? (pinned ?? defaultPinned) : (hovered ?? focused)
   const activeSuspicionLinks =
-    !night && !highlight && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
+    !night && (!highlight || suspicionMode) && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
   const currentStampMode = trialStampMode({
     isNight: Boolean(night),
     trialInspect: trialHovered || trialFocused,
@@ -1356,7 +1359,10 @@ export function VillageBoard({
                     claim: picker?.claims[h.city],
                     open: inspected === h.city,
                     preview: null,
-                    onOpen: () => setPinned(h.city),
+                    onOpen: () => {
+                      setOpen(null)
+                      setPinned(h.city)
+                    },
                   }
                 : picker && h.reachable
                   ? {

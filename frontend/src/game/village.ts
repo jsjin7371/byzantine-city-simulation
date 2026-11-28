@@ -1080,7 +1080,6 @@ function allTieVoters(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined): nu
       const sus = turn.cities.find((c) => c.city === city)?.suspicion
       if (!sus) return false
       const vals = Object.values(sus)
-      if (vals.length === 0) return false
       const top = Math.max(...vals)
       return sus[to] === top && vals.filter((v) => v === top).length > 1
     })
@@ -1088,16 +1087,11 @@ function allTieVoters(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined): nu
     .sort((a, b) => a - b)
 }
 
-// 재판 결과 기록용 동점 추첨 표 목록: 지목된 집이 있으면 그 집을 지목한 동점 표만, 없으면 전체.
-export function trialTieVoters(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined): number[] {
-  if (!turn?.vote) return []
-  const accused = turn.vote.accused
-  const ballots = turn.vote.ballots
-  return allTieVoters(turn).filter((city) => accused == null || ballots[city] === accused)
-}
-
+// 재판 결과 기록용 동점 추첨 표기: 지목된 집이 있으면 그 집을 지목한 동점 표만, 없으면 전체.
 function trialTieNote(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined): string {
-  const voters = trialTieVoters(turn)
+  if (!turn?.vote) return ''
+  const { accused, ballots } = turn.vote
+  const voters = allTieVoters(turn).filter((city) => accused == null || ballots[city] === accused)
   return voters.length > 0 ? `${formatHouseGroup(voters)} 동점 추첨` : ''
 }
 
@@ -1571,7 +1565,7 @@ export function gameSummary(
     momentItems.push({
       kind: isFalsePos ? 'falsepos' : undefined,
       day: t.turn,
-      text: `${opened ? `${opened} 재판에서` : '재판에서'} ${outcomeText}${tie ? ` (${tie})` : ''}`,
+      text: `${opened} 재판에서 ${outcomeText}${tie ? ` (${tie})` : ''}`,
     })
   }
 
@@ -1586,14 +1580,14 @@ export function gameSummary(
     momentItems.push({
       kind: 'caught',
       day,
-      text: `${opened ? `${opened} 재판에서` : `${day}일째 재판에서`} ${formatHouseGroup(voters)}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표${tie ? `, ${tie}` : ''})`,
+      text: `${opened} 재판에서 ${formatHouseGroup(voters)}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표${tie ? `, ${tie}` : ''})`,
     })
   } else if (last) {
     const wrong = last.cities.filter((c) => c.role === 'citizen' && c.correct === false).length
     const swayed = state.config.citizen_type === 'ai' ? null : swayedWrong(state, history, history.length - 1)
     momentItems.push({
       day,
-      text: `마지막 ${day}일째, 틀린 주민 ${wrong}명 (${swayed != null ? `그중 내 쪽지로 뒤집힌 주민 ${swayed}명, ` : ''}${need}명 이상이면 승리)`,
+      text: `마지막 ${day}일째, 틀린 주민 ${wrong}명 (${wrong > 0 && swayed != null ? `그중 내 쪽지로 뒤집힌 주민 ${swayed}명, ` : ''}${need}명 이상이면 승리)`,
     })
   }
   const knots = playerContradictionTurns(me, history)
@@ -1733,7 +1727,7 @@ export const TUTORIAL_STEPS: readonly TutorialStep[] = [
   },
   {
     highlight: null,
-    text: '주민 집에 마우스를 올리면 그 주민이 다른 집을 의심하는 선이 보여요. 의심도가 높을수록 선이 굵고, 키보드 초점으로도 볼 수 있어요. 나를 의심하는 집에서만, 내 집으로 가는 선이 보여요.',
+    text: "주민 집에 마우스를 올리면 그 주민이 다른 집을 의심하는 선이 보여요. 의심도가 높을수록 선이 굵고, 키보드 초점으로도 볼 수 있어요. 터치 화면에서는 위의 '의심선 보기'를 눌러요. 나를 의심하는 집에서만, 내 집으로 가는 선이 보여요.",
   },
   {
     highlight: 'log',
