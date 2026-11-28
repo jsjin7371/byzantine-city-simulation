@@ -44,14 +44,14 @@ export function sharePath(player: number, a: number, b: number) {
   return `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1} L${u1} ${v1} Q${ux} ${uy} ${u0} ${v0}`
 }
 
-// 모든 집 쪽지 비교(share_mode='all') 전용 6쌍 경로: 4채의 바깥 4변과 대각선 2개로 나눠 선이 겹치지 않게 한다.
+// 모든 집 쪽지 비교(share_mode='all') 전용 6쌍 경로: 고리 오솔길(바깥 3변)·아래 변·광장 대각선 2개로 나눠 겹치지 않게 한다.
 const ALL_SHARE_PATHS: Record<string, string> = {
-  '1-2': 'M230 458 Q204 358 230 248',
-  '3-4': 'M670 248 Q696 358 670 458',
-  '2-3': 'M230 232 Q450 202 670 232',
-  '1-4': 'M230 458 Q450 426 670 458',
-  '2-4': 'M230 258 Q450 354 670 458',
-  '1-3': 'M230 458 Q450 354 670 258',
+  '1-2': RING_TRAILS[1],
+  '2-3': RING_TRAILS[2],
+  '3-4': RING_TRAILS[3],
+  '1-4': 'M230 470 Q450 426 670 470',
+  '2-4': 'M230 245 Q450 356 670 470',
+  '1-3': 'M230 470 Q450 356 670 245',
 }
 
 export function allSharePath(player: number, a: number, b: number) {

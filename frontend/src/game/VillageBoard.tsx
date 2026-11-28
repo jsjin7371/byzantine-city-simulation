@@ -1213,7 +1213,7 @@ export function VillageBoard({
       onKeyDown={(e) => e.key === 'Escape' && setOpen(null)}
     >
       <Defs />
-      <Ground ring={state.config.connection === 'ring'} />
+      <Ground ring={state.config.connection === 'ring' || state.config.share_mode === 'all'} />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <BoardLegend />
       <Sky danger={state.truth === 'danger'} highlighted={highlight === 'sky'} />
