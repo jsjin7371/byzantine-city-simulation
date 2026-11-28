@@ -235,6 +235,7 @@ Mock과 실제 엔진은 난수를 뽑는 순서가 달라서, 같은 seed라도
 
 ```
 experiments 1 ─── N turn_results 1 ─── N city_states
+games 1 ─── N game_turns
 ```
 
 | 테이블 | 주요 컬럼 |
@@ -242,6 +243,8 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 | `experiments` | id, name, status, turns, sensor_error, drop_rate, flip_rate, byzantine_count, seed, n_cities, byzantine_ids(JSON), mean_accuracy, error, created_at, started_at, finished_at |
 | `turn_results` | id, experiment_id(FK), turn, truth, accuracy · UNIQUE(experiment_id, turn) |
 | `city_states` | id, turn_result_id(FK), city, is_byzantine, hint, from_left, from_right, decision, to_left, to_right · UNIQUE(turn_result_id, city) |
+| `games` | id, status, config(JSON), state(JSON), created_at |
+| `game_turns` | game_id(FK), turn, result(JSON) · PK(game_id, turn) |
 
 - 엔진 턴 JSON의 `cities[]` 항목이 `city_states` 한 행이 된다.
 - 실험을 지우면 하위 결과도 같이 지워진다 (ON DELETE CASCADE).
@@ -440,7 +443,7 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 | GET | `/games/stats` | 플레이 기록 집계 (아래) |
 | GET | `/games/stats.csv` | 같은 집계를 CSV 파일로 (`play_stats.csv`, UTF-8 BOM) |
 
-- 요청·응답 형식은 7.7, 7.8과 같다. 백엔드는 턴 결과를 받은 그대로 저장한다 (예: `games`, `game_turns` JSON 컬럼). 테이블 설계는 4단계에서 정한다.
+- 요청·응답 형식은 7.7, 7.8과 같다. 백엔드는 턴 결과를 받은 그대로 저장한다 (예: `games`, `game_turns` JSON 컬럼). 테이블은 5절에 있다.
 - `bot_win_rate`: 같은 설정에서 `player == "bot"`의 마피아 승률 (0.0~1.0, 결과 화면 비교용). 값은 7.2 난이도 표의 측정값을 백엔드가 설정별로 들고 있다. 프리셋 밖 설정(`mafia_count` 2, 표에 없는 `sensor_error`, 기본값이 아닌 `connection`·`memory`·`share_mode`·`share_pairs`, `citizen_type` `"ai"`)이면 `null`. God은 이 필드를 모른다.
 - 새 게임을 시작하면 이전 `in_progress` 게임은 `abandoned`.
 - 플레이 기록 집계(`/games/stats`): `status == "finished"`, `player == "human"`, `citizen_type`이 `"wary"` 또는 `"majority"`(`"ai"`는 봇 승률이 없어 제외), `mafia_count` 1, `connection`·`memory`·`share_mode`·`share_pairs`가 기본값, `sensor_error`가 7.2 난이도 프리셋 값(0.48/0.4/0.3)인 판만 센다. `seed`는 따지지 않는다. 승리는 `outcome`이 `"win"` 또는 `"perfect_win"`인 판.
@@ -450,6 +453,8 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
   - CSV는 같은 열 순서이며, `null`은 빈 칸.
 - 실험(`/experiments`)이 `pending`·`running`이면 `POST /games`는 `409`.
 - 오류 코드(404/409/422)와 `detail` 형식은 3절과 같다.
+- God 호출에 실패하면 `502`. 게임 시작 실패는 게임을 남기지 않고, 턴 진행 실패는 게임을 `failed`로 둔다. 단 턴 요청에 God이 `409`·`422`를 돌려주면 그대로 전달하고 게임은 유지한다.
+- `GOD_MODE=mock`이면 `backend/app/god/mock_game.py`를 쓴다. 시민은 모두 다수결이라 의심도와 투표가 없다.
 
 #### 최대 턴 수 연동
 
