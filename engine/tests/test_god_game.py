@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from common import http
 from common.http import HttpError
 from god import main
-from god.game import Game, GameConfig
+from god.game import MAX_GAME_TURNS, TURNS, Game, GameConfig
 from god.simulation import DECISION_OF, GodService
 from god_helpers import running_server
 from city.ai import ai_turn
@@ -314,6 +314,94 @@ class GameAiTests(unittest.TestCase):
         self.assertEqual(run(slow, citizen_type="majority"), run(majority_city, citizen_type="majority"))
 
 
+class DynamicTurnsTests(unittest.TestCase):
+    def test_omitted_limit_keeps_default_results(self):
+        """턴 수 생략과 명시한 7턴의 전체 결과가 일치하는지 검사하는 기능"""
+        for citizen_type in ("majority", "wary"):
+            def run(**extra):
+                g = new_game(player="bot", citizen_type=citizen_type, **extra)
+                results = []
+                while not g.game_over:
+                    results.append(play(g, fixed_city(), {}))
+                return g.state(), results
+
+            with self.subTest(citizen_type=citizen_type):
+                self.assertEqual(GameConfig().max_turns, 7)
+                self.assertEqual(TURNS, 7)
+                self.assertEqual(run(), run(max_turns=7))
+
+    def test_limits_finish_at_configured_turn_and_reject_next_turn(self):
+        """설정한 마지막 턴의 판정과 종료 후 요청 거부를 검사하는 기능"""
+        for limit in (1, 3, 7, 15, MAX_GAME_TURNS):
+            for wrong_count, outcome in ((0, "loss"), (2, "loss"), (3, "win"), (4, "perfect_win")):
+                with self.subTest(limit=limit, wrong_count=wrong_count):
+                    g = new_game(citizen_type="majority", max_turns=limit)
+                    answer = DECISION_OF[g.truth]
+                    wrong = set(g.citizens[:wrong_count])
+                    city = fixed_city(decision=lambda c, req: {"evacuate": "stay", "stay": "evacuate"}[answer]
+                                      if c in wrong else answer)
+                    for turn in range(1, limit + 1):
+                        result = play(g, city)
+                        self.assertEqual(result["game_over"], turn == limit)
+                        self.assertEqual(result["next_hints"] is None, turn == limit)
+                    self.assertEqual((result["turn"], result["end_reason"], result["outcome"]),
+                                     (limit, "turns_done", outcome))
+                    self.assertEqual(g.state()["config"]["max_turns"], limit)
+                    self.assertIsNone(result["next_share_pairs"])
+                    with self.assertRaises(HttpError) as error:
+                        play(g, city)
+                    self.assertEqual(error.exception.status, 409)
+
+    def test_invalid_limits_are_rejected_without_coercion(self):
+        """불리언·실수·문자열과 범위 밖 턴 수를 거부하는 기능"""
+        for value in (0, -1, MAX_GAME_TURNS + 1, 10**100, True, False, 7.0, "7", None, [], {},
+                      float("nan"), float("inf")):
+            for construct in (lambda: GameConfig.parse({"game_id": 1, "max_turns": value}),
+                              lambda: GameConfig(max_turns=value)):
+                with self.subTest(value=value), self.assertRaises(HttpError) as error:
+                    construct()
+                self.assertEqual(error.exception.status, 422)
+
+    def test_game_limits_are_independent(self):
+        """교차 진행하는 게임의 종료 턴이 서로 영향을 주지 않는지 검사하는 기능"""
+        short = new_game(citizen_type="majority", max_turns=1)
+        long = new_game(citizen_type="majority", max_turns=3)
+        self.assertFalse(play(long, fixed_city())["game_over"])
+        self.assertTrue(play(short, fixed_city())["game_over"])
+        self.assertFalse(play(long, fixed_city())["game_over"])
+        self.assertTrue(play(long, fixed_city())["game_over"])
+        self.assertEqual((short.turn, long.turn, TURNS), (1, 3, 7))
+
+    def test_same_seed_reproduces_configured_games(self):
+        """규칙 시민의 동일 시드·설정 재현성을 검사하는 기능"""
+        from city.logic import game_turn
+
+        def city(_, req):
+            decision, suspicion, reason = game_turn(req["hint"], req["received"], req["shared"], req["suspicion"])
+            return {"decision": decision, "suspicion": suspicion, "reason": reason}
+
+        def run(limit, seed):
+            g = new_game(player="bot", max_turns=limit, seed=seed)
+            results = []
+            while not g.game_over:
+                results.append(play(g, city, {}))
+            return results
+
+        for limit in (1, 3, 20):
+            for seed in (1, 42, 99):
+                with self.subTest(limit=limit, seed=seed):
+                    self.assertEqual(run(limit, seed), run(limit, seed))
+
+    def test_caught_takes_priority_even_on_final_turn(self):
+        """마지막 턴을 포함해 마피아 발각이 우선 종료되는지 검사하는 기능"""
+        for limit in (1, 20):
+            g = new_game(max_turns=limit)
+            city = fixed_city(suspicion=lambda c, req: {k: 100 if int(k) == g.player else 0
+                                                       for k in req["suspicion"]})
+            result = play(g, city)
+            self.assertEqual((result["turn"], result["end_reason"], result["outcome"]), (1, "caught", "loss"))
+
+
 class GameHttpTests(unittest.TestCase):
     def setUp(self):
         for target in (patch.object(http.traceback, "print_exc"),
@@ -356,6 +444,21 @@ class GameHttpTests(unittest.TestCase):
         self.assertEqual(self.status("POST", "/games", {"game_id": 1, "mafia_count": 5}), 422)
         http.request("POST", self.url + "/games", {"game_id": 1}, timeout=5)
         self.assertEqual(self.status("POST", "/games/1/turns", {"turn": 1, "claims": {}}), 422)
+
+    def test_custom_limit_round_trip_and_invalid_replacement(self):
+        """HTTP 설정 저장·종료와 잘못된 새 요청의 기존 게임 보호를 검사하는 기능"""
+        state = http.request("POST", self.url + "/games", {"game_id": 9, "player": "bot",
+                                                          "citizen_type": "majority", "max_turns": 2}, timeout=5)
+        self.assertEqual(state["config"]["max_turns"], 2)
+        for value in (0, -1, 21, True, 1.0, "2", None):
+            self.assertEqual(self.status("POST", "/games", {"game_id": 10, "max_turns": value}), 422)
+            saved = http.request("GET", self.url + "/games/9", timeout=5)
+            self.assertEqual((saved["turn"], saved["config"]["max_turns"]), (0, 2))
+        for turn in (1, 2):
+            result = http.request("POST", self.url + "/games/9/turns", {"turn": turn, "claims": {}}, timeout=5)
+            self.assertEqual(result["game_over"], turn == 2)
+        self.assertEqual(self.status("POST", "/games/9/turns", {"turn": 3, "claims": {}}), 409)
+        self.assertEqual(http.request("GET", self.url + "/games/9", timeout=5)["config"]["max_turns"], 2)
 
 
 if __name__ == "__main__":

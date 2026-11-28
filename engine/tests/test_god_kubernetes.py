@@ -182,11 +182,35 @@ class DynamicGameTests(unittest.TestCase):
     def test_invalid_new_config_preserves_active_game(self):
         main.start_game({"game_id": 1})
         first = set(self.api.objects)
-        with self.assertRaises(HttpError):
-            main.start_game({"game_id": 2, "mafia_count": 9})
-        self.assertEqual(set(self.api.objects), first)
-        self.assertEqual(main.game.game_id, 1)
+        for config in ({"mafia_count": 9}, {"max_turns": 0}, {"max_turns": 21}):
+            with self.subTest(config=config), self.assertRaises(HttpError):
+                main.start_game({"game_id": 2, **config})
+            self.assertEqual(set(self.api.objects), first)
+            self.assertEqual(main.game.game_id, 1)
         self.pool.cleanup()
+
+    def test_configured_final_turn_cleans_only_that_game(self):
+        """설정한 마지막 턴까지 자원을 유지하고 종료 시 회수하는 기능"""
+        for limit in (1, 3, 20):
+            with self.subTest(limit=limit):
+                main.start_game({"game_id": 1, "player": "bot", "citizen_type": "majority", "max_turns": limit})
+                for turn in range(1, limit + 1):
+                    self.assertEqual(len(self.api.objects), 10)
+                    result = main.play_turn({"turn": turn, "claims": {}}, "1")
+                    self.assertEqual(result["game_over"], turn == limit)
+                    self.assertEqual(len(self.api.objects), 0 if turn == limit else 10)
+                self.assertEqual(main.get_game(None, "1")["config"]["max_turns"], limit)
+
+    def test_early_catching_still_cleans_dynamic_cities(self):
+        """최대 턴 이전 마피아 발각 시 동적 자원을 정리하는 기능"""
+        main.start_game({"game_id": 1, "player": "bot", "max_turns": 20})
+        def caught(_, req, timeout):
+            return {"decision": "stay", "suspicion": {k: 100 if int(k) == main.game.player else 0
+                                                        for k in req["suspicion"]}, "reason": None}
+        with patch.object(main.service, "_post", side_effect=caught):
+            result = main.play_turn({"turn": 1, "claims": {}}, "1")
+        self.assertEqual(result["end_reason"], "caught")
+        self.assertFalse(self.api.objects)
 
     def test_start_failure_does_not_publish_game(self):
         self.api.fail_create = 3
