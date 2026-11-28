@@ -5,7 +5,7 @@ import { SUSPICION, TOTAL_TURNS } from '../gameApi'
 import type { Claim, GameState, TurnResult } from '../gameApi'
 import { onActivateKey } from '../lib/keyboard'
 import { SharedVillageDefs } from './SharedVillageDefs'
-import { PHASE_LABEL, RING_TRAILS, TRAILS, VOTE_ANIM, changedHouses, clashingPairs, contradictionKnotCopy, nextObservationTag, pairMid, reached, scaleLeader, shareBadgeLabel, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
+import { PHASE_LABEL, RING_TRAILS, TRAILS, VOTE_ANIM, allSharePath, changedHouses, clashingPairs, contradictionKnotCopy, nextObservationTag, pairMid, reached, scaleLeader, shareBadgeLabel, sharePath, stagedHouses, suspicionLinks, suspicionPreview, talkNotes, tally, trialStampCopy, trialStampMode, villageHouses, voteAnimDelays, worsens } from './village'
 import type { House, Phase, Preview, Scale, SuspicionLink, TrialStampMode, TutorialHighlight } from './village'
 import './village.css'
 
@@ -490,7 +490,7 @@ function HouseView({
         <use href={mafia ? '#vb-hut-dark' : '#vb-hut'} x={x} y={y} className="vb-hut-art" filter="url(#vb-rough)" />
       )}
       {h.role === 'citizen' && !h.reachable && !isNight && (
-        <g className="vb-far-tag" transform={`translate(${x - 24},${y - 82})`} aria-hidden="true">
+        <g className="vb-far-tag" transform={`translate(${x},${y - 84})`} aria-hidden="true">
           <rect x="-44" y="-11" width="88" height="22" rx="11" strokeWidth="1.5" />
           <text y="4.5" fontSize="13" fontWeight="700" textAnchor="middle">
             직접 못 보냄
@@ -526,7 +526,7 @@ function HouseView({
         </text>
       )}
       {h.flag && (
-        <g transform={`translate(${x + 28},${y - 62})`}>
+        <g transform={`translate(${h.reachable ? x + 28 : x + 46},${h.reachable ? y - 62 : y - 34})`}>
           <g
             key={freshFlag ? `fresh-${h.flag}` : h.flag}
             className={`vb-flag${freshFlag ? ' is-fresh' : ''}${freshFlag && voteBar ? ' after-votes' : ''}${hlFlag ? ' vb-tut-hl' : ''}`}
@@ -1156,6 +1156,7 @@ export function VillageBoard({
     state.config.citizen_type,
     pastSharing,
   )
+  const isAllShare = state.config.share_mode === 'all' && pairs.length > 1
   const shareTag =
     badgeText && pairs.length === 1
       ? { pos: pairMid(state.player_city, pairs[0][0], pairs[0][1]), label: badgeText, w: 164 }
@@ -1212,7 +1213,7 @@ export function VillageBoard({
       onKeyDown={(e) => e.key === 'Escape' && setOpen(null)}
     >
       <Defs />
-      <Ground ring={state.config.connection === 'ring'} />
+      <Ground ring={state.config.connection === 'ring' || state.config.share_mode === 'all'} />
       <Calendar turn={turn} over={!night && (result?.game_over ?? false)} />
       <BoardLegend />
       <Sky danger={state.truth === 'danger'} highlighted={highlight === 'sky'} />
@@ -1228,18 +1229,18 @@ export function VillageBoard({
       )}
       {pairs.length > 0 && (
         <g
-          className={highlight === 'share' ? 'vb-share vb-tut-hl' : 'vb-share'}
+          className={`vb-share${isAllShare ? ' is-all' : ''}${highlight === 'share' ? ' vb-tut-hl' : ''}`}
           role="img"
           aria-label={`${badgeText}: ${pairLabel}`}
         >
           <title>{`${badgeText}: ${pairLabel}`}</title>
           {sortedPairs.map(([a, b]) => {
-            const d = sharePath(state.player_city, a, b)
+            const d = isAllShare ? allSharePath(state.player_city, a, b) : sharePath(state.player_city, a, b)
             return (
               <g key={`${a}-${b}`} className={red(a, b) ? 'is-clash' : undefined}>
                 <path d={d} className="vb-share-glow" />
-                <path d={d} fill="none" stroke="#3b2a1a" strokeWidth="9" strokeLinecap="round" opacity=".35" />
-                <path d={d} className="vb-share-line" fill="none" stroke="#ffd35a" strokeWidth="5" strokeDasharray="11 9" strokeLinecap="round" />
+                <path d={d} className="vb-share-back" />
+                <path d={d} className="vb-share-line" />
               </g>
             )
           })}

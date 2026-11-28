@@ -10,6 +10,7 @@ import type { TopicKey } from './village'
 export type Scenario = {
   id: string
   title: string
+  feature: string
   brief: string
   shows: string
   chips: readonly string[]
@@ -21,6 +22,7 @@ export type Scenario = {
   topic: TopicKey
   debrief: {
     theory: string
+    networkLabel: string
     network: string
     reflect: string
   }
@@ -30,18 +32,20 @@ const SCENARIOS: readonly Scenario[] = [
   {
     id: 'watchful-eye',
     title: '감시의 눈',
+    feature: '모든 집이 서로 쪽지를 비교해요',
     brief: '"오늘 밤부터 모든 주민이 받은 쪽지를 다 같이 맞춰 봐요."',
     shows: '모든 집이 쪽지를 맞춰 보는 마을에서, 거짓말은 어디까지 막히고 어디로 새어 나갈까요?',
     chips: ['집 5채', '모든 집 쪽지 비교', '잘못 볼 확률 45%'],
     goal: '주민 과반을 속이기',
     rule: '첫날엔 의심도가 60에 못 미쳐 재판이 안 열려요. 집을 눌러 쪽지를 고를 때 뜨는 의심도 미리 보기로, 집마다 다르게 고른 경우와 모두에게 똑같이 고른 경우를 비교해 보세요. 숫자는 본 하늘과 같으면 −20, 다르면 +20, 비교에서 모순이면 +20을 합친 값이에요.',
-    rate: '모두에게 같은 거짓말만 보내도 45% 이겨요',
+    rate: '컴퓨터 전략으로 45% 이겨요',
     seed: 0,
     config: { share_mode: 'all', sensor_error: 0.45 },
     topic: 'equiv',
     debrief: {
       theory:
         '집마다 다른 쪽지(이중 발언)는 비교로 증명되지만, 모순 한 번으로 바로 쫓아내는 규칙이 없으면 버틸 수 있어요. 모두에게 같은 거짓말은 이중 발언이 아니라서 비교로 안 잡혀요. 비교는 말이 다른지만 보지, 맞는 말인지는 몰라요.',
+      networkLabel: '실제 사례: 이중 발언을 잡는 법',
       network:
         '이더리움에서는 검증자가 같은 시점에 서로 다른 두 블록에 서명하면 예치금 일부가 깎이고 강제 퇴출돼요. 웹 인증서 공개 장부도 로그 서버가 사람마다 다른 장부를 보여 주면, 여럿이 기록 요약을 비교해 증명할 수 있게 설계됐어요.',
       reflect:
@@ -51,6 +55,7 @@ const SCENARIOS: readonly Scenario[] = [
   {
     id: 'ring-village',
     title: '고리 마을',
+    feature: '양옆 두 집에만 쪽지를 보낼 수 있어요',
     brief: '"길이 좁아 양옆 두 집에만 쪽지를 보낼 수 있어요."',
     shows: '양옆 두 집하고만 통하는 고리 마을에서, 소식은 어떻게 퍼지고 방어는 어디서 흔들릴까요?',
     chips: ['집 5채', '양옆과만 연결', '잘못 볼 확률 45%'],
@@ -63,6 +68,7 @@ const SCENARIOS: readonly Scenario[] = [
     debrief: {
       theory:
         '서명 없이 마피아 한 명을 확실히 막으려면, 어느 두 집 사이에도 서로 겹치지 않는 길이 세 갈래 이상 필요해요. 고리 마을은 어느 집이든 양옆으로 나가는 두 갈래뿐이라 보장이 없어요. 보장이 없다는 뜻이지, 늘 마피아가 이긴다는 뜻은 아니에요. 다만 이 마을 주민은 들은 소식을 다시 전하지 않아서, 이론이 걱정하는 것처럼 마피아가 길목에서 남의 소식을 바꾸지는 못해요.',
+      networkLabel: '실제 사례: 연결이 적을 때의 위험',
       network:
         '비트코인 같은 P2P 망에서 공격자가 한 노드의 연결을 모두 차지하면, 그 노드는 공격자가 골라 준 장부만 보게 돼요. 광통신 고리 망의 두 길은 끊김에는 버티지만, 거짓말을 가려내기에는 부족해요.',
       reflect:
@@ -72,6 +78,7 @@ const SCENARIOS: readonly Scenario[] = [
   {
     id: 'regain-trust',
     title: '신뢰를 되찾는 법',
+    feature: '본 하늘과 맞는 쪽지를 받으면 의심이 내려가요',
     brief: '"의심을 샀다가, 그 집이 본 하늘에 맞춰 신뢰를 되찾아 보세요."',
     shows: '의심도가 오르고 내리는 폭이 똑같은 마을에서, 높아진 의심도를 낮추고 다시 속이는 일이 통할까요?',
     chips: ['집 5채', '밤마다 두 집 쪽지 비교', '잘못 볼 확률 45%'],
@@ -84,6 +91,7 @@ const SCENARIOS: readonly Scenario[] = [
     debrief: {
       theory:
         '착한 행동으로 평판을 회복했다가 다시 속이는 수법을 온오프 공격이라고 해요. 좋은 행동과 나쁜 행동을 같은 크기로 반영하면 재판 기준 아래를 오갈 수 있어, 나쁜 기록을 더 오래 기억하게 설계해요. 이 마을의 의심도는 진실이 아니라 그 집이 본 하늘과 맞았는지로 매겨져요.',
+      networkLabel: '실제 사례: 신뢰를 악용하는 공격',
       network:
         'P2P나 센서 망에서는 정상 작동과 악의적 행동을 번갈아 하며 감시를 피하는 노드가 문제로 지적돼요. 온라인 장터에서도 정상 거래로 평점을 회복한 뒤 다시 불량 거래를 반복하는 수법이 논의돼요.',
       reflect:
@@ -93,6 +101,7 @@ const SCENARIOS: readonly Scenario[] = [
   {
     id: 'stubborn-ally',
     title: '고집쟁이 동료',
+    feature: '같은 거짓말만 하는 동료가 걸려도 져요',
     brief: '"동료 마피아가 한 명 더 있어요. 그런데 이 동료는 늘 같은 거짓말만 해요."',
     shows: '마피아가 둘로 늘어난 마을에서, 늘 같은 거짓말만 반복하는 동료는 힘이 될까요, 약점이 될까요?',
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
@@ -105,6 +114,7 @@ const SCENARIOS: readonly Scenario[] = [
     debrief: {
       theory:
         '의견을 바꾸지 않는 소수가 집단의 합의를 끌어가거나 막을 수 있어요. 비잔틴 장군 문제로 보면, 마피아 둘을 견딘다고 보장하려면 집 7채(3f+1)가 필요한데 이 마을은 5채뿐이에요. 보장이 없다는 뜻이지, 마피아가 늘 이긴다는 뜻은 아니에요. 다만 이 마을처럼 재판이 있으면, 바꾸지 않는 거짓은 의심이 쌓이는 약점이 되기도 해요.',
+      networkLabel: '실제 사례: 같은 행동만 반복하는 봇',
       network:
         '한 SNS 연구(2017)에서 사기 링크를 반복해 뿌리던 단순한 스팸봇 한 무리는 99%\u2060가 정지됐어요. 반면 사람처럼 꾸민 새 봇 세 무리는 95%\u00a0넘게 살아남았어요.',
       reflect:
@@ -164,7 +174,7 @@ export function TheoryLab({
                     </div>
                   </div>
                   <div className="tl-real-block">
-                    <p className="tl-block-label is-real">실제 네트워크에서는</p>
+                    <p className="tl-block-label is-real">{card.debrief.networkLabel}</p>
                     <p className="tl-real-body">{card.debrief.network}</p>
                   </div>
                   <div className="tl-village-block">
@@ -350,7 +360,7 @@ export function ScenarioResult({
           <dd>{scenario.debrief.theory}</dd>
         </div>
         <div>
-          <dt>실제 네트워크</dt>
+          <dt>{scenario.debrief.networkLabel}</dt>
           <dd>{scenario.debrief.network}</dd>
         </div>
         <div>

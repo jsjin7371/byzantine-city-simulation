@@ -599,6 +599,11 @@
 .vb-gauge.is-over .vb-post-tag { stroke: #2b1a0c; }
 
 .vb-share-glow { fill: none; stroke: #ffe27a; stroke-width: 20; stroke-linecap: round; opacity: .55; filter: blur(4px); }
+.vb-share-back { fill: none; stroke: #3b2a1a; stroke-width: 9; stroke-linecap: round; opacity: .35; }
+.vb-share-line { fill: none; stroke: #ffd35a; stroke-width: 5; stroke-dasharray: 11 9; stroke-linecap: round; }
+.vb-share.is-all .vb-share-glow { stroke-width: 11; opacity: .4; }
+.vb-share.is-all .vb-share-back { stroke-width: 6.5; }
+.vb-share.is-all .vb-share-line { stroke-width: 3.8; stroke-dasharray: 9 7; }
 .vb-share-tag rect { fill: #f6ebcd; stroke: #b8861f; }
 /* 두 집에 다른 쪽지: 점선이 붉게 (모순 매듭과 함께 보여 색만으로 구분하지 않는다) */
 .vb-share .is-clash .vb-share-line { stroke: var(--rust); }
@@ -2033,7 +2038,7 @@ body:has(dialog[open]) {
 }
 dialog.tb-dialog {
   width: min(720px, 94vw);
-  max-height: 88vh;
+  max-height: 88dvh;
   margin: auto;
   padding: 0;
   border: 0;
@@ -2072,7 +2077,7 @@ dialog.tb-dialog[open] {
   border-bottom: 1px solid rgba(107, 74, 42, 0.14);
 }
 .tb-page {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   padding: 16px 56px 40px;
@@ -2486,29 +2491,35 @@ dialog.tb-dialog[open] {
   transform: scale(0.97);
 }
 
-/* 시나리오 목표 배지 (게임 HUD) */
+/* 시나리오 목표 배지·특징 한 줄 (게임 HUD) */
+.gm-goal-badge,
+.gm-scenario-note {
+  max-width: 100%;
+  background: rgba(246, 235, 205, 0.94);
+  border: 1.5px solid var(--forest);
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: keep-all;
+  box-shadow: 0 2px 0 rgba(27, 45, 24, 0.2);
+}
 .gm-goal-badge {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 4px 13px;
   border-radius: 999px;
-  background: rgba(246, 235, 205, 0.94);
-  border: 1.5px solid var(--forest);
   color: var(--ink);
   font-size: 16px;
-  font-weight: 700;
-  line-height: 1.25;
-  box-shadow: 0 2px 0 rgba(27, 45, 24, 0.2);
 }
 .gm-goal-tag {
   color: var(--forest);
 }
 .gm-goal-badge.is-steps {
   font-size: 14.5px;
-  padding: 4px 10px;
+  padding: 5px 11px;
+  border-radius: 16px;
   gap: 4px;
-  flex-wrap: wrap;
 }
 .gm-goal-steps {
   display: inline-flex;
@@ -2535,6 +2546,22 @@ dialog.tb-dialog[open] {
 .gm-goal-arrow {
   color: var(--wood);
   opacity: 0.7;
+}
+.gm-scenario-note {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 16px;
+  background: rgba(246, 235, 205, 0.86);
+  border-color: rgba(107, 74, 42, 0.45);
+  color: var(--ink-soft);
+  font-size: 15px;
+  box-shadow: 0 2px 0 rgba(74, 49, 25, 0.14);
+}
+@media (max-width: 640px) {
+  .gm-goal-step {
+    white-space: normal;
+    border-radius: 10px;
+  }
 }
 .gm-ally-pill {
   display: inline-flex;

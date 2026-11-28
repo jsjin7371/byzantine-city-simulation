@@ -44,6 +44,22 @@ export function sharePath(player: number, a: number, b: number) {
   return `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1} L${u1} ${v1} Q${ux} ${uy} ${u0} ${v0}`
 }
 
+// 모든 집 쪽지 비교(share_mode='all') 전용 6쌍 경로: 고리 오솔길(바깥 3변)·아래 변·광장 대각선 2개로 나눠 겹치지 않게 한다.
+const ALL_SHARE_PATHS: Record<string, string> = {
+  '1-2': RING_TRAILS[1],
+  '2-3': RING_TRAILS[2],
+  '3-4': RING_TRAILS[3],
+  '1-4': 'M230 470 Q450 426 670 470',
+  '2-4': 'M230 245 Q450 356 670 470',
+  '1-3': 'M230 470 Q450 356 670 245',
+}
+
+export function allSharePath(player: number, a: number, b: number) {
+  const [sa, sb] = [slotOf(player, a), slotOf(player, b)]
+  const key = sa < sb ? `${sa}-${sb}` : `${sb}-${sa}`
+  return ALL_SHARE_PATHS[key] ?? sharePath(player, a, b)
+}
+
 // 모순 매듭을 놓을 길 위 한가운데 점.
 export function pairMid(player: number, a: number, b: number): [number, number] {
   const ta = SLOTS[slotOf(player, a)].trail
@@ -1832,9 +1848,9 @@ export function scenarioGoalSteps(
   if (scenarioId !== 'regain-trust') return null
   const p = regainTrustProgress(state, history)
   return [
-    { label: '의심 40 이상', done: p.reached40 != null },
-    { label: '20 이하로 낮추기', done: p.refooled != null || p.washedActive != null },
-    { label: '다시 속이기', done: p.refooled != null },
+    { label: '한 주민 의심 40 이상', done: p.reached40 != null },
+    { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: p.refooled != null || p.washedActive != null },
+    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: p.refooled != null },
     { label: '이기기', done: isWin(state.outcome) },
   ]
 }
