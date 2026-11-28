@@ -1661,6 +1661,39 @@
   outline-offset: 3px;
   border-radius: 4px;
 }
+.gr-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.gr-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.gr-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+.gr-swatch.is-me {
+  background: var(--wood);
+}
+.gr-swatch.is-ally {
+  background: repeating-linear-gradient(
+    -45deg,
+    #dce5ec 0 3px,
+    #455f75 3px 5.5px
+  );
+  border: 1px solid #455f75;
+}
 .gr-chart-scroll {
   overflow-x: auto;
   padding-bottom: 4px;
@@ -1696,13 +1729,6 @@ svg.gr-chart .gr-pin-label {
   transform-box: fill-box;
   transform-origin: 50% 100%;
 }
-.gr-chart.is-idle .gr-bar {
-  transform: scaleY(0);
-}
-.gr-chart.is-idle .gr-pin,
-.gr-chart.is-idle .gr-daylabel {
-  opacity: 0;
-}
 @keyframes gr-bar-grow {
   from {
     transform: scaleY(0);
@@ -1731,13 +1757,6 @@ svg.gr-chart .gr-pin-label {
 @media (prefers-reduced-motion: reduce) {
   .gr-replay {
     display: none;
-  }
-  .gr-chart.is-idle .gr-bar {
-    transform: none;
-  }
-  .gr-chart.is-idle .gr-pin,
-  .gr-chart.is-idle .gr-daylabel {
-    opacity: 1;
   }
   .gr-chart.is-play .gr-bar,
   .gr-chart.is-play .gr-daylabel,

@@ -454,7 +454,7 @@ export function GamePage() {
                 </div>
                 <div className="gm-hud-right">
                   <div className="gm-progress" role="img" aria-label={fooled.label}>
-                    <span>속은 주민</span>
+                    <span>틀린 주민</span>
                     <span className="gm-dots" aria-hidden="true">
                       {fooled.dots.map((filled, i) => (
                         <Fragment key={i}>
