@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, allSharePath, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, regainTrustOutcomeNote, regainTrustProgress, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioGoalSteps, scenarioResultNote, shareBadgeLabel, stubbornAllyOutcomeNote, stubbornAllyStatus, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
+  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, allSharePath, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, regainTrustOutcomeNote, regainTrustProgress, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioGoalSteps, scenarioResultNote, shareBadgeLabel, stubbornAllyOutcomeNote, stubbornAllyStatus, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialKindOf, trialStampCopy, trialStampMode, trialTriggerCities, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -364,7 +364,7 @@ test('trial lines: one accusation per voter, then the verdict (and tie note only
   assert.equal(vote(1, false).at(-1).text, '1번이 지목됐지만 무고한 주민이었다. 마피아는 아직 숨어 있다')
   assert.equal(vote(3, true).at(-1).text, '3번이 지목됐다. 마피아가 재판에 걸렸다')
 
-  // 의심 근거가 없거나 동점인 투표자가 있으면 재판 안내 한 줄이 붙는다
+  // 의심 근거가 없거나 동점인 투표자가 있으면 재판 안내 한 줄과 모든 동점 추첨 표에 (동점 추첨)이 붙는다
   const tiedTurn = {
     ...turn,
     cities: turn.cities.map((c) => (c.city === 4 ? { ...c, suspicion: { 1: 0, 2: 0, 3: 0, 5: 0 } } : c)),
@@ -372,7 +372,9 @@ test('trial lines: one accusation per voter, then the verdict (and tie note only
   }
   const tiedLines = villageLines(state, tiedTurn)
   assert.ok(tiedLines.some((l) => l.phase === 'trial' && l.kind === 'event' && l.text === '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.'))
-  // 고리 마을에서는 먼 집(내 쪽지를 받지 않는 집)이 동점 추첨으로 나를 지목한 표에 (동점 추첨)을 표시한다
+  assert.ok(tiedLines.some((l) => l.phase === 'trial' && l.who === 4 && l.text === '난 3번을 지목할게 (동점 추첨)'))
+  assert.ok(tiedLines.some((l) => l.phase === 'trial' && l.who === 1 && l.text === '난 3번을 지목할게'))
+  // 고리 마을에서도 동점 추첨 표는 결과 화면과 동일하게 (동점 추첨)을 표시한다
   const ringState = {
     ...state,
     player_city: 1,
@@ -486,19 +488,22 @@ const over = (outcome, end_reason) => ({ ...state, outcome, end_reason })
 const day = (n, extra = {}) => ({ ...turn, turn: n, sharing: [], vote: null, ...extra })
 
 test('game summary: caught explains who accused me at which trial', () => {
-  const caught = day(6, { vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true } })
+  const caught = day(6, {
+    cities: turn.cities.map((c) => (c.city === 1 ? { ...c, suspicion: { ...c.suspicion, 3: 60 } } : c)),
+    vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true },
+  })
   const s = gameSummary(over('loss', 'caught'), [day(5), caught])
   assert.equal(s.headline, '6일째 광장 재판에 걸렸어요')
-  assert.ok(s.moments.some((m) => m.day === 6 && m.text === '6일째 재판에서 1번, 4번이 나를 지목했어요 (2표, 과반 2표)'))
-  assert.ok(s.moments.some((m) => m.day === null && m.text === '재판이 1번 열렸어요'))
+  assert.ok(s.moments.some((m) => m.day === 6 && m.text === '나(3번)를 두고 열린 재판에서 1·4번 집이 나를 지목했어요 (2표, 과반 2표)'))
+  assert.ok(s.moments.some((m) => m.day === null && m.text === '재판이 1번 열렸어요 (내 재판 1번)'))
 })
 
-test('game summary: turn 7 counts fooled citizens, first crossing of 60 and caught contradictions', () => {
+test('game summary: turn 7 counts wrong citizens with swayed count, first crossing of 60 and caught contradictions', () => {
   const quiet = day(1, { cities: turn.cities.map((c) => (c.suspicion ? { ...c, suspicion: { ...c.suspicion, 3: 10 } } : c)) })
   const hot = day(2, { cities: turn.cities.map((c) => (c.city === 4 ? { ...c, suspicion: { ...c.suspicion, 3: 70 } } : c)), sharing: turn.sharing })
   const s = gameSummary(over('win', 'turns_done'), [quiet, hot, day(7)])
-  assert.equal(s.headline, '주민 과반을 끝까지 속였어요')
-  assert.ok(s.moments.some((m) => m.day === 7 && m.text === '마지막 7일째에 주민 3명 중 2명이 속았어요 (승리에 2명 필요)'))
+  assert.equal(s.headline, '마지막 밤, 주민 과반이 틀렸어요')
+  assert.ok(s.moments.some((m) => m.day === 7 && m.text === '마지막 7일째, 틀린 주민 2명 (그중 내 쪽지로 뒤집힌 주민 0명, 2명 이상이면 승리)'))
   assert.ok(s.moments.some((m) => m.day === 2 && m.text === '2일째 4번의 의심도가 70까지 올라 처음으로 재판 기준 60 이상이 됐어요'))
   assert.ok(s.moments.some((m) => m.day === 2 && m.text === '쪽지 비교에서 모순이 1번 드러났어요 (2일째)'))
   assert.deepEqual(s.peaks, [10, 70, 50])
@@ -509,9 +514,14 @@ test('game summary: turn 7 counts fooled citizens, first crossing of 60 and caug
     cities: turn.cities.map((c) => (c.city === 4 ? { ...c, correct: true } : c)),
   })
   const lost = gameSummary(over('loss', 'turns_done'), [lostDay])
-  assert.equal(lost.headline, '7일째에 주민 과반이 속지 않았어요')
-  assert.ok(lost.moments.some((m) => m.day === 7 && m.text === '마지막 7일째에 주민 3명 중 1명이 속았어요 (승리에 2명 필요)'))
-  assert.equal(gameSummary(over('perfect_win', 'turns_done'), [day(7)]).headline, '주민 모두를 끝까지 속였어요')
+  assert.equal(lost.headline, '마지막 밤, 틀린 주민이 과반이 안 됐어요')
+  assert.ok(lost.moments.some((m) => m.day === 7 && m.text === '마지막 7일째, 틀린 주민 1명 (그중 내 쪽지로 뒤집힌 주민 0명, 2명 이상이면 승리)'))
+  const zeroWrongDay = day(7, {
+    cities: turn.cities.map((c) => (c.role === 'citizen' ? { ...c, correct: true } : c)),
+  })
+  const zeroLost = gameSummary(over('loss', 'turns_done'), [zeroWrongDay])
+  assert.ok(zeroLost.moments.some((m) => m.day === 7 && m.text === '마지막 7일째, 틀린 주민 0명 (2명 이상이면 승리)'))
+  assert.equal(gameSummary(over('perfect_win', 'turns_done'), [day(7)]).headline, '마지막 밤, 주민 모두가 틀렸어요')
 })
 
 const turnOf = (cities) => ({ cities: cities.map((c) => ({ ...empty, ...c })) })
@@ -627,12 +637,12 @@ test('fooledDots fills wrong citizens up to total and marks the majority thresho
   assert.deepEqual(fooledDots(2, 4), {
     need: 3,
     dots: [true, true, false, false],
-    label: '속은 주민 2/4, 3명 필요',
+    label: '틀린 주민 2/4, 3명 필요',
   })
   assert.deepEqual(fooledDots(0, 3), {
     need: 2,
     dots: [false, false, false],
-    label: '속은 주민 0/3, 2명 필요',
+    label: '틀린 주민 0/3, 2명 필요',
   })
   assert.deepEqual(fooledDots(5, 4).dots, [true, true, true, true])
 })
@@ -1023,9 +1033,47 @@ test('resultDecisive explains contradiction catch, trial catch, and final-day ma
       vote: null,
     },
   ])
-  assert.match(decWin[0], /마지막 15일째 밤, 주민 4명 중 3명을 속여 과반\(3명\)을 넘겼어요/)
+  assert.equal(
+    decWin[0],
+    '마지막 15일째 밤, 주민 4명 중 3명이 틀려 과반(3명)을 채웠어요 (그중 내 쪽지로 뒤집힌 주민 0명).',
+  )
 
-  // 고리 마을 재판에서 먼 집이 동점 추첨으로 나를 지목하면 결정타·결정적 순간에 추첨 표를 표시한다(일반 마을은 미표시)
+  // 틀린 주민이 0명일 때는 "0명만 틀려" 대신 모두 맞혔다고 적는다
+  const decLossZero = resultDecisive(soloState({ outcome: 'loss', end_reason: 'turns_done' }), [
+    {
+      turn: 7,
+      cities: [
+        { ...empty, city: 1, correct: true },
+        { ...empty, city: 2, correct: true },
+        { ...empty, city: 4, correct: true },
+        { ...empty, city: 5, correct: true },
+      ],
+      sharing: [],
+      vote: null,
+    },
+  ])
+  assert.equal(decLossZero[0], '마지막 7일째 밤, 주민 4명 모두 맞혀 틀린 주민이 없었어요 (과반 3명).')
+
+  // AI 주민은 뒤집힘 계산이 없으므로 괄호 없이 틀린 주민 수만 표시한다
+  const decWinAi = resultDecisive(
+    soloState({ config: { ...soloConfig, citizen_type: 'ai' }, outcome: 'win', end_reason: 'turns_done' }),
+    [
+      {
+        turn: 7,
+        cities: [
+          { ...empty, city: 1, correct: false },
+          { ...empty, city: 2, correct: false },
+          { ...empty, city: 4, correct: false },
+          { ...empty, city: 5, correct: true },
+        ],
+        sharing: [],
+        vote: null,
+      },
+    ],
+  )
+  assert.equal(decWinAi[0], '마지막 7일째 밤, 주민 4명 중 3명이 틀려 과반(3명)을 채웠어요.')
+
+  // 재판 기록: 누구를 두고 열린 재판인지와 동점 추첨 표를 고리/일반 마을 모두에 중복 없이 표시한다
   const ringCaughtDay = {
     turn: 3,
     cities: [
@@ -1045,32 +1093,145 @@ test('resultDecisive explains contradiction catch, trial catch, and final-day ma
     end_reason: 'caught',
   })
   assert.deepEqual(resultDecisive(ringCaughtState, [ringCaughtDay]), [
-    '3일째 재판에서 2번, 4번, 5번 집이 나를 마피아로 지목했어요 (3표, 과반 3표, 4번은 동점 추첨).',
+    '3일째 재판(나(1번)를 두고 열림)에서 2·4·5번 집이 나를 마피아로 지목했어요 (3표, 과반 3표, 4번 집 동점 추첨).',
   ])
   const ringSummary = gameSummary(ringCaughtState, [ringCaughtDay], 'ring')
   assert.ok(
     ringSummary.moments.some(
-      (m) => m.text === '3일째 재판에서 2번, 4번, 5번이 나를 지목했어요 (3표, 과반 3표, 4번은 동점 추첨)',
+      (m) => m.text === '나(1번)를 두고 열린 재판에서 2·4·5번 집이 나를 지목했어요 (3표, 과반 3표, 4번 집 동점 추첨)',
     ),
   )
-  // 일반(all) 마을에서는 같은 투표라도 먼 집 추첨 표기를 붙이지 않는다
+  // 같은 날 "처음으로 재판 기준 60 이상" 줄이 재판 줄보다 먼저 나온다
+  const crossedIdx = ringSummary.moments.findIndex((m) => m.day === 3 && m.text.includes('처음으로 재판 기준 60 이상'))
+  const trialIdx = ringSummary.moments.findIndex((m) => m.day === 3 && m.text.includes('나(1번)를 두고 열린 재판'))
+  assert.ok(crossedIdx >= 0 && trialIdx > crossedIdx)
+  // 일반(all) 마을에서도 같은 동점 추첨 표기와 대상을 표시한다
   const allCaughtDec = resultDecisive({ ...ringCaughtState, config: soloConfig }, [ringCaughtDay])
   assert.deepEqual(allCaughtDec, [
-    '3일째 재판에서 2번, 4번, 5번 집이 나를 마피아로 지목했어요 (3표, 과반 3표).',
+    '3일째 재판(나(1번)를 두고 열림)에서 2·4·5번 집이 나를 마피아로 지목했어요 (3표, 과반 3표, 4번 집 동점 추첨).',
   ])
-  // 고리 마을 마지막 밤에 모순이 드러나고 먼 집 동점 추첨 표가 포함되면 결정타 모순 문장 뒤에도 표시한다
+  // 마지막 밤에 모순이 드러나고 동점 추첨 표가 포함되면 결정타 모순 문장 뒤에도 대상과 추첨을 함께 표시한다
   const ringClashDay = {
     ...ringCaughtDay,
     sharing: [{ pair: [2, 5], contradictions: [{ city: 1, told: { 2: msg('stay'), 5: msg('evacuate') } }] }],
   }
   assert.deepEqual(resultDecisive(ringCaughtState, [ringClashDay]), [
     '3일째 밤, 2번 집과 5번 집에 서로 다른 쪽지를 보냈어요.',
-    '그날 쪽지 비교에서 모순이 드러났고, 이어진 재판에서 지목됐어요 (4번은 동점 추첨).',
+    '그날 쪽지 비교에서 모순이 드러났고, 이어진 재판(나(1번)를 두고 열림)에서 지목됐어요 (4번 집 동점 추첨).',
   ])
   assert.deepEqual(resultDecisive({ ...ringCaughtState, config: soloConfig }, [ringClashDay]), [
     '3일째 밤, 2번 집과 5번 집에 서로 다른 쪽지를 보냈어요.',
-    '그날 쪽지 비교에서 모순이 드러났고, 이어진 재판에서 지목됐어요.',
+    '그날 쪽지 비교에서 모순이 드러났고, 이어진 재판(나(1번)를 두고 열림)에서 지목됐어요 (4번 집 동점 추첨).',
   ])
+})
+
+test('trial pins distinguish me vs colleague vs resident trials, and colleaguePeaks only renders for zealot scenario', () => {
+  const allyState = soloState({
+    player_city: 2,
+    roles: { 1: 'citizen', 2: 'player', 3: 'colleague', 4: 'citizen', 5: 'citizen' },
+    config: { ...soloConfig, mafia_count: 2, sensor_error: 0.48, seed: 222 },
+    outcome: 'perfect_win',
+    end_reason: 'turns_done',
+  })
+  const mk = (city, sus) => ({
+    ...empty,
+    city,
+    hint: 'danger',
+    decision: 'stay',
+    correct: false,
+    received: { 2: msg('stay'), 3: msg('stay') },
+    suspicion: sus,
+  })
+  const hist = [
+    // d1: 주민(5번)만 60 → 주민 재판
+    {
+      turn: 1,
+      cities: [mk(1, { 2: 0, 3: 20, 4: 0, 5: 60 }), mk(4, { 1: 0, 2: 0, 3: 0, 5: 0 }), mk(5, { 1: 20, 2: 0, 3: 20, 4: 0 })],
+      sharing: [],
+      vote: { ballots: { 1: 5, 4: 1, 5: 3 }, accused: null, caught: false },
+    },
+    // d2: 동료(3번) 60, 나(2번) 20 → 동료 재판
+    {
+      turn: 2,
+      cities: [mk(1, { 2: 20, 3: 60, 4: 0, 5: 20 }), mk(4, { 1: 0, 2: 0, 3: 40, 5: 0 }), mk(5, { 1: 0, 2: 0, 3: 20, 4: 0 })],
+      sharing: [],
+      vote: { ballots: { 1: 3, 4: 3, 5: 3 }, accused: null, caught: false },
+    },
+    // d3: 나(2번) 60, 동료(3번) 80 → 내 재판 등
+    {
+      turn: 3,
+      cities: [mk(1, { 2: 60, 3: 80, 4: 0, 5: 0 }), mk(4, { 1: 0, 2: 20, 3: 40, 5: 0 }), mk(5, { 1: 0, 2: 0, 3: 20, 4: 0 })],
+      sharing: [],
+      vote: { ballots: { 1: 3, 4: 3, 5: 3 }, accused: null, caught: false },
+    },
+  ]
+
+  assert.deepEqual(trialTriggerCities(hist[0]), [5])
+  assert.equal(trialKindOf(allyState, hist[0]), 'other')
+
+  assert.deepEqual(trialTriggerCities(hist[1]), [3])
+  assert.equal(trialKindOf(allyState, hist[1]), 'colleague')
+
+  assert.deepEqual(trialTriggerCities(hist[2]), [2, 3])
+  assert.equal(trialKindOf(allyState, hist[2]), 'me')
+
+  const zealotSummary = gameSummary(allyState, hist, 'zealot')
+  assert.deepEqual(zealotSummary.peaks, [0, 20, 60])
+  assert.deepEqual(zealotSummary.colleaguePeaks, [20, 60, 80])
+  assert.equal(zealotSummary.pins[0]?.trialKind, 'other')
+  assert.deepEqual(zealotSummary.pins[0]?.labels, ['주민 재판'])
+  assert.equal(zealotSummary.pins[0]?.danger, false)
+  assert.equal(zealotSummary.pins[1]?.trialKind, 'colleague')
+  assert.deepEqual(zealotSummary.pins[1]?.labels, ['동료 재판'])
+  assert.equal(zealotSummary.pins[1]?.danger, false)
+  assert.equal(zealotSummary.pins[2]?.trialKind, 'me')
+  assert.deepEqual(zealotSummary.pins[2]?.labels, ['내 재판 등'])
+  assert.equal(zealotSummary.pins[2]?.danger, true)
+  assert.ok(zealotSummary.moments.some((m) => m.day === 1 && m.text === '5번 집을 두고 열린 재판에서 과반이 안 나왔어요 (4·5번 집 동점 추첨)'))
+  assert.ok(zealotSummary.moments.some((m) => m.day === 2 && m.text === '동료(3번)를 두고 열린 재판에서 과반이 안 나왔어요'))
+  assert.ok(zealotSummary.moments.some((m) => m.day === 3 && m.text === '나(2번), 동료(3번)를 두고 열린 재판에서 과반이 안 나왔어요'))
+  assert.ok(zealotSummary.moments.some((m) => m.day === null && m.text === '재판이 3번 열렸어요 (내 재판 1번, 동료 재판 1번, 주민 재판 1번)'))
+
+  // 일반 게임(scenarioTopic 미지정)에서는 마피아가 둘이어도 colleaguePeaks를 그리지 않는다
+  const normalSummary = gameSummary(allyState, hist)
+  assert.equal(normalSummary.colleaguePeaks, null)
+
+  // M1: 다른 집(동료·주민) 의심도 60 이상으로 열린 재판이라도 실제 지목(accused)이 나/동료면 그쪽 재판으로 판정한다
+  const colleagueTriggeredMeCaught = {
+    turn: 3,
+    cities: [
+      mk(1, { 2: 40, 3: 60, 4: 0, 5: 0 }),
+      mk(4, { 1: 0, 2: 40, 3: 20, 5: 0 }),
+      mk(5, { 1: 0, 2: 40, 3: 20, 4: 0 }),
+    ],
+    sharing: [],
+    vote: { ballots: { 1: 3, 4: 2, 5: 2 }, accused: 2, caught: true },
+  }
+  assert.deepEqual(trialTriggerCities(colleagueTriggeredMeCaught), [3])
+  assert.equal(trialKindOf(allyState, colleagueTriggeredMeCaught), 'me')
+  const meCaughtSummary = gameSummary(
+    { ...allyState, outcome: 'loss', end_reason: 'caught' },
+    [colleagueTriggeredMeCaught],
+    'zealot',
+  )
+  assert.equal(meCaughtSummary.pins[0]?.trialKind, 'me')
+  assert.deepEqual(meCaughtSummary.pins[0]?.labels, ['내 재판'])
+  assert.equal(meCaughtSummary.pins[0]?.danger, true)
+  assert.ok(meCaughtSummary.moments.some((m) => m.day === 3 && m.text === '동료(3번)를 두고 열린 재판에서 4·5번 집이 나를 지목했어요 (2표, 과반 2표)'))
+  assert.ok(meCaughtSummary.moments.some((m) => m.day === null && m.text === '재판이 1번 열렸어요 (내 재판 1번)'))
+
+  // 주민 의심도 60으로 열린 재판에서 동료가 지목된 경우
+  const residentTriggeredColCaught = {
+    turn: 4,
+    cities: [
+      mk(1, { 2: 0, 3: 40, 4: 0, 5: 60 }),
+      mk(4, { 1: 0, 2: 20, 3: 40, 5: 0 }),
+      mk(5, { 1: 0, 2: 0, 3: 40, 4: 0 }),
+    ],
+    sharing: [],
+    vote: { ballots: { 1: 5, 4: 3, 5: 3 }, accused: 3, caught: true },
+  }
+  assert.equal(trialKindOf(allyState, residentTriggeredColCaught), 'colleague')
 })
 
 test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () => {
@@ -1405,12 +1566,12 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
   assert.equal(trustLine.tag, undefined)
   assert.equal(trustLine.text, '8일째부터 2번 집은 내 쪽지를 거의 믿지 않았어요(의심도 80 이상이면 1/5표 이하예요)')
 
-  const dropLine = s.moments.find((m) => m.day === 9 && m.text.includes('속은 주민이'))
+  const dropLine = s.moments.find((m) => m.day === 9 && m.text.includes('틀린 주민이'))
   assert.ok(dropLine, 'deception-drop moment added on day 9')
   assert.equal(dropLine.tag, undefined)
   assert.equal(
     dropLine.text,
-    '9일째, 속은 주민이 3명에서 1명으로 줄었어요. 그날은 주민 4명 모두 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지를 거의 믿지 않았어요',
+    '9일째, 틀린 주민이 3명에서 1명으로 줄었어요. 그날은 주민 4명 모두 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지를 거의 믿지 않았어요',
   )
   // 날짜순 정렬 유지, 그래프 핀 추가 없음
   const datedDays = s.moments.filter((m) => m.day != null).map((m) => m.day)
@@ -1456,7 +1617,7 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
       (m) =>
         m.day === 5 &&
         m.text ===
-          '5일째, 속은 주민이 4명에서 0명으로 줄었어요. 그날은 주민 4명 중 3명은 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지를 거의 믿지 않았어요',
+          '5일째, 틀린 주민이 4명에서 0명으로 줄었어요. 그날은 주민 4명 중 3명은 관측이 맞았어요. 2·3번 집은 의심도가 80 이상이라 내 쪽지를 거의 믿지 않았어요',
     ),
   )
   assert.equal(sGroup.moments.some((m) => m.text.includes('이웃 쪽지를 믿고')), false)
@@ -1530,13 +1691,13 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
     sMaj.moments.some(
       (m) =>
         m.day === 3 &&
-        m.text === '3일째, 속은 주민이 4명에서 1명으로 줄었어요. 그날은 주민 4명 중 2명은 관측이 맞았어요',
+        m.text === '3일째, 틀린 주민이 4명에서 1명으로 줄었어요. 그날은 주민 4명 중 2명은 관측이 맞았어요',
     ),
   )
 
   // AI 주민 판: 신뢰 끊김·한꺼번에 풀림 두 새 순간 줄을 모두 숨긴다
   const sAi = gameSummary({ ...g723State, config: { ...g723State.config, citizen_type: 'ai' } }, g723Hist)
-  assert.equal(sAi.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('속은 주민이')), false)
+  assert.equal(sAi.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('틀린 주민이')), false)
 
   // 해당 없는 판: 의심도 80 미만 유지 + 과반 이상→미만 하락 없음
   const calmHist = [
@@ -1566,7 +1727,7 @@ test('gameSummary adds trust-broken and deception-drop moments without tags or c
     },
   ]
   const sCalm = gameSummary(g723State, calmHist)
-  assert.equal(sCalm.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('속은 주민이')), false)
+  assert.equal(sCalm.moments.some((m) => m.text.includes('믿지 않았어요') || m.text.includes('틀린 주민이')), false)
 })
 
 test('watchfulEyeClashNote branches on caught and player contradictions', () => {

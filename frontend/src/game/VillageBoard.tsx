@@ -313,7 +313,7 @@ function houseLabel(h: House, playerCity: number) {
 
 // 집 하나. pick이 있으면 눌러서 쪽지를 여는 버튼이 된다 (명세 1번).
 // changed: 어제와 달라진 점 (힌트 바뀜, 새 점선). 어제 쪽지를 그대로 두었으니 여기만 다시 보면 된다.
-type Pick = { claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
+type Pick = { mode?: 'note' | 'suspicion'; claim?: Claim; open: boolean; preview: Preview | null; changed?: string[]; onOpen: () => void }
 
 const VOTE_ROWS = [
   { side: 1 as const, claim: 'evacuate' as const, label: '대피', top: 6, tagRx: 7, blkRx: 2.5, dotFill: '#f3e7c6' },
@@ -435,8 +435,11 @@ function HouseView({
   const showSuspicion = h.suspicion != null && h.reachable
   const obsY = showSuspicion ? y + 67 : y + 26
   const base = `${houseLabel(h, playerCity)}${swayed ? ', 내 쪽지에 넘어옴' : ''}`
+  const isSusPick = pick?.mode === 'suspicion'
   const label = pick
-    ? `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
+    ? isSusPick
+      ? `${base}. 의심선 보기`
+      : `${base}${pick.changed ? `, 변동: ${pick.changed.join(', ')}` : ''}. 쪽지 고르기, 지금 ${pick.claim ? decisions[pick.claim] : '없음'}${pick.preview ? `, ${previewText(pick.preview)}` : ''}`
     : base
   const mafia = h.role !== 'citizen'
   const over = h.suspicion != null && h.suspicion >= SUSPICION.threshold
@@ -468,7 +471,13 @@ function HouseView({
     <g
       className={`vb-house${h.role === 'citizen' && !h.reachable ? ' is-far' : ''}${pick?.open ? ' is-open' : ''}${hlHouse ? ' vb-tut-hl' : ''}`}
       {...(pick
-        ? { role: 'button', tabIndex: 0, 'aria-expanded': pick.open, onClick: pick.onOpen, onKeyDown: onActivateKey(pick.onOpen) }
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            ...(isSusPick ? { 'aria-pressed': pick.open } : { 'aria-expanded': pick.open }),
+            onClick: pick.onOpen,
+            onKeyDown: onActivateKey(pick.onOpen),
+          }
         : focusable
           ? { role: 'group', tabIndex: 0 }
           : { role: 'img' })}
@@ -1065,6 +1074,8 @@ export function VillageBoard({
   highlight = null,
   hideSigns = false,
   neutralShareSign = false,
+  suspicionMode = false,
+  zoomed = false,
   onCardOpen,
   boardRef,
 }: {
@@ -1077,6 +1088,8 @@ export function VillageBoard({
   highlight?: TutorialHighlight | null // 튜토리얼 강조 대상 이름
   hideSigns?: boolean // 튜토리얼에서는 첫날 안내 표지판을 숨긴다
   neutralShareSign?: boolean // 시나리오 요령과 충돌하지 않게 3번 표지판을 규칙 사실로 바꾼다
+  suspicionMode?: boolean // 터치/좁은 화면 의심선 보기 모드: 집 탭 시 쪽지 카드 대신 의심선을 표시한다
+  zoomed?: boolean // 좁은 화면 크게 보기(680px 가로 스크롤) 상태
   onCardOpen?: (city: number | null) => void
   boardRef?: RefObject<SVGSVGElement | null>
 }) {
@@ -1084,6 +1097,8 @@ export function VillageBoard({
   const [prevHighlight, setPrevHighlight] = useState(highlight)
   const [hovered, setHovered] = useState<number | null>(null)
   const [focused, setFocused] = useState<number | null>(null)
+  const [pinned, setPinned] = useState<number | null>(null)
+  const [prevSuspicionMode, setPrevSuspicionMode] = useState(suspicionMode)
   const [trialHovered, setTrialHovered] = useState(false)
   const [trialFocused, setTrialFocused] = useState(false)
   const night = result && stage && stage.phase !== 'day' ? { ...stage, result } : null
@@ -1094,11 +1109,20 @@ export function VillageBoard({
     // 쪽지 비교(share) 안내로 넘어가면 중앙 점선을 가리지 않게 카드를 접는다.
     if (highlight === 'share') setOpen(null)
   }
+  if (prevSuspicionMode !== suspicionMode) {
+    setPrevSuspicionMode(suspicionMode)
+    if (suspicionMode) {
+      setOpen(null)
+    } else {
+      setPinned(null)
+    }
+  }
   if (prevInspectScope !== inspectScope) {
     setPrevInspectScope(inspectScope)
     setOpen(null)
     setHovered(null)
     setFocused(null)
+    setPinned(null)
     setTrialHovered(false)
     setTrialFocused(false)
   }
@@ -1109,11 +1133,20 @@ export function VillageBoard({
   }
   const last = useRef<number | null>(null)
   const cardFocused = useRef(false)
-  // 쪽지가 열리면 첫 선택 버튼으로, 닫힐 때는 포커스가 카드 안에 있을 때만 그 집으로 되돌린다.
+  // 쪽지가 열리면 첫 선택 버튼으로 포커스를 옮기고, 좁은 화면 가로 스크롤 보드에서는 카드가 가운데 보이게 맞춘다.
   useEffect(() => {
     if (open != null) {
       last.current = open
-      svg.current?.querySelector<SVGElement>('.vb-opt')?.focus()
+      const frame = svg.current?.parentElement
+      const hScroll = Boolean(frame && frame.scrollWidth > frame.clientWidth)
+      svg.current?.querySelector<SVGElement>('.vb-opt')?.focus(hScroll ? { preventScroll: true } : undefined)
+      const card = svg.current?.querySelector<SVGGElement>('.vb-card')
+      if (card && frame && hScroll) {
+        const cardRect = card.getBoundingClientRect()
+        const frameRect = frame.getBoundingClientRect()
+        const targetLeft = frame.scrollLeft + (cardRect.left - frameRect.left) - (frameRect.width - cardRect.width) / 2
+        frame.scrollTo({ left: Math.max(0, targetLeft), behavior: 'auto' })
+      }
     } else if (last.current != null) {
       if (cardFocused.current) {
         svg.current?.querySelector<SVGElement>(`.vb-house[data-city="${last.current}"]`)?.focus()
@@ -1122,11 +1155,11 @@ export function VillageBoard({
       last.current = null
     }
   }, [open])
-  // 선택창과 집·튜토리얼 말풍선·오늘 밤 저울 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
+  // 선택창과 집·튜토리얼 말풍선·오늘 밤 저울·보드 도구 바깥을 누르면(터치 포함) 접는다. 집 클릭은 기존 토글이 처리한다.
   useEffect(() => {
     if (open == null) return
     const close = (e: MouseEvent) => {
-      if (!(e.target as Element).closest('.vb-card, .vb-house, .tut-box, .vl-tonight')) setOpen(null)
+      if (!(e.target as Element).closest('.vb-card, .vb-house, .tut-box, .vl-tonight, .gm-board-tools')) setOpen(null)
     }
     document.addEventListener('click', close)
     return () => document.removeEventListener('click', close)
@@ -1179,6 +1212,28 @@ export function VillageBoard({
         houses.find((h) => h.slot === 4 && h.reachable) ??
         null)
       : null
+  const pointerCity = pointerTarget?.city ?? null
+  // 좁은 화면 크게 보기(가로 스크롤) 전환 시 열린 카드·튜토리얼 가리킴 집·보드 가운데 순으로 맞춘다.
+  useEffect(() => {
+    const frame = svg.current?.parentElement
+    if (!frame) return
+    if (!zoomed) {
+      frame.scrollTo({ left: 0, behavior: 'auto' })
+      return
+    }
+    if (frame.scrollWidth <= frame.clientWidth) return
+    const focusEl =
+      svg.current?.querySelector<SVGGElement>('.vb-card') ??
+      (pointerCity != null ? svg.current?.querySelector<SVGGElement>(`.vb-house[data-city="${pointerCity}"]`) : null)
+    if (focusEl) {
+      const rect = focusEl.getBoundingClientRect()
+      const frameRect = frame.getBoundingClientRect()
+      const targetLeft = frame.scrollLeft + (rect.left - frameRect.left) - (frameRect.width - rect.width) / 2
+      frame.scrollTo({ left: Math.max(0, targetLeft), behavior: 'auto' })
+    } else {
+      frame.scrollTo({ left: Math.round((frame.scrollWidth - frame.clientWidth) / 2), behavior: 'auto' })
+    }
+  }, [zoomed, state.game_id, pointerCity])
   const openCity = opened?.city ?? null
   const canInspectTrial = !night && !highlight && !opened
   const [prevCanInspectTrial, setPrevCanInspectTrial] = useState(canInspectTrial)
@@ -1189,9 +1244,20 @@ export function VillageBoard({
       setTrialFocused(false)
     }
   }
-  const inspected = hovered ?? focused
+  // 의심선 보기 모드가 켜졌을 때 선택된 집이 없으면 의심도가 있는 첫 시민 집을 바로 보여 준다.
+  const defaultPinned =
+    suspicionMode && !night
+      ? (houses
+          .filter((h) => h.role === 'citizen' && h.suspicions && Object.values(h.suspicions).some((v) => v > 0))
+          .sort(
+            (a, b) =>
+              Math.max(0, ...Object.values(b.suspicions ?? {})) - Math.max(0, ...Object.values(a.suspicions ?? {})) ||
+              a.city - b.city,
+          )[0]?.city ?? null)
+      : null
+  const inspected = suspicionMode ? (pinned ?? defaultPinned) : (hovered ?? focused)
   const activeSuspicionLinks =
-    !night && !highlight && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
+    !night && (!highlight || suspicionMode) && !opened && inspected != null ? suspicionLinks(houses, inspected) : []
   const currentStampMode = trialStampMode({
     isNight: Boolean(night),
     trialInspect: trialHovered || trialFocused,
@@ -1244,16 +1310,6 @@ export function VillageBoard({
               </g>
             )
           })}
-          {shareTag && (
-            <g className={redPairs.length > 0 ? 'is-clash' : undefined} aria-hidden>
-              <g className="vb-share-tag">
-                <rect x={shareTag.pos[0] - shareTag.w / 2} y={shareTag.pos[1] - 80} width={shareTag.w} height="25" rx="12.5" strokeWidth="1.5" />
-                <text x={shareTag.pos[0]} y={shareTag.pos[1] - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
-                  {shareTag.label}
-                </text>
-              </g>
-            </g>
-          )}
         </g>
       )}
       <text x={PLAZA.x} y={PLAZA.y + 5} fontSize="15" fontWeight="700" textAnchor="middle" className="vb-plaza-label" aria-hidden>
@@ -1297,15 +1353,27 @@ export function VillageBoard({
                 : undefined
             }
             pick={
-              picker && h.reachable
+              suspicionMode && !night && hasSuspicion
                 ? {
-                    claim: picker.claims[h.city],
-                    open: open === h.city,
-                    preview: preview(h, picker.claims[h.city]),
-                    changed: changed[h.city],
-                    onOpen: () => setOpen(open === h.city ? null : h.city),
+                    mode: 'suspicion',
+                    claim: picker?.claims[h.city],
+                    open: inspected === h.city,
+                    preview: null,
+                    onOpen: () => {
+                      setOpen(null)
+                      setPinned(h.city)
+                    },
                   }
-                : undefined
+                : picker && h.reachable
+                  ? {
+                      mode: 'note',
+                      claim: picker.claims[h.city],
+                      open: open === h.city,
+                      preview: preview(h, picker.claims[h.city]),
+                      changed: changed[h.city],
+                      onOpen: () => setOpen(open === h.city ? null : h.city),
+                    }
+                  : undefined
             }
           />
         )
@@ -1343,6 +1411,19 @@ export function VillageBoard({
         />
       )}
       {activeSuspicionLinks.length > 0 && <SuspicionLines links={activeSuspicionLinks} />}
+      {shareTag && (
+        <g
+          className={`vb-share-tag-layer${redPairs.length > 0 ? ' is-clash' : ''}${highlight === 'share' ? ' vb-tut-hl' : ''}`}
+          aria-hidden="true"
+        >
+          <g className="vb-share-tag">
+            <rect x={shareTag.pos[0] - shareTag.w / 2} y={shareTag.pos[1] - 80} width={shareTag.w} height="25" rx="12.5" strokeWidth="1.5" />
+            <text x={shareTag.pos[0]} y={shareTag.pos[1] - 62.5} fontSize="14.5" fontWeight="700" textAnchor="middle">
+              {shareTag.label}
+            </text>
+          </g>
+        </g>
+      )}
       {pairs.length === 1 &&
         clashes.map(([a, b]) => {
           const [mx, my] = pairMid(state.player_city, a, b)

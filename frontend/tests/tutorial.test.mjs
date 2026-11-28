@@ -68,6 +68,7 @@ test('tutorialStep progresses across 3 days based on turn, animation, note card,
   assert.equal(splitSentences(flagsStep.step?.text ?? '').length, 2)
   assert.equal(tutorialStep(8, day2).step?.highlight, null)
   assert.match(tutorialStep(8, day2).step?.text ?? '', /의심하는 선/)
+  assert.match(tutorialStep(8, day2).step?.text ?? '', /터치 화면에서는 위의 '의심선 보기'를 눌러요\./)
   assert.match(tutorialStep(8, day2).step?.text ?? '', /나를 의심하는 집에서만, 내 집으로 가는 선이 보여요\./)
   assert.equal(tutorialStep(9, day2).step?.highlight, 'log')
   const waitScale = tutorialStep(10, day2)

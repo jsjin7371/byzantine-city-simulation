@@ -93,6 +93,8 @@ function ResultChart({
   turns,
   deceived,
   peaks,
+  colleaguePeaks,
+  hasColleague,
   pins,
   citizenCount,
   majorityNeed,
@@ -100,34 +102,23 @@ function ResultChart({
   turns: number[]
   deceived: number[]
   peaks: (number | null)[]
+  colleaguePeaks: (number | null)[] | null
+  hasColleague: boolean
   pins: Record<number, ChartPin>
   citizenCount: number
   majorityNeed: number
 }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
+  const chartId = useId()
   const [runId, setRunId] = useState(0)
   const hasPeaks = peaks.some((v) => v != null)
-
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const io = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setRunId((n) => (n === 0 ? 1 : n))
-          io.disconnect()
-        }
-      },
-      { threshold: 0.2 },
-    )
-    io.observe(el)
-    return () => io.disconnect()
-  }, [])
+  const hasColleaguePeaks = Boolean(colleaguePeaks?.some((v) => v != null))
 
   const count = Math.max(deceived.length, 1)
   const x0 = 92
   const step = count <= 8 ? 72 : 48
   const bw = count <= 8 ? 36 : 26
+  const pairGap = count <= 8 ? 4 : 2
+  const pairBarW = Math.floor((bw - pairGap) / 2)
   const plotRightX = x0 + step * count
   const minCols = Math.max(count, 6)
   const viewW = x0 + step * minCols + 88
@@ -152,11 +143,16 @@ function ResultChart({
   const viewH = hasPeaks ? botBase + 30 : topBase + 32
 
   const ariaParts = [
-    `위: 날짜별 속은 주민 수 ${deceived.map((d, i) => `${turns[i]}일 ${d}명`).join(', ')}. 과반선 ${majorityNeed}명.`,
+    `위: 날짜별 틀린 주민 수 ${deceived.map((d, i) => `${turns[i]}일 ${d}명`).join(', ')}. 과반선 ${majorityNeed}명.`,
   ]
   if (hasPeaks) {
     ariaParts.push(
       `아래: 날짜별 나에 대한 최고 의심도 ${peaks.map((v, i) => `${turns[i]}일 ${v ?? '없음'}`).join(', ')}. 재판 기준 ${SUSPICION.threshold}.`,
+    )
+  }
+  if (hasColleaguePeaks && colleaguePeaks) {
+    ariaParts.push(
+      `동료 최고 의심도 ${colleaguePeaks.map((v, i) => `${turns[i]}일 ${v ?? '없음'}`).join(', ')}.`,
     )
   }
   if (pinEntries.length > 0) {
@@ -169,17 +165,23 @@ function ResultChart({
     const cx = x0 + i * step + bw / 2
     const d = deceived[i] ?? 0
     const peakVal = peaks[i]
+    const colVal = hasColleaguePeaks ? colleaguePeaks?.[i] : null
     const hTop = d * topUnit
     const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
+    const hCol = colVal != null ? Math.min(colVal, 100) * (botPlotH / 100) : 0
     return {
       i,
       pin,
       cx,
+      trialKind: pin.trialKind,
       color: pin.danger ? 'var(--rust)' : 'var(--wood)',
-      dotY: hasPeaks ? botBase - hBot - 11 : topBase - hTop - 11,
+      dotY: hasPeaks ? botBase - Math.max(hBot, hCol) - 11 : topBase - hTop - 11,
       textY: (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - (k % laneCount) * laneGap,
     }
   })
+
+  const allyPatId = `${chartId}-ally`
+  const allyOverPatId = `${chartId}-ally-over`
 
   return (
     <div className="gr-chart-wrap">
@@ -189,17 +191,55 @@ function ResultChart({
           다시 보기
         </button>
       </div>
-      <div ref={scrollRef} className="gr-chart-scroll" tabIndex={0} role="region" aria-label="날짜별 흐름 그래프">
+      {hasPeaks && (
+        <div className="gr-chart-legend" aria-label="그래프 범례">
+          {hasColleaguePeaks && (
+            <>
+              <span className="gr-legend-item">
+                <i className="gr-swatch is-me" aria-hidden="true" />내 의심도
+              </span>
+              <span className="gr-legend-item">
+                <i className="gr-swatch is-ally" aria-hidden="true" />동료 의심도
+              </span>
+            </>
+          )}
+          <span className="gr-legend-item">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <circle cx="6" cy="6" r="4" fill="var(--rust)" />
+            </svg>
+            내 재판
+          </span>
+          <span className="gr-legend-item">
+            <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+              <polygon points="6,1 11,6 6,11 1,6" fill="#fdfaf1" stroke="var(--wood)" strokeWidth="2" />
+            </svg>
+            {hasColleague ? '동료·주민 재판' : '주민 재판'}
+          </span>
+        </div>
+      )}
+      <div className="gr-chart-scroll" tabIndex={0} role="region" aria-label="날짜별 흐름 그래프">
         <svg
           key={runId}
-          className={`gr-chart ${runId > 0 ? 'is-play' : 'is-idle'}`}
+          className={runId > 0 ? 'gr-chart is-play' : 'gr-chart'}
           viewBox={`0 0 ${viewW} ${viewH}`}
           style={{ minWidth: viewW, maxWidth: Math.max(680, viewW) }}
           role="img"
           aria-label={ariaParts.join(' ')}
         >
+          {hasColleaguePeaks && (
+            <defs>
+              <pattern id={allyPatId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="6" height="6" fill="#dce5ec" />
+                <line x1="0" y1="0" x2="0" y2="6" stroke="#455f75" strokeWidth="2.4" />
+              </pattern>
+              <pattern id={allyOverPatId} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <rect width="6" height="6" fill="#f4d9cf" />
+                <line x1="0" y1="0" x2="0" y2="6" stroke="#a8361f" strokeWidth="2.4" />
+              </pattern>
+            </defs>
+          )}
           <text className="gr-axis-label" x="0" y={hasPeaks ? 24 : topBase - topPlotH}>
-            속은 주민
+            틀린 주민
           </text>
           <path d={`M${x0 - 8} ${majY} H${plotRightX}`} stroke="var(--forest)" strokeWidth="1.6" strokeDasharray="4 4" />
           <text x={plotRightX + 8} y={majY + 5} fill="var(--forest)">
@@ -232,6 +272,9 @@ function ResultChart({
             const peakVal = peaks[i]
             const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
             const over = peakVal != null && peakVal >= SUSPICION.threshold
+            const colVal = hasColleaguePeaks ? colleaguePeaks?.[i] : null
+            const hCol = colVal != null ? Math.min(colVal, 100) * (botPlotH / 100) : 0
+            const colOver = colVal != null && colVal >= SUSPICION.threshold
 
             return (
               <g key={i} style={{ '--i': i } as CSSProperties}>
@@ -249,10 +292,23 @@ function ResultChart({
                     className="gr-bar"
                     x={x}
                     y={botBase - hBot}
-                    width={bw}
+                    width={hasColleaguePeaks ? pairBarW : bw}
                     height={hBot}
                     rx="3"
                     fill={over ? 'var(--rust)' : 'var(--wood)'}
+                  />
+                )}
+                {hasColleaguePeaks && colVal != null && hCol > 0 && (
+                  <rect
+                    className="gr-bar"
+                    x={x + pairBarW + pairGap}
+                    y={botBase - hCol}
+                    width={pairBarW}
+                    height={hCol}
+                    rx="3"
+                    fill={`url(#${colOver ? allyOverPatId : allyPatId})`}
+                    stroke={colOver ? 'var(--rust)' : '#455f75'}
+                    strokeWidth="1.4"
                   />
                 )}
                 <text className="gr-daylabel" x={cx} y={hasPeaks ? botBase + 22 : topBase + 22} textAnchor="middle">
@@ -262,12 +318,12 @@ function ResultChart({
             )
           })}
 
-          {pinLayout.map(({ i, cx, color, dotY, textY }) => (
+          {pinLayout.map(({ i, cx, color, dotY, textY, trialKind }) => (
             <g key={`stem-${i}`} className="gr-pin" style={{ '--i': i } as CSSProperties}>
               {dotY - textY > 14 && (
                 <line
                   x1={cx}
-                  y1={dotY - 5}
+                  y1={trialKind ? dotY - 6 : dotY + 4}
                   x2={cx}
                   y2={textY + 5}
                   stroke={color}
@@ -276,7 +332,16 @@ function ResultChart({
                   opacity="0.45"
                 />
               )}
-              <circle cx={cx} cy={dotY} r="4" fill={color} />
+              {trialKind === 'me' ? (
+                <circle cx={cx} cy={dotY} r="4" fill="var(--rust)" />
+              ) : trialKind ? (
+                <polygon
+                  points={`${cx},${dotY - 5} ${cx + 5},${dotY} ${cx},${dotY + 5} ${cx - 5},${dotY}`}
+                  fill="#fdfaf1"
+                  stroke="var(--wood)"
+                  strokeWidth="2"
+                />
+              ) : null}
             </g>
           ))}
 
@@ -413,6 +478,8 @@ export function GameResult({
           turns={history.map((t) => t.turn)}
           deceived={s.deceived}
           peaks={s.peaks}
+          colleaguePeaks={s.colleaguePeaks}
+          hasColleague={s.hasColleague}
           pins={s.pins}
           citizenCount={s.citizenCount}
           majorityNeed={s.majorityNeed}

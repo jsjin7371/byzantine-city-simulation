@@ -620,6 +620,26 @@ export function GameStart({
       <h1 ref={headingRef} tabIndex={-1} className="sr-only">
         AI 주민을 속여라
       </h1>
+      <nav className="gs-mob-nav" aria-label="시작 화면 이동">
+        <a
+          href="#/setup"
+          className={busy ? 'gs-mob-link is-busy' : 'gs-mob-link'}
+          aria-disabled={busy || undefined}
+          onClick={(e) => {
+            if (busy) e.preventDefault()
+          }}
+        >
+          ← 실험 설정
+        </a>
+        <button
+          type="button"
+          className="gs-mob-lab"
+          disabled={busy}
+          onClick={onLab}
+        >
+          이론 실험실 →
+        </button>
+      </nav>
       <svg
         className="gm-start-scene"
         viewBox="0 0 1440 900"
