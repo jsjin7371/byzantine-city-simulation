@@ -2033,7 +2033,11 @@ body:has(dialog[open]) {
 }
 dialog.tb-dialog {
   width: min(720px, 94vw);
+  /* Safari/WebKit에서 height: auto + flex-basis: 0% 조합이 .tb-page 높이를 패딩만 남기고 접는 문제를 막는다. */
+  height: min(860px, 88vh);
+  height: min(860px, 88dvh);
   max-height: 88vh;
+  max-height: 88dvh;
   margin: auto;
   padding: 0;
   border: 0;
@@ -2072,9 +2076,10 @@ dialog.tb-dialog[open] {
   border-bottom: 1px solid rgba(107, 74, 42, 0.14);
 }
 .tb-page {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px 56px 40px;
   font-family: var(--gm-book-font);
   font-size: 17px;
