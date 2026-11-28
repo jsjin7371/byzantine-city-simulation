@@ -169,12 +169,11 @@ function ResultChart({
     const hTop = d * topUnit
     const hBot = peakVal != null ? Math.min(peakVal, 100) * (botPlotH / 100) : 0
     const hCol = colVal != null ? Math.min(colVal, 100) * (botPlotH / 100) : 0
-    const isOtherTrial = pin.trialKind === 'colleague' || pin.trialKind === 'other'
     return {
       i,
       pin,
       cx,
-      isOtherTrial,
+      trialKind: pin.trialKind,
       color: pin.danger ? 'var(--rust)' : 'var(--wood)',
       dotY: hasPeaks ? botBase - Math.max(hBot, hCol) - 11 : topBase - hTop - 11,
       textY: (hasPeaks ? botBase - botPlotH : topBase - topPlotH) - 24 - (k % laneCount) * laneGap,
@@ -319,12 +318,12 @@ function ResultChart({
             )
           })}
 
-          {pinLayout.map(({ i, cx, color, dotY, textY, isOtherTrial }) => (
+          {pinLayout.map(({ i, cx, color, dotY, textY, trialKind }) => (
             <g key={`stem-${i}`} className="gr-pin" style={{ '--i': i } as CSSProperties}>
               {dotY - textY > 14 && (
                 <line
                   x1={cx}
-                  y1={dotY - 6}
+                  y1={trialKind ? dotY - 6 : dotY + 4}
                   x2={cx}
                   y2={textY + 5}
                   stroke={color}
@@ -333,16 +332,16 @@ function ResultChart({
                   opacity="0.45"
                 />
               )}
-              {isOtherTrial ? (
+              {trialKind === 'me' ? (
+                <circle cx={cx} cy={dotY} r="4" fill="var(--rust)" />
+              ) : trialKind ? (
                 <polygon
                   points={`${cx},${dotY - 5} ${cx + 5},${dotY} ${cx},${dotY + 5} ${cx - 5},${dotY}`}
                   fill="#fdfaf1"
-                  stroke={color}
+                  stroke="var(--wood)"
                   strokeWidth="2"
                 />
-              ) : (
-                <circle cx={cx} cy={dotY} r="4" fill={color} />
-              )}
+              ) : null}
             </g>
           ))}
 

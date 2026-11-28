@@ -165,6 +165,7 @@ export function GamePage() {
   const [scaleOpen, setScaleOpen] = useState(false)
   const [mobGoalOpen, setMobGoalOpen] = useState(false)
   const [suspicionMode, setSuspicionMode] = useState(false)
+  const [boardZoom, setBoardZoom] = useState(false)
   const resultRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const boardRef = useRef<SVGSVGElement>(null)
@@ -217,6 +218,7 @@ export function GamePage() {
     setScaleOpen(false)
     setMobGoalOpen(false)
     setSuspicionMode(false)
+    setBoardZoom(false)
     setHistory([])
     setViewed(0)
     setStep(null)
@@ -353,12 +355,34 @@ export function GamePage() {
     : null
   const hasAnySuspicion =
     !playing &&
-    state?.config.citizen_type === 'wary' &&
+    state?.config.citizen_type !== 'majority' &&
     Boolean(
       shown?.cities.some(
         (c) => c.role === 'citizen' && c.suspicion && Object.values(c.suspicion).some((v) => v > 0),
       ),
     )
+  const goalStepsNode = goalSteps ? (
+    <span className="gm-goal-steps">
+      {goalSteps.map((s, idx) => (
+        <Fragment key={s.label}>
+          {idx > 0 && (
+            <span className="gm-goal-arrow" aria-hidden="true">
+              →
+            </span>
+          )}
+          <span className={s.done ? 'gm-goal-step is-done' : 'gm-goal-step'}>
+            {s.done && (
+              <span className="gm-goal-check" aria-hidden="true">
+                ✓
+              </span>
+            )}
+            {s.label}
+            {s.done && <span className="sr-only"> 완료</span>}
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  ) : null
   const activeSuspicionMode = suspicionMode && hasAnySuspicion
   const ruled = state?.config.citizen_type === 'wary' // 7.6 규칙을 따르는 시민만 예상을 보인다
   const tonightScale = useMemo(() => {
@@ -428,28 +452,7 @@ export function GamePage() {
                   <>
                     <span className={goalSteps ? 'gm-goal-badge is-steps' : 'gm-goal-badge'}>
                       <span className="gm-goal-tag">목표</span> ·{' '}
-                      {goalSteps ? (
-                        <span className="gm-goal-steps">
-                          {goalSteps.map((s, idx) => (
-                            <Fragment key={s.label}>
-                              {idx > 0 && (
-                                <span className="gm-goal-arrow" aria-hidden="true">
-                                  →
-                                </span>
-                              )}
-                              <span className={s.done ? 'gm-goal-step is-done' : 'gm-goal-step'}>
-                                {s.done && (
-                                  <span className="gm-goal-check" aria-hidden="true">
-                                    ✓
-                                  </span>
-                                )}
-                                {s.label}
-                                {s.done && <span className="sr-only"> 완료</span>}
-                              </span>
-                            </Fragment>
-                          ))}
-                        </span>
-                      ) : (
+                      {goalStepsNode ?? (
                         <>
                           {scenario.goal}
                           {allyStatus && (
@@ -523,30 +526,7 @@ export function GamePage() {
               {scenario && mobGoalOpen && (
                 <div className="gm-mob-goal-drawer" role="region" aria-label="시나리오 목표">
                   <div className="gm-mob-goal-main">
-                    {goalSteps ? (
-                      <span className="gm-goal-steps">
-                        {goalSteps.map((s, idx) => (
-                          <Fragment key={s.label}>
-                            {idx > 0 && (
-                              <span className="gm-goal-arrow" aria-hidden="true">
-                                →
-                              </span>
-                            )}
-                            <span className={s.done ? 'gm-goal-step is-done' : 'gm-goal-step'}>
-                              {s.done && (
-                                <span className="gm-goal-check" aria-hidden="true">
-                                  ✓
-                                </span>
-                              )}
-                              {s.label}
-                              {s.done && <span className="sr-only"> 완료</span>}
-                            </span>
-                          </Fragment>
-                        ))}
-                      </span>
-                    ) : (
-                      <span>{scenario.goal}</span>
-                    )}
+                    {goalStepsNode ?? <span>{scenario.goal}</span>}
                   </div>
                   <p className="gm-mob-goal-feature">
                     {scenario.title} · {scenario.feature}
@@ -572,7 +552,7 @@ export function GamePage() {
                   onExit={exit}
                 />
               )}
-              <div className="gm-board-frame">
+              <div className={boardZoom ? 'gm-board-frame is-zoomed' : 'gm-board-frame'}>
                 <VillageBoard
                   state={state}
                   result={shown}
@@ -583,6 +563,7 @@ export function GamePage() {
                   hideSigns={tutorialActive}
                   neutralShareSign={scenario != null && scenario.id !== 'ring-village'}
                   suspicionMode={activeSuspicionMode}
+                  zoomed={boardZoom}
                   onCardOpen={setOpenCity}
                   boardRef={boardRef}
                   picker={
@@ -592,9 +573,21 @@ export function GamePage() {
                   }
                 />
               </div>
-              <p className="gm-board-scroll-hint" aria-hidden="true">
-                ← 좌우로 밀어 보드 전체 보기 →
-              </p>
+              <div className="gm-board-tools">
+                <button
+                  type="button"
+                  className={boardZoom ? 'gm-zoom-toggle is-on' : 'gm-zoom-toggle'}
+                  aria-pressed={boardZoom}
+                  onClick={() => setBoardZoom((v) => !v)}
+                >
+                  {boardZoom ? '전체 보기' : '크게 보기'}
+                </button>
+                {boardZoom && (
+                  <span className="gm-board-scroll-hint" aria-hidden="true">
+                    ← 좌우로 밀어 보기 →
+                  </span>
+                )}
+              </div>
             </section>
             <VillageLog
               lines={lines && playing ? visibleLines(lines, steps[step]) : lines}

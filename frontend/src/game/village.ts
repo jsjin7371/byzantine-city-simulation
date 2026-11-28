@@ -782,27 +782,20 @@ export function villageLines(
 
   if (result.vote) {
     lines.push({ phase: 'trial', kind: 'when', text: PHASE_LABEL.trial })
-    const hasTiedVoter = citizens.some((c) => {
-      if (!c.suspicion || !(String(c.city) in result.vote!.ballots)) return false
-      const vals = Object.values(c.suspicion)
-      if (vals.length === 0) return false
-      const top = Math.max(...vals)
-      return vals.filter((v) => v === top).length > 1
-    })
-    if (hasTiedVoter) {
+    const tieSet = new Set(allTieVoters(result))
+    if (tieSet.size > 0) {
       lines.push({
         phase: 'trial',
         kind: 'event',
         text: '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.',
       })
     }
-    const farTieSet = new Set(ringFarTieVotersForMe(state, result))
     for (const [from, to] of Object.entries(result.vote.ballots))
       lines.push({
         phase: 'trial',
         kind: 'say',
         who: Number(from),
-        text: farTieSet.has(Number(from)) ? `난 ${to}번을 지목할게 (동점 추첨)` : `난 ${to}번을 지목할게`,
+        text: tieSet.has(Number(from)) ? `난 ${to}번을 지목할게 (동점 추첨)` : `난 ${to}번을 지목할게`,
       })
     const a = result.vote.accused
     lines.push({
@@ -1012,29 +1005,6 @@ function peakSus(cities: Pick<TurnResult, 'cities'>['cities'], target: number | 
   return Math.max(0, ...cities.filter((c) => c.role === 'citizen').map((c) => c.suspicion?.[target] ?? 0))
 }
 
-// 고리 마을 재판에서 내 쪽지를 받지 않는 먼 집이 동점 추첨(나와 다른 집이 최고 의심도로 동점)으로 나를 지목한 집 목록.
-function ringFarTieVotersForMe(
-  state: Pick<GameState, 'config' | 'roles' | 'player_city'>,
-  turn: Pick<TurnResult, 'cities' | 'vote'> | undefined,
-): number[] {
-  if (state.config.connection !== 'ring' || !turn?.vote) return []
-  const me = state.player_city
-  const near = new Set(claimTargets(state))
-  return Object.entries(turn.vote.ballots)
-    .filter(([from, to]) => {
-      const city = Number(from)
-      if (to !== me || near.has(city)) return false
-      const sus = turn.cities.find((c) => c.city === city)?.suspicion
-      if (!sus) return false
-      const vals = Object.values(sus)
-      if (vals.length === 0) return false
-      const top = Math.max(...vals)
-      return sus[me] === top && vals.filter((v) => v === top).length > 1
-    })
-    .map(([from]) => Number(from))
-    .sort((a, b) => a - b)
-}
-
 // 재판이 열리게 한 대상 집 목록 (어느 주민이라도 의심도가 재판 기준 60 이상인 대상 집).
 export function trialTriggerCities(turn: Pick<TurnResult, 'cities'> | undefined): number[] {
   if (!turn) return []
@@ -1052,14 +1022,14 @@ export function trialKindOf(
   state: Pick<GameState, 'player_city' | 'roles'>,
   turn: (Pick<TurnResult, 'cities'> & Partial<Pick<TurnResult, 'vote'>>) | undefined,
 ): TrialKind {
-  const triggers = trialTriggerCities(turn)
+  const me = state.player_city
   const col = colleagueCityOf(state.roles)
-  if (triggers.includes(state.player_city)) return 'me'
+  const accused = turn?.vote?.accused
+  if (accused === me) return 'me'
+  if (col != null && accused === col) return 'colleague'
+  const triggers = trialTriggerCities(turn)
+  if (triggers.includes(me)) return 'me'
   if (col != null && triggers.includes(col)) return 'colleague'
-  if (triggers.length === 0 && turn?.vote?.accused != null) {
-    if (turn.vote.accused === state.player_city) return 'me'
-    if (col != null && turn.vote.accused === col) return 'colleague'
-  }
   return 'other'
 }
 
@@ -1069,12 +1039,12 @@ function trialPinLabel(
 ): string {
   const triggers = trialTriggerCities(turn)
   const kind = trialKindOf(state, turn)
-  if (kind === 'me') return triggers.length > 1 ? '내 재판 등' : '내 재판'
+  if (kind === 'me') return turn?.vote?.accused !== state.player_city && triggers.length > 1 ? '내 재판 등' : '내 재판'
   if (kind === 'colleague') return '동료 재판'
   return '주민 재판'
 }
 
-function trialOpenPhrase(
+function trialTargetsLabel(
   state: Pick<GameState, 'player_city' | 'roles'>,
   turn: Pick<TurnResult, 'cities'> | undefined,
 ): string {
@@ -1087,22 +1057,25 @@ function trialOpenPhrase(
   if (col != null && triggers.includes(col)) parts.push(`동료(${col}번)`)
   const others = triggers.filter((c) => c !== me && c !== col)
   if (others.length > 0) parts.push(formatHouseGroup(others))
-  const label = parts.join('·')
-  const particle = label.endsWith('집') ? '을' : '를'
-  return `${label}${particle} 두고 열림`
+  return parts.join(', ')
 }
 
-// 재판에서 최고 의심도 동점으로 추첨 표를 던진 주민 집 목록.
-// accusedOnly가 true이고 지목된 집이 있으면 그 집을 지목한 동점 추첨 표만 추린다.
-export function trialTieVoters(
-  turn: Pick<TurnResult, 'cities' | 'vote'> | undefined,
-  accusedOnly = false,
-): number[] {
+function trialOpenPhrase(
+  state: Pick<GameState, 'player_city' | 'roles'>,
+  turn: Pick<TurnResult, 'cities'> | undefined,
+  form: 'noun' | 'mod' = 'noun',
+): string {
+  const label = trialTargetsLabel(state, turn)
+  if (!label) return ''
+  const particle = label.endsWith('집') ? '을' : '를'
+  return `${label}${particle} 두고 ${form === 'mod' ? '열린' : '열림'}`
+}
+
+// 재판에서 최고 의심도 동점으로 추첨 표를 던진 주민 집 목록 (전체).
+function allTieVoters(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined): number[] {
   if (!turn?.vote) return []
-  const accused = turn.vote.accused
   return Object.entries(turn.vote.ballots)
     .filter(([from, to]) => {
-      if (accusedOnly && accused != null && to !== accused) return false
       const city = Number(from)
       const sus = turn.cities.find((c) => c.city === city)?.suspicion
       if (!sus) return false
@@ -1115,9 +1088,16 @@ export function trialTieVoters(
     .sort((a, b) => a - b)
 }
 
+// 재판 결과 기록용 동점 추첨 표 목록: 지목된 집이 있으면 그 집을 지목한 동점 표만, 없으면 전체.
+export function trialTieVoters(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined): number[] {
+  if (!turn?.vote) return []
+  const accused = turn.vote.accused
+  const ballots = turn.vote.ballots
+  return allTieVoters(turn).filter((city) => accused == null || ballots[city] === accused)
+}
+
 function trialTieNote(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined): string {
-  if (!turn?.vote) return ''
-  const voters = trialTieVoters(turn, turn.vote.accused != null)
+  const voters = trialTieVoters(turn)
   return voters.length > 0 ? `${formatHouseGroup(voters)} 동점 추첨` : ''
 }
 
@@ -1305,6 +1285,9 @@ export function resultDecisive(
     }
     if (state.outcome === 'win') {
       return [`마지막 ${day}일째 밤, 주민 ${citizens}명 중 ${wrong}명이 틀려 과반(${need}명)을 채웠어요${swayedNote}.`]
+    }
+    if (wrong === 0) {
+      return [`마지막 ${day}일째 밤, 주민 ${citizens}명 모두 맞혀 틀린 주민이 없었어요 (과반 ${need}명).`]
     }
     return [`마지막 ${day}일째 밤, 주민 ${citizens}명 중 ${wrong}명만 틀려 과반(${need}명)을 못 채웠어요${swayedNote}.`]
   }
@@ -1556,7 +1539,7 @@ export function gameSummary(
       ? '마지막 밤, 주민 모두가 틀렸어요'
       : state.outcome === 'win'
         ? '마지막 밤, 주민 과반이 틀렸어요'
-        : `${day}일째 밤, 주민 과반이 맞혔어요`
+        : '마지막 밤, 틀린 주민이 과반이 안 됐어요'
 
   const tactics = detectTactics(state, history)
 
@@ -1567,19 +1550,28 @@ export function gameSummary(
   const deceptionDrop = detectDeceptionDropMoment(state, history, deceived, need)
   if (deceptionDrop) momentItems.push(deceptionDrop)
 
-  // 각 재판의 대상과 동점 추첨 여부를 기록한다 (발각 재판은 caught 항목과 합쳐 중복을 없앤다).
+  const crossed = history.find((_, i) => (peaks[i] ?? 0) >= SUSPICION.threshold)
+  if (crossed) {
+    const top = crossed.cities.reduce((a, c) => ((c.suspicion?.[me] ?? 0) > (a.suspicion?.[me] ?? 0) ? c : a))
+    momentItems.push({
+      day: crossed.turn,
+      text: `${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold} 이상이 됐어요`,
+    })
+  }
+
+  // 각 재판의 대상과 동점 추첨 여부를 하루 한 줄 해요체로 기록한다 (발각 재판은 caught 항목과 합쳐 중복을 없앤다).
   for (const t of history) {
     if (!t.vote) continue
     if (vote && t === last) continue
-    const opened = trialOpenPhrase(state, t)
+    const opened = trialOpenPhrase(state, t, 'mod')
     const tie = trialTieNote(t)
     const outcomeText =
-      t.vote.accused === null ? '과반 없음' : `마피아 아닌 ${t.vote.accused}번 집 지목`
+      t.vote.accused === null ? '과반이 안 나왔어요' : `마피아 아닌 ${t.vote.accused}번 집이 지목됐어요`
     const isFalsePos = t.vote.accused !== null && !t.vote.caught
     momentItems.push({
       kind: isFalsePos ? 'falsepos' : undefined,
       day: t.turn,
-      text: `${t.turn}일째 재판: ${opened ? `${opened}, ` : ''}${outcomeText}${tie ? ` (${tie})` : ''}`,
+      text: `${opened ? `${opened} 재판에서` : '재판에서'} ${outcomeText}${tie ? ` (${tie})` : ''}`,
     })
   }
 
@@ -1589,12 +1581,12 @@ export function gameSummary(
       .map(([from]) => Number(from))
       .sort((a, b) => a - b)
     const who = vote.accused === me ? '나를' : `동료 ${vote.accused}번을`
-    const opened = trialOpenPhrase(state, last)
+    const opened = trialOpenPhrase(state, last, 'mod')
     const tie = trialTieNote(last)
     momentItems.push({
       kind: 'caught',
       day,
-      text: `${day}일째 재판${opened ? `: ${opened}. ` : '에서 '}${formatHouseGroup(voters)}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표${tie ? `, ${tie}` : ''})`,
+      text: `${opened ? `${opened} 재판에서` : `${day}일째 재판에서`} ${formatHouseGroup(voters)}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표${tie ? `, ${tie}` : ''})`,
     })
   } else if (last) {
     const wrong = last.cities.filter((c) => c.role === 'citizen' && c.correct === false).length
@@ -1602,14 +1594,6 @@ export function gameSummary(
     momentItems.push({
       day,
       text: `마지막 ${day}일째, 틀린 주민 ${wrong}명 (${swayed != null ? `그중 내 쪽지로 뒤집힌 주민 ${swayed}명, ` : ''}${need}명 이상이면 승리)`,
-    })
-  }
-  const crossed = history.find((_, i) => (peaks[i] ?? 0) >= SUSPICION.threshold)
-  if (crossed) {
-    const top = crossed.cities.reduce((a, c) => ((c.suspicion?.[me] ?? 0) > (a.suspicion?.[me] ?? 0) ? c : a))
-    momentItems.push({
-      day: crossed.turn,
-      text: `${crossed.turn}일째 ${top.city}번의 의심도가 ${top.suspicion![me]}까지 올라 처음으로 재판 기준 ${SUSPICION.threshold} 이상이 됐어요`,
     })
   }
   const knots = playerContradictionTurns(me, history)

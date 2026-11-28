@@ -673,9 +673,7 @@
 /* 두 집에 다른 쪽지: 점선이 붉게 (모순 매듭과 함께 보여 색만으로 구분하지 않는다) */
 .vb-share .is-clash .vb-share-line { stroke: var(--rust); }
 .vb-share .is-clash .vb-share-glow { stroke: #e0703f; }
-.vb-share .is-clash .vb-share-tag rect,
 .vb-share-tag-layer.is-clash .vb-share-tag rect { stroke: var(--rust); }
-.vb-share .is-clash .vb-share-tag text,
 .vb-share-tag-layer.is-clash .vb-share-tag text { fill: var(--rust); }
 
 .vb-stamp {
@@ -1935,7 +1933,6 @@ svg.gr-chart .gr-pin-label {
   opacity: .9;
   stroke-width: 24;
 }
-.vb-share.vb-tut-hl .vb-share-tag rect,
 .vb-share-tag-layer.vb-tut-hl .vb-share-tag rect {
   stroke: var(--rust);
   stroke-width: 3;
@@ -2644,11 +2641,50 @@ dialog.tb-dialog[open] {
   font-size: 15px;
   box-shadow: 0 2px 0 rgba(74, 49, 25, 0.14);
 }
-/* 좁은 화면(<=640px) HUD 축약·접기, 가로 스크롤 보드, 터치 의심선 보기 토글 */
-.gm-goal-toggle,
-.gm-mob-goal-drawer,
-.gm-board-scroll-hint {
+/* 좁은 화면 HUD 축약·접기, 크게 보기 전환, 터치 의심선 보기 토글 */
+.gm-board-tools {
   display: none;
+}
+.gm-goal-toggle {
+  display: none;
+  position: relative;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1.5px solid var(--forest);
+  background: rgba(246, 235, 205, 0.94);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  box-shadow: 0 2px 0 rgba(27, 45, 24, 0.2);
+  cursor: pointer;
+}
+.gm-goal-caret {
+  color: var(--forest);
+  font-size: 13px;
+}
+.gm-mob-goal-drawer {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: rgba(246, 235, 205, 0.96);
+  border: 1.5px solid var(--forest);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink);
+  word-break: keep-all;
+}
+.gm-mob-goal-feature {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-soft);
 }
 .gm-sus-toggle {
   display: none;
@@ -2666,7 +2702,18 @@ dialog.tb-dialog[open] {
   cursor: pointer;
   box-shadow: 0 2px 0 rgba(74, 49, 25, 0.2);
 }
+.gm-goal-toggle::before,
+.gm-sus-toggle::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(44px, 100%);
+  height: max(44px, 100%);
+  transform: translate(-50%, -50%);
+}
 .gm-sus-toggle.is-on {
+  display: inline-flex;
   background: var(--rust);
   border-color: #4a1a10;
   color: var(--cream);
@@ -2677,7 +2724,6 @@ dialog.tb-dialog[open] {
   outline-offset: 2px;
 }
 .gm-sus-hint {
-  display: none;
   margin: 0 0 6px;
   padding: 5px 11px;
   border-radius: 6px;
@@ -2692,8 +2738,17 @@ dialog.tb-dialog[open] {
   .gm-sus-toggle {
     display: inline-flex;
   }
-  .gm-sus-hint {
-    display: block;
+}
+@media (max-width: 900px) {
+  .gm-goal-badge,
+  .gm-scenario-note {
+    display: none;
+  }
+  .gm-goal-toggle {
+    display: inline-flex;
+  }
+  .gm-mob-goal-drawer {
+    display: flex;
   }
 }
 @media (max-width: 640px) {
@@ -2706,9 +2761,7 @@ dialog.tb-dialog[open] {
     min-height: 0;
     margin-bottom: 6px;
   }
-  .gm-desktop-only,
-  .gm-goal-badge,
-  .gm-scenario-note {
+  .gm-desktop-only {
     display: none;
   }
   .gm-exit {
@@ -2737,25 +2790,48 @@ dialog.tb-dialog[open] {
   .gm-dots-sep {
     height: 14px;
   }
-  .gm-goal-toggle {
+  .gm-sus-toggle {
+    padding: 4px 10px;
+    font-size: 14px;
+  }
+  .gm-goal-step {
+    white-space: normal;
+    border-radius: 10px;
+  }
+  .gm-board-frame.is-zoomed {
+    overflow-x: auto;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
+  }
+  .gm-board-frame.is-zoomed .vb-board {
+    min-width: 680px;
+    width: 680px;
+    flex: none;
+  }
+  .gm-board-tools {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 6px;
+  }
+  .gm-zoom-toggle {
     position: relative;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    max-width: 100%;
-    padding: 4px 10px;
+    padding: 4px 12px;
     border-radius: 999px;
-    border: 1.5px solid var(--forest);
+    border: 1.5px solid var(--wood);
     background: rgba(246, 235, 205, 0.94);
     color: var(--ink);
     font-size: 14px;
     font-weight: 700;
     line-height: 1.25;
-    box-shadow: 0 2px 0 rgba(27, 45, 24, 0.2);
+    box-shadow: 0 2px 0 rgba(74, 49, 25, 0.2);
     cursor: pointer;
   }
-  .gm-goal-toggle::before,
-  .gm-sus-toggle::before {
+  .gm-zoom-toggle::before {
     content: '';
     position: absolute;
     top: 50%;
@@ -2764,53 +2840,16 @@ dialog.tb-dialog[open] {
     height: max(44px, 100%);
     transform: translate(-50%, -50%);
   }
-  .gm-goal-caret {
-    color: var(--forest);
-    font-size: 13px;
+  .gm-zoom-toggle.is-on {
+    background: var(--wood);
+    border-color: #4a3119;
+    color: var(--cream);
   }
-  .gm-sus-toggle {
-    padding: 4px 10px;
-    font-size: 14px;
-  }
-  .gm-mob-goal-drawer {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    margin-bottom: 6px;
-    padding: 8px 11px;
-    border-radius: 10px;
-    background: rgba(246, 235, 205, 0.96);
-    border: 1.5px solid var(--forest);
-    font-size: 14px;
-    font-weight: 700;
-    line-height: 1.35;
-    color: var(--ink);
-    word-break: keep-all;
-  }
-  .gm-mob-goal-feature {
-    margin: 0;
-    font-size: 13.5px;
-    color: var(--ink-soft);
-  }
-  .gm-goal-step {
-    white-space: normal;
-    border-radius: 10px;
-  }
-  .gm-board-frame {
-    overflow-x: auto;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 8px;
-  }
-  .vb-board {
-    min-width: 680px;
-    width: 680px;
-    flex: none;
+  .gm-zoom-toggle:focus-visible {
+    outline: 3px solid var(--leave);
+    outline-offset: 2px;
   }
   .gm-board-scroll-hint {
-    display: block;
-    margin: 4px 0 0;
-    text-align: center;
     font-size: 13px;
     font-weight: 700;
     color: var(--ink-soft);
