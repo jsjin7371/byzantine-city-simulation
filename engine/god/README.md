@@ -3,6 +3,7 @@
 God은 도시 5개가 위험 상황에서 내린 판단을 모아 시뮬레이션을 진행하는 서버입니다.
 센서가 틀리거나 이웃이 거짓 메시지를 보낼 때 도시들의 판단이 얼마나 정확한지 비교하기 위해 사용합니다.
 실험 설정을 받아 도시를 초기화하고, 메시지를 중계하며, 매 턴 결과를 백엔드에 보냅니다.
+마피아 게임(`/games`)도 God이 진행합니다. 게임 규칙과 형식은 [docs/spec.md](../../docs/spec.md) 7절에 있고, 아래 설명은 따로 적지 않으면 실험(`/run`) 기준입니다.
 
 ## 시뮬레이션의 기본 개념
 
@@ -171,6 +172,10 @@ God의 동작 여부와 각 City의 `/health` 응답을 확인합니다.
 | `flip_rate` | 0~1 숫자 | `0.0` |
 | `byzantine_count` | 0~5 정수 | `1` |
 | `seed` | `null` 또는 0~2147483647 정수 | `null` |
+| `n_cities` | 3~`N_CITIES` 정수 | `5` |
+| `connection` | `"ring"` 또는 `"all"` | `"ring"` |
+
+백엔드는 `n_cities`와 `connection`을 보내지 않습니다.
 
 숫자를 문자열이나 불리언으로 보내면 거부합니다. 확률은 유한한 값이어야 하며, 표에 없는 필드도 거부합니다.
 
@@ -205,6 +210,17 @@ Content-Type: application/json
 ```json
 {"error": "invalid turns: expected integer in 1..20"}
 ```
+
+### 게임 엔드포인트
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| POST | `/games` | 게임 시작. 진행 중 게임은 하나이며 새 게임이 이전 게임을 대체 |
+| POST | `/games/{game_id}/turns` | 한 턴 진행. 턴 결과를 응답 본문으로 반환 |
+| GET | `/games/{game_id}` | 게임 상태 |
+
+게임 상태는 메모리에만 있습니다. 시민 City는 병렬로 호출합니다.
+`CITY_RUNTIME=kubernetes`이면 게임마다 City를 만들고 `/run`은 HTTP 503입니다 ([동적 실행](../../deploy/kubernetes/dynamic/README.md)).
 
 ### God이 사용하는 City 호출
 
@@ -265,7 +281,7 @@ God은 백엔드에서 다음 응답을 받아 실험 ID와 턴 번호가 요청
 - 같은 프로세스에서는 한 번 실행을 시도한 실험 ID를 다시 받지 않습니다. 입력 검증에 실패한 ID는 다시 사용할 수 있습니다.
   실행 이력은 메모리에만 있어 프로세스 재시작 후에는 유지되지 않습니다.
 - 서버는 요청을 하나씩 처리하므로 `/run` 실행 중 `/health`와 다른 실행 요청이 대기할 수 있습니다.
-- City·백엔드 호출 제한은 각각 1초입니다. 최대 설정에서는 초기화 5회와 City 턴 호출 100회, 백엔드 전송 20회가 발생합니다.
+- City·백엔드 호출 제한은 각각 1초입니다. 게임의 AI 시민 호출만 40초입니다. 최대 설정에서는 초기화 5회와 City 턴 호출 100회, 백엔드 전송 20회가 발생합니다.
   `/run` 호출자는 이 요청들을 마칠 수 있는 전체 대기 시간을 설정해야 합니다.
 
 ## 게임의 최대 턴 수
@@ -312,10 +328,14 @@ python -m unittest discover -s engine/tests -p "test_*.py" -v
 |---|---|
 | `test_city_decide.py` | City 판단 규칙 |
 | `test_city_broadcast.py` | City 메시지 전송 (누락·조작·비잔틴) |
+| `test_city_game.py` | City 게임 판단 |
+| `test_city_ai.py` | City AI 시민 (가짜 LLM) |
 | `test_god_simulation.py` | God 시뮬레이션 규칙 |
 | `test_god_validation.py` | God 실험 설정 검증 |
 | `test_god_service.py` | God 실행·장애 처리와 상태 조회 |
 | `test_god_http.py` | God HTTP 서버 |
+| `test_god_game.py` | God 마피아 게임 |
+| `test_god_kubernetes.py` | God Kubernetes 자원 관리 |
 | `test_network_smoke.py` | Docker 통신 검사 스크립트 |
 | `test_engine_network.py` | 통합: God + 실제 City 5개 |
 
