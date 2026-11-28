@@ -1122,11 +1122,26 @@ export function VillageBoard({
   }
   const last = useRef<number | null>(null)
   const cardFocused = useRef(false)
-  // 쪽지가 열리면 첫 선택 버튼으로, 닫힐 때는 포커스가 카드 안에 있을 때만 그 집으로 되돌린다.
+  // 좁은 화면 가로 스크롤 보드에서 게임 시작 시 하늘 제목·광장·집들이 고르게 보이게 가운데로 맞춘다.
+  useEffect(() => {
+    const frame = svg.current?.parentElement
+    if (frame && frame.scrollWidth > frame.clientWidth) {
+      frame.scrollLeft = Math.round((frame.scrollWidth - frame.clientWidth) / 2)
+    }
+  }, [state.game_id])
+  // 쪽지가 열리면 첫 선택 버튼으로 포커스를 옮기고, 좁은 화면 가로 스크롤 보드에서는 카드가 가운데 보이게 맞춘다.
   useEffect(() => {
     if (open != null) {
       last.current = open
-      svg.current?.querySelector<SVGElement>('.vb-opt')?.focus()
+      svg.current?.querySelector<SVGElement>('.vb-opt')?.focus({ preventScroll: true })
+      const card = svg.current?.querySelector<SVGGElement>('.vb-card')
+      const frame = svg.current?.parentElement
+      if (card && frame && frame.scrollWidth > frame.clientWidth) {
+        const cardRect = card.getBoundingClientRect()
+        const frameRect = frame.getBoundingClientRect()
+        const targetLeft = frame.scrollLeft + (cardRect.left - frameRect.left) - (frameRect.width - cardRect.width) / 2
+        frame.scrollTo({ left: Math.max(0, targetLeft), behavior: 'auto' })
+      }
     } else if (last.current != null) {
       if (cardFocused.current) {
         svg.current?.querySelector<SVGElement>(`.vb-house[data-city="${last.current}"]`)?.focus()
