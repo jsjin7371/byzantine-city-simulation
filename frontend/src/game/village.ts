@@ -44,6 +44,22 @@ export function sharePath(player: number, a: number, b: number) {
   return `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1} L${u1} ${v1} Q${ux} ${uy} ${u0} ${v0}`
 }
 
+// 모든 집 쪽지 비교(share_mode='all') 전용 6쌍 경로: 4채의 바깥 4변과 대각선 2개로 나눠 선이 겹치지 않게 한다.
+const ALL_SHARE_PATHS: Record<string, string> = {
+  '1-2': 'M230 458 Q204 358 230 248',
+  '3-4': 'M670 248 Q696 358 670 458',
+  '2-3': 'M230 232 Q450 202 670 232',
+  '1-4': 'M230 458 Q450 426 670 458',
+  '2-4': 'M230 258 Q450 354 670 458',
+  '1-3': 'M230 458 Q450 354 670 258',
+}
+
+export function allSharePath(player: number, a: number, b: number) {
+  const [sa, sb] = [slotOf(player, a), slotOf(player, b)]
+  const key = sa < sb ? `${sa}-${sb}` : `${sb}-${sa}`
+  return ALL_SHARE_PATHS[key] ?? sharePath(player, a, b)
+}
+
 // 모순 매듭을 놓을 길 위 한가운데 점.
 export function pairMid(player: number, a: number, b: number): [number, number] {
   const ta = SLOTS[slotOf(player, a)].trail

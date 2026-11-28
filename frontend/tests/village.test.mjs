@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
-  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, regainTrustOutcomeNote, regainTrustProgress, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioGoalSteps, scenarioResultNote, shareBadgeLabel, stubbornAllyOutcomeNote, stubbornAllyStatus, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
+  DIFFICULTY_STATS, RING_TRAILS, TAG_LABELS, TONIGHT_SCALE_TITLE, TRAILS, VOTE_ANIM, allSharePath, changedHouses, citizenScales, contradictionKnotCopy, detectTactics, nextObservationTag, regainTrustOutcomeNote, regainTrustProgress, resultBaseline, resultDeceived, resultDecisive, resultInfluence, resultVillageChips, ringVillageOutcomeNote, scaleLeader, scaleText, scaleVoteSummary, scenarioGoalMet, scenarioGoalSteps, scenarioResultNote, shareBadgeLabel, stubbornAllyOutcomeNote, stubbornAllyStatus, clashingPairs, fooledDots, gameSummary, suspicionLinks, suspicionPreview, talkNotes, houseSlots, nightStepMs, nightSteps, pairLogScales, pairMid, sharePath, stagedHouses, tally, tonightVotes, tonightVotesText, trialStampCopy, trialStampMode, villageHouses, villageLines, villageLogHeader, visibleLines, voteAnimDelays, voteItemLabel, watchfulEyeClashNote, worsens,
 } from '../src/game/village.ts'
 import {
   CONDORCET_NS,
@@ -47,6 +47,22 @@ test('all share paths go through the plaza from sender to receiver', () => {
   assert.match(sharePath(3, 1, 5), /^M670 262 Q.* L398 338 Q.* 230 262$/) // 반대 방향
   assert.match(sharePath(3, 4, 2), /^M230 470 Q.* L502 360 Q.* 670 470$/)
   assert.match(sharePath(3, 2, 4), /^M670 470 Q.* L398 360 Q.* 230 470$/) // 보내는 집에서 출발
+})
+
+test('allSharePath separates all 6 citizen pairs into distinct paths without reusing radial spokes', () => {
+  const citizens = [1, 2, 3, 5] // player = 4
+  const pairs = []
+  for (let i = 0; i < citizens.length; i++) {
+    for (let j = i + 1; j < citizens.length; j++) {
+      pairs.push([citizens[i], citizens[j]])
+    }
+  }
+  const paths = pairs.map(([a, b]) => allSharePath(4, a, b))
+  assert.equal(new Set(paths).size, 6)
+  // 방향이 바뀌어도 같은 쌍이면 같은 경로를 쓴다
+  assert.equal(allSharePath(4, 1, 5), allSharePath(4, 5, 1))
+  // 플레이어 집(slot 0)이 포함되면 기본 sharePath로 폴백한다
+  assert.equal(allSharePath(4, 4, 1), sharePath(4, 4, 1))
 })
 
 test('before turn 1 only hints are known', () => {
