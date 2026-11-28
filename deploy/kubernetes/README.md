@@ -1,7 +1,8 @@
 # Kubernetes 고정 엔진 실행
 
 기존 God 이미지 1개와 City 이미지로 고정 Pod 5개를 실행하고, 클러스터 내부 HTTP 통신을 검사합니다.
-게임 시작에 따른 Pod 생성·삭제와 Kubernetes API 접근 코드는 포함하지 않습니다.
+이 구성은 게임 시작에 따른 Pod 생성·삭제를 하지 않고 Kubernetes API에 접근하지 않습니다.
+게임마다 City를 만드는 방식은 [dynamic README](dynamic/README.md)를 봅니다.
 
 ## 실행 구성
 
@@ -131,4 +132,4 @@ kubectl --context $kubeContext delete -f deploy/kubernetes/namespace.yaml --igno
 ```
 
 다른 namespace, 기존 클러스터, Docker 이미지·컨테이너는 삭제하지 않습니다.
-동적 생성·삭제는 다음 단계이며, 현재는 고정 자원을 위 명령으로 직접 정리합니다.
+이 구성의 고정 자원은 위 명령으로 직접 정리합니다.
