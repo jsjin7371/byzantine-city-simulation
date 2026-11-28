@@ -268,7 +268,7 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 | 도시 수 | 5 |
 | 역할 `role` | `"player"`(플레이어 마피아, 1명) / `"colleague"`(자동 마피아 동료, 항상 정답의 반대) / `"citizen"`(시민) |
 | 시민 | `role == "citizen"`인 도시. 마피아가 1명이면 4명, 2명이면 3명 |
-| 턴 수 | 7 (고정) |
+| 턴 수 | 게임별 `max_turns`, 기본 7, 허용 범위 1~20 정수 |
 | 누락·조작 | 게임에서는 `drop_rate = flip_rate = 0` 고정 (조작이 가짜 모순을 만들지 않게) |
 | 주장 `claim` | `"evacuate"`(대피, 기획서의 0) / `"stay"`(잔류, 기획서의 1). 기존 `decision`과 같은 값 |
 | 의심도 `suspicion` | 다른 도시 id(문자열) → 0~100 정수. 다수결 시민은 `null` |
@@ -279,6 +279,7 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 
 | 필드 | 값 | 기본값 | 설명 |
 |---|---|---|---|
+| `max_turns` | int, 1 ~ 20 | 7 | 게임별 최대 턴 수. 생략하면 7턴. bool·실수·문자열·null은 거부 |
 | `connection` | `"all"` / `"ring"` | `"all"` | 모두 대화 / 양옆만 |
 | `citizen_type` | `"majority"` / `"wary"` / `"ai"` | `"wary"` | 다수결 / 눈치 / AI 시민. 한 판의 시민은 모두 같은 종류 |
 | `memory` | `"turn"` / `"recent"` / `"full"` | `"turn"` | 7.3 참고 |
@@ -339,7 +340,7 @@ experiments 1 ─── N turn_results 1 ─── N city_states
 - **집계**: 기존 다수결 로직. 한 도시가 시민 수의 과반(시민 4명이면 3표, 3명이면 2표)을 받으면 그 도시가 `accused`. 없으면 `accused = null`.
 - **발각**: `accused`가 마피아(플레이어 또는 동료)이면 즉시 종료, 패배 (`end_reason: "caught"`). 동료가 지목돼도 마피아 팀 전체가 진다.
 - **오지목**: `accused`가 시민이면 아무 일도 없다 (탈락 없음, 의심도 그대로). 기록만 남기고 게임은 계속된다.
-- **7턴 종료 판정**: 7턴의 시민 결정 기준.
+- **최대 턴 종료 판정**: `max_turns`번째 턴의 시민 결정 기준. 생략 시 기존과 같이 7턴이다. 같은 턴에 마피아가 발각되면 발각 종료가 우선한다.
 
 | `outcome` | 조건 |
 |---|---|
@@ -410,7 +411,7 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 {
   "game_id": 7,
   "config": { "connection": "all", "citizen_type": "wary", "memory": "turn", "share_mode": "pairs",
-              "share_pairs": 1, "mafia_count": 1, "player": "human", "sensor_error": 0.1, "seed": 42 },
+              "share_pairs": 1, "mafia_count": 1, "player": "human", "sensor_error": 0.1, "seed": 42, "max_turns": 7 },
   "truth": "danger",
   "roles": { "1": "citizen", "2": "citizen", "3": "player", "4": "citizen", "5": "citizen" },
   "player_city": 3,
@@ -423,6 +424,7 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 }
 ```
 - `turn`: 끝난 턴 수 (시작 직후 0).
+- `config.max_turns`: 이 게임의 최대 턴 수. 기존 요청에 필드가 없으면 7로 저장해 반환한다. 잘못된 값은 게임 교체·Kubernetes 자원 생성 전에 `422`로 거부한다. 기존 `/run`의 `turns`와는 별개다.
 - `claims`: 키는 플레이어와 이웃인 시민 전부. 빠지거나 남으면 `422`. 값은 메시지 객체이고 `claim`은 필수, `note`는 생략 가능(기본 `""`, 엔진은 무시하고 `""`로 저장). `player == "bot"`이면 `{}`.
 - 요청의 `turn`이 `turn + 1`이 아니거나 게임이 끝났으면 `409`. 모르는 `game_id`는 `404`.
 - 오류 본문은 기존과 같이 `{"error": "이유"}`.
@@ -448,6 +450,17 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
   - CSV는 같은 열 순서이며, `null`은 빈 칸.
 - 실험(`/experiments`)이 `pending`·`running`이면 `POST /games`는 `409`.
 - 오류 코드(404/409/422)와 `detail` 형식은 3절과 같다.
+
+#### 최대 턴 수 연동
+
+`max_turns`는 현재 God 엔진의 게임 생성·조회에 구현되어 있다. 기존 Backend·Frontend는 다음 연동이 필요하며, 연동 전 웹 게임은 기본 7턴으로 동작한다.
+
+- Backend `app/schemas.py`의 `GameConfig`: `max_turns` 기본 7, strict 정수 1~20 검증을 추가한다. 현재 스키마는 이 필드를 정의하지 않아 기본 Pydantic 처리로 버릴 수 있다. `routers/games.py:create_game()`은 `model_dump()` 결과를 God으로 전달하므로 새 필드를 포함해야 한다.
+- `GOD_MODE=mock`의 `app/god/mock_game.py`에도 7턴 고정 종료 조건이 있으므로 Backend 담당자가 동일한 설정을 반영하고 테스트해야 한다. 실제 God의 가변 턴 지원만으로 Mock 게임이 바뀌지는 않는다.
+- DB의 `Game.config`와 `Game.state`는 JSON이고 턴은 `GameTurn`에 저장하므로 설정 키를 보관할 수 있다. 실제 MySQL 저장·조회는 별도 검증한다. 예전 15턴 기록도 있을 수 있어, `max_turns` 없는 과거 기록을 일괄 7턴으로 단정하지 않는다. 조기 종료 기록만으로 당시 최대 턴 수를 복원할 수는 없다.
+- 기존 `bot_win_rate()`·`difficulty_of()`와 봇 승률 표는 7턴 기준이다. 가변 턴을 전달하기 전에 7턴 이외 게임을 비교·집계에서 제외하거나 턴 수별로 분리해야 한다. 프리셋 시나리오도 7턴 측정값을 다른 길이의 게임에 그대로 적용하지 않는다.
+- Frontend `gameApi.ts`의 `GameConfig`·`createGame()`, `GameStart.tsx`·`GamePage.tsx`의 설정 전달, `VillageBoard.tsx`의 달력·남은 날 수, `village.ts`의 마지막 날·결과 해석에서 게임의 `config.max_turns`를 사용하도록 연동한다. 기존 7일 시나리오와 통계 표시는 별도로 유지한다.
+- 공개 서버의 로그인·사용자별 요청 제한·AI 사용량 예산은 Backend·배포 담당자와 협의한다. God의 20턴 상한만으로 이를 보장하지 않는다. City 입력과 실제 LLM 프롬프트에는 최대 턴 수·정답·역할을 새로 전달하지 않는다.
 
 ### 7.10 City (게임용 `/turn`)
 
