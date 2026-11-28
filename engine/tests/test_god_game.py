@@ -186,6 +186,23 @@ class GameRuleTests(unittest.TestCase):
         res_none = play(g_none, fixed_city(suspicion=lambda c, req: dict.fromkeys(req["suspicion"], 60)))
         self.assertIsNotNone(res_none["vote"])
 
+    def test_ring_vote_tie_excludes_far_houses(self):
+        """고리 마을 동점 추첨에서는 투표하는 집과 연결되지 않은 먼 집을 후보에서 뺀다."""
+        for seed in range(30):
+            g = Game(7, GameConfig(connection="ring", seed=seed))
+            # 모든 시민의 의심도가 0 동점(단 첫 시민이 한 이웃을 60 의심해 재판 개시)
+            trigger = g.citizens[0]
+            trigger_near = str((trigger % 5) + 1)
+            sus = lambda c, req: {k: 60 if c == trigger and k == trigger_near else 0 for k in req["suspicion"]}
+            result = play(g, fixed_city(suspicion=sus))
+            self.assertIsNotNone(result["vote"])
+            for voter, target in result["vote"]["ballots"].items():
+                v = int(voter)
+                near = {((v - 2) % 5) + 1, (v % 5) + 1}
+                self.assertIn(target, near)
+                if g.player not in near:
+                    self.assertNotEqual(target, g.player)
+
     def test_same_seed_keeps_truth_hints_and_pairs_across_strategies(self):
         """같은 시드면 플레이어 전략이 달라 재판 동점 투표가 열려도 하늘·힌트·비교 쌍이 매 턴 같다."""
         def run_with(claim):

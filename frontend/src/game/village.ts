@@ -784,16 +784,16 @@ export function villageLines(
     lines.push({ phase: 'trial', kind: 'when', text: PHASE_LABEL.trial })
     const hasTiedVoter = citizens.some((c) => {
       if (!c.suspicion || !(String(c.city) in result.vote!.ballots)) return false
-      const vals = Object.values(c.suspicion)
-      if (vals.length === 0) return false
-      const top = Math.max(...vals)
-      return vals.filter((v) => v === top).length > 1
+      return voteTieCandidates(c.city, c.suspicion, state.config.connection).length > 1
     })
     if (hasTiedVoter) {
       lines.push({
         phase: 'trial',
         kind: 'event',
-        text: '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.',
+        text:
+          state.config.connection === 'ring'
+            ? '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 양옆 이웃 중 아무나 지목해요.'
+            : '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.',
       })
     }
     for (const [from, to] of Object.entries(result.vote.ballots))
@@ -997,16 +997,36 @@ function peakSus(cities: Pick<TurnResult, 'cities'>['cities'], target: number | 
   return Math.max(0, ...cities.filter((c) => c.role === 'citizen').map((c) => c.suspicion?.[target] ?? 0))
 }
 
+// 고발 투표 후보: 의심도 최고 도시들. 고리 마을(ring)에서 동점이면 양옆 이웃만 남긴다(engine/god/game.py와 동일).
+function voteTieCandidates(
+  voterCity: number,
+  suspicion: Record<string, number>,
+  connection: GameState['config']['connection'],
+): number[] {
+  const entries = Object.entries(suspicion)
+  if (entries.length === 0) return []
+  const top = Math.max(...entries.map(([, v]) => v))
+  let tied = entries.filter(([, v]) => v === top).map(([k]) => Number(k))
+  if (connection === 'ring' && tied.length > 1) {
+    const near = new Set([((voterCity + 3) % 5) + 1, (voterCity % 5) + 1])
+    const nearTied = tied.filter((c) => near.has(c))
+    if (nearTied.length > 0) tied = nearTied
+  }
+  return tied
+}
+
 // 재판 기록: 지목된 집의 그날 최고 의심도와, 동점 추첨이 지목을 갈랐는지(그 집만 가장 의심한 주민이 과반이 아님).
-function trialRecord(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined) {
+function trialRecord(
+  turn: Pick<TurnResult, 'cities' | 'vote'> | undefined,
+  connection: GameState['config']['connection'] = 'all',
+) {
   const accused = turn?.vote?.accused
   if (accused == null) return null
   const citizens = turn!.cities.filter((c) => c.role === 'citizen')
-  const sure = citizens.filter((c) =>
-    Object.entries(c.suspicion ?? {}).every(
-      ([target, v]) => Number(target) === accused || v < (c.suspicion?.[accused] ?? 0),
-    ),
-  ).length
+  const sure = citizens.filter((c) => {
+    const cands = voteTieCandidates(c.city, c.suspicion ?? {}, connection)
+    return cands.length === 1 && cands[0] === accused
+  }).length
   return { accused, sus: peakSus(citizens, accused), drawn: sure * 2 <= citizens.length }
 }
 
@@ -1078,7 +1098,7 @@ export function resultBaseline(
       n === 5 && f === 2
         ? '집 다섯에 마피아 둘이면 주민이 반드시 버틴다는 보장이 사라져요.'
         : `집 ${n}채에 마피아 ${f}명이면 주민이 반드시 버틴다는 보장이 사라져요.`
-    const trial = state.end_reason === 'caught' ? trialRecord(last) : null
+    const trial = state.end_reason === 'caught' ? trialRecord(last, state.config.connection) : null
     const who = trial && state.roles[trial.accused] === 'colleague' ? '동료가' : '내 집이'
     const tail = won
       ? ' 이번엔 끝까지 흔들어 놓았어요.'
@@ -1290,7 +1310,7 @@ export function detectTactics(
         detected.push({
           tag: 'zealot',
           day: colleagueTrial.turn,
-          text: `광장 재판에서 동료(${colleagueCity}번 집)가 의심도 ${trialRecord(colleagueTrial)!.sus}에서 지목됐어요.`,
+          text: `광장 재판에서 동료(${colleagueCity}번 집)가 의심도 ${trialRecord(colleagueTrial, state.config.connection)!.sus}에서 지목됐어요.`,
           attachTo: 'caught',
         })
       }
@@ -2064,14 +2084,15 @@ export function stubbornAllyStatus(
 
 // 시나리오 '고집쟁이 동료' 결과 한 줄 분기: 동료/내 재판 여부, 최고 의심도, 7일 승패 기록에 따라 한 줄을 안내한다.
 export function stubbornAllyOutcomeNote(
-  state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'>,
+  state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'> &
+    Partial<Pick<GameState, 'config'>>,
   history: Pick<TurnResult, 'turn' | 'cities' | 'vote'>[],
 ): string {
   const col = colleagueCityOf(state.roles)
   const colLabel = col != null ? `동료(${col}번 집)` : '동료'
   const last = history.at(-1)
   const lastDay = last?.turn ?? 0
-  const trial = state.end_reason === 'caught' ? trialRecord(last) : null
+  const trial = state.end_reason === 'caught' ? trialRecord(last, state.config?.connection ?? 'all') : null
   if (trial) {
     const when = lastDay >= TOTAL_TURNS ? '마지막 밤 재판' : '재판'
     const drawn = trial.drawn ? '(동점이라 추첨)' : ''

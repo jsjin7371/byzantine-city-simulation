@@ -195,10 +195,10 @@ def play_all(scenario_id, seed, fn):
 
 
 def ring_far_varies(seed, samples=128):
-    """고리 마을 고정 시드 조건: 먼 집 판단이 내 수에 따라 갈리는지 확인.
+    """고리 마을 고정 시드 조건(T4 반영): 먼 집 판단이 내 수에 따라 갈리고 한두 판 안에 달성 가능한지 확인.
     1) 정직(진짜 날씨)으로 7일 완주 시 먼 두 집 모두 정답,
     2) smart 승리 시 하늘을 바로 본 먼 집이 이웃 쪽지를 따라 틀림,
-    3) 무작위 수 표본에서 재판이 발생할 수 있고, 7일 완주 중 승률 ≥ 10%이며 먼 두 집 각각의 오답률이 15%~85% 사이."""
+    3) 무작위 수 표본에서 승률 ≥ 25%이며 먼 두 집 각각의 오답률이 15%~85% 사이."""
     def run_last(strat):
         fn = (lambda g: {str(r): DECISION_OF[g.truth] for r in ms.targets(g)}) if strat == "honest" else ms.smart
         g, history = play_all("ring-village", seed, fn)
@@ -213,6 +213,8 @@ def ring_far_varies(seed, samples=128):
         return False
 
     g_sm, r_sm = run_last("smart")
+    if r_sm["outcome"] not in ("win", "perfect_win"):
+        return False
     if not any(
         c["city"] in far and c["correct"] is False and c["hint"] == g_sm.truth
         for c in r_sm["cities"]
@@ -223,7 +225,7 @@ def ring_far_varies(seed, samples=128):
     ans = DECISION_OF[g_hon.truth]
     opts = (ans, OPPOSITE[ans])
     t_list = sorted(targets)
-    done7 = wins = caught = 0
+    done7 = wins = 0
     far_wrong = {c: 0 for c in far}
     for _ in range(samples):
         g = Game(1, GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["ring-village"]))
@@ -231,7 +233,6 @@ def ring_far_varies(seed, samples=128):
             claims = {str(r): {"claim": rng.choice(opts), "note": ""} for r in t_list}
             res = g.play({"turn": g.turn + 1, "claims": claims}, city_turn)
         if res["end_reason"] != "turns_done":
-            caught += 1
             continue
         done7 += 1
         if res["outcome"] in ("win", "perfect_win"):
@@ -239,9 +240,79 @@ def ring_far_varies(seed, samples=128):
         for c in res["cities"]:
             if c["city"] in far_wrong and c["correct"] is False:
                 far_wrong[c["city"]] += 1
-    if caught == 0 or done7 == 0 or wins / done7 < 0.10:
+    if done7 == 0 or wins / done7 < 0.25:
         return False
     return all(0.15 <= far_wrong[c] / done7 <= 0.85 for c in far)
+
+
+def watchful_eye_shows(seed):
+    """감시의 눈 고정 시드 조건(T2): 모두에게 같은 거짓말(always_lie)도 본 하늘과 다름(+20)이 쌓여
+    의심도 60 이상 재판 위험이 3턴 이상(최고 80 이상) 실제로 보이되, 이길 수 있는 판."""
+    g, hist = play_all("watchful-eye", seed, ms.bot)
+    if hist[-1]["outcome"] not in ("win", "perfect_win"):
+        return False
+    peaks = [max(c["suspicion"][str(g.player)] for c in r["cities"] if c["role"] == "citizen") for r in hist]
+    return max(peaks) >= 80 and sum(v >= game.THRESHOLD for v in peaks) >= 3
+
+
+def regain_trust_shows(seed, threshold=40):
+    """신뢰를 되찾는 법 고정 시드 조건(T1): 내내 같은 거짓(bot)이면 재판에 걸려 지고,
+    smart_wash와 직관적 온오프 플레이(40까지 거짓 → 본 하늘대로 바꿔 20 이하 → 거짓) 모두
+    진짜 날씨 쪽지로 의심을 낮춘 뒤 목표를 달성."""
+    _, h_bot = play_all("regain-trust", seed, ms.bot)
+    if h_bot[-1]["end_reason"] != "caught":
+        return False
+
+    def has_honest_wash_goal(g, hist):
+        if not goal_met("regain-trust", g, hist, hist[-1], threshold):
+            return False
+        for cid in sorted(g.citizens):
+            rows = citizen_rows(hist, g.player, g.truth, cid)
+            for j in range(1, len(rows)):
+                sus_j, _, match_j, sent_lie_j, _ = rows[j]
+                if not match_j or sus_j > 20 or rows[j - 1][0] <= 20 or sent_lie_j:
+                    continue
+                if wash_peak(rows, j, threshold) < threshold:
+                    continue
+                q = j
+                while q > 0 and rows[q - 1][2]:
+                    q -= 1
+                if not any(rows[m][1] != rows[m - 1][1] for m in range(max(1, q), j + 1)):
+                    continue
+                after = rows[j + 1:]
+                k = next((i for i, r in enumerate(after) if (r[3] and r[4] is False) or r[0] >= threshold), -1)
+                if k >= 0 and after[k][3] and after[k][4] is False:
+                    return True
+        return False
+
+    g_sw = Game(1, GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["regain-trust"]))
+    h_sw = []
+    while not g_sw.game_over:
+        c = smart_wash(g_sw, h_sw, threshold)
+        h_sw.append(g_sw.play({"turn": g_sw.turn + 1, "claims": {r: {"claim": v, "note": ""} for r, v in c.items()}}, city_turn))
+    if not has_honest_wash_goal(g_sw, h_sw):
+        return False
+
+    g_h = Game(1, GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["regain-trust"]))
+    lie = OPPOSITE[DECISION_OF[g_h.truth]]
+    washed, hit40, h_h = set(), set(), []
+    while not g_h.game_over:
+        cl = {}
+        for cid in g_h.citizens:
+            sc = str(cid)
+            sus = g_h.suspicion[cid][str(g_h.player)]
+            if sus >= threshold:
+                hit40.add(cid)
+            if (cid in hit40 and cid not in washed and sus > 20) or sus >= threshold:
+                cl[sc] = {"claim": DECISION_OF[g_h.hints[sc]], "note": ""}
+            else:
+                cl[sc] = {"claim": lie, "note": ""}
+        res = g_h.play({"turn": g_h.turn + 1, "claims": cl}, city_turn)
+        h_h.append(res)
+        for row in res["cities"]:
+            if row["role"] == "citizen" and row["city"] in hit40 and row["suspicion"][str(g_h.player)] <= 20:
+                washed.add(row["city"])
+    return has_honest_wash_goal(g_h, h_h)
 
 
 def stubborn_ally_shows(seed):
@@ -360,9 +431,9 @@ def main(runs):
 
     by_key = {(r["scenario"], r["strategy"], r["threshold"]): r for r in results}
     seed_specs = [
-        ("watchful-eye", "always_lie", "", ("watchful-eye", "smart", ""), None),
-        ("ring-village", "smart", "", ("ring-village", "bot", ""), ring_far_varies),
-        *(("regain-trust", "smart_wash", thr, ("regain-trust", "bot", 40), None) for thr in WASH_THRESHOLDS),
+        ("watchful-eye", "always_lie", "", ("watchful-eye", "smart", ""), watchful_eye_shows),
+        ("ring-village", "smart", "", None, ring_far_varies),
+        *(("regain-trust", "smart_wash", thr, ("regain-trust", "bot", 40), lambda s, thr=thr: regain_trust_shows(s, thr)) for thr in WASH_THRESHOLDS),
         ("stubborn-ally", "smart", "", ("stubborn-ally", "bot", ""), stubborn_ally_shows),
     ]
     fixed_seeds = {
@@ -371,7 +442,7 @@ def main(runs):
                 s
                 for s in range(runs)
                 if by_key[(sid, strat, thr)]["goals"][s]
-                and not by_key[base]["goals"][s]
+                and (base is None or not by_key[base]["goals"][s])
                 and (extra is None or extra(s))
             ),
             "",

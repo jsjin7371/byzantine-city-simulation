@@ -9,7 +9,8 @@ from statistics import fmean, stdev
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine"))
 from city.ai import ai_turn  # noqa: E402
 from city.logic import game_turn  # noqa: E402
-from god.game import Game, GameConfig  # noqa: E402
+from god.game import Game, GameConfig, N  # noqa: E402
+from god.simulation import neighbors  # noqa: E402
 
 DIFFS = {"easy": dict(mafia_count=1, sensor_error=0.48), "normal": dict(mafia_count=1, sensor_error=0.4),
          "hard": dict(mafia_count=1, sensor_error=0.3)}  # spec 7.2 난이도 프리셋
@@ -38,6 +39,10 @@ def play(kind, conn, diff, seed):
         for r in g.citizens:
             top = max(g.suspicion[r].values())
             tied = {c for c, v in g.suspicion[r].items() if v == top}
+            if conn == "ring" and len(tied) > 1:
+                near = {str(s) for s in neighbors(r, N, conn)}
+                if tied & near:
+                    tied = tied & near
             hits.append(len(tied & mafia) / len(tied))
         hit = fmean(hits)
     caught = res["end_reason"] == "caught"

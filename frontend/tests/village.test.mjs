@@ -372,6 +372,18 @@ test('trial lines: one accusation per voter, then the verdict (and tie note only
   }
   const tiedLines = villageLines(state, tiedTurn)
   assert.ok(tiedLines.some((l) => l.phase === 'trial' && l.kind === 'event' && l.text === '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.'))
+  // 고리 마을에서는 동점 추첨 안내가 양옆 이웃 후보만 짚고, 이웃 한 곳만 단독 최고면(먼 집과 동점이어도) 동점으로 보지 않는다
+  const ringTiedLines = villageLines({ ...state, config: { ...config, connection: 'ring' } }, tiedTurn)
+  assert.ok(ringTiedLines.some((l) => l.phase === 'trial' && l.kind === 'event' && l.text === '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 양옆 이웃 중 아무나 지목해요.'))
+  const ringNearUnique = {
+    ...turn,
+    cities: turn.cities.map((c) =>
+      c.city === 4 ? { ...c, suspicion: { 1: 40, 2: 0, 3: 40, 5: 0 } } : c, // 4의 이웃은 3,5(3이 단독 최고 40; 먼 1과 동점이어도 추첨 아님)
+    ),
+    vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true },
+  }
+  const ringUniqueLines = villageLines({ ...state, config: { ...config, connection: 'ring' } }, ringNearUnique)
+  assert.ok(!ringUniqueLines.some((l) => l.text.includes('여럿이면')))
 })
 
 test('night steps: night, notes, flags (one per citizen with vote bars, single step for AI), suspicion, then ballots, verdict, day', () => {
