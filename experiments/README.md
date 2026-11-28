@@ -90,17 +90,17 @@ python experiments/scenario_rates.py           # 시나리오 4개 × 전략(wat
 - `regain-trust`의 목표 판정은 결과 화면 `detectTactics`의 온오프 조건(의심도 ≥ 문턱 뒤 그 주민 힌트와 같은 쪽지로 전환해 20 이하로 낮춘 뒤, 다시 문턱 이상이 되기 전에 거짓 쪽지로 그 주민을 속임) + 승리와 같다. `smart_wash`는 한 주민을 문턱 이상으로 올린 뒤 20 이하까지 세탁하고 `smart`로 전환한다.
 - `stubborn-ally`는 동료가 지목되면 엔진이 즉시 패배 처리하므로 목표를 승리로 단순화했다.
 - 카드 표시 승률은 시나리오마다 찾은 전략 중 가장 잘 이긴 것 기준이다(`watchful-eye`: `always_lie` 45%, `ring-village`: `smart` 42%, `regain-trust`: `smart_wash` 47%, `stubborn-ally`: `smart` 41%).
-- 고정 시드는 `0~999` 중 카드 기준 전략이 목표 달성하고 비교 전략(`watchful-eye`는 `smart`, 나머지는 `bot`)은 실패하는 가장 작은 시드다(`ring-village`는 `ring_far_varies`, `stubborn-ally`는 `stubborn_ally_shows` 추가 조건도 만족하는 시드).
+- 고정 시드는 `0~999` 중 카드 기준 전략이 목표 달성하고 비교 전략(`watchful-eye`는 `smart`, 나머지는 `bot`)은 실패하며 시나리오별 추가 조건을 만족하는 가장 작은 시드다(`watchful-eye`는 `watchful_eye_shows`: `always_lie`가 60 이상 재판 위험 3턴 이상·최고 80 이상을 겪고 승리, `ring-village`는 `ring_far_varies`: `smart` 승리 시 하늘을 바로 본 먼 집이 이웃 쪽지를 따라 틀리고 무작위 7일 완주 승률 ≥ 25%·먼 두 집 오답률 15%~85%, `regain-trust`는 `regain_trust_shows`: `bot`은 재판 발각 패배이고 `smart_wash`·직관 온오프 모두 진짜 날씨 쪽지로 세탁 후 목표 달성, `stubborn-ally`는 `stubborn_ally_shows`).
 
 | 시나리오 | 전략 | 카드 기준 | 목표 달성률 (95% Wilson) | 승률 | 발각률 | 15일 참고 | 고정 시드 |
 |---|---|---|---:|---:|---:|---:|---:|
-| watchful-eye (`share_mode=all`, 0.45) | always_lie | **45%** | 0.454 (0.423~0.485) | 0.454 | 0.313 | - | 0 |
+| watchful-eye (`share_mode=all`, 0.45) | always_lie | **45%** | 0.454 (0.423~0.485) | 0.454 | 0.313 | - | 40 |
 | watchful-eye (`share_mode=all`, 0.45) | smart | - | 0.394 (0.364~0.425) | 0.394 | 0.015 | 0.51 | - |
 | ring-village (`connection=ring`, 0.45) | bot | - | 0.354 (0.325~0.384) | 0.354 | 0.095 | - | - |
-| ring-village (`connection=ring`, 0.45) | smart | **42%** | 0.419 (0.389~0.450) | 0.419 | 0.006 | 0.38 | 767 |
+| ring-village (`connection=ring`, 0.45) | smart | **42%** | 0.419 (0.389~0.450) | 0.419 | 0.006 | 0.38 | 961 |
 | regain-trust (기본, 0.45, 문턱 40) | bot | - | 0.000 (0.000~0.004) | 0.445 | 0.329 | - | - |
 | regain-trust (기본, 0.45, 문턱 40) | smart | - | 0.000 (0.000~0.004) | 0.501 | 0.007 | - | - |
-| regain-trust (기본, 0.45, 문턱 40) | smart_wash | **47%** | 0.465 (0.434~0.496) | 0.489 | 0.016 | 0.48 | 2 |
+| regain-trust (기본, 0.45, 문턱 40) | smart_wash | **47%** | 0.465 (0.434~0.496) | 0.489 | 0.016 | 0.48 | 48 |
 | stubborn-ally (`mafia_count=2`, 0.48) | bot | - | 0.361 (0.332~0.391) | 0.361 | 0.619 | - | - |
 | stubborn-ally (`mafia_count=2`, 0.48) | smart | **41%** | 0.414 (0.384~0.445) | 0.414 | 0.551 | 0.26 | 222 |
 
@@ -108,6 +108,6 @@ python experiments/scenario_rates.py           # 시나리오 4개 × 전략(wat
 
 | 문턱 | 목표 달성률 (95% Wilson) | 승률 | 발각률 | 고정 시드 |
 |---:|---:|---:|---:|---:|
-| 30 | 0.465 (0.434~0.496) | 0.489 | 0.016 | 2 |
-| 40 | 0.465 (0.434~0.496) | 0.489 | 0.016 | 2 |
-| 50 | 0.349 (0.320~0.379) | 0.430 | 0.036 | 2 |
+| 30 | 0.465 (0.434~0.496) | 0.489 | 0.016 | 48 |
+| 40 | 0.465 (0.434~0.496) | 0.489 | 0.016 | 48 |
+| 50 | 0.349 (0.320~0.379) | 0.430 | 0.036 | 272 |

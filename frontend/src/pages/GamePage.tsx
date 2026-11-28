@@ -401,58 +401,56 @@ export function GamePage() {
           <div className="gm-stage">
             <section className="gm-board-zone" aria-label="마을 보드">
               <header className="gm-hud">
-                <div className="gm-hud-left">
-                  <button type="button" className="gm-exit" onClick={exit} disabled={busy}>
-                    ← 나가기
-                  </button>
-                  {tutorialActive && <span className="gm-tutorial-badge">튜토리얼</span>}
-                  {scenario && (
-                    <>
-                      <span className={goalSteps ? 'gm-goal-badge is-steps' : 'gm-goal-badge'}>
-                        <span className="gm-goal-tag">목표</span> ·{' '}
-                        {goalSteps ? (
-                          <span className="gm-goal-steps">
-                            {goalSteps.map((s, idx) => (
-                              <Fragment key={s.label}>
-                                {idx > 0 && (
-                                  <span className="gm-goal-arrow" aria-hidden="true">
-                                    →
+                <button type="button" className="gm-exit" onClick={exit} disabled={busy}>
+                  ← 나가기
+                </button>
+                {tutorialActive && <span className="gm-tutorial-badge">튜토리얼</span>}
+                {scenario && (
+                  <>
+                    <span className={goalSteps ? 'gm-goal-badge is-steps' : 'gm-goal-badge'}>
+                      <span className="gm-goal-tag">목표</span> ·{' '}
+                      {goalSteps ? (
+                        <span className="gm-goal-steps">
+                          {goalSteps.map((s, idx) => (
+                            <Fragment key={s.label}>
+                              {idx > 0 && (
+                                <span className="gm-goal-arrow" aria-hidden="true">
+                                  →
+                                </span>
+                              )}
+                              <span className={s.done ? 'gm-goal-step is-done' : 'gm-goal-step'}>
+                                {s.done && (
+                                  <span className="gm-goal-check" aria-hidden="true">
+                                    ✓
                                   </span>
                                 )}
-                                <span className={s.done ? 'gm-goal-step is-done' : 'gm-goal-step'}>
-                                  {s.done && (
-                                    <span className="gm-goal-check" aria-hidden="true">
-                                      ✓
-                                    </span>
-                                  )}
-                                  {s.label}
-                                  {s.done && <span className="sr-only"> 완료</span>}
-                                </span>
-                              </Fragment>
-                            ))}
-                          </span>
-                        ) : (
-                          <>
-                            {scenario.goal}
-                            {allyStatus && (
-                              <span className={`gm-ally-pill is-${allyStatus.tone}`}>{allyStatus.label}</span>
-                            )}
-                          </>
-                        )}
-                      </span>
-                      <span className="gm-scenario-note">
-                        {scenario.title} · {scenario.feature}
-                      </span>
-                    </>
-                  )}
-                  <div className="gm-role">
-                    <span className="gm-me-dot" aria-hidden="true">
-                      나
+                                {s.label}
+                                {s.done && <span className="sr-only"> 완료</span>}
+                              </span>
+                            </Fragment>
+                          ))}
+                        </span>
+                      ) : (
+                        <>
+                          {scenario.goal}
+                          {allyStatus && (
+                            <span className={`gm-ally-pill is-${allyStatus.tone}`}>{allyStatus.label}</span>
+                          )}
+                        </>
+                      )}
                     </span>
-                    <span>
-                      나는 {state.player_city}번 집 <span className="gm-role-sub">(마피아)</span>
+                    <span className="gm-scenario-note">
+                      {scenario.title} · {scenario.feature}
                     </span>
-                  </div>
+                  </>
+                )}
+                <div className="gm-role">
+                  <span className="gm-me-dot" aria-hidden="true">
+                    나
+                  </span>
+                  <span>
+                    나는 {state.player_city}번 집 <span className="gm-role-sub">(마피아)</span>
+                  </span>
                 </div>
                 <div className="gm-hud-right">
                   <div className="gm-progress" role="img" aria-label={fooled.label}>

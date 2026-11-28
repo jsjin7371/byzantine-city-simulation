@@ -60,18 +60,18 @@ def wash_peak(rows, end, threshold):
     return peak
 
 
-def has_onoff(history, player_city, truth, threshold=40, need_fool=True):
+def has_onoff(history, player_city, truth, threshold=40, need_fool=True, honest_wash=False):
     """결과 화면 regainTrustProgress의 온오프 판정(need_fool=False면 세탁 완료까지만 확인).
     의심도 >= threshold 뒤 아직 20 이하로 내려오기 전의 연속 힌트 일치 구간(쪽지 전환 포함)에서
     실제로 20 이하로 내려간 밤을 세탁으로 인정하고, 다시 threshold 이상이 되기 전에 거짓 쪽지로
-    그 주민을 속이면(correct=False) 달성."""
+    그 주민을 속이면(correct=False) 달성. honest_wash=True면 세탁 쪽지가 진짜 날씨인 경우만 인정."""
     if not history:
         return False
     for c in (x["city"] for x in history[0]["cities"] if x["role"] == "citizen"):
         rows = citizen_rows(history, player_city, truth, c)
         for j in range(1, len(rows)):
-            sus_j, _, match_j, _, _ = rows[j]
-            if not match_j or sus_j > 20 or rows[j - 1][0] <= 20:
+            sus_j, _, match_j, sent_lie_j, _ = rows[j]
+            if not match_j or sus_j > 20 or rows[j - 1][0] <= 20 or (honest_wash and sent_lie_j):
                 continue
             if wash_peak(rows, j, threshold) < threshold:
                 continue
@@ -195,26 +195,16 @@ def play_all(scenario_id, seed, fn):
 
 
 def ring_far_varies(seed, samples=128):
-    """고리 마을 고정 시드 조건(T4 반영): 먼 집 판단이 내 수에 따라 갈리고 한두 판 안에 달성 가능한지 확인.
-    1) 정직(진짜 날씨)으로 7일 완주 시 먼 두 집 모두 정답,
-    2) smart 승리 시 하늘을 바로 본 먼 집이 이웃 쪽지를 따라 틀림,
-    3) 무작위 수 표본에서 승률 ≥ 25%이며 먼 두 집 각각의 오답률이 15%~85% 사이."""
-    def run_last(strat):
-        fn = (lambda g: {str(r): DECISION_OF[g.truth] for r in ms.targets(g)}) if strat == "honest" else ms.smart
-        g, history = play_all("ring-village", seed, fn)
-        return g, history[-1]
-
-    g_hon, r_hon = run_last("honest")
-    if r_hon["end_reason"] != "turns_done":
-        return False
-    targets = set(ms.targets(g_hon))
-    far = sorted(c for c in g_hon.citizens if c not in targets)
-    if not all(c["correct"] for c in r_hon["cities"] if c["city"] in far):
-        return False
-
-    g_sm, r_sm = run_last("smart")
+    """고리 마을 고정 시드 조건: 먼 집이 이웃 깃발로 흔들리고 한두 판 안에 3명 이상 속이기 가능한지 확인.
+    (가) bot 목표 실패는 seed_specs에서 base로 강제한다.
+    1) smart 승리 시 하늘을 바로 본 먼 집이 이웃 쪽지를 따라 틀림,
+    2) 무작위 수 표본에서 7일 완주 승률 ≥ 25%이며 먼 두 집 각각의 오답률이 15%~85% 사이."""
+    g_sm, h_sm = play_all("ring-village", seed, ms.smart)
+    r_sm = h_sm[-1]
     if r_sm["outcome"] not in ("win", "perfect_win"):
         return False
+    targets = set(ms.targets(g_sm))
+    far = sorted(c for c in g_sm.citizens if c not in targets)
     if not any(
         c["city"] in far and c["correct"] is False and c["hint"] == g_sm.truth
         for c in r_sm["cities"]
@@ -222,7 +212,7 @@ def ring_far_varies(seed, samples=128):
         return False
 
     rng = random.Random(seed)
-    ans = DECISION_OF[g_hon.truth]
+    ans = DECISION_OF[g_sm.truth]
     opts = (ans, OPPOSITE[ans])
     t_list = sorted(targets)
     done7 = wins = 0
@@ -264,26 +254,9 @@ def regain_trust_shows(seed, threshold=40):
         return False
 
     def has_honest_wash_goal(g, hist):
-        if not goal_met("regain-trust", g, hist, hist[-1], threshold):
-            return False
-        for cid in sorted(g.citizens):
-            rows = citizen_rows(hist, g.player, g.truth, cid)
-            for j in range(1, len(rows)):
-                sus_j, _, match_j, sent_lie_j, _ = rows[j]
-                if not match_j or sus_j > 20 or rows[j - 1][0] <= 20 or sent_lie_j:
-                    continue
-                if wash_peak(rows, j, threshold) < threshold:
-                    continue
-                q = j
-                while q > 0 and rows[q - 1][2]:
-                    q -= 1
-                if not any(rows[m][1] != rows[m - 1][1] for m in range(max(1, q), j + 1)):
-                    continue
-                after = rows[j + 1:]
-                k = next((i for i, r in enumerate(after) if (r[3] and r[4] is False) or r[0] >= threshold), -1)
-                if k >= 0 and after[k][3] and after[k][4] is False:
-                    return True
-        return False
+        return hist[-1]["outcome"] in ("win", "perfect_win") and has_onoff(
+            hist, g.player, g.truth, threshold, need_fool=True, honest_wash=True
+        )
 
     g_sw = Game(1, GameConfig(citizen_type="wary", player="human", seed=seed, **SCENARIOS["regain-trust"]))
     h_sw = []
@@ -432,7 +405,7 @@ def main(runs):
     by_key = {(r["scenario"], r["strategy"], r["threshold"]): r for r in results}
     seed_specs = [
         ("watchful-eye", "always_lie", "", ("watchful-eye", "smart", ""), watchful_eye_shows),
-        ("ring-village", "smart", "", None, ring_far_varies),
+        ("ring-village", "smart", "", ("ring-village", "bot", ""), ring_far_varies),
         *(("regain-trust", "smart_wash", thr, ("regain-trust", "bot", 40), lambda s, thr=thr: regain_trust_shows(s, thr)) for thr in WASH_THRESHOLDS),
         ("stubborn-ally", "smart", "", ("stubborn-ally", "bot", ""), stubborn_ally_shows),
     ]

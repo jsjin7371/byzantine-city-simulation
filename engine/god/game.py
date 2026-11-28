@@ -187,19 +187,12 @@ class Game:
             self.suspicion = {r: replies[r]["suspicion"] for r in self.citizens}
 
         # 5. 고발 투표 (7.6). 시민마다 자기를 뺀 도시 중 의심도 최고에 투표, 동점이면 무작위.
-        # 고리 마을(connection='ring')에서는 동점 추첨 후보에서 쪽지를 주고받지 않는 먼 집을 뺀다.
         vote, caught = None, False
         if self.wary and any(v >= THRESHOLD for r in self.citizens for v in self.suspicion[r].values()):
             ballots = {}
             for r in self.citizens:
                 top = max(self.suspicion[r].values())
-                tied = [s for s, v in self.suspicion[r].items() if v == top]
-                if cfg.connection == "ring" and len(tied) > 1:
-                    near = {str(s) for s in neighbors(r, N, cfg.connection)}
-                    near_tied = [s for s in tied if s in near]
-                    if near_tied:
-                        tied = near_tied
-                ballots[str(r)] = int(self.vote_rng.choice(tied))
+                ballots[str(r)] = int(self.vote_rng.choice([s for s, v in self.suspicion[r].items() if v == top]))
             counts = list(ballots.values())
             accused = next((c for c in sorted(set(counts)) if counts.count(c) * 2 > len(self.citizens)), None)
             caught = accused is not None and self.roles[accused] != "citizen"

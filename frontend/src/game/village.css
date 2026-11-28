@@ -420,9 +420,6 @@
   flex: none;
   margin-bottom: 8px;
 }
-.gm-hud-left {
-  display: contents;
-}
 .gm-hud-right {
   display: flex;
   flex-wrap: wrap;

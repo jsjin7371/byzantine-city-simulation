@@ -372,18 +372,26 @@ test('trial lines: one accusation per voter, then the verdict (and tie note only
   }
   const tiedLines = villageLines(state, tiedTurn)
   assert.ok(tiedLines.some((l) => l.phase === 'trial' && l.kind === 'event' && l.text === '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.'))
-  // 고리 마을에서는 동점 추첨 안내가 양옆 이웃 후보만 짚고, 이웃 한 곳만 단독 최고면(먼 집과 동점이어도) 동점으로 보지 않는다
-  const ringTiedLines = villageLines({ ...state, config: { ...config, connection: 'ring' } }, tiedTurn)
-  assert.ok(ringTiedLines.some((l) => l.phase === 'trial' && l.kind === 'event' && l.text === '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 양옆 이웃 중 아무나 지목해요.'))
-  const ringNearUnique = {
-    ...turn,
-    cities: turn.cities.map((c) =>
-      c.city === 4 ? { ...c, suspicion: { 1: 40, 2: 0, 3: 40, 5: 0 } } : c, // 4의 이웃은 3,5(3이 단독 최고 40; 먼 1과 동점이어도 추첨 아님)
-    ),
-    vote: { ballots: { 1: 3, 4: 3 }, accused: 3, caught: true },
+  // 고리 마을에서는 먼 집(내 쪽지를 받지 않는 집)이 동점 추첨으로 나를 지목한 표에 (동점 추첨)을 표시한다
+  const ringState = {
+    ...state,
+    player_city: 1,
+    roles: { 1: 'player', 2: 'citizen', 3: 'citizen', 4: 'citizen', 5: 'citizen' },
+    config: { ...config, connection: 'ring' },
   }
-  const ringUniqueLines = villageLines({ ...state, config: { ...config, connection: 'ring' } }, ringNearUnique)
-  assert.ok(!ringUniqueLines.some((l) => l.text.includes('여럿이면')))
+  const ringTrialTurn = {
+    ...turn,
+    cities: [
+      { ...empty, city: 2, suspicion: { 1: 60, 3: 0, 4: 0, 5: 0 } }, // 이웃(단독 최고)
+      { ...empty, city: 3, suspicion: { 1: 0, 2: 40, 4: 0, 5: 0 } }, // 먼 집(2번 단독 최고)
+      { ...empty, city: 4, suspicion: { 1: 0, 2: 0, 3: 0, 5: 0 } }, // 먼 집(동점 추첨으로 나 지목)
+      { ...empty, city: 5, suspicion: { 1: 40, 2: 0, 3: 0, 4: 0 } }, // 이웃(단독 최고)
+    ],
+    vote: { ballots: { 2: 1, 3: 2, 4: 1, 5: 1 }, accused: 1, caught: true },
+  }
+  const ringLines = villageLines(ringState, ringTrialTurn)
+  assert.ok(ringLines.some((l) => l.phase === 'trial' && l.who === 4 && l.text === '난 1번을 지목할게 (동점 추첨)'))
+  assert.ok(ringLines.some((l) => l.phase === 'trial' && l.who === 2 && l.text === '난 1번을 지목할게'))
 })
 
 test('night steps: night, notes, flags (one per citizen with vote bars, single step for AI), suspicion, then ballots, verdict, day', () => {
@@ -1016,6 +1024,40 @@ test('resultDecisive explains contradiction catch, trial catch, and final-day ma
     },
   ])
   assert.match(decWin[0], /마지막 15일째 밤, 주민 4명 중 3명을 속여 과반\(3명\)을 넘겼어요/)
+
+  // 고리 마을 재판에서 먼 집이 동점 추첨으로 나를 지목하면 결정타·결정적 순간에 추첨 표를 표시한다(일반 마을은 미표시)
+  const ringCaughtDay = {
+    turn: 3,
+    cities: [
+      { ...empty, city: 2, suspicion: { 1: 60, 3: 0, 4: 0, 5: 0 } },
+      { ...empty, city: 3, suspicion: { 1: 0, 2: 20, 4: 0, 5: 0 } },
+      { ...empty, city: 4, suspicion: { 1: 0, 2: 0, 3: 0, 5: 0 } },
+      { ...empty, city: 5, suspicion: { 1: 40, 2: 0, 3: 0, 4: 0 } },
+    ],
+    sharing: [],
+    vote: { ballots: { 2: 1, 3: 2, 4: 1, 5: 1 }, accused: 1, caught: true },
+  }
+  const ringCaughtState = soloState({
+    player_city: 1,
+    roles: { 1: 'player', 2: 'citizen', 3: 'citizen', 4: 'citizen', 5: 'citizen' },
+    config: { ...soloConfig, connection: 'ring' },
+    outcome: 'loss',
+    end_reason: 'caught',
+  })
+  assert.deepEqual(resultDecisive(ringCaughtState, [ringCaughtDay]), [
+    '3일째 재판에서 2번, 4번, 5번 집이 나를 마피아로 지목했어요 (3표, 과반 3표, 4번은 동점 추첨).',
+  ])
+  const ringSummary = gameSummary(ringCaughtState, [ringCaughtDay], 'ring')
+  assert.ok(
+    ringSummary.moments.some(
+      (m) => m.text === '3일째 재판에서 2번, 4번, 5번이 나를 지목했어요 (3표, 과반 3표, 4번은 동점 추첨)',
+    ),
+  )
+  // 일반(all) 마을에서는 같은 투표라도 먼 집 추첨 표기를 붙이지 않는다
+  const allCaughtDec = resultDecisive({ ...ringCaughtState, config: soloConfig }, [ringCaughtDay])
+  assert.deepEqual(allCaughtDec, [
+    '3일째 재판에서 2번, 4번, 5번 집이 나를 마피아로 지목했어요 (3표, 과반 3표).',
+  ])
 })
 
 test('detectTactics implements A2 rules, rarity priority, and max 2 tags', () => {
@@ -1650,7 +1692,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('perfect_win'), no40), [
     { label: '한 주민 의심 40 이상', done: false },
     { label: '같은 주민 쪽지 바꿔 20 이하', done: false },
-    { label: '40 되기 전 거짓 쪽지로 속이기', done: false },
+    { label: '다시 40이 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: true },
   ])
   assert.equal(scenarioGoalSteps('watchful-eye', trustState('win'), no40), null)
@@ -1694,7 +1736,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), stuckHigh), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민 쪽지 바꿔 20 이하', done: false },
-    { label: '40 되기 전 거짓 쪽지로 속이기', done: false },
+    { label: '다시 40이 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: false },
   ])
   assert.equal(
@@ -1775,7 +1817,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('win'), washedOnly), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민 쪽지 바꿔 20 이하', done: true },
-    { label: '40 되기 전 거짓 쪽지로 속이기', done: false },
+    { label: '다시 40이 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: true },
   ])
   assert.equal(
@@ -1802,7 +1844,7 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), reSpiked), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민 쪽지 바꿔 20 이하', done: false },
-    { label: '40 되기 전 거짓 쪽지로 속이기', done: false },
+    { label: '다시 40이 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: false },
   ])
   assert.equal(
@@ -1866,17 +1908,17 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), fullOnOff), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민 쪽지 바꿔 20 이하', done: true },
-    { label: '40 되기 전 거짓 쪽지로 속이기', done: true },
+    { label: '다시 40이 되기 전 거짓 쪽지로 속이기', done: true },
     { label: '이기기', done: false },
   ])
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('win'), fullOnOff), [
     { label: '한 주민 의심 40 이상', done: true },
     { label: '같은 주민 쪽지 바꿔 20 이하', done: true },
-    { label: '40 되기 전 거짓 쪽지로 속이기', done: true },
+    { label: '다시 40이 되기 전 거짓 쪽지로 속이기', done: true },
     { label: '이기기', done: true },
   ])
   // fullOnOff는 2일째 세탁 쪽지가 거짓(stay, truth=danger)이므로 washSentLie 설명이 덧붙는다
-  const washLieSuffix = ' 사실 의심도를 낮춘 쪽지도 거짓이었어요. 그때 2번 집이 하늘을 잘못 봐서 맞는 말로 들렸을 뿐이에요.'
+  const washLieSuffix = ' 사실 2일째에 의심도를 낮춘 쪽지도 거짓이었고, 그날 2번 집이 하늘을 잘못 봐서 맞는 말로 들렸을 뿐이에요.'
   assert.equal(
     regainTrustOutcomeNote(trustState('loss'), fullOnOff),
     `2일째에 2번 집 의심도를 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸지만, 마지막 밤 과반은 속이지 못했어요.${washLieSuffix}`,
@@ -1979,7 +2021,7 @@ test('regainTrustOutcomeNote notes misobserved refool night only when lie matche
     scenarioResultNote('regain-trust', trustState('perfect_win'), misobserved),
     '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 그날 2번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요. 마지막 밤 주민 모두를 속였어요.',
   )
-  // 세탁과 재기만 모두 오관측 거짓(washSentLie=true && foolMatchedHint=true)이면 두 설명을 모두 덧붙인다
+  // 세탁과 재기만 모두 오관측 거짓(washSentLie=true && foolMatchedHint=true)이면 날짜와 함께 한 문장으로 합쳐 안내한다
   const bothMisobserved = [
     t(1, [c(2, 'safe', 'evacuate', 40, false)]),
     t(2, [c(2, 'safe', 'stay', 20, true)]),
@@ -1989,7 +2031,7 @@ test('regainTrustOutcomeNote notes misobserved refool night only when lie matche
   assert.equal(regainTrustProgress(trustState('win'), bothMisobserved).refooled?.foolMatchedHint, true)
   assert.equal(
     regainTrustOutcomeNote(trustState('win'), bothMisobserved),
-    '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 그날 2번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요. 사실 의심도를 낮춘 쪽지도 거짓이었어요. 그때 2번 집이 하늘을 잘못 봐서 맞는 말로 들렸을 뿐이에요. 마지막 밤 과반을 넘겼어요.',
+    '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 사실 2일째에 의심도를 낮춘 쪽지도 거짓이었고, 2일째와 5일째 모두 2번 집이 하늘을 잘못 봐서 거짓 쪽지가 본 하늘과 같게 들렸어요. 마지막 밤 과반을 넘겼어요.',
   )
   // 반대 경우(진실 세탁 + 관측이 진짜 날씨)는 관측 문장을 덧붙이지 않는다
   const observedTrue = [

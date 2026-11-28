@@ -784,20 +784,26 @@ export function villageLines(
     lines.push({ phase: 'trial', kind: 'when', text: PHASE_LABEL.trial })
     const hasTiedVoter = citizens.some((c) => {
       if (!c.suspicion || !(String(c.city) in result.vote!.ballots)) return false
-      return voteTieCandidates(c.city, c.suspicion, state.config.connection).length > 1
+      const vals = Object.values(c.suspicion)
+      if (vals.length === 0) return false
+      const top = Math.max(...vals)
+      return vals.filter((v) => v === top).length > 1
     })
     if (hasTiedVoter) {
       lines.push({
         phase: 'trial',
         kind: 'event',
-        text:
-          state.config.connection === 'ring'
-            ? '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 양옆 이웃 중 아무나 지목해요.'
-            : '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.',
+        text: '가장 의심하는 집이 여럿이면(아무도 의심하지 않을 때도) 그중 아무나 지목해요.',
       })
     }
+    const farTieSet = new Set(ringFarTieVotersForMe(state, result))
     for (const [from, to] of Object.entries(result.vote.ballots))
-      lines.push({ phase: 'trial', kind: 'say', who: Number(from), text: `난 ${to}번을 지목할게` })
+      lines.push({
+        phase: 'trial',
+        kind: 'say',
+        who: Number(from),
+        text: farTieSet.has(Number(from)) ? `난 ${to}번을 지목할게 (동점 추첨)` : `난 ${to}번을 지목할게`,
+      })
     const a = result.vote.accused
     lines.push({
       phase: 'verdict',
@@ -897,20 +903,24 @@ export type BaselineReading = {
   linkSub: string
 }
 
-const SCENARIO_THEORY_LINKS: Partial<Record<TopicKey, { linkTitle: string; linkSub: string }>> = {
+const SCENARIO_THEORY_LINKS: Partial<Record<TopicKey, { topic: TopicKey; linkTitle: string; linkSub: string }>> = {
   equiv: {
+    topic: 'equiv',
     linkTitle: '이중 발언',
     linkSub: '왜 모두에게 같은 거짓말은 비교로 안 잡히는지',
   },
   ring: {
+    topic: 'ring',
     linkTitle: '연결도 조건',
     linkSub: '왜 양옆만 이어지면 주민 방어가 흔들리는지',
   },
   onoff: {
+    topic: 'onoff',
     linkTitle: '온오프 공격',
     linkSub: '왜 의심을 낮췄다 다시 속일 수 있는지',
   },
   zealot: {
+    topic: 'zealot',
     linkTitle: '완고한 행위자',
     linkSub: '왜 말을 안 바꾸는 소수가 힘이자 약점인지',
   },
@@ -997,36 +1007,39 @@ function peakSus(cities: Pick<TurnResult, 'cities'>['cities'], target: number | 
   return Math.max(0, ...cities.filter((c) => c.role === 'citizen').map((c) => c.suspicion?.[target] ?? 0))
 }
 
-// 고발 투표 후보: 의심도 최고 도시들. 고리 마을(ring)에서 동점이면 양옆 이웃만 남긴다(engine/god/game.py와 동일).
-function voteTieCandidates(
-  voterCity: number,
-  suspicion: Record<string, number>,
-  connection: GameState['config']['connection'],
+// 고리 마을 재판에서 내 쪽지를 받지 않는 먼 집이 동점 추첨(나와 다른 집이 최고 의심도로 동점)으로 나를 지목한 집 목록.
+function ringFarTieVotersForMe(
+  state: Pick<GameState, 'config' | 'roles' | 'player_city'>,
+  turn: Pick<TurnResult, 'cities' | 'vote'> | undefined,
 ): number[] {
-  const entries = Object.entries(suspicion)
-  if (entries.length === 0) return []
-  const top = Math.max(...entries.map(([, v]) => v))
-  let tied = entries.filter(([, v]) => v === top).map(([k]) => Number(k))
-  if (connection === 'ring' && tied.length > 1) {
-    const near = new Set([((voterCity + 3) % 5) + 1, (voterCity % 5) + 1])
-    const nearTied = tied.filter((c) => near.has(c))
-    if (nearTied.length > 0) tied = nearTied
-  }
-  return tied
+  if (state.config.connection !== 'ring' || !turn?.vote) return []
+  const me = state.player_city
+  const near = new Set(claimTargets(state))
+  return Object.entries(turn.vote.ballots)
+    .filter(([from, to]) => {
+      const city = Number(from)
+      if (to !== me || near.has(city)) return false
+      const sus = turn.cities.find((c) => c.city === city)?.suspicion
+      if (!sus) return false
+      const vals = Object.values(sus)
+      if (vals.length === 0) return false
+      const top = Math.max(...vals)
+      return sus[me] === top && vals.filter((v) => v === top).length > 1
+    })
+    .map(([from]) => Number(from))
+    .sort((a, b) => a - b)
 }
 
 // 재판 기록: 지목된 집의 그날 최고 의심도와, 동점 추첨이 지목을 갈랐는지(그 집만 가장 의심한 주민이 과반이 아님).
-function trialRecord(
-  turn: Pick<TurnResult, 'cities' | 'vote'> | undefined,
-  connection: GameState['config']['connection'] = 'all',
-) {
+function trialRecord(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined) {
   const accused = turn?.vote?.accused
   if (accused == null) return null
   const citizens = turn!.cities.filter((c) => c.role === 'citizen')
-  const sure = citizens.filter((c) => {
-    const cands = voteTieCandidates(c.city, c.suspicion ?? {}, connection)
-    return cands.length === 1 && cands[0] === accused
-  }).length
+  const sure = citizens.filter((c) =>
+    Object.entries(c.suspicion ?? {}).every(
+      ([target, v]) => Number(target) === accused || v < (c.suspicion?.[accused] ?? 0),
+    ),
+  ).length
   return { accused, sus: peakSus(citizens, accused), drawn: sure * 2 <= citizens.length }
 }
 
@@ -1043,21 +1056,15 @@ export function resultBaseline(
   const need = majority(citizens)
   const won = state.outcome === 'win' || state.outcome === 'perfect_win'
   const last = history.at(-1)
-  const scenarioLink = scenarioTopic ? SCENARIO_THEORY_LINKS[scenarioTopic] : undefined
-  const defaultTopic: 'byz' | 'ring' = state.config.connection === 'ring' ? 'ring' : 'byz'
-  const topic: TopicKey = scenarioLink && scenarioTopic ? scenarioTopic : defaultTopic
-  const linkTitle = scenarioLink
-    ? scenarioLink.linkTitle
-    : defaultTopic === 'ring'
-      ? '연결도 조건'
-      : '비잔틴 장군 문제'
-  const linkSub = scenarioLink
-    ? scenarioLink.linkSub
-    : defaultTopic === 'ring'
-      ? '왜 양옆만 이어지면 주민 방어가 흔들리는지'
-      : n < 3 * f + 1
-        ? '왜 마피아가 둘이면 보장이 사라지는지'
-        : '왜 주민이 유리했는지'
+  const link =
+    (scenarioTopic && SCENARIO_THEORY_LINKS[scenarioTopic]) ||
+    (state.config.connection === 'ring'
+      ? SCENARIO_THEORY_LINKS.ring!
+      : {
+          topic: 'byz' as TopicKey,
+          linkTitle: '비잔틴 장군 문제',
+          linkSub: n < 3 * f + 1 ? '왜 마피아가 둘이면 보장이 사라지는지' : '왜 주민이 유리했는지',
+        })
 
   // 7. 정직했는데 재판
   if (
@@ -1067,9 +1074,7 @@ export function resultBaseline(
   ) {
     return {
       lines: ['진짜 날씨만 말했는데도 재판에 걸렸어요. 하늘을 잘못 본 주민에게는 사실도 거짓말처럼 들리거든요.'],
-      topic,
-      linkTitle,
-      linkSub,
+      ...link,
     }
   }
 
@@ -1086,9 +1091,7 @@ export function resultBaseline(
       lines: [
         `양옆 이웃하고만 이야기하는 마을은, 어떤 규칙을 써도 주민이 꼭 지켜 낸다는 보장이 없어요. 그렇다고 저절로 무너지는 것은 아니에요. ${ending}`,
       ],
-      topic,
-      linkTitle,
-      linkSub,
+      ...link,
     }
   }
 
@@ -1098,14 +1101,14 @@ export function resultBaseline(
       n === 5 && f === 2
         ? '집 다섯에 마피아 둘이면 주민이 반드시 버틴다는 보장이 사라져요.'
         : `집 ${n}채에 마피아 ${f}명이면 주민이 반드시 버틴다는 보장이 사라져요.`
-    const trial = state.end_reason === 'caught' ? trialRecord(last, state.config.connection) : null
+    const trial = state.end_reason === 'caught' ? trialRecord(last) : null
     const who = trial && state.roles[trial.accused] === 'colleague' ? '동료가' : '내 집이'
     const tail = won
       ? ' 이번엔 끝까지 흔들어 놓았어요.'
       : trial
         ? ` 이번 재판에서는 ${who} 의심도 ${trial.sus}에서 지목됐어요${trial.drawn ? '(동점 추첨)' : ''}.`
         : ' 이번엔 마지막 밤 주민 과반을 속이지 못했어요.'
-    return { lines: [`${head}${tail}`], topic, linkTitle, linkSub }
+    return { lines: [`${head}${tail}`], ...link }
   }
 
   // n >= 3f + 1 && connection === 'all'
@@ -1127,9 +1130,7 @@ export function resultBaseline(
             ? '주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요. 하늘도 당신 편이었어요.'
             : '주민들이 본 하늘부터 진짜 날씨와 많이 어긋난 판이었어요. 누가 마피아였어도 주민이 이긴다고 장담하기 어려웠어요.',
         ],
-        topic,
-        linkTitle,
-        linkSub,
+        ...link,
       }
     }
   }
@@ -1147,9 +1148,7 @@ export function resultBaseline(
         : '밤마다 한 번에 마음을 정하는 주민들의 빈틈을 잘 파고들었어요.'
     return {
       lines: [`원래 주민에게 유리한 판이었는데도 해냈어요. ${detail}`],
-      topic,
-      linkTitle,
-      linkSub,
+      ...link,
     }
   }
 
@@ -1159,9 +1158,7 @@ export function resultBaseline(
       lines: [
         '끝까지 정체는 숨겼어요. 다만 마지막 밤, 주민들이 본 하늘이 진짜 날씨 쪽으로 모여 과반의 마음을 돌리지 못했어요.',
       ],
-      topic,
-      linkTitle,
-      linkSub,
+      ...link,
     }
   }
 
@@ -1172,15 +1169,13 @@ export function resultBaseline(
       : `집 ${n}채 중 거짓말하는 집은 ${f}곳뿐이라, 주민들이 서로 맞춰 보면 가려낼 수 있었거든요.`
   return {
     lines: ['원래 주민에게 유리한 판이었어요.', sub],
-    topic,
-    linkTitle,
-    linkSub,
+    ...link,
   }
 }
 
 // 결정타: 기존 판정(재판·모순·과반)을 재사용해 한 문장(필요 시 2줄)으로.
 export function resultDecisive(
-  state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'>,
+  state: Pick<GameState, 'config' | 'player_city' | 'roles' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities' | 'sharing' | 'vote'>[],
 ): string[] {
   const me = state.player_city
@@ -1202,7 +1197,11 @@ export function resultDecisive(
       .filter(([, to]) => to === last.vote!.accused)
       .map(([from]) => `${from}번`)
     const who = last.vote.accused === me ? '나를' : `동료 ${last.vote.accused}번을`
-    return [`${day}일째 재판에서 ${voters.join(', ')} 집이 ${who} 마피아로 지목했어요 (${voters.length}표, 과반 ${need}표).`]
+    const farTie = last.vote.accused === me ? ringFarTieVotersForMe(state, last) : []
+    const tieNote = farTie.length > 0 ? `, ${farTie.join('·')}번은 동점 추첨` : ''
+    return [
+      `${day}일째 재판에서 ${voters.join(', ')} 집이 ${who} 마피아로 지목했어요 (${voters.length}표, 과반 ${need}표${tieNote}).`,
+    ]
   }
 
   if (last) {
@@ -1310,7 +1309,7 @@ export function detectTactics(
         detected.push({
           tag: 'zealot',
           day: colleagueTrial.turn,
-          text: `광장 재판에서 동료(${colleagueCity}번 집)가 의심도 ${trialRecord(colleagueTrial, state.config.connection)!.sus}에서 지목됐어요.`,
+          text: `광장 재판에서 동료(${colleagueCity}번 집)가 의심도 ${trialRecord(colleagueTrial)!.sus}에서 지목됐어요.`,
           attachTo: 'caught',
         })
       }
@@ -1470,10 +1469,12 @@ export function gameSummary(
       .filter(([, to]) => to === vote.accused)
       .map(([from]) => `${from}번`)
     const who = vote.accused === me ? '나를' : `동료 ${vote.accused}번을`
+    const farTie = vote.accused === me ? ringFarTieVotersForMe(state, last) : []
+    const tieNote = farTie.length > 0 ? `, ${farTie.join('·')}번은 동점 추첨` : ''
     momentItems.push({
       kind: 'caught',
       day,
-      text: `${day}일째 재판에서 ${voters.join(', ')}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표)`,
+      text: `${day}일째 재판에서 ${voters.join(', ')}이 ${who} 지목했어요 (${voters.length}표, 과반 ${need}표${tieNote})`,
     })
   } else if (last) {
     const wrong = last.cities.filter((c) => c.role === 'citizen' && c.correct === false).length
@@ -1899,7 +1900,7 @@ export function scenarioGoalSteps(
   return [
     { label: '한 주민 의심 40 이상', done: p.reached40 != null },
     { label: '같은 주민 쪽지 바꿔 20 이하', done: p.refooled != null || p.washedActive != null },
-    { label: '40 되기 전 거짓 쪽지로 속이기', done: p.refooled != null },
+    { label: '다시 40이 되기 전 거짓 쪽지로 속이기', done: p.refooled != null },
     { label: '이기기', done: isWin(state.outcome) },
   ]
 }
@@ -2049,17 +2050,22 @@ export function regainTrustOutcomeNote(
       : `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮췄지만, 그 집을 거짓 쪽지로 틀리게 하지 못한 채 ${s.spikeDay}일째에 의심도가 ${s.spikeSus}까지 다시 올랐고 마지막 밤 과반도 채우지 못했어요.${retry}`
   }
   const rf = p.refooled
-  const washLieNote = rf.washSentLie
-    ? ` 사실 의심도를 낮춘 쪽지도 거짓이었어요. 그때 ${rf.city}번 집이 하늘을 잘못 봐서 맞는 말로 들렸을 뿐이에요.`
-    : ''
   if (!won) {
+    const washLieNote = rf.washSentLie
+      ? ` 사실 ${rf.washDay}일째에 의심도를 낮춘 쪽지도 거짓이었고, 그날 ${rf.city}번 집이 하늘을 잘못 봐서 맞는 말로 들렸을 뿐이에요.`
+      : ''
     return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸지만, 마지막 밤 과반은 속이지 못했어요.${washLieNote}`
   }
   const winEnd = state.outcome === 'perfect_win' ? '주민 모두를 속였어요.' : '과반을 넘겼어요.'
-  const misobserved = rf.foolMatchedHint
-    ? ` 그날 ${rf.city}번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요.`
-    : ''
-  return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.prevSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요.${misobserved}${washLieNote} 마지막 밤 ${winEnd}`
+  const obsNote =
+    rf.washSentLie && rf.foolMatchedHint
+      ? ` 사실 ${rf.washDay}일째에 의심도를 낮춘 쪽지도 거짓이었고, ${rf.washDay}일째와 ${rf.foolDay}일째 모두 ${rf.city}번 집이 하늘을 잘못 봐서 거짓 쪽지가 본 하늘과 같게 들렸어요.`
+      : rf.washSentLie
+        ? ` 사실 ${rf.washDay}일째에 의심도를 낮춘 쪽지도 거짓이었고, 그날 ${rf.city}번 집이 하늘을 잘못 봐서 맞는 말로 들렸을 뿐이에요.`
+        : rf.foolMatchedHint
+          ? ` 그날 ${rf.city}번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요.`
+          : ''
+  return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.prevSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요.${obsNote} 마지막 밤 ${winEnd}`
 }
 
 type AllyStatus = { label: string; tone: 'ok' | 'warn' | 'caught' }
@@ -2084,15 +2090,14 @@ export function stubbornAllyStatus(
 
 // 시나리오 '고집쟁이 동료' 결과 한 줄 분기: 동료/내 재판 여부, 최고 의심도, 7일 승패 기록에 따라 한 줄을 안내한다.
 export function stubbornAllyOutcomeNote(
-  state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'> &
-    Partial<Pick<GameState, 'config'>>,
+  state: Pick<GameState, 'player_city' | 'roles' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities' | 'vote'>[],
 ): string {
   const col = colleagueCityOf(state.roles)
   const colLabel = col != null ? `동료(${col}번 집)` : '동료'
   const last = history.at(-1)
   const lastDay = last?.turn ?? 0
-  const trial = state.end_reason === 'caught' ? trialRecord(last, state.config?.connection ?? 'all') : null
+  const trial = state.end_reason === 'caught' ? trialRecord(last) : null
   if (trial) {
     const when = lastDay >= TOTAL_TURNS ? '마지막 밤 재판' : '재판'
     const drawn = trial.drawn ? '(동점이라 추첨)' : ''
