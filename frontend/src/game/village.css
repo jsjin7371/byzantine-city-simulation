@@ -414,18 +414,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
+  justify-content: flex-start;
+  gap: 8px 10px;
   min-height: 40px;
   flex: none;
   margin-bottom: 8px;
 }
-.gm-hud-left,
+.gm-hud-left {
+  display: contents;
+}
 .gm-hud-right {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+  margin-left: auto;
 }
 
 .gm-exit {
@@ -2660,8 +2663,8 @@ dialog.tb-dialog[open] {
   gap: 10px;
 }
 
-.sc-result {
-  margin-top: 22px;
+.sc-result + .gr-sheet {
+  margin-top: 10px;
 }
 .sc-result-head {
   display: flex;

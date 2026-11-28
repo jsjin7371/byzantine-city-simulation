@@ -575,7 +575,17 @@ export function GamePage() {
 
           {finished && (
             <div ref={resultRef} className="gm-below">
-              <GameResult state={state} history={history}>
+              {scenario && (
+                <ScenarioResult
+                  scenario={scenario}
+                  state={state}
+                  history={history}
+                  busy={busy}
+                  onRetry={retryScenario}
+                  onLab={exit}
+                />
+              )}
+              <GameResult state={state} history={history} scenarioTopic={scenario?.topic}>
                 {shown && (
                   <details className="gm-details">
                     <summary>{shown.turn}일째 자세한 표</summary>
@@ -590,16 +600,6 @@ export function GamePage() {
                   </div>
                 )}
               </GameResult>
-              {scenario && (
-                <ScenarioResult
-                  scenario={scenario}
-                  state={state}
-                  history={history}
-                  busy={busy}
-                  onRetry={retryScenario}
-                  onLab={exit}
-                />
-              )}
             </div>
           )}
         </div>

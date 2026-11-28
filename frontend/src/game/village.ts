@@ -892,9 +892,28 @@ export type Moment = {
 
 export type BaselineReading = {
   lines: string[]
-  topic: 'byz' | 'ring'
+  topic: TopicKey
   linkTitle: string
   linkSub: string
+}
+
+const SCENARIO_THEORY_LINKS: Partial<Record<TopicKey, { linkTitle: string; linkSub: string }>> = {
+  equiv: {
+    linkTitle: '이중 발언',
+    linkSub: '왜 모두에게 같은 거짓말은 비교로 안 잡히는지',
+  },
+  ring: {
+    linkTitle: '연결도 조건',
+    linkSub: '왜 양옆만 이어지면 주민 방어가 흔들리는지',
+  },
+  onoff: {
+    linkTitle: '온오프 공격',
+    linkSub: '왜 의심을 낮췄다 다시 속일 수 있는지',
+  },
+  zealot: {
+    linkTitle: '완고한 행위자',
+    linkSub: '왜 말을 안 바꾸는 소수가 힘이자 약점인지',
+  },
 }
 
 export type InfluenceSummary = {
@@ -992,9 +1011,11 @@ function trialRecord(turn: Pick<TurnResult, 'cities' | 'vote'> | undefined) {
 }
 
 // 출발선 문장 (목업 "검토용 7가지" 표 기준). 화면 겉면에는 수식을 쓰지 않는다.
+// 시나리오 판(scenarioTopic 지정)에서는 "이론으로" 링크와 부제를 해당 시나리오 이론 주제에 맞춘다.
 export function resultBaseline(
   state: Pick<GameState, 'config' | 'roles' | 'player_city' | 'truth' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities' | 'vote'>[],
+  scenarioTopic?: TopicKey,
 ): BaselineReading {
   const n = Object.keys(state.roles).length
   const f = state.config.mafia_count
@@ -1002,10 +1023,17 @@ export function resultBaseline(
   const need = majority(citizens)
   const won = state.outcome === 'win' || state.outcome === 'perfect_win'
   const last = history.at(-1)
-  const topic: 'byz' | 'ring' = state.config.connection === 'ring' ? 'ring' : 'byz'
-  const linkTitle = topic === 'ring' ? '연결도 조건' : '비잔틴 장군 문제'
-  const linkSub =
-    topic === 'ring'
+  const scenarioLink = scenarioTopic ? SCENARIO_THEORY_LINKS[scenarioTopic] : undefined
+  const defaultTopic: 'byz' | 'ring' = state.config.connection === 'ring' ? 'ring' : 'byz'
+  const topic: TopicKey = scenarioLink && scenarioTopic ? scenarioTopic : defaultTopic
+  const linkTitle = scenarioLink
+    ? scenarioLink.linkTitle
+    : defaultTopic === 'ring'
+      ? '연결도 조건'
+      : '비잔틴 장군 문제'
+  const linkSub = scenarioLink
+    ? scenarioLink.linkSub
+    : defaultTopic === 'ring'
       ? '왜 양옆만 이어지면 주민 방어가 흔들리는지'
       : n < 3 * f + 1
         ? '왜 마피아가 둘이면 보장이 사라지는지'
@@ -1387,6 +1415,7 @@ export function detectDeceptionDropMoment(
 export function gameSummary(
   state: Pick<GameState, 'player_city' | 'roles' | 'config' | 'truth' | 'outcome' | 'end_reason'>,
   history: Pick<TurnResult, 'turn' | 'cities' | 'sharing' | 'vote'>[],
+  scenarioTopic?: TopicKey,
 ): Summary {
   const me = state.player_city
   const last = history.at(-1)
@@ -1487,7 +1516,7 @@ export function gameSummary(
   return {
     headline,
     chips: resultVillageChips(state),
-    baseline: resultBaseline(state, history),
+    baseline: resultBaseline(state, history, scenarioTopic),
     decisive: resultDecisive(state, history),
     moments,
     influence: resultInfluence(state, history),
@@ -1849,8 +1878,8 @@ export function scenarioGoalSteps(
   const p = regainTrustProgress(state, history)
   return [
     { label: '한 주민 의심 40 이상', done: p.reached40 != null },
-    { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: p.refooled != null || p.washedActive != null },
-    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: p.refooled != null },
+    { label: '같은 주민 쪽지 바꿔 20 이하', done: p.refooled != null || p.washedActive != null },
+    { label: '40 되기 전 거짓 쪽지로 속이기', done: p.refooled != null },
     { label: '이기기', done: isWin(state.outcome) },
   ]
 }
@@ -2000,14 +2029,17 @@ export function regainTrustOutcomeNote(
       : `${s.washDay}일째에 ${s.city}번 집 의심도를 ${s.toSus}까지 낮췄지만, 그 집을 거짓 쪽지로 틀리게 하지 못한 채 ${s.spikeDay}일째에 의심도가 ${s.spikeSus}까지 다시 올랐고 마지막 밤 과반도 채우지 못했어요.${retry}`
   }
   const rf = p.refooled
+  const washLieNote = rf.washSentLie
+    ? ` 사실 의심도를 낮춘 쪽지도 거짓이었어요. 그때 ${rf.city}번 집이 하늘을 잘못 봐서 맞는 말로 들렸을 뿐이에요.`
+    : ''
   if (!won) {
-    return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸지만, 마지막 밤 과반은 속이지 못했어요.`
+    return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸지만, 마지막 밤 과반은 속이지 못했어요.${washLieNote}`
   }
   const winEnd = state.outcome === 'perfect_win' ? '주민 모두를 속였어요.' : '과반을 넘겼어요.'
   const misobserved = rf.foolMatchedHint
     ? ` 그날 ${rf.city}번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요.`
     : ''
-  return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.prevSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요.${misobserved} 마지막 밤 ${winEnd}`
+  return `${rf.washDay}일째에 ${rf.city}번 집 의심도를 ${rf.prevSus}에서 ${rf.toSus}까지 낮춘 뒤 ${rf.foolDay}일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요.${misobserved}${washLieNote} 마지막 밤 ${winEnd}`
 }
 
 type AllyStatus = { label: string; tone: 'ok' | 'warn' | 'caught' }

@@ -947,6 +947,31 @@ test('resultBaseline covers all 7 cases, links byz/ring, and never exposes 3f+1 
   for (const b of [bWin, bTurnsLoss, bCaught, bSkyWin, bSkyLoss, bSkyFull, bRing, bRingCaught, bRingTurns, bTwo, bTwoPlayerCaught, bTwoTurnsLoss, bHonest]) {
     assert.doesNotMatch(b.lines.join(' '), /3f\+1/i)
   }
+
+  // 시나리오 판: scenarioTopic이 주어지면 해당 이론 주제와 맞춤 부제를 돌려주고, 일반 게임(미지정)은 그대로 유지한다
+  const bEquiv = resultBaseline(soloState({ outcome: 'win', end_reason: 'turns_done' }), skyTieHist, 'equiv')
+  assert.equal(bEquiv.topic, 'equiv')
+  assert.equal(bEquiv.linkTitle, '이중 발언')
+  assert.equal(bEquiv.linkSub, '왜 모두에게 같은 거짓말은 비교로 안 잡히는지')
+  const bOnoff = resultBaseline(soloState({ outcome: 'win', end_reason: 'turns_done' }), winHist, 'onoff')
+  assert.equal(bOnoff.topic, 'onoff')
+  assert.equal(bOnoff.linkTitle, '온오프 공격')
+  assert.equal(bOnoff.linkSub, '왜 의심을 낮췄다 다시 속일 수 있는지')
+  const bZealot = resultBaseline(twoState({ outcome: 'win', end_reason: 'turns_done' }), winHist, 'zealot')
+  assert.equal(bZealot.topic, 'zealot')
+  assert.equal(bZealot.linkTitle, '완고한 행위자')
+  assert.equal(bZealot.linkSub, '왜 말을 안 바꾸는 소수가 힘이자 약점인지')
+  const bRingScen = resultBaseline(
+    soloState({ config: { ...soloConfig, connection: 'ring' }, outcome: 'win', end_reason: 'turns_done' }),
+    winHist,
+    'ring',
+  )
+  assert.equal(bRingScen.topic, 'ring')
+  assert.equal(bRingScen.linkTitle, '연결도 조건')
+  assert.equal(bRingScen.linkSub, '왜 양옆만 이어지면 주민 방어가 흔들리는지')
+  const sWithTopic = gameSummary(soloState({ outcome: 'win', end_reason: 'turns_done' }), skyTieHist, 'equiv')
+  assert.equal(sWithTopic.baseline.topic, 'equiv')
+  assert.equal(sWithTopic.baseline.linkTitle, '이중 발언')
 })
 
 test('resultDecisive explains contradiction catch, trial catch, and final-day majority result', () => {
@@ -1612,8 +1637,8 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.equal(scenarioGoalMet(trustState('perfect_win'), 'regain-trust', no40), false)
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('perfect_win'), no40), [
     { label: '한 주민 의심 40 이상', done: false },
-    { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: false },
-    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: false },
+    { label: '같은 주민 쪽지 바꿔 20 이하', done: false },
+    { label: '40 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: true },
   ])
   assert.equal(scenarioGoalSteps('watchful-eye', trustState('win'), no40), null)
@@ -1656,8 +1681,8 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   ]
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), stuckHigh), [
     { label: '한 주민 의심 40 이상', done: true },
-    { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: false },
-    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: false },
+    { label: '같은 주민 쪽지 바꿔 20 이하', done: false },
+    { label: '40 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: false },
   ])
   assert.equal(
@@ -1737,8 +1762,8 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.equal(scenarioGoalMet(trustState('win'), 'regain-trust', washedOnly), false)
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('win'), washedOnly), [
     { label: '한 주민 의심 40 이상', done: true },
-    { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: true },
-    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: false },
+    { label: '같은 주민 쪽지 바꿔 20 이하', done: true },
+    { label: '40 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: true },
   ])
   assert.equal(
@@ -1764,8 +1789,8 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.equal(reSpikedProg.washedThenSpiked?.spikeSus, 40)
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), reSpiked), [
     { label: '한 주민 의심 40 이상', done: true },
-    { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: false },
-    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: false },
+    { label: '같은 주민 쪽지 바꿔 20 이하', done: false },
+    { label: '40 되기 전 거짓 쪽지로 속이기', done: false },
     { label: '이기기', done: false },
   ])
   assert.equal(
@@ -1828,27 +1853,40 @@ test('regainTrustProgress, scenarioGoalMet, scenarioGoalSteps, and regainTrustOu
   assert.equal(scenarioGoalMet(trustState('perfect_win'), 'regain-trust', fullOnOff), true)
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState(null), fullOnOff), [
     { label: '한 주민 의심 40 이상', done: true },
-    { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: true },
-    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: true },
+    { label: '같은 주민 쪽지 바꿔 20 이하', done: true },
+    { label: '40 되기 전 거짓 쪽지로 속이기', done: true },
     { label: '이기기', done: false },
   ])
   assert.deepEqual(scenarioGoalSteps('regain-trust', trustState('win'), fullOnOff), [
     { label: '한 주민 의심 40 이상', done: true },
-    { label: '같은 주민, 본 하늘에 맞춰 쪽지 바꿔 20 이하', done: true },
-    { label: '같은 주민, 다시 40 되기 전 거짓 쪽지로 속이기', done: true },
+    { label: '같은 주민 쪽지 바꿔 20 이하', done: true },
+    { label: '40 되기 전 거짓 쪽지로 속이기', done: true },
     { label: '이기기', done: true },
   ])
+  // fullOnOff는 2일째 세탁 쪽지가 거짓(stay, truth=danger)이므로 washSentLie 설명이 덧붙는다
+  const washLieSuffix = ' 사실 의심도를 낮춘 쪽지도 거짓이었어요. 그때 2번 집이 하늘을 잘못 봐서 맞는 말로 들렸을 뿐이에요.'
   assert.equal(
     regainTrustOutcomeNote(trustState('loss'), fullOnOff),
-    '2일째에 2번 집 의심도를 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸지만, 마지막 밤 과반은 속이지 못했어요.',
+    `2일째에 2번 집 의심도를 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸지만, 마지막 밤 과반은 속이지 못했어요.${washLieSuffix}`,
   )
   assert.equal(
     regainTrustOutcomeNote(trustState('win'), fullOnOff),
-    '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 과반을 넘겼어요.',
+    `2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요.${washLieSuffix} 마지막 밤 과반을 넘겼어요.`,
   )
   assert.equal(
     scenarioResultNote('regain-trust', trustState('perfect_win'), fullOnOff),
-    '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 주민 모두를 속였어요.',
+    `2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요.${washLieSuffix} 마지막 밤 주민 모두를 속였어요.`,
+  )
+  // 진짜 날씨(evacuate)로 낮춘 경우(washSentLie=false)는 거짓 세탁 문장을 덧붙이지 않는다
+  const honestWashFull = [
+    t(1, [c(2, 'danger', 'stay', 40, false)]),
+    t(2, [c(2, 'danger', 'evacuate', 20, true)]),
+    t(5, [c(2, 'danger', 'stay', 40, false)]),
+  ]
+  assert.equal(regainTrustProgress(trustState('win'), honestWashFull).refooled?.washSentLie, false)
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), honestWashFull),
+    '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 마지막 밤 과반을 넘겼어요.',
   )
 
   // 7. 조기 재판 / 7일째 마지막 밤 재판 / 내 의심도 60 미만에서 다른 집 의심도로 열린 재판 / 낮추기 성공 후 재판
@@ -1915,11 +1953,12 @@ test('regainTrustOutcomeNote notes misobserved refool night only when lie matche
   })
   const t = (turnNum, cities) => ({ turn: turnNum, cities, sharing: [], vote: null })
   const misobserved = [
-    t(1, [c(2, 'safe', 'evacuate', 40, false)]),
-    t(2, [c(2, 'safe', 'stay', 20, true)]),
+    t(1, [c(2, 'danger', 'stay', 40, false)]),
+    t(2, [c(2, 'danger', 'evacuate', 20, true)]),
     t(5, [c(2, 'safe', 'stay', 0, false)]),
   ]
   assert.equal(regainTrustProgress(trustState('win'), misobserved).refooled?.foolMatchedHint, true)
+  assert.equal(regainTrustProgress(trustState('win'), misobserved).refooled?.washSentLie, false)
   assert.equal(
     regainTrustOutcomeNote(trustState('win'), misobserved),
     '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 그날 2번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요. 마지막 밤 과반을 넘겼어요.',
@@ -1928,13 +1967,26 @@ test('regainTrustOutcomeNote notes misobserved refool night only when lie matche
     scenarioResultNote('regain-trust', trustState('perfect_win'), misobserved),
     '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 그날 2번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요. 마지막 밤 주민 모두를 속였어요.',
   )
-  // 반대 경우(관측이 진짜 날씨)는 관측 문장을 덧붙이지 않는다
-  const observedTrue = [
+  // 세탁과 재기만 모두 오관측 거짓(washSentLie=true && foolMatchedHint=true)이면 두 설명을 모두 덧붙인다
+  const bothMisobserved = [
     t(1, [c(2, 'safe', 'evacuate', 40, false)]),
     t(2, [c(2, 'safe', 'stay', 20, true)]),
+    t(5, [c(2, 'safe', 'stay', 0, false)]),
+  ]
+  assert.equal(regainTrustProgress(trustState('win'), bothMisobserved).refooled?.washSentLie, true)
+  assert.equal(regainTrustProgress(trustState('win'), bothMisobserved).refooled?.foolMatchedHint, true)
+  assert.equal(
+    regainTrustOutcomeNote(trustState('win'), bothMisobserved),
+    '2일째에 2번 집 의심도를 40에서 20까지 낮춘 뒤 5일째에 거짓 쪽지를 보냈고 그 집은 틀렸어요. 그날 2번 집은 하늘을 잘못 봐서, 거짓 쪽지가 그 집이 본 하늘과 같았어요. 사실 의심도를 낮춘 쪽지도 거짓이었어요. 그때 2번 집이 하늘을 잘못 봐서 맞는 말로 들렸을 뿐이에요. 마지막 밤 과반을 넘겼어요.',
+  )
+  // 반대 경우(진실 세탁 + 관측이 진짜 날씨)는 관측 문장을 덧붙이지 않는다
+  const observedTrue = [
+    t(1, [c(2, 'danger', 'stay', 40, false)]),
+    t(2, [c(2, 'danger', 'evacuate', 20, true)]),
     t(5, [c(2, 'danger', 'stay', 40, false)]),
   ]
   assert.equal(regainTrustProgress(trustState('win'), observedTrue).refooled?.foolMatchedHint, false)
+  assert.equal(regainTrustProgress(trustState('win'), observedTrue).refooled?.washSentLie, false)
   assert.doesNotMatch(regainTrustOutcomeNote(trustState('win'), observedTrue), /하늘을 잘못 봐서/)
 })
 
