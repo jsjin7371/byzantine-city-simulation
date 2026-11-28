@@ -13,6 +13,7 @@ from common.http import HttpError
 from god.simulation import DECISION_OF, OPPOSITE_TRUTH, neighbors
 
 N, TURNS, THRESHOLD = 5, 7, 60  # 도시 수, 턴 수, 투표가 열리는 의심도
+MAX_GAME_TURNS = 20  # 기존 실험과 같은 상한으로 게임별 실행량을 제한한다.
 OPPOSITE = {"evacuate": "stay", "stay": "evacuate"}
 CHOICES = {"connection": ("all", "ring"), "citizen_type": ("majority", "wary", "ai"),
            "memory": ("turn", "recent", "full"), "share_mode": ("all", "pairs", "none"), "player": ("human", "bot")}
@@ -29,6 +30,12 @@ class GameConfig:
     player: str = "human"
     sensor_error: float = 0.1
     seed: int | None = None
+    max_turns: int = TURNS
+
+    def __post_init__(self):
+        """게임별 최대 턴 수의 형식과 범위를 검증하는 기능"""
+        if type(self.max_turns) is not int or not 1 <= self.max_turns <= MAX_GAME_TURNS:
+            raise HttpError(422, f"invalid max_turns: expected integer in 1..{MAX_GAME_TURNS}")
 
     @classmethod
     def parse(cls, body):
@@ -205,7 +212,7 @@ class Game:
         wrong = sum(d != answer for d in decisions.values())
         if caught:
             self.game_over, self.outcome, self.end_reason = True, "loss", "caught"
-        elif t == TURNS:
+        elif t == cfg.max_turns:
             self.game_over, self.end_reason = True, "turns_done"
             self.outcome = ("perfect_win" if wrong == len(decisions) else
                             "win" if wrong * 2 > len(decisions) else "loss")

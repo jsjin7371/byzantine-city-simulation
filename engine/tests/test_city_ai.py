@@ -252,6 +252,23 @@ class ApiCitizen(unittest.TestCase):
         self.assertFalse(any(r.ai_outcome == "fallback" for r in logs.records))
 
 
+    def test_configured_turns_bound_mock_llm_requests(self):
+        """게임 턴 수와 시민 수에 따른 LLM 요청 상한을 모의 응답으로 검사하는 기능"""
+        from god.game import Game, GameConfig
+
+        content = json.dumps({"decision": "stay", "suspicion": {}, "reason": "지금은 집에 남아 있을래."})
+        for limit in (1, 3, 20):
+            for mafia_count in (1, 2):
+                with self.subTest(limit=limit, mafia_count=mafia_count):
+                    game = Game(1, GameConfig(seed=42, player="bot", citizen_type="ai",
+                                              mafia_count=mafia_count, max_turns=limit))
+                    with mock.patch.object(ai.urllib.request, "urlopen", side_effect=lambda *a, **k: self.envelope(content)) as send:
+                        while not game.game_over:
+                            result = game.play({"turn": game.turn + 1, "claims": {}}, lambda c, req: main.turn(req))
+                    self.assertEqual(send.call_count, (5 - mafia_count) * limit)
+                    self.assertEqual((result["turn"], result["end_reason"]), (limit, "turns_done"))
+
+
 class LiveCheckGuards(unittest.TestCase):
     def test_token_budget_stops_before_any_call(self):
         from llm_game_smoke import run_game
