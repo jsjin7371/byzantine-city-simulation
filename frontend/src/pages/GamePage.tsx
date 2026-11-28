@@ -407,38 +407,47 @@ export function GamePage() {
                   </button>
                   {tutorialActive && <span className="gm-tutorial-badge">튜토리얼</span>}
                   {scenario && (
-                    <span className={goalSteps ? 'gm-goal-badge is-steps' : 'gm-goal-badge'}>
-                      <span className="gm-goal-tag">목표</span> ·{' '}
-                      {goalSteps ? (
-                        <span className="gm-goal-steps">
-                          {goalSteps.map((s, idx) => (
-                            <Fragment key={s.label}>
-                              {idx > 0 && (
-                                <span className="gm-goal-arrow" aria-hidden="true">
-                                  →
-                                </span>
-                              )}
-                              <span className={s.done ? 'gm-goal-step is-done' : 'gm-goal-step'}>
-                                {s.done && (
-                                  <span className="gm-goal-check" aria-hidden="true">
-                                    ✓
+                    <>
+                      <span className={goalSteps ? 'gm-goal-badge is-steps' : 'gm-goal-badge'}>
+                        <span className="gm-goal-tag">목표</span> ·{' '}
+                        {goalSteps ? (
+                          <span className="gm-goal-steps">
+                            {goalSteps.map((s, idx) => (
+                              <Fragment key={s.label}>
+                                {idx > 0 && (
+                                  <span className="gm-goal-arrow" aria-hidden="true">
+                                    →
                                   </span>
                                 )}
-                                {s.label}
-                                {s.done && <span className="sr-only"> 완료</span>}
-                              </span>
-                            </Fragment>
-                          ))}
+                                <span className={s.done ? 'gm-goal-step is-done' : 'gm-goal-step'}>
+                                  {s.done && (
+                                    <span className="gm-goal-check" aria-hidden="true">
+                                      ✓
+                                    </span>
+                                  )}
+                                  {s.label}
+                                  {s.done && <span className="sr-only"> 완료</span>}
+                                </span>
+                              </Fragment>
+                            ))}
+                          </span>
+                        ) : (
+                          <>
+                            {scenario.goal}
+                            {allyStatus && (
+                              <span className={`gm-ally-pill is-${allyStatus.tone}`}>{allyStatus.label}</span>
+                            )}
+                          </>
+                        )}
+                      </span>
+                      <span className="gm-scenario-note">
+                        <span className="gm-scenario-name">{scenario.title}</span>
+                        <span className="gm-scenario-sep" aria-hidden="true">
+                          ·
                         </span>
-                      ) : (
-                        <>
-                          {scenario.goal}
-                          {allyStatus && (
-                            <span className={`gm-ally-pill is-${allyStatus.tone}`}>{allyStatus.label}</span>
-                          )}
-                        </>
-                      )}
-                    </span>
+                        <span>{scenario.feature}</span>
+                      </span>
+                    </>
                   )}
                   <div className="gm-role">
                     <span className="gm-me-dot" aria-hidden="true">

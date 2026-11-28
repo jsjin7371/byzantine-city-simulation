@@ -10,6 +10,7 @@ import type { TopicKey } from './village'
 export type Scenario = {
   id: string
   title: string
+  feature: string
   brief: string
   shows: string
   chips: readonly string[]
@@ -32,6 +33,7 @@ const SCENARIOS: readonly Scenario[] = [
   {
     id: 'watchful-eye',
     title: '감시의 눈',
+    feature: '모든 집이 서로 쪽지를 비교해요',
     brief: '"오늘 밤부터 모든 주민이 받은 쪽지를 다 같이 맞춰 봐요."',
     shows: '모든 집이 쪽지를 맞춰 보는 마을에서, 거짓말은 어디까지 막히고 어디로 새어 나갈까요?',
     chips: ['집 5채', '모든 집 쪽지 비교', '잘못 볼 확률 45%'],
@@ -55,6 +57,7 @@ const SCENARIOS: readonly Scenario[] = [
   {
     id: 'ring-village',
     title: '고리 마을',
+    feature: '양옆 두 집에만 쪽지를 보낼 수 있어요',
     brief: '"길이 좁아 양옆 두 집에만 쪽지를 보낼 수 있어요."',
     shows: '양옆 두 집하고만 통하는 고리 마을에서, 소식은 어떻게 퍼지고 방어는 어디서 흔들릴까요?',
     chips: ['집 5채', '양옆과만 연결', '잘못 볼 확률 45%'],
@@ -78,6 +81,7 @@ const SCENARIOS: readonly Scenario[] = [
   {
     id: 'regain-trust',
     title: '신뢰를 되찾는 법',
+    feature: '의심이 오르는 만큼 다시 내려가요',
     brief: '"의심을 샀다가, 그 집이 본 하늘에 맞춰 신뢰를 되찾아 보세요."',
     shows: '의심도가 오르고 내리는 폭이 똑같은 마을에서, 높아진 의심도를 낮추고 다시 속이는 일이 통할까요?',
     chips: ['집 5채', '밤마다 두 집 쪽지 비교', '잘못 볼 확률 45%'],
@@ -101,6 +105,7 @@ const SCENARIOS: readonly Scenario[] = [
   {
     id: 'stubborn-ally',
     title: '고집쟁이 동료',
+    feature: '같은 거짓말만 하는 동료가 걸려도 져요',
     brief: '"동료 마피아가 한 명 더 있어요. 그런데 이 동료는 늘 같은 거짓말만 해요."',
     shows: '마피아가 둘로 늘어난 마을에서, 늘 같은 거짓말만 반복하는 동료는 힘이 될까요, 약점이 될까요?',
     chips: ['집 5채', '마피아 둘', '잘못 볼 확률 48%'],
