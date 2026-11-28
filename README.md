@@ -13,17 +13,12 @@
 
 ## 화면
 
-![게임 시작 화면](docs/images/game-start.png)
+| 시작 | 마을 보드 | 결과 |
+|:---:|:---:|:---:|
+| <img src="docs/images/game-start.png" alt="게임 시작 화면" width="300"> | <img src="docs/images/game-board.png" alt="게임 마을 보드" width="300"> | <img src="docs/images/game-result.png" alt="게임 결과 화면" width="300"> |
+| 난이도와 주민 종류를 고르고<br>`마을로 들어가기`를 누릅니다 | 집마다 보낼 쪽지(대피/잔류)를 고릅니다.<br>주민이 `눈치`면 의심도 변화도 미리 봅니다 | 승패, 결정타, 결정적 순간과<br>관련 이론을 보여 줍니다 |
 
-시작 화면에서 난이도와 주민 종류를 고르고 `마을로 들어가기`를 누릅니다.
-
-![게임 마을 보드](docs/images/game-board.png)
-
-마을 보드에서 집마다 보낼 쪽지(대피/잔류)를 고릅니다. 주민이 `눈치`면 의심도가 어떻게 바뀔지도 미리 봅니다.
-
-![게임 결과 화면](docs/images/game-result.png)
-
-결과 화면은 승패, 결정타, 결정적 순간과 관련 이론을 보여 줍니다.
+사진을 누르면 크게 볼 수 있습니다.
 
 ## 구조
 
