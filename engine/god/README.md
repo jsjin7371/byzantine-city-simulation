@@ -170,7 +170,7 @@ God의 동작 여부와 각 City의 `/health` 응답을 확인합니다.
 | `sensor_error` | 0~1 숫자 | `0.1` |
 | `drop_rate` | 0~1 숫자 | `0.0` |
 | `flip_rate` | 0~1 숫자 | `0.0` |
-| `byzantine_count` | 0~5 정수 | `1` |
+| `byzantine_count` | 0~`n_cities` 정수 | `1` |
 | `seed` | `null` 또는 0~2147483647 정수 | `null` |
 | `n_cities` | 3~`N_CITIES` 정수 | `5` |
 | `connection` | `"ring"` 또는 `"all"` | `"ring"` |
@@ -210,17 +210,6 @@ Content-Type: application/json
 ```json
 {"error": "invalid turns: expected integer in 1..20"}
 ```
-
-### 게임 엔드포인트
-
-| 메서드 | 경로 | 설명 |
-|---|---|---|
-| POST | `/games` | 게임 시작. 진행 중 게임은 하나이며 새 게임이 이전 게임을 대체 |
-| POST | `/games/{game_id}/turns` | 한 턴 진행. 턴 결과를 응답 본문으로 반환 |
-| GET | `/games/{game_id}` | 게임 상태 |
-
-게임 상태는 메모리에만 있습니다. 시민 City는 병렬로 호출합니다.
-`CITY_RUNTIME=kubernetes`이면 게임마다 City를 만들고 `/run`은 HTTP 503입니다 ([동적 실행](../../deploy/kubernetes/dynamic/README.md)).
 
 ### God이 사용하는 City 호출
 
@@ -283,6 +272,17 @@ God은 백엔드에서 다음 응답을 받아 실험 ID와 턴 번호가 요청
 - 서버는 요청을 하나씩 처리하므로 `/run` 실행 중 `/health`와 다른 실행 요청이 대기할 수 있습니다.
 - City·백엔드 호출 제한은 각각 1초입니다. 게임의 AI 시민 호출만 40초입니다. 최대 설정에서는 초기화 5회와 City 턴 호출 100회, 백엔드 전송 20회가 발생합니다.
   `/run` 호출자는 이 요청들을 마칠 수 있는 전체 대기 시간을 설정해야 합니다.
+
+## 게임 엔드포인트
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| POST | `/games` | 게임 시작. 진행 중 게임은 하나이며 새 게임이 이전 게임을 대체 |
+| POST | `/games/{game_id}/turns` | 한 턴 진행. 턴 결과를 응답 본문으로 반환 |
+| GET | `/games/{game_id}` | 게임 상태 |
+
+게임 상태는 메모리에만 있습니다. 시민 City는 병렬로 호출합니다.
+`CITY_RUNTIME=kubernetes`이면 게임마다 City를 만들고 `/run`은 HTTP 503입니다 ([동적 실행](../../deploy/kubernetes/dynamic/README.md)).
 
 ## 게임의 최대 턴 수
 

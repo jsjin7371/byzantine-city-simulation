@@ -132,4 +132,3 @@ kubectl --context $kubeContext delete -f deploy/kubernetes/namespace.yaml --igno
 ```
 
 다른 namespace, 기존 클러스터, Docker 이미지·컨테이너는 삭제하지 않습니다.
-이 구성의 고정 자원은 위 명령으로 직접 정리합니다.

@@ -443,7 +443,7 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 | GET | `/games/stats` | 플레이 기록 집계 (아래) |
 | GET | `/games/stats.csv` | 같은 집계를 CSV 파일로 (`play_stats.csv`, UTF-8 BOM) |
 
-- 요청·응답 형식은 7.7, 7.8과 같다. 백엔드는 턴 결과를 받은 그대로 저장한다 (예: `games`, `game_turns` JSON 컬럼). 테이블은 5절에 있다.
+- 요청·응답 형식은 7.7, 7.8과 같다. 백엔드는 턴 결과를 받은 그대로 `game_turns`에 저장한다 (5절).
 - `bot_win_rate`: 같은 설정에서 `player == "bot"`의 마피아 승률 (0.0~1.0, 결과 화면 비교용). 값은 7.2 난이도 표의 측정값을 백엔드가 설정별로 들고 있다. 프리셋 밖 설정(`mafia_count` 2, 표에 없는 `sensor_error`, 기본값이 아닌 `connection`·`memory`·`share_mode`·`share_pairs`, `citizen_type` `"ai"`)이면 `null`. God은 이 필드를 모른다.
 - 새 게임을 시작하면 이전 `in_progress` 게임은 `abandoned`.
 - 플레이 기록 집계(`/games/stats`): `status == "finished"`, `player == "human"`, `citizen_type`이 `"wary"` 또는 `"majority"`(`"ai"`는 봇 승률이 없어 제외), `mafia_count` 1, `connection`·`memory`·`share_mode`·`share_pairs`가 기본값, `sensor_error`가 7.2 난이도 프리셋 값(0.48/0.4/0.3)인 판만 센다. `seed`는 따지지 않는다. 승리는 `outcome`이 `"win"` 또는 `"perfect_win"`인 판.
@@ -485,7 +485,7 @@ God이 게임 상태를 메모리에 둔다. 진행 중 게임은 한 번에 하
 ### 7.11 LLM 호출 위치와 키
 
 - **City가 호출한다.** 근거: 판단 주체가 City라는 구조를 지키고 God에는 규칙(공유·모순·투표)만 남긴다. compose는 기본 bridge 네트워크 하나만 쓰고 분리하지 않는다. 그래서 City 컨테이너가 외부 LLM 주소를 바로 호출할 수 있다.
-- God의 AI 시민 City 호출 시간 제한은 40초(City의 LLM 30초보다 길게, `god/main.py` 상수). 시민 5곳은 병렬로 부른다. 규칙 시민은 기본 1초.
+- God의 AI 시민 City 호출 시간 제한은 40초(City의 LLM 30초보다 길게, `god/main.py` 상수). 시민 City는 병렬로 부른다. 규칙 시민은 기본 1초.
 - 게임 전용 키를 쓴다 (PR 리뷰 키와 분리). OpenAI 호환 chat completions로 호출하고, 환경변수 `LLM_API_KEY`, `LLM_BASE_URL`, `LLM_MODEL`은 City 컨테이너에만 준다. 키가 없으면 테스트용 가짜 LLM을 쓴다 (5단계).
 - 결정, 의심도, 판단 이유는 한 번의 호출로 받는다. 같은 seed 재현은 AI 시민에 보장하지 않는다.
 - `LLM_BASE_URL`은 chat completions **전체 주소** 또는 `/v1` 기본 주소다 (예: `https://api.groq.com/openai/v1`). `/v1`로 끝나면 `/chat/completions`를 붙인다. 기존 전체 주소와 게이트웨이의 끝 슬래시는 유지하며, 비면 OpenAI 기본 주소다.

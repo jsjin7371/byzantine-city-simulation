@@ -2,7 +2,7 @@
 
 God 한 개가 게임 시작 시 City Pod 5개와 Service 5개를 만들고, 모두 Ready 및 health 확인이 끝난 뒤 게임 상태를 반환합니다.
 현재 활성 게임은 한 개입니다. 새 게임은 이전 게임의 자원을 먼저 정리하며 게임 종료 또는 City 호출 실패 시에도 정리합니다.
-기존 Compose의 고정 City 주소와 게임 판단·난수 순서는 유지합니다. PR 1의 고정 배포와 별도 namespace를 사용합니다.
+기존 Compose의 고정 City 주소와 게임 판단·난수 순서는 유지합니다. [고정 배포](../README.md)와 별도 namespace를 사용합니다.
 
 ## 구성과 제한
 
@@ -77,4 +77,4 @@ kubectl --context $kubeContext -n byzantine-engine-dynamic get all,configmap,sec
 kubectl --context $kubeContext delete -f deploy/kubernetes/dynamic/engine.yaml --ignore-not-found
 ```
 
-클러스터·Docker 볼륨·PR 1의 고정 namespace는 삭제하지 않습니다.
+클러스터·Docker 볼륨·[고정 배포](../README.md)의 namespace는 삭제하지 않습니다.
